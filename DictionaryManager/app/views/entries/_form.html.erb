@@ -1,0 +1,35 @@
+<%= form_for([@dictionary, @entry]) do |f| %>
+  <% if @entry.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@entry.errors.count, "error") %> prohibited this entry from being saved:</h2>
+
+      <ul>
+      <% @entry.errors.full_messages.each do |msg| %>
+        <li><%= msg %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= f.label :title, "Entry name" %><br />
+    <%= f.text_field :title %>
+  </div>
+  <div class="field">
+    <%= f.label :label, "Label *" %><br />
+    <%= f.text_field :label %>
+  </div>
+  <div class="field">
+    <%= f.label :uri, "ID *" %><br />
+    <%= f.text_area :uri %>
+  </div>
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+
+  <p>
+  * <i>Label</i> usually stands for the semantic class of an entry such as gene, protein, and so on.<br />
+  * <i>ID</i> is usually used to be the unique identifier of an entry such as gene ID.<br />
+  </p>
+  
+<% end %>

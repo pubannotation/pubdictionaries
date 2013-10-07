@@ -1,0 +1,53 @@
+<!-- Show information about a dictionary -->
+<div class="dictionary_information">
+<fieldset>
+  <legend>Dictionary name: <%= @dictionary.title %></legend>
+  
+  <table>
+    <tr><th>Creator:</th><td><%= @dictionary.creator %></td>
+    <tr><th>Description:</th><td><%= @dictionary.description %></td></tr>
+    <tr><th>Number of entries:</th>
+      <td><%= @n_entries %> (in the base dictionary) / 
+          <%= @n_new_entries %> (in the user dictionary)
+      </td>
+    </tr>
+  </table>
+</fieldset>
+</div>
+
+<br />
+
+<!-- Show a list of entries -->
+<% if @dictionary.entries.count > 0 %>
+<div class="entry_list">
+  <fieldset>
+    <legend>Entries in the Base Dictionary:</legend>
+    <table>
+      <tr><th>Entry name</th><th>Label</th><th>ID</th><th>Options</th></tr>
+      <%= render @paginated_entries %>
+      <tr><td colspan="4" align="center"><%= will_paginate @paginated_entries, param_name: 'entries_page' %></td></tr>
+    </table>
+  </fieldset>
+</div>
+<% end %>
+
+<br />
+
+<!-- Show a list of new_entries of the user dictionary corresponding to the current dictionary -->
+<% if not @user_dictionary.nil? and @n_new_entries > 0 %>
+<div class="entry_list">
+  <fieldset>
+    <legend>Entries in the User Dictionary:</legend>
+    <table>
+      <tr><th>Entry name</th><th>Label</th><th>ID</th><th>Options</th></tr>
+      <%= render @paginated_new_entries %>
+      <tr><td colspan="4" align="center"><%= will_paginate @paginated_new_entries, param_name: 'new_entries_page' %></td></tr>
+    </table>
+  </fieldset>
+</div>
+<% end %>
+
+<%#= link_to 'Edit', edit_dictionary_path(@dictionary) %> <!-- | -->
+<%= link_to 'Add an Entry', new_dictionary_entry_path(@dictionary) %> | 
+<%#= link_to 'Add Multple Entries', multiple_new_dictionary_entries_path(@dictionary) %> <!-- | --> 
+<%= link_to 'Back', dictionaries_path %>

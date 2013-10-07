@@ -1,0 +1,15 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <b>User:</b>
+  <%= @user_dictionary.user_id %>
+</p>
+
+<p>
+  <b>Dictionary:</b>
+  <%= @user_dictionary.dictionary_id %>
+</p>
+
+
+<%= link_to 'Edit', edit_user_dictionary_path(@user_dictionary) %> |
+<%= link_to 'Back', user_dictionaries_path %>

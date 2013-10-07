@@ -1,0 +1,72 @@
+#banner {
+  background: #9c9;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid;
+  font: small-caps 40px/40px "Times New Roman", serif;
+  color: #000;
+  text-align: center;
+}
+
+#banner img {
+  float: left;
+}
+
+/* Authentication information part */
+#authentication_information {
+  background: #5a5;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid;
+  font-size: small;
+  color: #000;
+  text-align: right;
+}
+
+#authentication_information a {
+  font-size: small;
+  color: #000;
+}
+
+
+#columns {
+  background: #141;
+}
+
+/* side-bar area */
+#side {
+  float: left;
+  padding-top: 1em;
+  padding-left: 1em;
+  padding-bottom: 1em;
+  width: 12em;
+  background: #141;
+}
+
+#side #links a {
+  color: #bfb;
+  font-size: medium;
+}
+
+
+/* main body area */
+#main {
+  margin-left: 13em;
+  padding-top: 4ex;
+  padding-left: 2em;
+  background: white;
+}
+
+#main legend {
+  font-size: 1.5em;
+  color: #00f;
+  background-color: #ddd;
+  margin-bottom: 10px;
+}
+
+#main .entry_list .removed_dictionary_entry {
+  text-decoration: line-through;
+  background-color: #ccc ;
+}
+
+

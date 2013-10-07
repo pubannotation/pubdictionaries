@@ -1,0 +1,25 @@
+<%= form_for(@removed_entry) do |f| %>
+  <% if @removed_entry.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@removed_entry.errors.count, "error") %> prohibited this removed_entry from being saved:</h2>
+
+      <ul>
+      <% @removed_entry.errors.full_messages.each do |msg| %>
+        <li><%= msg %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= f.label :user_dictionary_id %><br />
+    <%= f.number_field :user_dictionary_id %>
+  </div>
+  <div class="field">
+    <%= f.label :entry_id %><br />
+    <%= f.number_field :entry_id %>
+  </div>
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+<% end %>

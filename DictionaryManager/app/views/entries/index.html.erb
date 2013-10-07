@@ -1,0 +1,26 @@
+<fieldset>
+  <legend>Listing entries</legend>
+
+  <table>
+    <tr>
+      <th>Entry name</th>
+      <th>Label</th>
+      <th>ID</th>
+      <th>Options</th>
+    </tr>
+
+  <% @entries.each do |entry| %>
+    <tr>
+      <td><%= entry.title %></td>
+      <td><%= entry.label %></td>
+      <td><%= entry.uri %></td>
+      <td><%#= link_to 'Show', dictionary_entry_path(@dictionary, entry) %> <!-- | --> 
+          <%#= link_to 'Edit', edit_dictionary_entry_path(@dictionary, entry) %> <!-- | --> 
+          <%#= link_to 'Destroy', [@dictionary, entry], method: :delete, data: { confirm: 'Are you sure?' } %></td>
+    </tr>
+  <% end %>
+  </table>
+</fieldset>
+<br />
+
+<%= link_to 'New Entry', new_dictionary_entry_path(@dictionary) %>

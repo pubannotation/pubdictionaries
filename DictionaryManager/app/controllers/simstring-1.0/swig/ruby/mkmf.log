@@ -1,0 +1,59 @@
+have_library: checking for libiconv_open() in -liconv... -------------------- yes
+
+"/usr/bin/clang -o conftest -I/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/include/ruby-2.0.0/x86_64-darwin11.4.2 -I/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/include/ruby-2.0.0/ruby/backward -I/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/include/ruby-2.0.0 -I. -D_XOPEN_SOURCE -D_DARWIN_C_SOURCE -D_DARWIN_UNLIMITED_SELECT -D_REENTRANT -I/opt/local/include   -I../../include -I/opt/local/lib conftest.c  -L. -L/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/lib -L/opt/local/lib -lstdc++     -lruby.2.0.0  -lpthread -ldl -lobjc "
+checked program was:
+/* begin */
+1: #include "ruby.h"
+2: 
+3: int main(int argc, char **argv)
+4: {
+5:   return 0;
+6: }
+/* end */
+
+"/usr/bin/clang -o conftest -I/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/include/ruby-2.0.0/x86_64-darwin11.4.2 -I/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/include/ruby-2.0.0/ruby/backward -I/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/include/ruby-2.0.0 -I. -D_XOPEN_SOURCE -D_DARWIN_C_SOURCE -D_DARWIN_UNLIMITED_SELECT -D_REENTRANT -I/opt/local/include   -I../../include -I/opt/local/lib conftest.c  -L. -L/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/lib -L/opt/local/lib -lstdc++     -lruby.2.0.0 -liconv  -lpthread -ldl -lobjc "
+conftest.c:5:57: error: use of undeclared identifier 'libiconv_open'
+int t(void) { void ((*volatile p)()); p = (void ((*)()))libiconv_open; return 0; }
+                                                        ^
+1 error generated.
+checked program was:
+/* begin */
+ 1: #include "ruby.h"
+ 2: 
+ 3: /*top*/
+ 4: extern int t(void);
+ 5: int t(void) { void ((*volatile p)()); p = (void ((*)()))libiconv_open; return 0; }
+ 6: int main(int argc, char **argv)
+ 7: {
+ 8:   if (argc > 1000000) {
+ 9:     printf("%p", &t);
+10:   }
+11: 
+12:   return 0;
+13: }
+/* end */
+
+"/usr/bin/clang -o conftest -I/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/include/ruby-2.0.0/x86_64-darwin11.4.2 -I/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/include/ruby-2.0.0/ruby/backward -I/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/include/ruby-2.0.0 -I. -D_XOPEN_SOURCE -D_DARWIN_C_SOURCE -D_DARWIN_UNLIMITED_SELECT -D_REENTRANT -I/opt/local/include   -I../../include -I/opt/local/lib conftest.c  -L. -L/Users/priancho/.rvm/rubies/ruby-2.0.0-p247/lib -L/opt/local/lib -lstdc++     -lruby.2.0.0 -liconv  -lpthread -ldl -lobjc "
+conftest.c:5:15: warning: implicit declaration of function 'libiconv_open' is invalid in C99 [-Wimplicit-function-declaration]
+int t(void) { libiconv_open(); return 0; }
+              ^
+1 warning generated.
+checked program was:
+/* begin */
+ 1: #include "ruby.h"
+ 2: 
+ 3: /*top*/
+ 4: extern int t(void);
+ 5: int t(void) { libiconv_open(); return 0; }
+ 6: int main(int argc, char **argv)
+ 7: {
+ 8:   if (argc > 1000000) {
+ 9:     printf("%p", &t);
+10:   }
+11: 
+12:   return 0;
+13: }
+/* end */
+
+--------------------
+
