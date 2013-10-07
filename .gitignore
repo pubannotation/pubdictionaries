@@ -1,0 +1,51 @@
+# Bundler config
+/.bundle
+
+
+# The default SQLite database.
+/db/*.sqlite3
+
+
+# All logfiles and tempfiles.
+/log/*.log
+/tmp
+
+
+# SimString compiled files #
+#########################
+simstring-1.0/Makefile
+simstring-1.0/config.h
+simstring-1.0/config.log
+simstring-1.0/config.status
+simstring-1.0/frontend/.deps/
+simstring-1.0/frontend/Makefile
+simstring-1.0/include/Makefile
+simstring-1.0/sample/.deps/
+simstring-1.0/sample/Makefile
+simstring-1.0/stamp-h1
+simstring-1.0/swig/Makefile
+simstring-1.0/swig/python/setup.py
+simstring-1.0/swig/ruby/Makefile
+simstring-1.0/swig/ruby/export.cpp
+simstring-1.0/swig/ruby/export.h
+simstring-1.0/swig/ruby/export.i
+simstring-1.0/swig/ruby/export.o
+simstring-1.0/swig/ruby/export_wrap.o
+simstring-1.0/swig/ruby/extconf.rb
+simstring-1.0/swig/ruby/simstring.bundle
+
+
+# Temporary files #
+###################
+*.swp
+
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

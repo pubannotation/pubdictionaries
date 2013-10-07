@@ -3,9 +3,7 @@
 cd simstring-1.0
 ./configure
 cd swig/ruby
-#swig -c++ -ruby export.i
-#./prepare.sh --swig
-./prepare.sh
+./prepare.sh --swig
 ruby extconf.rb
 make
 
