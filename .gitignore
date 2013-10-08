@@ -1,15 +1,16 @@
 # Bundler config
-/.bundle
+DictionaryManager/.bundle
 
 
 # The default SQLite database.
-/db/*.sqlite3
+DictionaryManager/db/*.sqlite3
 
 
 # All logfiles and tempfiles.
-/log/*.log
-/tmp
-
+DictionaryManager/log/*.log
+AutomaticAnnotator/log/*.log
+DictionaryManager/tmp
+AutomaticAnnotator/tmp
 
 # SimString compiled files #
 #########################

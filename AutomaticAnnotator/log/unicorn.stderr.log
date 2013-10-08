@@ -1,5 +1,6 @@
-I, [2013-10-07T18:02:07.436619 #41699]  INFO -- : inherited addr=/Users/priancho/work/PubDictionaries/AutomaticAnnotator/tmp/sockets/unicorn.sock fd=10
-I, [2013-10-07T18:02:07.437163 #41699]  INFO -- : Refreshing Gem list
-I, [2013-10-07T18:02:07.630647 #41699]  INFO -- : master process ready
-I, [2013-10-07T18:02:07.632516 #41701]  INFO -- : worker=0 ready
-I, [2013-10-07T18:02:07.636960 #41702]  INFO -- : worker=1 ready
+I, [2013-10-08T17:50:54.308682 #31912]  INFO -- : Refreshing Gem list
+I, [2013-10-08T17:50:54.522531 #31912]  INFO -- : unlinking existing socket=/Users/priancho/work/PubDictionaries/AutomaticAnnotator/tmp/sockets/unicorn.sock
+I, [2013-10-08T17:50:54.522870 #31912]  INFO -- : listening on addr=/Users/priancho/work/PubDictionaries/AutomaticAnnotator/tmp/sockets/unicorn.sock fd=10
+I, [2013-10-08T17:50:54.525529 #31912]  INFO -- : master process ready
+I, [2013-10-08T17:50:54.529633 #31914]  INFO -- : worker=0 ready
+I, [2013-10-08T17:50:54.530933 #31915]  INFO -- : worker=1 ready
