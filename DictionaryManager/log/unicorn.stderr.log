@@ -1,6 +1,0 @@
-I, [2013-10-08T17:45:53.242225 #27981]  INFO -- : Refreshing Gem list
-I, [2013-10-08T17:45:54.566013 #27981]  INFO -- : unlinking existing socket=/Users/priancho/work/PubDictionaries/DictionaryManager/tmp/sockets/unicorn.sock
-I, [2013-10-08T17:45:54.566299 #27981]  INFO -- : listening on addr=/Users/priancho/work/PubDictionaries/DictionaryManager/tmp/sockets/unicorn.sock fd=12
-I, [2013-10-08T17:45:54.568723 #27981]  INFO -- : master process ready
-I, [2013-10-08T17:45:54.576640 #27986]  INFO -- : worker=1 ready
-I, [2013-10-08T17:45:54.578657 #27985]  INFO -- : worker=0 ready
