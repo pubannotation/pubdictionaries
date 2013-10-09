@@ -51,7 +51,7 @@ class PubDicAnnotation_WS < Sinatra::Base
 
 
 		# Retrieves the entries from PostgreSQL DB
-		pg_results = pgr.retrieve(queries)
+		pg_results = pgr.retrieve( qbuilder.change_format(queries) )
 
 
 		# Returns the results

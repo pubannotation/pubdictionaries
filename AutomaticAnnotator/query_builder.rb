@@ -14,7 +14,6 @@ require 'triez'
 
 require File.join( File.dirname( __FILE__ ), 'text_to_trie' )
 require File.join( File.dirname( __FILE__ ), 'strsim' )
-require File.join( File.dirname( __FILE__ ), '../simstring-1.0/swig/ruby/simstring' )
 
 
 class QUERY_BUILDER
@@ -45,16 +44,26 @@ class QUERY_BUILDER
 		                       	 norm_opts[:stemmed], 
 		                       	)
 
-		# Changes the format of the return value
+		queries
+	end
+
+	# Changes the format from queries to ext_queries
+	def change_format(queries)
 		ext_queries = [ ]
 		queries.each do |q, offsets|
 			offsets.each do |offset|
-				ext_queries << get_formatted_query(q, q, offsets, 1.0)
+				ext_queries << get_formatted_query(q, q, offset, 1.0)
 			end
 		end
 
-		queries
+		ext_queries
 	end
+
+	# Get the formatted hash of annotation
+	def get_formatted_query(ext_query, ori_query, offset, sim)
+		{ matched: ext_query, original: ori_query, range: offset, sim: sim }
+	end
+
 
 	################################################################################
 	#
@@ -77,7 +86,6 @@ class QUERY_BUILDER
 
 				basedic_new_queries.each do |eq|
 					ext_queries << get_formatted_query(eq, q, offset, Strsim.jaccard(eq, q))
-					$stdout.puts "#{eq}, #{q}, #{offset.inspect}, #{Strsim.jaccard(eq, q)}"
 				end
 
 				# Warning: 
@@ -92,7 +100,6 @@ class QUERY_BUILDER
 					sim = Strsim.jaccard(eq, q)
 					if sim > threshold
 						ext_quereis << get_formatted_query(eq, q, offset, sim)
-						$stdout.puts "#{eq}, #{q}, #{offset.inspect}, #{Strsim.jaccard(eq, q)}"
 					end
 				end
 			end
@@ -109,8 +116,5 @@ class QUERY_BUILDER
 		relaxed_threshold
 	end
 
-	def get_formatted_query(ext_query, ori_query, offset, sim)
-		{ matched: ext_query, original: ori_query, range: offset, sim: sim }
-	end
 end
 

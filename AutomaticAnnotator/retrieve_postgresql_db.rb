@@ -79,9 +79,11 @@ class POSTGRESQL_RETRIEVER
 	# Retrieves entries from DB for the queries generated from document
 	def retrieve(anns)		
 		results = anns.collect do |ann|
+			$stdout.puts ann.inspect
 			if @results_cache.include? ann[:matched]
 				get_from_cache(ann[:matched], ann[:original], ann[:range], ann[:sim])
 			else
+				$stdout.puts ann.inspect
 				search_db(ann[:matched], ann[:original], ann[:range], ann[:sim])
 			end
 		end
@@ -166,7 +168,8 @@ class POSTGRESQL_RETRIEVER
 			# Adds the search result.
 			{ :requested_query => query,
 			  :original_query => ori_query, 
-			  :begin => offset.begin, :end => offset.end,
+			  :begin => offset.begin, 
+			  :end => offset.end,
 			  :obj => build_obj(value[:uri], official_symbol, tax_id, sim),
 			}
 		end

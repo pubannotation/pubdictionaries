@@ -20,63 +20,17 @@ Encoding.default_internal="UTF-8"
 
 
 class POST_PROCESSOR
-	# include Strsim
 
-	# def initialize( ssr, pgr )
-	# 	@measure = "cosine"     # PostgreSQL provides cosine similarity measure only
-	# 	@ssr     = ssr
-	# 	@pgr     = pgr
-	# end
-
-	# Performs query expansion using a base dictionary (from SimString) and a user dictionary (from PostgreSQL).
-	#   @return  q2eqs[query] = [ similar_query1, similar_query2, ... ]
-	#
-	def expand_queries(queries_with_offsets, threshold, n_best = 0)
-		q2eqs = {}
-		queries_with_offsets.each_key do |q|
-			q2eqs[q]  = @ssr.retrieve_similar_strings(q, threshold)
-			q2eqs[q] += @pgr.retrieve_similar_strings(q, threshold)   # Sometimes PG can not extract similar strings
-		end
-
-		# Keeps only n-best expanded queries for each query based on the similarity
-		#   compared with the original query.
-		q2eqs = keep_n_best(q2eqs) if n_best > 0
-
-		# Converts q2eqs to a list of entries based on expanded queries
-		results = convert_data(q2eqs, queries_with_offsets)
-
-		# Filters the results based on similarity score
-		results = filter_based_on_simscore(results)
-
- 		# Keeps the last one if there is a crossing boundary case
-		results = keep_last_one_for_crossing_boundaries( results )
-
-		return results
-	end
-
-	def keep_n_best(q2eqs, n)
+	# Post-processing #1: 
+	#   - Keeps only n-best results on a single annotation (text span)
+	def get_n_best(q2eqs, n)
 		q2eqs.each_key do |ori_query|
 			q2eqs[ori_query] = q2eqs[ori_query][0...n]
 		end
 		return q2eqs
 	end
 
-	def convert_data(q2eqs, qos)
-		results = [ ]
-		qos.each do |ori_query, offsets|
-			q2eqs[ori_query].each do |exp_query|
-				offsets.each do |offset|
-					results << { :matched  => exp_query, 
-								 :original => ori_query,
-				 	             :range    => offset,
-								 :sim      => Strsim.cosine(ori_query, exp_query),
-								 }
-				end
-			end
-		end
-		return results
-	end
-
+	# Post-processing #2: 
 	def filter_based_on_simscore( results )
 		# 1. sort it based on 1) matched string, 2) begin, 3) end, and 4) original query string
 		sort_results_mrso( results )
@@ -104,6 +58,9 @@ class POST_PROCESSOR
 		end
 	end
 
+	# Post-processing #3: 
+	#   -
+	#
 	# TODO: brute-force. slow. we need a better algorithm
 	def simscore_filter( unfolded )
 		filtered = [ ]
@@ -136,7 +93,8 @@ class POST_PROCESSOR
 		return lhs.include?( rhs.first) || rhs.include?( lhs.first )
 	end
 
-
+	# Post-processing #4: 
+	#   - 
 	def keep_last_one_for_crossing_boundaries( results )
 		sort_results_offsets!( results )
 
