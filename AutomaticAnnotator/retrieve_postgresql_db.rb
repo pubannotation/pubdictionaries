@@ -69,10 +69,9 @@ class POSTGRESQL_RETRIEVER
 		
 		results = []
 		ds.all.each do |row| 
-			$stdout.puts "Row: #{row.inspect}"
 			results << row[:view_title] 
 		end
-		# $stdout.puts tmp.inspect
+
 		results.uniq
 	end
 
@@ -81,10 +80,9 @@ class POSTGRESQL_RETRIEVER
 	def retrieve(anns)		
 		results = anns.collect do |ann|
 			if @results_cache.include? ann[:matched]
-				get_from_cache(ann[:matched], ann[:range])
+				get_from_cache(ann[:matched], ann[:original], ann[:range], ann[:sim])
 			else
-				sim = Strsim.cosine(ann[:original], ann[:matched])
-				search_db(ann[:matched], ann[:range], sim)
+				search_db(ann[:matched], ann[:original], ann[:range], ann[:sim])
 			end
 		end
 
@@ -93,18 +91,26 @@ class POSTGRESQL_RETRIEVER
 	
 
 	# Gets the result from cache
-	def get_from_cache(query, offset)
-		@results_cache[query].collect do |value|
-			results << { :begin => offset.begin, :end => offset.end, :obj => value[:obj] }
+	def get_from_cache(query, ori_query, offset, sim)
+		@results_cache[query].collect do |content|
+			obj = build_obj(content[:uri], content[:official_symbol], content[:tax_id], sim)
+			
+			# Creates an annotation instance
+			{ :requested_query => query, 
+			  :original_query => ori_query, 
+			  :begin => offset.begin, 
+			  :end => offset.end, 
+			  :obj => obj, 
+			}
 		end
 	end
 
 	# Searches the database
-	def search_db(query, offset, sim)
+	def search_db(query, ori_query, offset, sim)
 		@results_cache[query] = []
 
 		results  = get_entries_from_db(query)
-		outputs  = build_output(query, results, sim, offset)
+		outputs  = build_output(query, ori_query, results, sim, offset)
 
 		return outputs
 	end
@@ -145,26 +151,34 @@ class POSTGRESQL_RETRIEVER
 		return results
 	end
 
-	# Creates output data from the PostgreSQL search results
-	def build_output(query, results, sim, offset)
+	# Creates output data from the PostgreSQL search results.
+	def build_output(query, ori_query, results, sim, offset)
 		outputs = results.collect do |value|
-			# Gets the official_symbol and tax_id in :label column
+			# Gets the official_symbol and tax_id in :label column.
 			items            = value[:label].split('|')
 			official_symbol  = items[0]
 			tax_id           = Integer( items[1] ) 
 		
-			# Updates the result cache
-			@results_cache[ query ] << { :obj => "#{value[:uri]}:#{official_symbol}:#{tax_id}:#{sim}" }
-			
-			# Adds the search result
+			# Updates the result cache.
+			# @results_cache[ query ] << { :obj => "#{value[:uri]}:#{official_symbol}:#{tax_id}:#{sim}" }
+			@results_cache[ query ] << { uri: value[:uri], official_symbol: official_symbol, tax_id: tax_id, sim: sim }
+
+			# Adds the search result.
 			{ :requested_query => query,
+			  :original_query => ori_query, 
 			  :begin => offset.begin, :end => offset.end,
-			  :obj => "#{value[:uri]}:#{official_symbol}:#{tax_id}:#{sim}",
-			  }
+			  :obj => build_obj(value[:uri], official_symbol, tax_id, sim),
+			}
 		end
 
 		return outputs
 	end
+
+	# Creates the obj object for annotation.
+	def build_obj(uri, official_symbol, tax_id, sim)
+		"#{uri}:#{official_symbol}:#{tax_id}:#{sim}"
+	end
+
 end
 
 

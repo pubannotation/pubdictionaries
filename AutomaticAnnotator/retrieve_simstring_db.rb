@@ -68,8 +68,8 @@ class SIMSTRING_RETRIEVER
 	end
 
 	# Retrieves a set of similar strings
-	def retrieve_similar_strings(query, threshold)
-		set("cosine", threshold)
+	def retrieve_similar_strings(query, measure, threshold)
+		set(measure, threshold)
 
 		return @db.retrieve(query)
 	end

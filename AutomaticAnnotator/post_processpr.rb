@@ -5,28 +5,28 @@ Encoding.default_internal="UTF-8"
 
 
 =begin
-	  For a given query, find a list of similar queries based on a
-	provided similarity measure and threshold.
+	Performs post-processing on the annotation results such as n-best filtering,
+	cross-boundary filtering, etc.
 =end
 
 
-require 'set'
-require 'triez'
-require 'stemmify'
-require 'sequel'
+# require 'set'
+# require 'triez'
+# require 'stemmify'
+# require 'sequel'
 
 # require File.join( File.dirname( __FILE__ ), '../simstring-1.0/swig/ruby/simstring' )
-require File.join( File.dirname( __FILE__ ), 'strsim' )
+# require File.join( File.dirname( __FILE__ ), 'strsim' )
 
 
-class QUERY_EXPANDER
-	include Strsim
+class POST_PROCESSOR
+	# include Strsim
 
-	def initialize( ssr, pgr )
-		@measure = "cosine"     # PostgreSQL provides cosine similarity measure only
-		@ssr     = ssr
-		@pgr     = pgr
-	end
+	# def initialize( ssr, pgr )
+	# 	@measure = "cosine"     # PostgreSQL provides cosine similarity measure only
+	# 	@ssr     = ssr
+	# 	@pgr     = pgr
+	# end
 
 	# Performs query expansion using a base dictionary (from SimString) and a user dictionary (from PostgreSQL).
 	#   @return  q2eqs[query] = [ similar_query1, similar_query2, ... ]
