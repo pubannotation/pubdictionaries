@@ -5,39 +5,39 @@ Encoding.default_internal="UTF-8"
 
 
 =begin
- Program description
-
+    Retrieves a list of similar strings for a given query string, one of five
+  similarity measures, and the threshold (0.0 <= x <= 1.0).
 =end
 
 
-require 'set'
-require 'triez'
-require 'stemmify'
-
 require File.join( File.dirname( __FILE__ ), '../simstring-1.0/swig/ruby/simstring' )
-require File.join( File.dirname( __FILE__ ), 'strsim' )
 
 
 class SIMSTRING_RETRIEVER
-	include Strsim
 
-	# Initialize a retriever instance
-	def initialize( db_name, sim_measure="cosine", threshold=0.6 )
-		# 1. Open a SimString DB
-		dbfile_path = File.join( File.dirname( __FILE__ ), "../DictionaryManager/public/simstring_dbs", db_name )
+	# Initializes a retriever instance
+	def initialize(dic_name, sim_measure="cosine", threshold=0.6)
+		dbfile_path = File.join( File.dirname( __FILE__ ), "../DictionaryManager/public/simstring_dbs", dic_name )
 		begin 
 			@db = Simstring::Reader.new(dbfile_path)
 		rescue
-			$stderr.puts "Can not open a DB!"       # $stderr.puts will be recorded in web-server's error log :-)
-			$stderr.puts "   filepath: #{dbfile_path}"
+			abort("Can not open a DB: #{dbfile_path}")
 		end
 
-		# 2. Set a similarity measure and threshold
+		# 2. Sets a similarity measure and threshold
 		if not set( sim_measure, threshold )
-			$stderr.puts "sim_measure and/or threshold are not valid! Default values (cosine, 0.6) are used."
-			set( "cosine", 0.6 )
+			abort("Fail to set the similarity measure and the threshold")
 		end
 	end
+
+
+	# Retrieves a set of similar strings
+	def retrieve_similar_strings(query, measure, threshold)
+		set(measure, threshold)
+
+		return @db.retrieve(query)
+	end
+
 
 	def set(measure, threshold)
 		measure.downcase!
@@ -67,11 +67,6 @@ class SIMSTRING_RETRIEVER
 		return true
 	end
 
-	# Retrieves a set of similar strings
-	def retrieve_similar_strings(query, measure, threshold)
-		set(measure, threshold)
 
-		return @db.retrieve(query)
-	end
 		
 end

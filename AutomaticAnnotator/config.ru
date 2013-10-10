@@ -16,6 +16,7 @@ require 'erb'
 require File.join( File.dirname( __FILE__ ), 'retrieve_simstring_db' )
 require File.join( File.dirname( __FILE__ ), 'retrieve_postgresql_db' )
 require File.join( File.dirname( __FILE__ ), 'query_builder' )
+require File.join( File.dirname( __FILE__ ), 'post_processor' )
 
 
 class PubDicAnnotation_WS < Sinatra::Base
@@ -38,6 +39,7 @@ class PubDicAnnotation_WS < Sinatra::Base
 
 		pgr       = POSTGRESQL_RETRIEVER.new(get_param("dictionary_name", options))
 		qbuilder  = QUERY_BUILDER.new
+		pproc     = POST_PROCESSOR.new
 
 
 		# Generates queries from an input text
@@ -51,12 +53,22 @@ class PubDicAnnotation_WS < Sinatra::Base
 
 
 		# Retrieves the entries from PostgreSQL DB
-		pg_results = pgr.retrieve( qbuilder.change_format(queries) )
+		anns = pgr.retrieve( qbuilder.change_format(queries) )
+		$stdout.puts anns.inspect
+
+
+		# Applies post-processing methods
+		top_n = get_param("top_n", options)
+		if top_n != nil and top_n > 0
+			anns = pproc.get_top_n(anns, get_param("top_n", options))
+		end
+
+		anns = pproc.keep_last_one_for_crossing_boundaries(anns)
 
 
 		# Returns the results
 		annotation["denotations"] = [] unless annotation["denotations"]
-		annotation["denotations"] = pg_results
+		annotation["denotations"] = format_anns(anns)
 
 		headers 'Content-Type' => 'application/json'
 		body annotation.to_json
@@ -66,9 +78,10 @@ class PubDicAnnotation_WS < Sinatra::Base
 	post '/rest_api/annotate_text/approximate_string_matching/?' do 
 		annotation, options = get_data( params )
 
-		ssr      = SIMSTRING_RETRIEVER.new(get_param("dictionary_name", options))
-		pgr      = POSTGRESQL_RETRIEVER.new(get_param("dictionary_name", options))
-		qbuilder = QUERY_BUILDER.new
+		ssr       = SIMSTRING_RETRIEVER.new(get_param("dictionary_name", options))
+		pgr       = POSTGRESQL_RETRIEVER.new(get_param("dictionary_name", options))
+		qbuilder  = QUERY_BUILDER.new
+		pproc     = POST_PROCESSOR.new
 
 
 		# Generates queries from an input text
@@ -80,15 +93,27 @@ class PubDicAnnotation_WS < Sinatra::Base
 
 		queries     = qbuilder.build_queries(text, build_opts, norm_opts)
 		ext_queries = qbuilder.expand_queries(queries, get_param("threshold", options), ssr, pgr)
+		$stdout.puts ext_queries.inspect
 
 
 		# Retrieves database entries
 		anns = pgr.retrieve(ext_queries)
+		
+
+		# Applies post-processing methods
+		top_n = get_param("top_n", options)
+		if top_n != nil and top_n > 0
+			anns = pproc.get_top_n(anns, get_param("top_n", options))
+		end
+
+		anns = pproc.filter_based_on_simscore(anns)
+
+		anns = pproc.keep_last_one_for_crossing_boundaries(anns)
 
 	
 		# Returns the results
 		annotation["denotations"] = [] unless annotation["denotations"]
-		annotation["denotations"] = anns
+		annotation["denotations"] = format_anns(anns)
 
 		headers 'Content-Type' => 'application/json'
 		body annotation.to_json
@@ -113,8 +138,10 @@ class PubDicAnnotation_WS < Sinatra::Base
 	def get_param( opt_name, options )
 		if options.has_key?( opt_name )
 			return options[opt_name]
-		else
+		elsif settings.defaults.has_key?(opt_name)
 			return settings.defaults[opt_name]
+		else
+			return nil
 		end
 	end
 
@@ -126,6 +153,17 @@ class PubDicAnnotation_WS < Sinatra::Base
 				 }.to_json
 
 		return output
+	end
+
+	def format_anns(anns)
+		return anns.collect do |item|
+			{ requested_query:  item[:requested_query], 
+			  original_query:   item[:original_query], 
+			  begin:            item[:offset].begin, 
+			  end:              item[:offset].end,
+			  obj:              "#{item[:uri]}:#{item[:label]}:#{item[:sim]}",
+			}
+		end
 	end
 end
 

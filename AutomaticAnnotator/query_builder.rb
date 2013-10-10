@@ -27,10 +27,10 @@ class QUERY_BUILDER
 	
 	################################################################################
 	#
-	#   Creates a series of queries from a document.
+	#   Creates a series of normalized (!) queries from a document.
 	#
-	#   @return  [ {:matched=>string, :original=>string, :range=>(begin...end), 
-	#               :sim=>float}, ... ]
+	#   @return  key:    The normalized query string.
+	#            value:  The array of offsets (range values).
 	#
 	################################################################################
 	def build_queries(text, build_opts, norm_opts)
@@ -38,6 +38,7 @@ class QUERY_BUILDER
 								  build_opts[:max_tokens],
 								  )
 		
+		# Queries are normalized.
 		queries = trier.to_trie( text, 
 		        				 norm_opts[:lowercased], 
 		                       	 norm_opts[:hyphen_replaced], 
@@ -61,24 +62,27 @@ class QUERY_BUILDER
 
 	# Get the formatted hash of annotation
 	def get_formatted_query(ext_query, ori_query, offset, sim)
-		{ matched: ext_query, original: ori_query, range: offset, sim: sim }
+		{ requested_query: ext_query, original_query: ori_query, offset: offset, sim: sim }
 	end
 
 
 	################################################################################
 	#
-	#   Performs query expansion using a base dictionary (from SimString) and a user
-	# dictionary (from PostgreSQL).
+	#   Performs query expansion on normalized queries using both a base dictionary 
+	# (from SimString) and a user dictionary (from PostgreSQL).
 	# 
-	#   @return  [ {:matched=>string, :original=>string, :range=>(begin...end), 
-	#               :sim=>float}, ... ]
+	#   @return  [ {:requested_query => string, :original_query => string, 
+	#               :range => (begin...end), :sim => float}, ... ]
 	#
 	################################################################################
 	def expand_queries(queries, threshold, ssr, pgr)
 		ext_queries = []
 		queries.each do |q, offsets|
 			basedic_new_queries = ssr.retrieve_similar_strings(q, @measure, threshold)
-			userdic_new_queries = pgr.retrieve_similar_strings(q, relaxed_threshold(threshold))
+			
+			userdic_new_queries = pgr.retrieve_similar_strings(q, relaxed_threshold(threshold)).delete_if do |item|
+				basedic_new_queries.include?(item)
+			end
 
 			offsets.each do |offset|
 				# Te original query is no longer necessary.
@@ -98,11 +102,15 @@ class QUERY_BUILDER
 				#
 				userdic_new_queries.each do |eq|
 					sim = Strsim.jaccard(eq, q)
+					$stdout.puts "q: #{q}, eq: #{eq}, sim: #{sim}"
 					if sim > threshold
-						ext_quereis << get_formatted_query(eq, q, offset, sim)
+						ext_queries << get_formatted_query(eq, q, offset, sim)
 					end
 				end
 			end
+		end
+		ext_queries.each do |x|
+			$stdout.puts x.inspect
 		end
 		ext_queries
 	end

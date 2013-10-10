@@ -14,6 +14,7 @@ require 'pathname'
 require 'fileutils'
 require 'set'
 require 'sequel'
+require File.join(File.dirname("__FILE__"), "strsim")
 
 
 class POSTGRESQL_RETRIEVER
@@ -42,8 +43,10 @@ class POSTGRESQL_RETRIEVER
 	end
 
 
-	# API-01: 
-	#   Retrieves entries which are similar to the query based on the given threshold.
+	# API #1: 
+	#   - Retrieves a list of normalized queries that are similar to the original normalized
+	#  query based on PostgreSQL's trigram search (pg_trgm extension).
+	#
 	def retrieve_similar_strings(query, threshold)
 		basedic_id  = @db[:dictionaries].select(:id).where(:title => @dic_name).first[:id]
 		userdic_id  = @db[:user_dictionaries].select(:id).where(:dictionary_id => basedic_id).first[:id]
@@ -69,52 +72,53 @@ class POSTGRESQL_RETRIEVER
 		
 		results = []
 		ds.all.each do |row| 
-			results << row[:view_title] 
+			results << row[:search_title] 
 		end
 
 		results.uniq
 	end
 
 
-	# Retrieves entries from DB for the queries generated from document
+	# API #2:
+	#   - For each annotation, extract URI and label information from PostgreSQL db and add them 
+	#   to the annotation.
+	#
 	def retrieve(anns)		
 		results = anns.collect do |ann|
-			$stdout.puts ann.inspect
-			if @results_cache.include? ann[:matched]
-				get_from_cache(ann[:matched], ann[:original], ann[:range], ann[:sim])
+			if @results_cache.include? ann[:requested_query]
+				get_from_cache(ann[:requested_query], ann[:original_query], ann[:offset], ann[:sim])
 			else
-				$stdout.puts ann.inspect
-				search_db(ann[:matched], ann[:original], ann[:range], ann[:sim])
+				search_db(ann[:requested_query], ann[:original_query], ann[:offset], ann[:sim])
 			end
 		end
 
 		results.reject { |ann| ann == [] }
+		
+		results.flatten
 	end
 	
 
-	# Gets the result from cache
+	# Gets the result from the results cache
 	def get_from_cache(query, ori_query, offset, sim)
-		@results_cache[query].collect do |content|
-			obj = build_obj(content[:uri], content[:official_symbol], content[:tax_id], sim)
-			
-			# Creates an annotation instance
-			{ :requested_query => query, 
-			  :original_query => ori_query, 
-			  :begin => offset.begin, 
-			  :end => offset.end, 
-			  :obj => obj, 
-			}
+		@results_cache[query].collect do |res|
+			build_output(query, ori_query, res, sim, offset)
 		end
 	end
 
 	# Searches the database
 	def search_db(query, ori_query, offset, sim)
 		@results_cache[query] = []
+		
+		results = get_entries_from_db(query)
+		results.collect do |res|
+			data = build_output(query, ori_query, res, sim, offset)
+			
+			# Puts the data into the results cache
+			@results_cache[ query ] << data
 
-		results  = get_entries_from_db(query)
-		outputs  = build_output(query, ori_query, results, sim, offset)
-
-		return outputs
+			# Uses the data to build results array
+			data
+		end
 	end
 
 	# Gets entries from DB that have similar names to the query string
@@ -153,33 +157,15 @@ class POSTGRESQL_RETRIEVER
 		return results
 	end
 
-	# Creates output data from the PostgreSQL search results.
-	def build_output(query, ori_query, results, sim, offset)
-		outputs = results.collect do |value|
-			# Gets the official_symbol and tax_id in :label column.
-			items            = value[:label].split('|')
-			official_symbol  = items[0]
-			tax_id           = Integer( items[1] ) 
-		
-			# Updates the result cache.
-			# @results_cache[ query ] << { :obj => "#{value[:uri]}:#{official_symbol}:#{tax_id}:#{sim}" }
-			@results_cache[ query ] << { uri: value[:uri], official_symbol: official_symbol, tax_id: tax_id, sim: sim }
-
-			# Adds the search result.
-			{ :requested_query => query,
-			  :original_query => ori_query, 
-			  :begin => offset.begin, 
-			  :end => offset.end,
-			  :obj => build_obj(value[:uri], official_symbol, tax_id, sim),
-			}
-		end
-
-		return outputs
-	end
-
-	# Creates the obj object for annotation.
-	def build_obj(uri, official_symbol, tax_id, sim)
-		"#{uri}:#{official_symbol}:#{tax_id}:#{sim}"
+	# Creates an output data
+	def build_output(query, ori_query, res, sim, offset)
+		return { requested_query: query, 
+			     original_query:  ori_query, 
+			     offset:          offset,
+				 uri:             res[:uri], 
+				 label:           res[:label], 
+				 sim:             sim,
+				}
 	end
 
 end

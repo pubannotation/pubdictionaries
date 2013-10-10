@@ -21,46 +21,66 @@ Encoding.default_internal="UTF-8"
 
 class POST_PROCESSOR
 
-	# Post-processing #1: 
-	#   - Keeps only n-best results on a single annotation (text span)
-	def get_n_best(q2eqs, n)
-		q2eqs.each_key do |ori_query|
-			q2eqs[ori_query] = q2eqs[ori_query][0...n]
+	# Ppost-processing #1: 
+	#     - Take only top n annotations with the highest scores for each original
+	#   query.
+	#
+	#     Becareful that this process only applies to the annotations of an 
+	#   original query having the same text span in text. A same expanded query 
+	#   generated from two different original queries (i.e., "alpha 1 b 
+	#   glycoprotein" from "alpha 1 b glycoprotein" and "related to alpha 1 b 
+	#   glycoprotein".) will not be considered as a target in this process.
+	#
+	def get_top_n(anns, n)
+		# Creates a hash based on the text spans.
+		hashed_anns = {}
+		anns.each do |item|
+			(hashed_anns[item[:offset]] ||= []) << item
 		end
-		return q2eqs
+
+		# Sorts each list of the hash in descend order, and takes n elements.
+		hashed_anns.each do |key, value|
+			value.sort! { |x, y| y[:sim] <=> x[:sim] }
+			hashed_anns[key] = value.take(n)
+		end
+
+		# Return the results in the original format.
+		hashed_anns.values.flatten
 	end
 
+
 	# Post-processing #2: 
-	def filter_based_on_simscore( results )
+	#     - Take only one annotation with the highest score for the queries
+	#   having the text spans overlapped. Other overlapping queries will be 
+	#   discarded.
+	#
+	def filter_based_on_simscore(anns)
 		# 1. sort it based on 1) matched string, 2) begin, 3) end, and 4) original query string
-		sort_results_mrso( results )
+		sort_results_mrso(anns)
 
 		# 2. filter the results
-		filtered = simscore_filter( results )
+		filtered = simscore_filter(anns)
 
 		return filtered
 	end
 
-	# Sort an array based on its :matched string, begina and end offsets, similarity score, and original query
-	def sort_results_mrso( results )
-		results.sort! do |l, r| 
-			if l[:matched] != r[:matched]
-				l[:matched] <=> r[:matched]
-			elsif l[:range].begin != r[:range].begin
-				l[:range].begin <=> r[:range].begin
-			elsif l[:range].end != r[:range].end
-				l[:range].end <=> r[:range].end
+	# Sort an array based on its :matched string, begin and end offsets, similarity score, and original query
+	def sort_results_mrso( anns )
+		anns.sort! do |l, r| 
+			if l[:requested_query] != r[:requested_query]
+				l[:requested_query] <=> r[:requested_query]
+			elsif l[:offset].begin != r[:offset].begin
+				l[:offset].begin <=> r[:offset].begin
+			elsif l[:offset].end != r[:offset].end
+				l[:offset].end <=> r[:offset].end
 			elsif l[:sim] != r[:sim]
 				l[:sim] <=> r[:sim]
 			else
-				l[:original] <=> r[:original]
+				l[:original_query] <=> r[:original_query]
 			end
 		end
 	end
 
-	# Post-processing #3: 
-	#   -
-	#
 	# TODO: brute-force. slow. we need a better algorithm
 	def simscore_filter( unfolded )
 		filtered = [ ]
@@ -71,10 +91,10 @@ class POST_PROCESSOR
 			# check if the pivot has the highest sim. value or not
 			(0...unfolded.size).each do |pos2|
 				cand    = unfolded[pos2]
-					
+
 				if (pos1 != pos2) and 
-				   (pivot[:matched] == cand[:matched]) and
-				   overlap?( pivot[:range], cand[:range] ) and
+				   (pivot[:requested_query] == cand[:requested_query]) and
+				   overlap?( pivot[:offset], cand[:offset] ) and
 				   (pivot[:sim] < cand[:sim])
 					b_highest = false
 					break
@@ -93,25 +113,27 @@ class POST_PROCESSOR
 		return lhs.include?( rhs.first) || rhs.include?( lhs.first )
 	end
 
-	# Post-processing #4: 
-	#   - 
-	def keep_last_one_for_crossing_boundaries( results )
-		sort_results_offsets!( results )
+	# Post-processing #3: 
+	#     - Keeps the query which has the head word appearing at the rightmost position 
+	#   among multiple queries that have cross boundaries.
+	#
+	def keep_last_one_for_crossing_boundaries( anns )
+		sort_results_offsets!( anns )
 
 		# use a pivot entity if it does not commit crossing boundary with another entity (target)
 		# which follows the pivot entity
-		new_results = [ ]
-		results.each_index do |pidx|
+		new_anns = [ ]
+		anns.each_index do |pidx|
 			# results array is sorted. therefore, crossing boundary can be checked using only the
 			# next entity.
-			pivot  = results[pidx]
-			if pidx+1 == results.length
-				new_results << pivot
+			pivot  = anns[pidx]
+			if pidx+1 == anns.length
+				new_anns << pivot
 			else
 				b_cb = false
-				(pidx+1...results.length).each do |tidx|
-					target = results[tidx]
-					if pivot[:range].end <= target[:range].begin
+				(pidx+1...anns.length).each do |tidx|
+					target = anns[tidx]
+					if pivot[:offset].end <= target[:offset].begin
 						break
 					else
 						if crossing_boundary?( pivot, target )
@@ -122,29 +144,29 @@ class POST_PROCESSOR
 				end
 				
 				if b_cb == false
-					new_results << pivot
+					new_anns << pivot
 				end
 			end
 		end
 
-		return new_results
+		return new_anns
 	end
 
-	# Sorts a results array based on :begin and :end offset values
-	def sort_results_offsets!( results )
-		results.sort! do |a,b|
-			if a[:range].begin != b[:range].begin
-				a[:range].begin <=> b[:range].begin
+	# Sorts an anns array based on :begin and :end offset values
+	def sort_results_offsets!( anns )
+		anns.sort! do |a,b|
+			if a[:offset].begin != b[:offset].begin
+				a[:offset].begin <=> b[:offset].begin
 			else
-				a[:range].end <=> b[:range].end
+				a[:offset].end <=> b[:offset].end
 			end
 		end
 	end
 
 	# Checks if there is a crossing_boundary case or not
 	def crossing_boundary?( pivot, target )
-		x1, x2 = pivot[:range].begin, pivot[:range].end
-		y1, y2 = target[:range].begin, target[:range].end
+		x1, x2 = pivot[:offset].begin, pivot[:offset].end
+		y1, y2 = target[:offset].begin, target[:offset].end
 
 		if ((x1 < y1) and (y1 < x2 and x2 < y2)) or ((y1 < x1 and x1 < y2) and (y2 < x2)) 
 			return true
