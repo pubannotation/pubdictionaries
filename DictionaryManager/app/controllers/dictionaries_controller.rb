@@ -1,4 +1,3 @@
-# require File.join( File.dirname(__FILE__), '/simstring-1.0/swig/ruby/simstring')
 require File.join( Rails.root, '..', 'simstring-1.0/swig/ruby/simstring')
 
 

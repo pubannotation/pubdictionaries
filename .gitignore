@@ -7,8 +7,8 @@ DictionaryManager/db/*.sqlite3
 
 
 # All logfiles and tempfiles.
-DictionaryManager/log/*.log
-AutomaticAnnotator/log/*.log
+*.pid
+*.log
 DictionaryManager/tmp
 AutomaticAnnotator/tmp
 
