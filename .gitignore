@@ -4,7 +4,7 @@ DictionaryManager/.bundle
 
 # Database.
 DictionaryManager/db/*.sqlite3
-../DictionaryManager/public/simstring_dbs/*
+DictionaryManager/public/simstring_dbs/*
 
 # All logfiles and tempfiles.
 *.pid
