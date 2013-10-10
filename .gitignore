@@ -2,9 +2,9 @@
 DictionaryManager/.bundle
 
 
-# The default SQLite database.
+# Database.
 DictionaryManager/db/*.sqlite3
-
+../DictionaryManager/public/simstring_dbs/*
 
 # All logfiles and tempfiles.
 *.pid

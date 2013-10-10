@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20131007055420) do
+ActiveRecord::Schema.define(:version => 20131010084348) do
 
   create_table "dictionaries", :force => true do |t|
     t.string   "title"
@@ -19,10 +19,10 @@ ActiveRecord::Schema.define(:version => 20131007055420) do
     t.text     "description"
     t.datetime "created_at",      :null => false
     t.datetime "updated_at",      :null => false
-    t.integer  "user_id"
     t.boolean  "lowercased"
     t.boolean  "stemmed"
     t.boolean  "hyphen_replaced"
+    t.integer  "user_id"
   end
 
   create_table "entries", :force => true do |t|
@@ -36,7 +36,6 @@ ActiveRecord::Schema.define(:version => 20131007055420) do
   end
 
   add_index "entries", ["search_title"], :name => "index_entries_on_search_title"
-  add_index "entries", ["view_title"], :name => "index_entries_title"
 
   create_table "new_entries", :force => true do |t|
     t.string   "view_title"
@@ -55,10 +54,6 @@ ActiveRecord::Schema.define(:version => 20131007055420) do
     t.integer  "entry_id"
     t.datetime "created_at",         :null => false
     t.datetime "updated_at",         :null => false
-  end
-
-  create_table "test_trgm", :id => false, :force => true do |t|
-    t.text "t"
   end
 
   create_table "user_dictionaries", :force => true do |t|
