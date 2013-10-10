@@ -54,8 +54,7 @@ class PubDicAnnotation_WS < Sinatra::Base
 
 		# Retrieves the entries from PostgreSQL DB
 		anns = pgr.retrieve( qbuilder.change_format(queries) )
-		$stdout.puts anns.inspect
-
+		
 
 		# Applies post-processing methods
 		top_n = get_param("top_n", options)
@@ -93,8 +92,7 @@ class PubDicAnnotation_WS < Sinatra::Base
 
 		queries     = qbuilder.build_queries(text, build_opts, norm_opts)
 		ext_queries = qbuilder.expand_queries(queries, get_param("threshold", options), ssr, pgr)
-		$stdout.puts ext_queries.inspect
-
+		
 
 		# Retrieves database entries
 		anns = pgr.retrieve(ext_queries)

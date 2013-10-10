@@ -102,16 +102,13 @@ class QUERY_BUILDER
 				#
 				userdic_new_queries.each do |eq|
 					sim = Strsim.jaccard(eq, q)
-					$stdout.puts "q: #{q}, eq: #{eq}, sim: #{sim}"
 					if sim > threshold
 						ext_queries << get_formatted_query(eq, q, offset, sim)
 					end
 				end
 			end
 		end
-		ext_queries.each do |x|
-			$stdout.puts x.inspect
-		end
+
 		ext_queries
 	end
 
