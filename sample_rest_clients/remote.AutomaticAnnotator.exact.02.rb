@@ -15,29 +15,27 @@ json_data = JSON.generate( {
 
 json_options = JSON.generate( { 
 	"dictionary_name" => "EntrezGene - Homo Sapiens",
-	"threshold"       => 0.50,
-	"min_tokens"     => 1,
-	"max_tokens"     => 6,
-	"top_n"          => 50,
+	"user_name"       => "priancho@gmail.com",     # Use the user dictionary correspoding to this user name
+	"top_n"           => 3,
+	"min_tokens"      => 1,
+	"max_tokens"      => 5,
 	} )
 
 
 # Prepare connection to a web service
 server  = "pubdictionaries.dbcls.jp"
-service = "rest_api/annotate_text/approximate_string_matching/"
+service = "rest_api/annotate_text/exact_string_matching/"
 
 resource = RestClient::Resource.new( 
 	"#{server}/#{service}",
-	:timeout => 1000, 
-	:open_timeout => 1000 )
+	:timeout => 300, 
+	:open_timeout => 300 )
 
 # Send the request and get the results
-start_time = Time.new
 response = resource.post( :annotation   => json_data,
                           :options      => json_options, 
                           :content_type => :json,
                           :accept       => :json )
-response_time = Time.new - start_time
 
 # Output the results
 puts "Input text: #{text}" 
@@ -49,8 +47,5 @@ puts
 JSON.parse(response)["denotations"].each do |item|
 	puts "ann: #{item.inspect}"
 end
-
-puts
-puts "... Time elapsed: #{response_time}"
 
 

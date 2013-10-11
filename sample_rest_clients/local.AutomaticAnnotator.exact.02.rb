@@ -17,16 +17,9 @@ json_options = JSON.generate( {
 	"dictionary_name" => "EntrezGene - Homo Sapiens",
 	"user_name"       => "priancho@gmail.com",     # Use the user dictionary correspoding to this user name
 	"top_n"           => 3,
-#   "password"        => "",     # How to implement authentication with Devise's User model? See Warden with Sinatra
-#	"threshold"       => 0.60,
-#	"min_tokens"      => 1,
-#	"max_tokens"      => 5,
-
-### Automatically identified by the options used to create a dictionary
-#	"case_insensitive_search" => true,
-#	"replace_hyphen" => true,
-#	"stemming" => true,
-	} )
+	"min_tokens"      => 1,
+	"max_tokens"      => 5,
+} )
 
 
 # Prepare connection to a web service
