@@ -48,8 +48,25 @@ class POSTGRESQL_RETRIEVER
 	#  query based on PostgreSQL's trigram search (pg_trgm extension).
 	#
 	def retrieve_similar_strings(query, threshold)
-		basedic_id  = @db[:dictionaries].select(:id).where(:title => @dic_name).first[:id]
-		userdic_id  = @db[:user_dictionaries].select(:id).where(:dictionary_id => basedic_id).first[:id]
+		# TODO: refactoring this...
+		basedic_id = -1
+		userdic_id = -1
+
+		basedic = @db[:dictionaries].select(:id).where(:title => @dic_name).all
+		if basedic.empty?
+			return []
+		else
+			basedic_id  = basedic.first[:id]
+
+			userdic  = @db[:user_dictionaries].select(:id).where(:dictionary_id => basedic_id).all
+			$stderr.puts userdic.inspect
+			if userdic.empty?
+				return []
+			else
+				userdic_id  = userdic.first[:id]
+			end
+		end
+
 		simfun      = Sequel.function(:similarity, :search_title, query)
 		
 		# Extracts a list of similar entry names compared to the query
@@ -126,11 +143,23 @@ class POSTGRESQL_RETRIEVER
 		results   = [ ]
 		# gid_history  = Set.new
 
-		dic_id       = @db[:dictionaries].select(:id).where(:title => @dic_name).first[:id]
-		user_dic_id  = @db[:user_dictionaries].select(:id).where(:dictionary_id => dic_id).first[:id]
-		
-		removed_entry_idlist = @db[:removed_entries].select(:entry_id).where(:user_dictionary_id => user_dic_id)
+		# TODO: error handling, refactoring
+		dic     = @db[:dictionaries].select(:id).where(:title => @dic_name).all
+		dic_id  = -1
+		if dic.empty?
+			return [ ]
+		else
+			dic_id = dic.first[:id]
+		end
 
+		user_dic              = @db[:user_dictionaries].select(:id).where(:dictionary_id => dic_id).all
+		user_dic_id           = -1
+		removed_entry_idlist  = []
+		if not user_dic.empty?
+			user_dic_id           = user_dic.first[:id]
+			removed_entry_idlist  = @db[:removed_entries].select(:entry_id).where(:user_dictionary_id => user_dic_id).all
+		end
+		
 		# Retrieves the entries for a given query except those are marked as removed
 		ds = @db[:entries].where(:dictionary_id => dic_id).where(:search_title => query).exclude(:id => removed_entry_idlist)
 		ds.all.each do |row|
@@ -144,14 +173,16 @@ class POSTGRESQL_RETRIEVER
 		end
 
 		# Adds newly added entries by a user
-		ds = @db[:new_entries].where(:user_dictionary_id => user_dic_id).where(:search_title => query)
-		ds.all.each do |row|
-			results << { label: row[:label], uri: row[:uri], title: row[:view_title] }
+		if user_dic.empty?
+			ds = @db[:new_entries].where(:user_dictionary_id => user_dic_id).where(:search_title => query)
+			ds.all.each do |row|
+				results << { label: row[:label], uri: row[:uri], title: row[:view_title] }
 
-		# 	if not gid_history.include?( row[:uri] )
-		# 		results << { label: row[:label], uri: row[:uri], title: row[:title] }
-		# 		gid_history.add( row[:uri] )
-		# 	end
+			# 	if not gid_history.include?( row[:uri] )
+			# 		results << { label: row[:label], uri: row[:uri], title: row[:title] }
+			# 		gid_history.add( row[:uri] )
+			# 	end
+			end
 		end
 
 		return results
