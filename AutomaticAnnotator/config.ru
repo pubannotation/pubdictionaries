@@ -155,11 +155,15 @@ class PubDicAnnotation_WS < Sinatra::Base
 
 	def format_anns(anns)
 		return anns.collect do |item|
-			{ requested_query:  item[:requested_query], 
-			  original_query:   item[:original_query], 
-			  begin:            item[:offset].begin, 
-			  end:              item[:offset].end,
-			  obj:              "#{item[:uri]}:#{item[:label]}:#{item[:sim]}",
+			# { requested_query:  item[:requested_query], 
+			#   original_query:   item[:original_query], 
+			#   begin:            item[:offset].begin, 
+			#   end:              item[:offset].end,
+			#   obj:              "#{item[:uri]}:#{item[:label]}:#{item[:sim]}",
+			# }
+			{ begin:  item[:offset].begin, 
+			  end:    item[:offset].end,
+			  obj:    "#{item[:uri]}:#{item[:requested_query]}:#{item[:label]}",
 			}
 		end
 	end
