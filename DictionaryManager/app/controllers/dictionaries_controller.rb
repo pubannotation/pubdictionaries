@@ -28,15 +28,22 @@ class DictionariesController < ApplicationController
         items = line.split("\t")
 
         # Model#new creates an object but not save it, while Model#create do both.
-        entries << @dictionary.entries.new( { view_title:   items[0], 
+        entries << @dictionary.entries.new( { view_title:  items[0], 
                                              search_title: normalize_str(items[0], norm_opts), 
                                              label:        items[1], 
                                              uri:          items[2],
                                           } )
+        if entries.length == 10000
+          @dictionary.entries.import entries
+          entries = []
+        end
       end
 
       # Uses activerecord-import gem to accelerate the bulk import speed
-      @dictionary.entries.import entries
+      # @dictionary.entries.import entries
+      if entries.length != 0
+        @dictionary.entries.import entries
+      end
     end
 
     return str_error
@@ -61,8 +68,11 @@ class DictionariesController < ApplicationController
     File.delete(dbfile_path)
 
     # Remove auxiliary db files
+    pattern = dbfile_path + ".[0-9]+.cdb"
     Dir.glob(dbfile_path + '.*.cdb').each do |aux_file|
-      File.delete(aux_file)
+      if /#{pattern}/.match(aux_file) 
+        File.delete(aux_file)
+      end
     end
   end
 
@@ -126,24 +136,43 @@ class DictionariesController < ApplicationController
     user = User.find(current_user.id)
     @dictionary = user.dictionaries.new( params[:dictionary] )     # this will set :user_id automatically
     @dictionary.creator = current_user.email
+    b_saved_dic = @dictionary.save
 
-    # Fill the dictionary with the entries of an uploaded file
-    str_error = fill_dic(params[:dictionary])
-
+    str_error = ""
+    if b_saved_dic
+      # Fill the dictionary with the entries of an uploaded file
+      str_error = fill_dic(params[:dictionary])
+    end
+ 
     respond_to do |format|
-      if str_error == "File is not selected"
-        redirect_to :back, notice: 'Please select a file for uploading.'
-      else
-        if @dictionary.save
-          # Create a simstring db if @dictionary.save is successful
+      if b_saved_dic
+        if str_error == ""
+          logger.debug "... creates simstring db"
           create_simstring_db
-
+          logger.debug "... finishes simstring db creation"
           format.html{ redirect_to @dictionary, notice: 'Dictionary was successfully created.' }
+        elsif str_error == "File is not selected"
+          redirect_to :back, notice: 'Please select a file for uploading.'
         else
           format.html{ render action: 'new' }
         end
+      else
+        format.html{ render action: 'new' }
       end
     end
+    #  if str_error == "File is not selected"
+    #    redirect_to :back, notice: 'Please select a file for uploading.'
+    #  else
+    #    if @dictionary.save
+    #      # Create a simstring db if @dictionary.save is successful
+    #      create_simstring_db
+
+    #      format.html{ redirect_to @dictionary, notice: 'Dictionary was successfully created.' }
+    #    else
+    #      format.html{ render action: 'new' }
+    #    end
+    #  end
+    # end
   end
 
   # GET /dictionaries/1/edit
