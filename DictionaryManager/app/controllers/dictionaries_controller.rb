@@ -1,3 +1,4 @@
+require 'set'
 require File.join( Rails.root, '..', 'simstring-1.0/swig/ruby/simstring')
 
 
@@ -115,20 +116,24 @@ class DictionariesController < ApplicationController
   # GET /dictionaries/1
   # GET /dictionaries/1.json
   #
-  # Show the content of an original dictionary and its corresponding user dictionary
+  # Shows the content of an original dictionary and its corresponding user dictionary.
   #
   def show
-    # 1. Prepare a paginated entry list
+    # 1. Prepares a paginated entry list.
     @dictionary = Dictionary.find(params[:id])
     @paginated_entries = @dictionary.entries.paginate page: params[:entries_page], per_page: 15
-    @n_entries = @dictionary.entries.count
+    @n_entries         = @dictionary.entries.count
 
-    # 2. Prepare a paginated new_entry list
+    # 2. Prepares a paginated new_entry list, andn a list of removed entries 
+    #   (to be used in entries_helper.rb).
     @user_dictionary = @dictionary.user_dictionaries.where(user_id: current_user.id).first
-    @n_new_entries = 0
+    @n_new_entries   = 0
     if not @user_dictionary.nil?
       @paginated_new_entries = @user_dictionary.new_entries.paginate page: params[:new_entries_page], per_page: 10
-      @n_new_entries = @user_dictionary.new_entries.count
+      @n_new_entries         = @user_dictionary.new_entries.count
+
+      @removed_entries       = Set.new( RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq )
+      logger.debug "removed_entries: #{@removed_entries.inspect}"
     end
 
     respond_to do |format|
@@ -227,7 +232,26 @@ class DictionariesController < ApplicationController
     
     respond_to do |format|
       if is_current_user_same_to_creator?(@dictionary)
-        @dictionary.destroy
+        ## This is too slow.
+        # @dictionary.destroy
+
+        ## Much faster than destroy.
+        # Deletes entries of the dictionary.
+        Entry.where("dictionary_id = ?", @dictionary.id).delete_all
+
+        # Deletes new and removed entries of the associated user dictionaries.
+        @dictionary.user_dictionaries.all.each do |userdic|
+          NewEntry.where("user_dictionary_id = ?", userdic.id).delete_all
+          RemovedEntry.where("user_dictionary_id = ?", userdic.id).delete_all
+        end
+
+        # Deletes the associated user dictionaries.
+        UserDictionary.where("dictionary_id = ?", @dictionary.id).delete_all
+
+        # Deletes the dictionary.
+        Dictionary.where("id = ?", @dictionary.id).delete_all
+
+        # Deletes the associated SimString DB.
         delete_simstring_db(@dictionary.title)
 
         format.html { redirect_to dictionaries_url }
