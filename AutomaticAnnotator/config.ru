@@ -92,7 +92,7 @@ class PubDicAnnotation_WS < Sinatra::Base
 
 		queries     = qbuilder.build_queries(text, build_opts, norm_opts)
 		ext_queries = qbuilder.expand_queries(queries, get_param("threshold", options), ssr, pgr)
-		
+
 
 		# Retrieves database entries
 		anns = pgr.retrieve(ext_queries)
