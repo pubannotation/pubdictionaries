@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Remove old log files
-rm ./log/*
-
 # Find the pid of an old master process
 old_pid=`cat tmp/pids/unicorn.pid`
 

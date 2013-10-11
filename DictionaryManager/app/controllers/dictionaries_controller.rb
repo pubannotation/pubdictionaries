@@ -33,9 +33,9 @@ class DictionariesController < ApplicationController
                                              label:        items[1], 
                                              uri:          items[2],
                                           } )
-        if entries.length == 10000
+        if entries.length == 2000
           @dictionary.entries.import entries
-          entries = []
+          entries.clear
         end
       end
 
@@ -49,29 +49,48 @@ class DictionariesController < ApplicationController
     return str_error
   end
 
+
   # Create a simstring db
   def create_simstring_db
     dbfile_path = Rails.root.join('public/simstring_dbs', params[:dictionary][:title]).to_s
-    db          = Simstring::Writer.new(dbfile_path, 3, true, true)   # (filename, n-gram, begin/end marker, unicode)
 
-    @dictionary.entries.each do |entry|
-      db.insert(entry[:search_title])
+    time_start = Time.new
+    logger.debug "... Starts to generate a simstring DB."
+
+    db = Simstring::Writer.new(dbfile_path, 3, true, true)     # (filename, n-gram, begin/end marker, unicode)
+
+    # @dictionary.entries.each do |entry|     #     This is too slow
+    Entry.where(dictionary_id: @dictionary.id).pluck(:search_title).uniq.each do |search_title|
+      db.insert(search_title)
     end
+
     db.close
+
+    logger.debug "... Finishes generating a simstring DB."
+    logger.debug "...... Total time elapsed: #{Time.new - time_start} seconds"
   end
+
 
   # Delete a simstring db and associated files
   def delete_simstring_db( filename )
     dbfile_path = Rails.root.join('public/simstring_dbs', filename).to_s
     
     # Remove the main db file
-    File.delete(dbfile_path)
+    begin
+      File.delete(dbfile_path)
+    rescue
+      # Silently ignores the error
+    end
 
     # Remove auxiliary db files
     pattern = dbfile_path + ".[0-9]+.cdb"
     Dir.glob(dbfile_path + '.*.cdb').each do |aux_file|
       if /#{pattern}/.match(aux_file) 
-        File.delete(aux_file)
+        begin
+          File.delete(aux_file)
+        rescue
+          # Silently ignores the error
+        end
       end
     end
   end
@@ -91,6 +110,7 @@ class DictionariesController < ApplicationController
       format.json { render json: @dictionaries }
     end
   end
+
 
   # GET /dictionaries/1
   # GET /dictionaries/1.json
@@ -117,6 +137,7 @@ class DictionariesController < ApplicationController
     end
   end
 
+
   # GET /dictionaries/new
   # GET /dictionaries/new.json
   def new
@@ -129,51 +150,41 @@ class DictionariesController < ApplicationController
     end
   end
 
+
   # POST /dictionaries
   # POST /dictionaries.json
   def create
-    # Create an empty dictionary
+    # Creates a dictionary
     user = User.find(current_user.id)
-    @dictionary = user.dictionaries.new( params[:dictionary] )     # this will set :user_id automatically
-    @dictionary.creator = current_user.email
-    b_saved_dic = @dictionary.save
 
-    str_error = ""
-    if b_saved_dic
-      # Fill the dictionary with the entries of an uploaded file
-      str_error = fill_dic(params[:dictionary])
+    @dictionary = user.dictionaries.new( params[:dictionary] )
+    @dictionary.creator = current_user.email
+    
+    b_basedic_saved = @dictionary.save
+
+
+    # Fills the entries of the dictionary
+    b_entries_saved = false
+    if b_basedic_saved
+      b_entries_saved = fill_dic(params[:dictionary])
     end
+
  
     respond_to do |format|
-      if b_saved_dic
-        if str_error == ""
-          logger.debug "... creates simstring db"
-          create_simstring_db
-          logger.debug "... finishes simstring db creation"
-          format.html{ redirect_to @dictionary, notice: 'Dictionary was successfully created.' }
-        elsif str_error == "File is not selected"
-          redirect_to :back, notice: 'Please select a file for uploading.'
-        else
-          format.html{ render action: 'new' }
-        end
+      if b_basedic_saved and b_entries_saved
+        create_simstring_db
+
+        format.html{ redirect_to @dictionary, notice: 'Dictionary was successfully created.' }
+      elsif b_basedic_saved and not b_entries_saved
+        @dictionary.destroy
+
+        format.html{ redirect_to :back, notice: 'Failed to save a dictionary!' }
       else
         format.html{ render action: 'new' }
       end
     end
-    #  if str_error == "File is not selected"
-    #    redirect_to :back, notice: 'Please select a file for uploading.'
-    #  else
-    #    if @dictionary.save
-    #      # Create a simstring db if @dictionary.save is successful
-    #      create_simstring_db
-
-    #      format.html{ redirect_to @dictionary, notice: 'Dictionary was successfully created.' }
-    #    else
-    #      format.html{ render action: 'new' }
-    #    end
-    #  end
-    # end
   end
+
 
   # GET /dictionaries/1/edit
   # def edit
