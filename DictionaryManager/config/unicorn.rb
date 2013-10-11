@@ -9,7 +9,7 @@ development_root = `pwd`.gsub("\n","")
 working_directory   (rails_env == 'production' ? production_root : development_root)
 worker_processes    (rails_env == 'production' ? 4 : 2)
 preload_app         true
-timeout             600
+timeout             99999
 
 
 if rails_env == 'production'
