@@ -22,15 +22,21 @@ class DictionariesController < ApplicationController
       data = input_file.read
       data.gsub! /\r\n?/, "\n"     # replace \r, \r\n with \n
 
+      entries = []
       data.split("\n").each do |line|
         line.chomp!
         items = line.split("\t")
-        entry = @dictionary.entries.new( { view_title:   items[0], 
-                                           search_title: normalize_str(items[0], norm_opts), 
-                                           label:        items[1], 
-                                           uri:          items[2],
-                                            } )
+
+        # Model#new creates an object but not save it, while Model#create do both.
+        entries << @dictionary.entries.new( { view_title:   items[0], 
+                                             search_title: normalize_str(items[0], norm_opts), 
+                                             label:        items[1], 
+                                             uri:          items[2],
+                                          } )
       end
+
+      # Uses activerecord-import gem to accelerate the bulk import speed
+      @dictionary.entries.import entries
     end
 
     return str_error
