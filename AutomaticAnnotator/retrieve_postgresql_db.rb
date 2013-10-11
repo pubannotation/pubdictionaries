@@ -59,7 +59,6 @@ class POSTGRESQL_RETRIEVER
 			basedic_id  = basedic.first[:id]
 
 			userdic  = @db[:user_dictionaries].select(:id).where(:dictionary_id => basedic_id).all
-			$stderr.puts userdic.inspect
 			if userdic.empty?
 				return []
 			else
