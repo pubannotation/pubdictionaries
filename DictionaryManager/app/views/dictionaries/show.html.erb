@@ -7,7 +7,7 @@
   
   <table>
     <tr><th>Creator:</th><td><%= @dictionary.creator %></td>
-    <tr><th>Description:</th><td><%= @dictionary.description %></td></tr>
+    <tr><th>Description:</th><td><%= h(@dictionary.description).gsub(/\n/, '<br/>').html_safe %></td></tr>
     <tr><th>Number of entries:</th>
       <td><%= @n_entries %> - <%= @n_removed_entries %> (original entries - removed entries)<br /> 
           <%= @n_new_entries %> (newly added entries)
