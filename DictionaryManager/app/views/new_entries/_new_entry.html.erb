@@ -10,9 +10,5 @@
     <td class="entry_uri"><%= new_entry.uri %></td>
     <td>
       <%= button_to 'Delete', user_dictionary_new_entry_path(@user_dictionary, new_entry), method: :delete, data: {confirm: 'Are you sure?'} %>
-      <%#= link_to 'Show', entry %>
-      <%#= link_to 'Show', user_dictionary_new_entry_path(@user_dictionary, @new_entry) %> <!-- | -->
-      <%#= link_to 'Edit', edit_user_dictionary_new_entry_path(@user_dictionary, @new_entry) %> <!-- | -->
-      <%#= link_to 'Destroy', user_dictionary_new_entry_path(@user_dictionary, @new_entry), method: :delete, data: { confirm: 'Are you sure?' } %>
     </td>
   </tr>

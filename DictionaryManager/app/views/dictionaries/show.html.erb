@@ -1,3 +1,5 @@
+<div class="dictionaries_page">
+
 <!-- Show information about a dictionary -->
 <div class="dictionary_information">
 <fieldset>
@@ -7,8 +9,8 @@
     <tr><th>Creator:</th><td><%= @dictionary.creator %></td>
     <tr><th>Description:</th><td><%= @dictionary.description %></td></tr>
     <tr><th>Number of entries:</th>
-      <td><%= @n_entries %> (in the base dictionary) / 
-          <%= @n_new_entries %> (in the user dictionary)
+      <td><%= @n_entries %> - <%= @n_removed_entries %> (original entries - removed entries)<br /> 
+          <%= @n_new_entries %> (newly added entries)
       </td>
     </tr>
   </table>
@@ -21,7 +23,7 @@
 <% if @dictionary.entries.count > 0 %>
 <div class="entry_list">
   <fieldset>
-    <legend>Entries in the Base Dictionary:</legend>
+    <legend>Original entries:</legend>
     <table>
       <tr><th>Entry name</th><th>Label</th><th>ID</th><th>Options</th></tr>
       <%= render @paginated_entries %>
@@ -37,7 +39,7 @@
 <% if not @user_dictionary.nil? and @n_new_entries > 0 %>
 <div class="entry_list">
   <fieldset>
-    <legend>Entries in the User Dictionary:</legend>
+    <legend>Newly added entries:</legend>
     <table>
       <tr><th>Entry name</th><th>Label</th><th>ID</th><th>Options</th></tr>
       <%= render @paginated_new_entries %>
@@ -47,7 +49,7 @@
 </div>
 <% end %>
 
-<%#= link_to 'Edit', edit_dictionary_path(@dictionary) %> <!-- | -->
 <%= link_to 'Add an Entry', new_dictionary_entry_path(@dictionary) %> | 
-<%#= link_to 'Add Multple Entries', multiple_new_dictionary_entries_path(@dictionary) %> <!-- | --> 
 <%= link_to 'Back', dictionaries_path %>
+
+</div>

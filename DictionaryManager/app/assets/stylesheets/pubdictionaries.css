@@ -44,8 +44,11 @@
 }
 
 #side #links a {
+  display:block;     /* a-tag is an inline element so padding (and hight and width too) are ignored */
   color: #bfb;
   font-size: medium;
+  padding-top: 0.3em;
+  padding-bottom: 0.3em;
 }
 
 
@@ -57,16 +60,53 @@
   background: white;
 }
 
-#main legend {
+
+/* Common CSS */
+#main legend {     
   font-size: 1.5em;
   color: #00f;
   background-color: #ddd;
   margin-bottom: 10px;
 }
 
-#main .entry_list .removed_dictionary_entry {
+
+/* Welcome page */
+#main .welcome_page .introduction .title {
+  font-size: 2em; 
+}
+
+#main .welcome_page .introduction .subtitle {
+  font-size: 1em; 
+  color: #555;
+  padding-left: 1em;
+}
+
+#main .welcome_page .release .version {
+  font-weight: bold;
+}
+
+#main .welcome_page .release .information {
+  padding-left: 1em;
+}
+
+
+/* Dictionaries page */
+#main .dictionaries_page .entry_list .removed_dictionary_entry {
   text-decoration: line-through;
   background-color: #ccc ;
 }
+
+
+/* Annotation page */
+#main .annotation_page pre {
+  width: 700px;
+  background-color: #EEEEFF;
+}
+
+#main .annotation_page .code_sample {
+  width: 700px;
+  word-wrap: break-word;
+}
+
 
 

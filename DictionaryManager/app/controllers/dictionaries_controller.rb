@@ -131,6 +131,7 @@ class DictionariesController < ApplicationController
     if not @user_dictionary.nil?
       @paginated_new_entries = @user_dictionary.new_entries.paginate page: params[:new_entries_page], per_page: 10
       @n_new_entries         = @user_dictionary.new_entries.count
+      @n_removed_entries     = @user_dictionary.removed_entries.count
 
       @removed_entries       = Set.new( RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq )
       logger.debug "removed_entries: #{@removed_entries.inspect}"
