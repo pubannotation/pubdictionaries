@@ -1,8 +1,8 @@
 class Dictionary < ActiveRecord::Base
   default_scope :order => 'title'
   
-  attr_accessor :file     # virtual attribute for uploading a file
-  attr_accessible :creator, :description, :title, :file, :stemmed, :lowercased, :hyphen_replaced
+  attr_accessor :file, :separator
+  attr_accessible :creator, :description, :title, :file, :stemmed, :lowercased, :hyphen_replaced, :separator
 
   belongs_to :user
 

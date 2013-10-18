@@ -8,9 +8,22 @@
   <table>
     <tr><th>Creator:</th><td><%= @dictionary.creator %></td>
     <tr><th>Description:</th><td><%= h(@dictionary.description).gsub(/\n/, '<br/>').html_safe %></td></tr>
-    <tr><th>Number of entries:</th>
-      <td><%= @n_entries %> - <%= @n_removed_entries %> (original entries - removed entries)<br /> 
-          <%= @n_new_entries %> (newly added entries)
+    <tr><th>Entries:</th>
+      <td>
+        Original (<%= @n_entries %>) |
+        Removed (<%= @n_removed_entries %>) |
+        New (<%= @n_new_entries %>)
+      </td>
+    </tr>
+    <tr>
+      <th>Export:</th>
+      <td>
+        <%= link_to 'Original', dictionary_path(format: "tsv", query: "ori") %> | 
+        <%= link_to 'Deleted', dictionary_path(format: "tsv", query: "del") %> | 
+        <%= link_to 'New', dictionary_path(format: "tsv", query: "new") %> |
+        <%= link_to 'Original-Deleted', dictionary_path(format: "tsv", query: "ori_del") %> | 
+        <%= link_to 'Original-Deleted+New', dictionary_path(format: "tsv", query: "ori_del_new") %>
+        
       </td>
     </tr>
   </table>

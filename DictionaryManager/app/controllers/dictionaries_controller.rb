@@ -3,100 +3,7 @@ require File.join( Rails.root, '..', 'simstring-1.0/swig/ruby/simstring')
 
 
 class DictionariesController < ApplicationController
-  ###########################
-  #####     METHODS     #####
-  ###########################
-
-  # Fill entries for a given dictionary
-  def fill_dic(dic_params)
-    input_file  = dic_params[:file]
-    norm_opts   = { lowercased:      dic_params[:lowercased], 
-                    hyphen_replaced: dic_params[:hyphen_replaced],
-                    stemmed:         dic_params[:stemmed],
-                  }
-    str_error   = ""
-
-    if not input_file
-      str_error = "File is not selected" 
-    else
-      # Add entries to the dictionary
-      data = input_file.read
-      data.gsub! /\r\n?/, "\n"     # replace \r, \r\n with \n
-
-      entries = []
-      data.split("\n").each do |line|
-        line.chomp!
-        items = line.split("\t")
-
-        # Model#new creates an object but not save it, while Model#create do both.
-        entries << @dictionary.entries.new( { view_title:  items[0], 
-                                             search_title: normalize_str(items[0], norm_opts), 
-                                             label:        items[1], 
-                                             uri:          items[2],
-                                          } )
-        if entries.length == 2000
-          @dictionary.entries.import entries
-          entries.clear
-        end
-      end
-
-      # Uses activerecord-import gem to accelerate the bulk import speed
-      # @dictionary.entries.import entries
-      if entries.length != 0
-        @dictionary.entries.import entries
-      end
-    end
-
-    return str_error
-  end
-
-
-  # Create a simstring db
-  def create_simstring_db
-    dbfile_path = Rails.root.join('public/simstring_dbs', params[:dictionary][:title]).to_s
-
-    time_start = Time.new
-    logger.debug "... Starts to generate a simstring DB."
-
-    db = Simstring::Writer.new(dbfile_path, 3, true, true)     # (filename, n-gram, begin/end marker, unicode)
-
-    # @dictionary.entries.each do |entry|     #     This is too slow
-    Entry.where(dictionary_id: @dictionary.id).pluck(:search_title).uniq.each do |search_title|
-      db.insert(search_title)
-    end
-
-    db.close
-
-    logger.debug "... Finishes generating a simstring DB."
-    logger.debug "...... Total time elapsed: #{Time.new - time_start} seconds"
-  end
-
-
-  # Delete a simstring db and associated files
-  def delete_simstring_db( filename )
-    dbfile_path = Rails.root.join('public/simstring_dbs', filename).to_s
-    
-    # Remove the main db file
-    begin
-      File.delete(dbfile_path)
-    rescue
-      # Silently ignores the error
-    end
-
-    # Remove auxiliary db files
-    pattern = dbfile_path + ".[0-9]+.cdb"
-    Dir.glob(dbfile_path + '.*.cdb').each do |aux_file|
-      if /#{pattern}/.match(aux_file) 
-        begin
-          File.delete(aux_file)
-        rescue
-          # Silently ignores the error
-        end
-      end
-    end
-  end
-
-
+ 
   ###########################
   #####     ACTIONS     #####
   ###########################
@@ -119,27 +26,75 @@ class DictionariesController < ApplicationController
   # Shows the content of an original dictionary and its corresponding user dictionary.
   #
   def show
-    # 1. Prepares a paginated entry list.
     @dictionary = Dictionary.find(params[:id])
-    @paginated_entries = @dictionary.entries.paginate page: params[:entries_page], per_page: 15
-    @n_entries         = @dictionary.entries.count
-
-    # 2. Prepares a paginated new_entry list, andn a list of removed entries 
-    #   (to be used in entries_helper.rb).
     @user_dictionary = @dictionary.user_dictionaries.where(user_id: current_user.id).first
-    @n_new_entries   = 0
-    if not @user_dictionary.nil?
-      @paginated_new_entries = @user_dictionary.new_entries.paginate page: params[:new_entries_page], per_page: 10
-      @n_new_entries         = @user_dictionary.new_entries.count
-      @n_removed_entries     = @user_dictionary.removed_entries.count
+         
+    if params[:query] == "ori"
+      # Export: all entries of an original dictionary.
+      @view_entries = @dictionary.entries.select("view_title, label, uri")
 
-      @removed_entries       = Set.new( RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq )
-      logger.debug "removed_entries: #{@removed_entries.inspect}"
+    elsif params[:query] == "del"
+      # Export: all deleted entries from an original dictionary.
+      if @user_dictionary.nil?
+        @view_entries = [ ]
+      else
+        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
+        @view_entries = @dictionary.entries.select("view_title, label, uri").find(removed_entry_ids)
+      end    
+
+    elsif params[:query] == "new"
+      # Export: all new entries.
+      if @user_dictionary.nil?
+        @view_entries = [ ]
+      else
+        @view_entries = @user_dictionary.new_entries.select("view_title, label, uri")
+      end
+
+    elsif params[:query] == "ori_del"
+      # Export: entries of an original dictionary that are not deleted by a user.
+       if @user_dictionary.nil?
+        @view_entries = @dictionary.entries
+      else
+        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
+        @view_entries = @dictionary.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri")
+      end
+
+    elsif params[:query] == "ori_del_new"
+      # Export: a list of active entries of an original and user dictionaries.
+       if @user_dictionary.nil?
+        @view_entries = @dictionary.entries
+      else
+        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
+        new_entries       = @user_dictionary.new_entries  
+
+        @view_entries = @dictionary.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri") + new_entries
+      end
+    
+    else
+      # Show (default):
+      #   Shows the content of a dictionary and its associated user dictionary.
+
+      # 1. Prepares a paginated_entriesginated entry list.
+      @paginated_entries = @dictionary.entries.paginate page: params[:entries_page], per_page: 15
+      @n_entries         = @dictionary.entries.count
+
+      # 2. Prepares a paginated new_entry list, andn a list of removed entries 
+      #   (to be used in entries_helper.rb).
+      @n_new_entries   = 0
+      if not @user_dictionary.nil?
+        @paginated_new_entries = @user_dictionary.new_entries.paginate page: params[:new_entries_page], per_page: 10
+        @n_new_entries         = @user_dictionary.new_entries.count
+        @n_removed_entries     = @user_dictionary.removed_entries.count
+
+        @removed_entries       = Set.new( RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq )
+      end
+
     end
+
 
     respond_to do |format|
       format.html # show.html.erb
-      format.json { render json: @dictionary }
+      format.tsv { send_data tsv_data(@view_entries), filename: "#{@dictionary.title}.#{params[:query]}.tsv.txt", type: "text/tsv" }
     end
   end
 
@@ -263,5 +218,108 @@ class DictionariesController < ApplicationController
       end
     end
   end
+
+
+  ###########################
+  #####     METHODS     #####
+  ###########################
+
+  private
+
+  # Converts a collection of entries in tsv format
+  def tsv_data(entries)
+    entries.collect{ |e| "#{e.view_title}\t#{e.label}\t#{e.uri}\n" }.join
+  end
+
+  # Fills entries for a given dictionary
+  def fill_dic(dic_params)
+    input_file  = dic_params[:file]
+    sep         = dic_params[:separator]
+    norm_opts   = { lowercased:      dic_params[:lowercased], 
+                    hyphen_replaced: dic_params[:hyphen_replaced],
+                    stemmed:         dic_params[:stemmed],
+                  }
+    str_error   = ""
+
+    if not input_file
+      str_error = "File is not selected" 
+    else
+      # Add entries to the dictionary
+      data = input_file.read
+      data.gsub! /\r\n?/, "\n"     # replace \r, \r\n with \n
+
+      entries = []
+      data.split("\n").each do |line|
+        line.chomp!
+        items = line.split(sep)
+
+        # Model#new creates an object but not save it, while Model#create do both.
+        entries << @dictionary.entries.new( { view_title:  items[0], 
+                                             search_title: normalize_str(items[0], norm_opts), 
+                                             label:        items[1], 
+                                             uri:          items[2],
+                                          } )
+        if entries.length == 2000
+          @dictionary.entries.import entries
+          entries.clear
+        end
+      end
+
+      # Uses activerecord-import gem to accelerate the bulk import speed
+      # @dictionary.entries.import entries
+      if entries.length != 0
+        @dictionary.entries.import entries
+      end
+    end
+
+    return str_error
+  end
+
+
+  # Creates a simstring db
+  def create_simstring_db
+    dbfile_path = Rails.root.join('public/simstring_dbs', params[:dictionary][:title]).to_s
+
+    time_start = Time.new
+    logger.debug "... Starts to generate a simstring DB."
+
+    db = Simstring::Writer.new(dbfile_path, 3, true, true)     # (filename, n-gram, begin/end marker, unicode)
+
+    # @dictionary.entries.each do |entry|     #     This is too slow
+    Entry.where(dictionary_id: @dictionary.id).pluck(:search_title).uniq.each do |search_title|
+      db.insert(search_title)
+    end
+
+    db.close
+
+    logger.debug "... Finishes generating a simstring DB."
+    logger.debug "...... Total time elapsed: #{Time.new - time_start} seconds"
+  end
+
+
+  # Deletes a simstring db and associated files
+  def delete_simstring_db( filename )
+    dbfile_path = Rails.root.join('public/simstring_dbs', filename).to_s
+    
+    # Remove the main db file
+    begin
+      File.delete(dbfile_path)
+    rescue
+      # Silently ignores the error
+    end
+
+    # Remove auxiliary db files
+    pattern = dbfile_path + ".[0-9]+.cdb"
+    Dir.glob(dbfile_path + '.*.cdb').each do |aux_file|
+      if /#{pattern}/.match(aux_file) 
+        begin
+          File.delete(aux_file)
+        rescue
+          # Silently ignores the error
+        end
+      end
+    end
+  end
+
 
 end
