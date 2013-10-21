@@ -3,6 +3,8 @@ require File.join( Rails.root, '..', 'simstring-1.0/swig/ruby/simstring')
 
 
 class DictionariesController < ApplicationController
+  helper_method :sort_column, :sort_direction, :sort_dictionary
+
  
   ###########################
   #####     ACTIONS     #####
@@ -75,14 +77,23 @@ class DictionariesController < ApplicationController
       #   Shows the content of a dictionary and its associated user dictionary.
 
       # 1. Prepares a paginated_entriesginated entry list.
-      @paginated_entries = @dictionary.entries.paginate page: params[:entries_page], per_page: 15
+      
+      if sort_dictionary == "base_dic"
+        @paginated_entries = @dictionary.entries.reorder(sort_column + " " + sort_direction).paginate(page: params[:entries_page], per_page: 15)
+      else
+        @paginated_entries = @dictionary.entries.paginate(page: params[:entries_page], per_page: 15)
+      end
       @n_entries         = @dictionary.entries.count
 
       # 2. Prepares a paginated new_entry list, andn a list of removed entries 
       #   (to be used in entries_helper.rb).
       @n_new_entries   = 0
       if not @user_dictionary.nil?
-        @paginated_new_entries = @user_dictionary.new_entries.paginate page: params[:new_entries_page], per_page: 10
+        if sort_dictionary == "user_dic"
+          @paginated_new_entries = @user_dictionary.new_entries.reorder(sort_column + " " + sort_direction).paginate page: params[:new_entries_page], per_page: 10
+        else
+          @paginated_new_entries = @user_dictionary.new_entries.paginate page: params[:new_entries_page], per_page: 10
+        end
         @n_new_entries         = @user_dictionary.new_entries.count
         @n_removed_entries     = @user_dictionary.removed_entries.count
 
@@ -321,5 +332,16 @@ class DictionariesController < ApplicationController
     end
   end
 
+  def sort_dictionary
+    params[:sort_dictionary].nil? ? "base_dic" : params[:sort_dictionary]
+  end
+
+  def sort_column
+    Entry.column_names.include?(params[:sort_column]) ? params[:sort_column] : "view_title"
+  end
+
+  def sort_direction
+    %w[asc desc].include?(params[:sort_direction]) ? params[:sort_direction] : "asc"
+  end
 
 end

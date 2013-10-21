@@ -14,7 +14,6 @@
     <td class="entry_uri"><%= entry.uri %></td>
     <td>
       <% if not removed?(entry) %>
-        <%#= link_to 'Remove', dictionary_entry_path(@dictionary, entry), method: :delete, data: {confirm: 'Are you sure?'} %>
         <%= button_to 'Delete', dictionary_entry_path(@dictionary, entry), method: :delete %> 
       <% else %>
         <%= button_to 'Restore', dictionary_entry_path(@dictionary, entry), method: :delete %>

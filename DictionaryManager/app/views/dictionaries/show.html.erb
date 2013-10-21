@@ -20,9 +20,9 @@
       <td>
         <%= link_to 'Original', dictionary_path(format: "tsv", query: "ori") %> | 
         <%= link_to 'Deleted', dictionary_path(format: "tsv", query: "del") %> | 
-        <%= link_to 'New', dictionary_path(format: "tsv", query: "new") %> |
+        <%= link_to 'Added', dictionary_path(format: "tsv", query: "new") %> |
         <%= link_to 'Original-Deleted', dictionary_path(format: "tsv", query: "ori_del") %> | 
-        <%= link_to 'Original-Deleted+New', dictionary_path(format: "tsv", query: "ori_del_new") %>
+        <%= link_to 'Original-Deleted+Added', dictionary_path(format: "tsv", query: "ori_del_new") %>
         
       </td>
     </tr>
@@ -38,7 +38,7 @@
   <fieldset>
     <legend>Original entries:</legend>
     <table>
-      <tr><th>Entry name</th><th>Label</th><th>ID</th><th>Options</th></tr>
+      <tr><th><%= sortable "base_dic", "view_title", "Entry name" %></th><th><%= sortable "base_dic", "label", "Label" %></th><th><%= sortable "base_dic", "uri", "ID" %></th><th>Options</th></tr>
       <%= render @paginated_entries %>
       <tr><td colspan="4" align="center"><%= will_paginate @paginated_entries, param_name: 'entries_page' %></td></tr>
     </table>
@@ -54,7 +54,7 @@
   <fieldset>
     <legend>Newly added entries:</legend>
     <table>
-      <tr><th>Entry name</th><th>Label</th><th>ID</th><th>Options</th></tr>
+      <tr><th><%= sortable "user_dic", "view_title", "Entry name" %></th><th><%= sortable "user_dic", "label", "Label" %></th><th><%= sortable "user_dic", "uri", "ID" %></th><th>Options</th></tr>
       <%= render @paginated_new_entries %>
       <tr><td colspan="4" align="center"><%= will_paginate @paginated_new_entries, param_name: 'new_entries_page' %></td></tr>
     </table>
