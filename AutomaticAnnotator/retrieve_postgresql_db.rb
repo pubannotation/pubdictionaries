@@ -71,7 +71,6 @@ class POSTGRESQL_RETRIEVER
 		# Extracts a list of similar entry names compared to the query
 		#     - compared to @db.fetch command below, this is very slow.
 		# ds = @db[:new_entries].where(:user_dictionary_id => userdic_id).where(simfun >= threshold).select_append(simfun).order(Sequel.desc(simfun), :title)
-		# $stdout.puts @db[:new_entries].select(:title).where(:user_dictionary_id => userdic_id).where(simfun >= threshold).inspect
 		ds = @db[:new_entries].where(:user_dictionary_id => userdic_id).where(simfun >= threshold)
 
 		# Setting set_limit first and use % in where clause greatly accellerates the 
@@ -125,7 +124,7 @@ class POSTGRESQL_RETRIEVER
 	def search_db(query, ori_query, offset, sim)
 		@results_cache[query] = []
 		
-		results = get_entries_from_db(query)
+		results = get_entries_from_db(query, :search_title)
 		results.collect do |res|
 			data = build_output(query, ori_query, res, sim, offset)
 			
@@ -138,7 +137,7 @@ class POSTGRESQL_RETRIEVER
 	end
 
 	# Gets entries from DB that have similar names to the query string
-	def get_entries_from_db(query)
+	def get_entries_from_db(query, target_column)
 		results   = [ ]
 		# gid_history  = Set.new
 
@@ -160,7 +159,7 @@ class POSTGRESQL_RETRIEVER
 		end
 		
 		# Retrieves the entries for a given query except those are marked as removed
-		ds = @db[:entries].where(:dictionary_id => dic_id).where(:search_title => query).exclude(:id => removed_entry_idlist)
+		ds = @db[:entries].where(:dictionary_id => dic_id).where(target_column => query).exclude(:id => removed_entry_idlist)
 		ds.all.each do |row|
 			results << { label: row[:label], uri: row[:uri], title: row[:view_title] }
 
@@ -173,7 +172,7 @@ class POSTGRESQL_RETRIEVER
 
 		# Adds newly added entries by a user
 		if user_dic.empty?
-			ds = @db[:new_entries].where(:user_dictionary_id => user_dic_id).where(:search_title => query)
+			ds = @db[:new_entries].where(:user_dictionary_id => user_dic_id).where(target_column => query)
 			ds.all.each do |row|
 				results << { label: row[:label], uri: row[:uri], title: row[:view_title] }
 

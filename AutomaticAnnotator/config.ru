@@ -117,6 +117,32 @@ class PubDicAnnotation_WS < Sinatra::Base
 		body annotation.to_json
 
 	end
+	
+
+	# Returns a hash of ID-LABEL pairs for an input list of IDs.
+	post '/rest_api/ids_to_labels/?' do 
+		data     = JSON.parse( params[:data] )
+		options  = JSON.parse( params[:options] )
+
+		pgr = POSTGRESQL_RETRIEVER.new(get_param("dictionary_name", options))
+
+		ids     = get_param("ids", data)
+		labels  = {}
+		ids.each do |id|
+			# Assumes that each ID has a unique label
+			entries = pgr.get_entries_from_db(id, :uri)
+			if entries.empty?
+				labels[id] = "NULL"
+			else
+				labels[id] = entries[0][:label]	
+			end
+		end
+
+		data["labels"] = labels
+
+		headers 'Content-Type' => 'application/json'
+		body data.to_json
+	end
 
 
 	def get_data( params )
