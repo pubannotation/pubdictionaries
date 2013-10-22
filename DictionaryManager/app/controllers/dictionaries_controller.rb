@@ -10,8 +10,6 @@ class DictionariesController < ApplicationController
   #####     ACTIONS     #####
   ###########################
 
-  # GET /dictionaries
-  # GET /dictionaries.json
   def index
     @dictionaries = Dictionary.all
 
@@ -21,97 +19,42 @@ class DictionariesController < ApplicationController
     end
   end
 
-
-  # GET /dictionaries/1
-  # GET /dictionaries/1.json
   #
   # Shows the content of an original dictionary and its corresponding user dictionary.
   #
   def show
-    @dictionary = Dictionary.find(params[:id])
-    @user_dictionary = @dictionary.user_dictionaries.where(user_id: current_user.id).first
+    @dictionary       = Dictionary.find(params[:id])
+    @user_dictionary  = @dictionary.user_dictionaries.where(user_id: current_user.id).first
          
-    if params[:query] == "ori"
-      # Export: all entries of an original dictionary.
-      @view_entries = @dictionary.entries.select("view_title, label, uri")
+    if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
+      # Prepares data for export.
+      @export_entries = build_export_entries(params[:query])
 
-    elsif params[:query] == "del"
-      # Export: all deleted entries from an original dictionary.
-      if @user_dictionary.nil?
-        @view_entries = [ ]
-      else
-        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
-        @view_entries = @dictionary.entries.select("view_title, label, uri").find(removed_entry_ids)
-      end    
-
-    elsif params[:query] == "new"
-      # Export: all new entries.
-      if @user_dictionary.nil?
-        @view_entries = [ ]
-      else
-        @view_entries = @user_dictionary.new_entries.select("view_title, label, uri")
-      end
-
-    elsif params[:query] == "ori_del"
-      # Export: entries of an original dictionary that are not deleted by a user.
-       if @user_dictionary.nil?
-        @view_entries = @dictionary.entries
-      else
-        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
-        @view_entries = @dictionary.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri")
-      end
-
-    elsif params[:query] == "ori_del_new"
-      # Export: a list of active entries of an original and user dictionaries.
-       if @user_dictionary.nil?
-        @view_entries = @dictionary.entries
-      else
-        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
-        new_entries       = @user_dictionary.new_entries  
-
-        @view_entries = @dictionary.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri") + new_entries
-      end
-    
     else
-      # Show (default):
-      #   Shows the content of a dictionary and its associated user dictionary.
+      # Paginated (original) entries.
+      @pg_entries = @dictionary.search_entries( params[:entry_search], 
+                                                params[:entry_sort], 
+                                                params[:entries_page] )
 
-      # 1. Prepares a paginated_entriesginated entry list.
-      
-      if sort_dictionary == "base_dic"
-        @paginated_entries = @dictionary.entries.reorder(sort_column + " " + sort_direction).paginate(page: params[:entries_page], per_page: 15)
-      else
-        @paginated_entries = @dictionary.entries.paginate(page: params[:entries_page], per_page: 15)
-      end
-      @n_entries         = @dictionary.entries.count
-
-      # 2. Prepares a paginated new_entry list, andn a list of removed entries 
-      #   (to be used in entries_helper.rb).
-      @n_new_entries   = 0
+      # Paginated new_entries and a set of removed entry IDs.
       if not @user_dictionary.nil?
-        if sort_dictionary == "user_dic"
-          @paginated_new_entries = @user_dictionary.new_entries.reorder(sort_column + " " + sort_direction).paginate page: params[:new_entries_page], per_page: 10
-        else
-          @paginated_new_entries = @user_dictionary.new_entries.paginate page: params[:new_entries_page], per_page: 10
-        end
-        @n_new_entries         = @user_dictionary.new_entries.count
-        @n_removed_entries     = @user_dictionary.removed_entries.count
-
-        @removed_entries       = Set.new( RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq )
+        @pg_new_entries  = @user_dictionary.search_new_entries( params[:new_entry_search], 
+                                                                params[:new_entry_sort], 
+                                                                params[:new_entries_page] )
+        
+        @removed_entries = Set.new( RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq )
       end
-
     end
-
 
     respond_to do |format|
       format.html # show.html.erb
-      format.tsv { send_data tsv_data(@view_entries), filename: "#{@dictionary.title}.#{params[:query]}.tsv.txt", type: "text/tsv" }
+      format.tsv { send_data tsv_data(@export_entries), 
+                             filename: "#{@dictionary.title}.#{params[:query]}.tsv", 
+                            type: "text/tsv" }
     end
   end
 
 
-  # GET /dictionaries/new
-  # GET /dictionaries/new.json
   def new
     @dictionary = Dictionary.new
     @dictionary.creator = current_user.email     # set the creator with the user name (email)
@@ -123,8 +66,6 @@ class DictionariesController < ApplicationController
   end
 
 
-  # POST /dictionaries
-  # POST /dictionaries.json
   def create
     # Creates a dictionary
     user = User.find(current_user.id)
@@ -158,42 +99,6 @@ class DictionariesController < ApplicationController
   end
 
 
-  # GET /dictionaries/1/edit
-  # def edit
-  #   @dictionary = Dictionary.find(params[:id])
-  #   b_editable  = is_current_user_same_to_creator?(@dictionary)
-
-  #   if b_editable
-  #     @dictionary
-  #   else
-  #     redirect_to :back, notice: "This dictionary is editable by only the creator (#{@dictionary.creator})."
-  #   end
-  # end
-  
-  # PUT /dictionaries/1
-  # PUT /dictionaries/1.json
-  # def update
-  #   @dictionary = Dictionary.find(params[:id])
-  #   b_updatable = is_current_user_same_to_creator?(@dictionary)
-
-  #   respond_to do |format|
-  #     if b_updatable
-  #       if @dictionary.update_attributes(params[:dictionary])
-  #         format.html { redirect_to @dictionary, notice: 'Dictionary was successfully updated.' }
-  #         format.json { head :no_content }
-  #       else
-  #         format.html { render action: "edit" }
-  #         format.json { render json: @dictionary.errors, status: :unprocessable_entity }
-  #       end
-  #     else   
-  #       format.html { redirect_to :back, notice: "This dictionary can be updated by only the creator (#{@dictionary.creator})." }
-  #       # format.json { blah blah blah... }
-  #     end
-  #   end
-  # end
-
-  # DELETE /dictionaries/1
-  # DELETE /dictionaries/1.json
   def destroy
     @dictionary = Dictionary.find(params[:id])
     
@@ -237,10 +142,58 @@ class DictionariesController < ApplicationController
 
   private
 
+
+  # Creates a list of entries for export.
+  def build_export_entries(export_type)
+    export_entries = [ ]
+
+    if export_type == "ori"
+      # Export: all entries of an original dictionary.
+      export_entries = @dictionary.entries.select("view_title, label, uri")
+
+    elsif export_type == "del"
+      # Export: all deleted entries from an original dictionary.
+      if not @user_dictionary.nil?
+        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
+        export_entries = @dictionary.entries.select("view_title, label, uri").find(removed_entry_ids)
+      end    
+
+    elsif export_type == "new"
+      # Export: all new entries.
+      if not @user_dictionary.nil?
+        export_entries = @user_dictionary.new_entries.select("view_title, label, uri")
+      end
+
+    elsif export_type == "ori_del"
+      # Export: entries of an original dictionary that are not deleted by a user.
+      if @user_dictionary.nil?
+        export_entries = @dictionary.entries
+      else
+        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
+        export_entries = @dictionary.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri")
+      end
+
+    elsif export_type == "ori_del_new"
+      # Export: a list of active entries of an original and user dictionaries.
+      if @user_dictionary.nil?
+        export_entries = @dictionary.entries
+      else
+        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
+        new_entries       = @user_dictionary.new_entries  
+
+        export_entries = @dictionary.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri") + new_entries
+      end
+    end
+
+    export_entries
+  end
+
+
   # Converts a collection of entries in tsv format
   def tsv_data(entries)
     entries.collect{ |e| "#{e.view_title}\t#{e.label}\t#{e.uri}\n" }.join
   end
+
 
   # Fills entries for a given dictionary
   def fill_dic(dic_params)
@@ -332,16 +285,5 @@ class DictionariesController < ApplicationController
     end
   end
 
-  def sort_dictionary
-    params[:sort_dictionary].nil? ? "base_dic" : params[:sort_dictionary]
-  end
-
-  def sort_column
-    Entry.column_names.include?(params[:sort_column]) ? params[:sort_column] : "view_title"
-  end
-
-  def sort_direction
-    %w[asc desc].include?(params[:sort_direction]) ? params[:sort_direction] : "asc"
-  end
 
 end

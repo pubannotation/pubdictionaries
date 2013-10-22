@@ -5,4 +5,5 @@ class Entry < ActiveRecord::Base
   belongs_to :dictionary
 
   validates :uri, :label, :view_title, :search_title, :presence => true
+
 end

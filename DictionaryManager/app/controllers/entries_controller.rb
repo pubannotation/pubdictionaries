@@ -1,25 +1,5 @@
 class EntriesController < ApplicationController
-  ###########################
-  #####     Methods     #####
-  ###########################
-
-  def get_user_dictionary(user_id, dictionary_id)
-    user_dictionary = UserDictionary.where({ user_id: user_id, dictionary_id: dictionary_id }).first
-    if user_dictionary.nil?
-      user_dictionary = UserDictionary.new({ user_id: user_id, dictionary_id: dictionary_id })
-      user_dictionary.save
-    end
-
-    return user_dictionary
-  end
-
-  def register_removed_entry(user_dictionary, entry)
-    removed_entry = user_dictionary.removed_entries.new
-    removed_entry.entry_id = entry.id
-    removed_entry.save
-  end
-
-
+ 
   ###########################
   #####     Actions     #####
   ###########################
@@ -40,6 +20,7 @@ class EntriesController < ApplicationController
     render template: 'new_entries/new'
   end
 
+  
   # Destroy action works in two ways: 
   #   1) remove a base dictionary entry (not from db) or
   #   2) restore a removed base dictionary entry
@@ -68,4 +49,30 @@ class EntriesController < ApplicationController
     # redirect_to @dictionary     # This command will show the FIRST page of the dictionary.
     redirect_to :back             # This redirect_to will show the current page :-)
   end
+
+  
+  ###########################
+  #####     Methods     #####
+  ###########################
+
+  private
+
+  def get_user_dictionary(user_id, dictionary_id)
+    user_dictionary = UserDictionary.where({ user_id: user_id, dictionary_id: dictionary_id }).first
+    if user_dictionary.nil?
+      user_dictionary = UserDictionary.new({ user_id: user_id, dictionary_id: dictionary_id })
+      user_dictionary.save
+    end
+
+    return user_dictionary
+  end
+
+  def register_removed_entry(user_dictionary, entry)
+    removed_entry = user_dictionary.removed_entries.new
+    removed_entry.entry_id = entry.id
+    removed_entry.save
+  end
+
+
+
 end

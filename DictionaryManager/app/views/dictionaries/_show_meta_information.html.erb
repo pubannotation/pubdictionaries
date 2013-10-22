@@ -1,0 +1,20 @@
+<fieldset>
+  <legend>Dictionary name: <%= @dictionary.title %></legend>
+  
+  <!-- Show the meta-information of a current dictionary -->
+  <table>
+    <tr><th>Creator:</th><td><%= @dictionary.creator %></td>
+    <tr><th>Description:</th><td><%= h(@dictionary.description).gsub(/\n/, '<br/>').html_safe %></td></tr>
+    <tr>
+      <th>Export:</th>
+      <td>
+        <%= link_to 'Original', dictionary_path(format: "tsv", query: "ori") %> | 
+        <%= link_to 'Disabled', dictionary_path(format: "tsv", query: "del") %> | 
+        <%= link_to 'Added', dictionary_path(format: "tsv", query: "new") %> |
+        <%= link_to 'Original-Disabled', dictionary_path(format: "tsv", query: "ori_del") %> | 
+        <%= link_to 'Original-Disabled+Added', dictionary_path(format: "tsv", query: "ori_del_new") %>
+        
+      </td>
+    </tr>
+  </table>
+</fieldset>
