@@ -8,7 +8,7 @@ class EntriesController < ApplicationController
   # ?? Is this right approach ??
   def new
     # 1. Get the current dictionary
-    @dictionary = Dictionary.find(params[:dictionary_id])
+    @dictionary = Dictionary.find_by_title(params[:dictionary_id])
 
     # 2. Get (or create) a user dictionary belongs_to @dictionary and user
     @user_dictionary = get_user_dictionary( current_user.id, @dictionary.id )
@@ -26,7 +26,7 @@ class EntriesController < ApplicationController
   #   2) restore a removed base dictionary entry
   #
   def destroy
-    @dictionary = Dictionary.find(params[:dictionary_id])
+    @dictionary = Dictionary.find_by_title(params[:dictionary_id])
     @entry      = @dictionary.entries.find(params[:id])
 
     # 1. Get (or create) a user dictionary

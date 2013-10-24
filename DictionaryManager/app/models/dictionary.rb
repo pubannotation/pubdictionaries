@@ -12,7 +12,7 @@ class Dictionary < ActiveRecord::Base
   validates :creator, :description, :title, :presence => true
   validates :title, uniqueness: true
 
-  # Sort option constants.
+  # Sets the constant values of the sort option.
   SORT_BY = [ [ "Entity name (asc)",   "view_title asc" ], 
               [ "Entity name (desc)",  "view_title desc" ],
               [ "Label (asc)",         "label asc" ], 
@@ -21,6 +21,7 @@ class Dictionary < ActiveRecord::Base
               [ "ID (desc)",           "uri desc" ],
             ]
 
+  # Supports search func.
   def search_entries(query, order, page)
     if order.nil? or order == ""
       order = "view_title asc"
@@ -35,6 +36,11 @@ class Dictionary < ActiveRecord::Base
     else
       entries.paginate(:per_page => 15, :page => page).reorder(order)
     end
+  end
+
+  # Uses dictionary names instead of ids for constructing URLs.
+  def to_param
+    title
   end
 
 end

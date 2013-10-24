@@ -8,7 +8,7 @@ class NewEntriesController < ApplicationController
     # 1. Create a new new_entry for the user_dictionary
     user_dictionary = UserDictionary.find(params[:user_dictionary_id])
 
-    dictionary = Dictionary.find(user_dictionary[:dictionary_id])
+    dictionary = Dictionary.find_by_title(user_dictionary[:dictionary_id])
     norm_opts = { lowercased:       dictionary[:lowercased], 
                   hyphen_replaced:  dictionary[:hyphen_replaced],
                   stemmed:          dictionary[:stemmed],
@@ -22,7 +22,7 @@ class NewEntriesController < ApplicationController
                   })
     
     # 2. Find the dictionary that involves the current user dictionary
-    @dictionary = Dictionary.find(user_dictionary.dictionary_id)
+    @dictionary = Dictionary.find_by_title(user_dictionary.dictionary_id)
 
     # 3. Send a response
     if @new_entry.save
@@ -37,7 +37,7 @@ class NewEntriesController < ApplicationController
 
     # Find the dictionary, which @new_entry belongs to, for redirection
     user_dictionary = UserDictionary.find(@new_entry.user_dictionary_id)
-    dictionary      = Dictionary.find(user_dictionary.dictionary_id)
+    dictionary      = Dictionary.find_by_title(user_dictionary.dictionary_id)
 
     # Destroy a new_entry in the user_dictionary
     @new_entry.destroy

@@ -23,7 +23,7 @@ class DictionariesController < ApplicationController
   # Shows the content of an original dictionary and its corresponding user dictionary.
   #
   def show
-    @dictionary       = Dictionary.find(params[:id])
+    @dictionary       = Dictionary.find_by_title(params[:id])
     @user_dictionary  = @dictionary.user_dictionaries.where(user_id: current_user.id).first
          
     if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
@@ -100,7 +100,7 @@ class DictionariesController < ApplicationController
 
 
   def destroy
-    @dictionary = Dictionary.find(params[:id])
+    @dictionary = Dictionary.find_by_title(params[:id])
     
     respond_to do |format|
       if is_current_user_same_to_creator?(@dictionary)
