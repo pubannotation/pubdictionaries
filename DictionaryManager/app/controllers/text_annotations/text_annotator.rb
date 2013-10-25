@@ -62,7 +62,7 @@ class TextAnnotator
 			# Assumes that each ID has a unique label
 			entries = pgr.get_entries_from_db(id, :uri)
 			if entries.empty?
-				results[id] = "NULL"
+				results[id] = nil
 			else
 				results[id] = entries[0][:label]	
 			end

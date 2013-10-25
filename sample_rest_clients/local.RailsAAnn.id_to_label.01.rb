@@ -35,7 +35,7 @@ puts
 puts response.code
 puts
 
-puts JSON.parse(response)["labels"].inspect
+puts JSON.parse(response)["denotations"].inspect
 puts 
 
 
