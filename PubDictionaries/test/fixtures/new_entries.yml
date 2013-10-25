@@ -1,0 +1,13 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+one:
+  title: MyString
+  label: MyString
+  uri: MyString
+  user_dictionary_id: 1
+
+two:
+  title: MyString
+  label: MyString
+  uri: MyString
+  user_dictionary_id: 1

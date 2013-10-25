@@ -1,0 +1,3 @@
+class UserDictionariesController < ApplicationController
+ 
+end

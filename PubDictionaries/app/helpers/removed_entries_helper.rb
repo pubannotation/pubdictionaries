@@ -1,0 +1,2 @@
+module RemovedEntriesHelper
+end

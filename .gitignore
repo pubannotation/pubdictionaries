@@ -1,15 +1,15 @@
 # Bundler config
-DictionaryManager/.bundle
+PubDictionaries/.bundle
 
 
 # Database.
-DictionaryManager/db/*.sqlite3
-DictionaryManager/public/simstring_dbs/*
+PubDictionaries/db/*.sqlite3
+PubDictionaries/public/simstring_dbs/*
 
 # All logfiles and tempfiles.
 *.pid
 *.log
-DictionaryManager/tmp
+PubDictionaries/tmp
 AutomaticAnnotator/tmp
 
 # SimString compiled files #

@@ -1,0 +1,2 @@
+module NewEntriesHelper
+end

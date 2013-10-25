@@ -1,0 +1,86 @@
+<div class="dictionaries_page">
+
+<%= form_for([@user, @dictionary]) do |f| %>
+  <% if @dictionary.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@dictionary.errors.count, "error") %> prohibited this dictionary from being saved:</h2>
+
+      <ul>
+      <% @dictionary.errors.full_messages.each do |msg| %>
+        <li><%= msg %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= f.label :title, "Dictionary name:" %><br />
+    <%= f.text_field :title %>
+  </div>
+  
+  <div class="field">
+    <%= f.label :creator, "Creator:" %><br />
+    <%= f.text_field :creator, readonly: true %>
+  </div>
+
+  <div class="field">
+    Options for dictionary search:
+    <table>
+      <tr>
+        <td width="20"></td>
+        <td><%= f.label :lowercased, "1. Use case-insensitive search" %></td>
+        <td><%= f.check_box :lowercased, {:checked => true }%></td>
+      </tr>
+      <tr>
+        <td width="20"></td>
+        <td><%= f.label :hyphen_replaced, "2. Replace a hyphen with a space" %></td>
+        <td><%= f.check_box :hyphen_replaced, {:checked => true }%></td>
+      </tr>
+      <tr>
+        <td width="20"></td>
+        <td><%= f.label :stemmed, "3. Perform stemming using Porter stemmer" %></td>
+        <td><%= f.check_box :stemmed, {:checked => true }%></td>
+      </tr>
+    </table>
+  </div>
+  
+  <div class="field">
+    <%= f.label :description, "Description of this dictionary:" %><br />
+    <%= f.text_area :description %>
+  </div>
+
+  <div>
+    <pre>
+    -- Upload a dictionary file --
+
+      A dictionary file is a plan text file in which every row 
+    represents a different entry. An entry consists of three 
+    elements that are <b>entry name</b>, <b>label</b>, and <b>ID</b> which are separated 
+    by a tab or a comma (depending on the element separator chosen 
+    below).
+
+      <b>Be careful that a selected separator should not be used as a
+    part of entry name, label, nor ID.</b>
+    </pre>
+
+    <br />
+    <div class="field">
+      <%= f.label :separator, "Separator:" %>
+      <%= f.radio_button :separator, "\t", {checked: true} %> Tab, 
+      <%= f.radio_button :separator, "," %> Comma
+    </div>
+
+    <div class="field">
+      <%= f.label :file, "Dictionary File:" %>
+      <%= f.file_field :file %>
+    </div>
+    <br/>
+  </div>
+
+  <div class="actions">
+    <%= f.submit "Create"%>
+  </div>
+
+<% end %>
+
+</div>

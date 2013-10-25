@@ -1,0 +1,6 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+EntrezGeneDictionary:
+  title: EntrezGene
+  creator: priancho@gmail.com
+  description: EntrezGene dictionary

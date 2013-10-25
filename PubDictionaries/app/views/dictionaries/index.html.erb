@@ -1,0 +1,33 @@
+<div class="dictionaries_page">
+
+<fieldset>
+  <legend>List of dictionaries</legend>
+
+  <table class="dictionaries">
+    <tr>
+      <th class="dictionary_name">Dictionary name</th>
+      <th class="creator">Creator</th>
+      <th class="description">Description</th>
+      <th class="options">Options</th>
+    </tr>
+    <% @dictionaries.each do |dictionary| %>
+      <div class="dictionary">
+        <tr>
+          <td><%= dictionary.title %></td>
+          <td><%= dictionary.creator %></td>
+          <td><%= dictionary.description %></td>
+          <td>
+            <%= link_to 'Show', dictionary %> |
+            <%#= link_to 'Edit', edit_dictionary_path(dictionary) %> <!-- | -->
+            <%= link_to 'Delete', dictionary, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+        </tr>
+      </div>
+    <% end %>
+  </table>
+</fieldset>
+<br />
+
+<%= link_to 'New Dictionary', new_dictionary_path %>
+
+<div class="dictionaries_page">
+

@@ -1,0 +1,22 @@
+<% if not removed?(entry) %>
+  <tr class="dictionary_entry">
+<% else %>
+  <tr class="removed_dictionary_entry">
+<% end %>
+    <td class="entry_title"><%= entry.view_title %></td>
+    <td class="entry_label">
+      <% if entry.label %>
+        <%= entry.label %>
+      <% else %>
+        <i>null</i>
+      <% end %>
+    </td>
+    <td class="entry_uri"><%= entry.uri %></td>
+    <td>
+      <% if not removed?(entry) %>
+        <%= button_to 'Delete', dictionary_entry_path(@dictionary, entry), method: :delete %> 
+      <% else %>
+        <%= button_to 'Restore', dictionary_entry_path(@dictionary, entry), method: :delete %>
+      <% end %>
+    </td>
+  </tr>

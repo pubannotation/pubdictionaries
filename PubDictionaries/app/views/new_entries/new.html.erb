@@ -1,0 +1,13 @@
+<div class="dictionaries_page">
+
+<fieldset>
+  <legend>New entry</legend>
+
+  <!-- this template will be called from a different controller, "entries."
+       Therefore, render command uses a full path from app/view/ directory. -->
+  <%= render 'new_entries/form' %>
+</fieldset>
+
+<%= link_to 'Back', dictionary_path(@dictionary) %>
+
+</div>

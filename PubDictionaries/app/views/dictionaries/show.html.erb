@@ -1,0 +1,24 @@
+<div class="dictionaries_page">
+
+  <!-- Show information about a dictionary -->
+  <div class="dictionary_information">
+    <%= render 'show_meta_information' %>
+  </div>
+  <br />
+
+  <!-- Show a list of (original) entries -->
+  <% if not @dictionary.entries.empty? %>
+    <%= render 'show_entries' %>
+  <% end %>
+  <br />
+
+  <!-- Show a list of new_entries of the user dictionary corresponding to the current dictionary -->
+  <% if not @user_dictionary.nil? and not @user_dictionary.new_entries.empty? %>
+    <%= render 'show_new_entries' %>
+  <% end %> 
+  <br />
+
+  <%= link_to 'Add an Entry', new_dictionary_entry_path(@dictionary) %> | 
+  <%= link_to 'Back', dictionaries_path %>
+
+</div>
