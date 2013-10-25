@@ -38,7 +38,9 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
-  # Uses dictionary names instead of ids for constructing URLs.
+  # Overrides original to_param so that it returns title, not ID, for
+  #   constructing URLs. Use Model#find_by_title() instead of 
+  #   Model.find() in controllers.
   def to_param
     title
   end

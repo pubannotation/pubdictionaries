@@ -1,11 +1,15 @@
 require 'set'
+
+
 require File.join( Rails.root, '..', 'simstring-1.0/swig/ruby/simstring')
+require File.join( File.dirname( __FILE__ ), 'text_annotations/automatic_annotator' )
 
 
 class DictionariesController < ApplicationController
-  helper_method :sort_column, :sort_direction, :sort_dictionary
-
+  # Do not check authenticity_token against rest client APIs.
+  skip_before_filter :verify_authenticity_token, only: [:text_annotations]
  
+
   ###########################
   #####     ACTIONS     #####
   ###########################
@@ -133,6 +137,28 @@ class DictionariesController < ApplicationController
         # format.json ...
       end
     end
+  end
+
+
+  # REST API for text annotation:
+  #     Annotates a given text using a base dictionary (and its corresponding
+  #   user dictionary if a user is logged in).
+  #
+  def text_annotations
+    # Retrieves annotation and options data.
+    ann, opts = get_text_ann_data(params["annotation"], params["options"])
+
+    # Creates an annotator with a given dictionary(params[:id]) name.
+    annotator = AutomaticAnnotator.new(params[:id])
+
+    # Annotates an input text
+    results = annotator.annotate(ann, opts)
+
+    # Returns the result
+    respond_to do |format|
+      format.json { render json: results }
+    end
+  
   end
 
 
@@ -283,6 +309,14 @@ class DictionariesController < ApplicationController
         end
       end
     end
+  end
+
+
+  def get_text_ann_data(json_ann, json_opts)
+    ann   = json_ann.nil? ? nil : JSON.parse(json_ann)
+    opts  = json_opts.nil? ? nil : JSON.parse(json_opts)
+
+    [ann, opts]
   end
 
 

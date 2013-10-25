@@ -20,12 +20,13 @@ PubDictionaries::Application.routes.draw do
       # collection do
       #   get 'multiple_new'
       #   post 'multiple_create'
-      # end
+      # end  
+    end
 
-      # add routes as a member, /entry/:id/...
-      # member do
-      #  get 'multiple_new'
-      # end
+    # Adds routes as a member, /entry/:id/...
+    member do
+      # Automatic text annotation.
+      post 'text_annotations'
     end
   end
 

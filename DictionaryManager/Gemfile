@@ -3,6 +3,8 @@ source 'https://rubygems.org'
 gem 'rails', '3.2.13'
 gem 'stemmify'
 gem 'activerecord-import', '~> 0.3.1'
+gem 'sequel'
+gem 'triez'
 
 # Deploy with Capistrano
 gem 'capistrano'
