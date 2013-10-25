@@ -12,6 +12,7 @@ json_annotation = JSON.generate( {
 	"text"      => text,
 	} )
 json_options = JSON.generate( {
+	"task" => "annotation", 
 	"matching_method" => "exact",
 	"min_tokens" => 2,
 	"threshold" => 0.7,

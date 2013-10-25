@@ -18,7 +18,7 @@ require File.join( File.dirname( __FILE__ ), 'query_builder' )
 require File.join( File.dirname( __FILE__ ), 'post_processor' )
 
 
-class AutomaticAnnotator
+class TextAnnotator
 	def initialize(dictionary_name)
 		@dictionary_name = dictionary_name
 		@options = { "min_tokens"       => 1,
@@ -33,7 +33,7 @@ class AutomaticAnnotator
 	#
 	#   @params
 	#     ann["text"]         - an input text for annotation.
-	#     ann["dennotations"] - the output variable.
+	#     ann["dennotations"] - a list of annotation objects ( [{:begin, :end, :obj}, ...] ) .
 	#     opts                - a hash consisting of annotation options.
 	#
 	def annotate(ann, opts)
@@ -46,6 +46,32 @@ class AutomaticAnnotator
 		end
 
 		results
+	end
+
+	# Returns a hash of ID-LABEL pairs for an input list of IDs.
+	#
+	#   @params
+	#     ann["ids"]         - a list of IDs.
+	#     ann["denotations"] - a hash of ID-Label pairs.
+	#
+	def id_to_label(ann, opts)
+		pgr = POSTGRESQL_RETRIEVER.new(@dictionary_name)
+
+		results = {}
+		ann["ids"].each do |id|
+			# Assumes that each ID has a unique label
+			entries = pgr.get_entries_from_db(id, :uri)
+			if entries.empty?
+				results[id] = "NULL"
+			else
+				results[id] = entries[0][:label]	
+			end
+		end
+
+		ann["denotations"] = [] unless ann["denotations"]
+		ann["denotations"] = results
+		
+		ann
 	end
 
 	
@@ -137,34 +163,6 @@ class AutomaticAnnotator
 			}
 		end
 	end
-	
-
-	# # Returns a hash of ID-LABEL pairs for an input list of IDs.
-	# post '/rest_api/ids_to_labels/?' do 
-	# 	data     = JSON.parse( params[:data] )
-	# 	options  = JSON.parse( params[:options] )
-
-	# 	pgr = POSTGRESQL_RETRIEVER.new(get_param("dictionary_name", options))
-
-	# 	ids     = get_param("ids", data)
-	# 	labels  = {}
-	# 	ids.each do |id|
-	# 		# Assumes that each ID has a unique label
-	# 		entries = pgr.get_entries_from_db(id, :uri)
-	# 		if entries.empty?
-	# 			labels[id] = "NULL"
-	# 		else
-	# 			labels[id] = entries[0][:label]	
-	# 		end
-	# 	end
-
-	# 	data["labels"] = labels
-
-	# 	headers 'Content-Type' => 'application/json'
-	# 	body data.to_json
-	# end
-
-
 
 end
 

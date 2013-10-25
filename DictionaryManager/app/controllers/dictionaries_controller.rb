@@ -2,7 +2,7 @@ require 'set'
 
 
 require File.join( Rails.root, '..', 'simstring-1.0/swig/ruby/simstring')
-require File.join( File.dirname( __FILE__ ), 'text_annotations/automatic_annotator' )
+require File.join( File.dirname( __FILE__ ), 'text_annotations/text_annotator' )
 
 
 class DictionariesController < ApplicationController
@@ -149,10 +149,14 @@ class DictionariesController < ApplicationController
     ann, opts = get_text_ann_data(params["annotation"], params["options"])
 
     # Creates an annotator with a given dictionary(params[:id]) name.
-    annotator = AutomaticAnnotator.new(params[:id])
+    annotator = TextAnnotator.new(params[:id])
 
     # Annotates an input text
-    results = annotator.annotate(ann, opts)
+    if opts["task"] == "annotation"
+      results = annotator.annotate(ann, opts)
+    elsif opts["task"] == "id_to_label"
+      results = annotator.id_to_label(ann, opts)
+    end
 
     # Returns the result
     respond_to do |format|
