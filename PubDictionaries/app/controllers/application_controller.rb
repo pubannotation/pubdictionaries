@@ -1,10 +1,10 @@
 require 'stemmify'
 
+
+
 class ApplicationController < ActionController::Base
-  # before_filter :authenticate_user!
-
   protect_from_forgery
-
+  
   # Returns true if the creator of a dictionary is same to the current_user (devise gem)
   def is_current_user_same_to_creator?(dictionary)
     if dictionary.creator == current_user.email

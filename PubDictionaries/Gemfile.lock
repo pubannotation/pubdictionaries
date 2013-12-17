@@ -80,6 +80,8 @@ GEM
     orm_adapter (0.4.0)
     pg (0.16.0)
     polyglot (0.3.3)
+    rabl (0.9.3)
+      activesupport (>= 2.3.14)
     rack (1.4.5)
     rack-cache (1.2)
       rack (>= 0.4)
@@ -154,10 +156,11 @@ DEPENDENCIES
   activerecord-import (~> 0.3.1)
   capistrano
   coffee-rails (~> 3.2.1)
-  devise
+  devise (= 3.0.3)
   jquery-rails
   libv8
   pg
+  rabl
   rails (= 3.2.13)
   rvm-capistrano
   sass-rails (~> 3.2.3)

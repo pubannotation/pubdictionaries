@@ -6,9 +6,9 @@ require File.join( File.dirname( __FILE__ ), 'text_annotations/text_annotator' )
 
 
 class DictionariesController < ApplicationController
-  # Do not check authenticity_token against rest client APIs.
-  skip_before_filter :verify_authenticity_token, only: [:text_annotations]
- 
+  # Requres authentication for all actions except :index and :show
+  before_filter :authenticate_user!, except: [:index, :show]
+  skip_before_filter :verify_authenticity_token, :if => Proc.new { |c| c.request.format == 'application/json' }
 
   ###########################
   #####     ACTIONS     #####
@@ -23,24 +23,29 @@ class DictionariesController < ApplicationController
     end
   end
 
+
   #
   # Shows the content of an original dictionary and its corresponding user dictionary.
   #
   def show
+    # Gets the selected dictionary and the user dictionary connected to it.
     @dictionary       = Dictionary.find_by_title(params[:id])
-    @user_dictionary  = @dictionary.user_dictionaries.where(user_id: current_user.id).first
+    if user_signed_in?
+      @user_dictionary  = @dictionary.user_dictionaries.where(user_id: current_user.id).first
+    end
          
+    # Export? or Show?
     if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
       # Prepares data for export.
       @export_entries = build_export_entries(params[:query])
 
     else
-      # Paginated (original) entries.
+      # Prepares paginated (original) entries.
       @pg_entries = @dictionary.search_entries( params[:entry_search], 
                                                 params[:entry_sort], 
                                                 params[:entries_page] )
 
-      # Paginated new_entries and a set of removed entry IDs.
+      # Prepares paginated new_entries and a set of removed entry IDs.
       if not @user_dictionary.nil?
         @pg_new_entries  = @user_dictionary.search_new_entries( params[:new_entry_search], 
                                                                 params[:new_entry_sort], 
@@ -79,14 +84,12 @@ class DictionariesController < ApplicationController
     
     b_basedic_saved = @dictionary.save
 
-
     # Fills the entries of the dictionary
     b_entries_saved = false
     if b_basedic_saved
       b_entries_saved = fill_dic(params[:dictionary])
     end
 
- 
     respond_to do |format|
       if b_basedic_saved and b_entries_saved
         create_simstring_db
@@ -140,9 +143,9 @@ class DictionariesController < ApplicationController
   end
 
 
-  # REST API for text annotation:
+  # This is a REST API for text annotation:
   #     Annotates a given text using a base dictionary (and its corresponding
-  #   user dictionary if a user is logged in).
+  #   user dictionary).
   #
   def text_annotations
     # Retrieves annotation and options data.
@@ -169,9 +172,7 @@ class DictionariesController < ApplicationController
   ###########################
   #####     METHODS     #####
   ###########################
-
   private
-
 
   # Creates a list of entries for export.
   def build_export_entries(export_type)
@@ -218,12 +219,10 @@ class DictionariesController < ApplicationController
     export_entries
   end
 
-
   # Converts a collection of entries in tsv format
   def tsv_data(entries)
     entries.collect{ |e| "#{e.view_title}\t#{e.label}\t#{e.uri}\n" }.join
   end
-
 
   # Fills entries for a given dictionary
   def fill_dic(dic_params)
@@ -269,7 +268,6 @@ class DictionariesController < ApplicationController
     return str_error
   end
 
-
   # Creates a simstring db
   def create_simstring_db
     dbfile_path = Rails.root.join('public/simstring_dbs', params[:dictionary][:title]).to_s
@@ -289,7 +287,6 @@ class DictionariesController < ApplicationController
     logger.debug "... Finishes generating a simstring DB."
     logger.debug "...... Total time elapsed: #{Time.new - time_start} seconds"
   end
-
 
   # Deletes a simstring db and associated files
   def delete_simstring_db( filename )
@@ -315,13 +312,11 @@ class DictionariesController < ApplicationController
     end
   end
 
-
   def get_text_ann_data(json_ann, json_opts)
     ann   = json_ann.nil? ? nil : JSON.parse(json_ann)
     opts  = json_opts.nil? ? nil : JSON.parse(json_opts)
 
     [ann, opts]
   end
-
 
 end

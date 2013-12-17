@@ -58,5 +58,8 @@ module PubDictionaries
 
     # Version of your assets, change this if you want to expire all your assets
     config.assets.version = '1.0'
+
+	# Use SSL
+	# config.force_ssl = true
   end
 end
