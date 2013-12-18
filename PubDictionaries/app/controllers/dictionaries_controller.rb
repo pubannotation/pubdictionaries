@@ -6,9 +6,11 @@ require File.join( File.dirname( __FILE__ ), 'text_annotations/text_annotator' )
 
 
 class DictionariesController < ApplicationController
-  # Requres authentication for all actions except :index and :show
+  # Require authentication for all actions except :index and :show
   before_filter :authenticate_user!, except: [:index, :show]
-  skip_before_filter :verify_authenticity_token, :if => Proc.new { |c| c.request.format == 'application/json' }
+  # Disable CSRF check for actions 
+  skip_before_filter :verify_authenticity_token, :only => [:text_annotations], :if => Proc.new { |c| c.request.format == 'application/json' }
+
 
   ###########################
   #####     ACTIONS     #####
@@ -143,31 +145,39 @@ class DictionariesController < ApplicationController
   end
 
 
-  # This is a REST API for text annotation:
-  #     Annotates a given text using a base dictionary (and its corresponding
+  # Annotate a given text using a base dictionary (and its corresponding
   #   user dictionary).
   #
+  # Notice:
+  #     this action is called with auth_token; therefore, current_user in the session
+  #   will be used.
+  #
   def text_annotations
-    # Retrieves annotation and options data.
-    ann, opts = get_text_ann_data(params["annotation"], params["options"])
+    ann   = params["annotation"].nil? ? nil : JSON.parse(params["annotation"])
+    opts  = params["options"].nil?    ? nil : JSON.parse(params["options"])
 
-    # Creates an annotator with a given dictionary(params[:id]) name.
-    annotator = TextAnnotator.new(params[:id])
+    # Create a TextAnnotator instance
+    #
+    #   @params:
+    #     (string) params[:id]         - the base dictionary name
+    #     (User model) current_ user   - a user instance
+    #
+    annotator = TextAnnotator.new(params[:id], current_user)
 
-    # Annotates an input text
-    if opts["task"] == "annotation"
+    # Annotate an input text
+    if    opts["task"] == "annotation"
       results = annotator.annotate(ann, opts)
     elsif opts["task"] == "id_to_label"
       results = annotator.id_to_label(ann, opts)
     end
 
-    # Returns the result
+    # Return the result
     respond_to do |format|
-      format.json { render json: results }
+      format.json { render :json => results }
     end
-  
   end
 
+  
 
   ###########################
   #####     METHODS     #####
@@ -310,13 +320,6 @@ class DictionariesController < ApplicationController
         end
       end
     end
-  end
-
-  def get_text_ann_data(json_ann, json_opts)
-    ann   = json_ann.nil? ? nil : JSON.parse(json_ann)
-    opts  = json_opts.nil? ? nil : JSON.parse(json_opts)
-
-    [ann, opts]
   end
 
 end

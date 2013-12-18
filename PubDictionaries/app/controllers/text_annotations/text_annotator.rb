@@ -19,8 +19,9 @@ require File.join( File.dirname( __FILE__ ), 'post_processor' )
 
 
 class TextAnnotator
-	def initialize(dictionary_name)
-		@dictionary_name = dictionary_name
+	def initialize(base_dic_name, user)
+		@base_dic_name = base_dic_name
+		@user = user
 		@options = { "min_tokens"       => 1,
 		             "max_tokens"       => 5,
 		             "matching_method"  => "exact",     # "exact" or "approximate"
@@ -55,7 +56,7 @@ class TextAnnotator
 	#     ann["denotations"] - a hash of ID-Label pairs.
 	#
 	def id_to_label(ann, opts)
-		pgr = POSTGRESQL_RETRIEVER.new(@dictionary_name)
+		pgr = POSTGRESQL_RETRIEVER.new(@base_dic_name)
 
 		results = {}
 		ann["ids"].each do |id|
@@ -89,7 +90,7 @@ class TextAnnotator
 	# Text annotation based on exact string matching.
 	def annotate_based_on_exact_string_matching(ann)
 		qbuilder  = QUERY_BUILDER.new
-		pgr       = POSTGRESQL_RETRIEVER.new(@dictionary_name)
+		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user)
 		pproc     = POST_PROCESSOR.new
 
 
@@ -122,8 +123,8 @@ class TextAnnotator
 	# Text annotation based on approximate string matching.
 	def annotate_based_on_approximate_string_matching(ann)
 		qbuilder  = QUERY_BUILDER.new
-		ssr       = SIMSTRING_RETRIEVER.new(@dictionary_name)
-		pgr       = POSTGRESQL_RETRIEVER.new(@dictionary_name)
+		ssr       = SIMSTRING_RETRIEVER.new(@base_dic_name)
+		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name)
 		pproc     = POST_PROCESSOR.new
 
 

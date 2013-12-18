@@ -20,19 +20,22 @@ require File.join(File.dirname( __FILE__ ), "strsim")
 class POSTGRESQL_RETRIEVER
 	include Strsim
 
-	def initialize(dic_name)
+	def initialize(dic_name, user=nil)
 		# 1. open a database connection
 		adapter  = 'postgres'
 		host     = 'localhost'
 		port     = 5432
 		db       = 'unicorn_db_app1'
-		user     = 'nlp'
+		db_user  = 'nlp'
 		passwd   = 'dbcls_nlp_unicorn_development'
 
 		# TODO: exception handling here...
-		@db            = Sequel.connect( :adapter => adapter, :host => host, :port => port, 
-			                         :database => db, :user => user, :password => passwd )
+		@db            = Sequel.connect( 
+							:adapter => adapter, :host => host, :port => port, 
+			                :database => db, :user => db_user, :password => passwd 
+			             )
 		@dic_name      = dic_name
+		@user          = user
 		@results_cache = { }
 	end
 
@@ -137,42 +140,50 @@ class POSTGRESQL_RETRIEVER
 	end
 
 	# Gets entries from DB that have similar names to the query string
+	#   TODO: error handling, refactoring
+	#
 	def get_entries_from_db(query, target_column)
-		results   = [ ]
+		results = [] 
 		# gid_history  = Set.new
-
-		# TODO: error handling, refactoring
-		dic     = @db[:dictionaries].select(:id).where(:title => @dic_name).all
-		dic_id  = -1
+		
+		# 1. Get the base dictionary.
+		#   Notice:
+		#     Assume that the names of base dictionaries are unique.
+		#
+		dic = @db[:dictionaries].select(:id).where(:title => @dic_name).first
 		if dic.empty?
-			return [ ]
-		else
-			dic_id = dic.first[:id]
+			return results
 		end
 
-		user_dic              = @db[:user_dictionaries].select(:id).where(:dictionary_id => dic_id).all
-		user_dic_id           = -1
-		removed_entry_idlist  = []
-		if not user_dic.empty?
-			user_dic_id           = user_dic.first[:id]
-			removed_entry_idlist  = @db[:removed_entries].select(:entry_id).where(:user_dictionary_id => user_dic_id).all
+		# 2. Get the list of removed entries from the associated user dictionary.
+		#   Notice:
+		#     Assume that the user dictionary to a specific base dictionary is unique (only one)
+		#
+		user_dic = @db[:user_dictionaries].select(:id).where(:dictionary_id => dic[:id]).where(:user_id => @user.id).first
+		if user_dic.empty?
+			removed_entry_idlist  = []
+		else
+			# all.values -> convert a key-value hash to an array of values
+			removed_entry_idlist = @db[:removed_entries].select(:entry_id).where(:user_dictionary_id => user_dic[:id]).all.map do | item |
+				item[:entry_id]
+			end
 		end
 		
-		# Retrieves the entries for a given query except those are marked as removed
-		ds = @db[:entries].where(:dictionary_id => dic_id).where(target_column => query).exclude(:id => removed_entry_idlist)
+		# 3. Retrieve the entries for a given query except those are marked as removed
+		ds = @db[:entries].where(:dictionary_id => dic[:id]).where(target_column => query).exclude(:id => removed_entry_idlist)
 		ds.all.each do |row|
 			results << { label: row[:label], uri: row[:uri], title: row[:view_title] }
-
-			# use if the same gene id has not been found yet
+			# Use if the same gene id has not been found yet
 			# if not gid_history.include?( row[:uri] )
 			# 	results << { label: row[:label], uri: row[:uri], title: row[:title] }
 			# 	gid_history.add( row[:uri] )
 			# end
 		end
 
-		# Adds newly added entries by a user
-		if user_dic.empty?
-			ds = @db[:new_entries].where(:user_dictionary_id => user_dic_id).where(target_column => query)
+		# 4. Add newly added entries by a user
+		# if user_dic.empty?
+		if not user_dic.empty?
+			ds = @db[:new_entries].where(:user_dictionary_id => user_dic[:id]).where(target_column => query)
 			ds.all.each do |row|
 				results << { label: row[:label], uri: row[:uri], title: row[:view_title] }
 

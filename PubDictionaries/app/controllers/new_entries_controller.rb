@@ -12,7 +12,7 @@ class NewEntriesController < ApplicationController
     # 1. Create a new new_entry for the user_dictionary
     user_dictionary = UserDictionary.find(params[:user_dictionary_id])
 
-    dictionary = Dictionary.find_by_title(user_dictionary[:dictionary_id])
+    dictionary = Dictionary.find_by_id(user_dictionary[:dictionary_id])
     norm_opts = { lowercased:       dictionary[:lowercased], 
                   hyphen_replaced:  dictionary[:hyphen_replaced],
                   stemmed:          dictionary[:stemmed],
@@ -26,7 +26,7 @@ class NewEntriesController < ApplicationController
                   })
     
     # 2. Find the dictionary that involves the current user dictionary
-    @dictionary = Dictionary.find_by_title(user_dictionary.dictionary_id)
+    @dictionary = Dictionary.find_by_id(user_dictionary.dictionary_id)
 
     # 3. Send a response
     if @new_entry.save
