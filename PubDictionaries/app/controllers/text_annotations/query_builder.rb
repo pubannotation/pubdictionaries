@@ -4,10 +4,8 @@ Encoding.default_external="UTF-8"
 Encoding.default_internal="UTF-8"
 
 
-=begin
-	  For a given text, creates a list of queries. If an option is given, expand the original 
-	queries based on a specified threshold.
-=end
+# For a given text, creates a list of queries. If an option is given, expand the original 
+# queries based on a specified threshold.
 
 
 require 'triez'
@@ -19,20 +17,19 @@ require File.join( File.dirname( __FILE__ ), 'strsim' )
 class QUERY_BUILDER
 	include Strsim
 
+	# Initialize the query builder instance.
 	def initialize
-		# For query expansion
+		# Default values for query expansion
 		@measure        = "jaccard"
-		@threshold_gap  = 0.3     # Uses this to relax the threshold for PostgreSQL search 
+		@threshold_gap  = 0.3           # Uses this to relax the threshold for PostgreSQL search 
 	end
 	
-	################################################################################
+	# Create a series of normalized (!) queries from a document.
+	# 
+	# * text        - An input text.
+	# * build_opts  - A hash containing options for generating queries from the input text.
+	# * norm_opts   - A hash containing string normalization options for generating queries. 
 	#
-	#   Creates a series of normalized (!) queries from a document.
-	#
-	#   @return  key:    The normalized query string.
-	#            value:  The array of offsets (range values).
-	#
-	################################################################################
 	def build_queries(text, build_opts, norm_opts)
 		trier = TEXT_TO_TRIE.new( build_opts[:min_tokens],
 								  build_opts[:max_tokens],
@@ -44,37 +41,19 @@ class QUERY_BUILDER
 		                       	 norm_opts[:hyphen_replaced], 
 		                       	 norm_opts[:stemmed], 
 		                       	)
-
+		# queries  - A hash of key (the normalized query string) and value (the array of 
+		#            offsets (range values)) pairs.
 		queries
 	end
 
-	# Changes the format from queries to ext_queries
-	def change_format(queries)
-		ext_queries = [ ]
-		queries.each do |q, offsets|
-			offsets.each do |offset|
-				ext_queries << get_formatted_query(q, q, offset, 1.0)
-			end
-		end
-
-		ext_queries
-	end
-
-	# Get the formatted hash of annotation
-	def get_formatted_query(ext_query, ori_query, offset, sim)
-		{ requested_query: ext_query, original_query: ori_query, offset: offset, sim: sim }
-	end
-
-
-	################################################################################
-	#
-	#   Performs query expansion on normalized queries using both a base dictionary 
+	# Perform query expansion on normalized queries using both a base dictionary 
 	# (from SimString) and a user dictionary (from PostgreSQL).
 	# 
-	#   @return  [ {:requested_query => string, :original_query => string, 
-	#               :range => (begin...end), :sim => float}, ... ]
+	# * (list)    queries   - A list of queries.
+	# * (float)   threshold - A threshold for similarity search.
+	# * (object)  ssr       - A SimString retriever object.
+	# * (object)  pgr       - A Postgresql retriever object.
 	#
-	################################################################################
 	def expand_queries(queries, threshold, ssr, pgr)
 		ext_queries = []
 		queries.each do |q, offsets|
@@ -108,10 +87,39 @@ class QUERY_BUILDER
 				end
 			end
 		end
+	
+		#   @return  [ {:requested_query => string, :original_query => string, 
+		#               :range => (begin...end), :sim => float}, ... ]
+		ext_queries
+	end
+
+	# Change the format from queries to ext_queries
+	def change_format(queries)
+		ext_queries = [ ]
+		queries.each do |q, offsets|
+			offsets.each do |offset|
+				ext_queries << get_formatted_query(q, q, offset, 1.0)
+			end
+		end
 
 		ext_queries
 	end
 
+
+	###########################
+	##### PRIVATE METHODS #####
+	###########################	
+	private
+
+
+	# Get the formatted hash of annotation
+	def get_formatted_query(ext_query, ori_query, offset, sim)
+		{ requested_query: ext_query, original_query: ori_query, offset: offset, sim: sim }
+	end
+
+	# Because of the differece in the similarity calculation in the Postgresql and the SimString,
+	# we use a relaxed threshold first and then use the searched entries having similarity scores
+	# that are higher than the original threshold.
 	def relaxed_threshold(threshold)
 		if threshold > @threshold_gap
 			relaxed_threshold = threshold - @threshold_gap

@@ -20,11 +20,11 @@ require File.join(File.dirname( __FILE__ ), "strsim")
 class POSTGRESQL_RETRIEVER
 	include Strsim
 
-	def initialize(dic_name, user=nil)
+	def initialize(dic_name, user_id=nil)
 		# 1. open a database connection
 		adapter  = 'postgres'
 		host     = 'localhost'
-		port     = 5432
+		port     =  5432
 		db       = 'unicorn_db_app1'
 		db_user  = 'nlp'
 		passwd   = 'dbcls_nlp_unicorn_development'
@@ -35,7 +35,7 @@ class POSTGRESQL_RETRIEVER
 			                :database => db, :user => db_user, :password => passwd 
 			             )
 		@dic_name      = dic_name
-		@user          = user
+		@user_id       = user_id
 		@results_cache = { }
 	end
 
@@ -157,14 +157,16 @@ class POSTGRESQL_RETRIEVER
 
 		# 2. Get the list of removed entries from the associated user dictionary.
 		#   Notice:
-		#     Assume that the user dictionary to a specific base dictionary is unique (only one)
 		#
-		user_dic = @db[:user_dictionaries].select(:id).where(:dictionary_id => dic[:id]).where(:user_id => @user.id).first
-		if user_dic.empty?
+		user_dics = @db[:user_dictionaries].select(:id).where(:dictionary_id => dic[:id]).where(:user_id => @user_id)
+		if user_dics.empty?
 			removed_entry_idlist  = []
 		else
-			# all.values -> convert a key-value hash to an array of values
-			removed_entry_idlist = @db[:removed_entries].select(:entry_id).where(:user_dictionary_id => user_dic[:id]).all.map do | item |
+			# Assume that the user dictionary to a specific base dictionary is unique (only one)
+			target_user_dic = user_dics.first
+
+			# Convert a key-value hash to an array of values by using .all.values
+			removed_entry_idlist = @db[:removed_entries].select(:entry_id).where(:user_dictionary_id => target_user_dic[:id]).all.map do | item |
 				item[:entry_id]
 			end
 		end
@@ -182,8 +184,8 @@ class POSTGRESQL_RETRIEVER
 
 		# 4. Add newly added entries by a user
 		# if user_dic.empty?
-		if not user_dic.empty?
-			ds = @db[:new_entries].where(:user_dictionary_id => user_dic[:id]).where(target_column => query)
+		if not user_dics.empty?
+			ds = @db[:new_entries].where(:user_dictionary_id => target_user_dic[:id]).where(target_column => query)
 			ds.all.each do |row|
 				results << { label: row[:label], uri: row[:uri], title: row[:view_title] }
 

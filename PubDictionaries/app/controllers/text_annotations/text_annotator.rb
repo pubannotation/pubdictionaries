@@ -3,9 +3,9 @@
 Encoding.default_external="UTF-8"
 Encoding.default_internal="UTF-8"
 
-=begin
-	Annotates a free text using a PubDictionaries's dictionary.
-=end
+#
+# Annotate a free text using a PubDictionaries's dictionary.
+#
 
 
 require 'json'
@@ -18,10 +18,17 @@ require File.join( File.dirname( __FILE__ ), 'query_builder' )
 require File.join( File.dirname( __FILE__ ), 'post_processor' )
 
 
+# Provide functionalities for text annotation.
+# 
 class TextAnnotator
-	def initialize(base_dic_name, user)
+	# Initialize the text annotator instance.
+	#
+	# * (string)  base_dic_name  - The name of a base dictionary for annotation.
+	# * (integer) user_id        - The ID of the target user.
+	#
+	def initialize(base_dic_name, user_id)
 		@base_dic_name = base_dic_name
-		@user = user
+		@user_id = user_id
 		@options = { "min_tokens"       => 1,
 		             "max_tokens"       => 5,
 		             "matching_method"  => "exact",     # "exact" or "approximate"
@@ -30,33 +37,31 @@ class TextAnnotator
 		           }
 	end
 
-	# Annotates an input text.
+	# Annotate an input text.
 	#
-	#   @params
-	#     ann["text"]         - an input text for annotation.
-	#     ann["dennotations"] - a list of annotation objects ( [{:begin, :end, :obj}, ...] ) .
-	#     opts                - a hash consisting of annotation options.
+	# * ann   - A hash containing text for annotation (ann["text"]).
+	# * opts  - A hash containing annotation options.
 	#
 	def annotate(ann, opts)
 		set_options(opts)
 
 		if @options["matching_method"] == "exact"
 			results = annotate_based_on_exact_string_matching(ann)
-		else
+		elsif @options["matching_method"] == "approximate"
 			results = annotate_based_on_approximate_string_matching(ann)
+		else
+			results = [ ]
 		end
 
 		results
 	end
 
-	# Returns a hash of ID-LABEL pairs for an input list of IDs.
+	# Return a hash of ID-LABEL pairs for an input list of IDs.
 	#
-	#   @params
-	#     ann["ids"]         - a list of IDs.
-	#     ann["denotations"] - a hash of ID-Label pairs.
+	# * ann  - A list of IDs.
 	#
 	def id_to_label(ann, opts)
-		pgr = POSTGRESQL_RETRIEVER.new(@base_dic_name)
+		pgr = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
 
 		results = {}
 		ann["ids"].each do |id|
@@ -76,7 +81,10 @@ class TextAnnotator
 	end
 
 	
-	# Sets options for text annotations.
+	# Set options for text annotations.
+	#
+	# * opts  - A hash containing annotation options.
+	#
 	def set_options(opts)
 		if not opts.nil?
 			@options["min_tokens"]      = opts["min_tokens"] if not opts["min_tokens"].nil?
@@ -87,14 +95,20 @@ class TextAnnotator
 		end
 	end
 
+
+	###################################
+	#####     PRIVATE METHODS     #####
+	###################################
+ 	private
+
 	# Text annotation based on exact string matching.
 	def annotate_based_on_exact_string_matching(ann)
 		qbuilder  = QUERY_BUILDER.new
-		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user)
+		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
 		pproc     = POST_PROCESSOR.new
 
 
-		# Generates queries from an input text
+		# Generate queries from an input text
 		build_opts = { min_tokens: @options["min_tokens"],
 					   max_tokens: @options["max_tokens"] }
 		norm_opts  = pgr.get_string_normalization_options
@@ -102,18 +116,18 @@ class TextAnnotator
 		queries = qbuilder.build_queries(ann["text"], build_opts, norm_opts)
 
 
-		# Retrieves the entries from PostgreSQL DB
+		# Retrieve the entries from PostgreSQL DB
 		results = pgr.retrieve( qbuilder.change_format(queries) )
 		
 
-		# Applies post-processing methods
+		# Apply post-processing methods
 		if @options["top_n"] > 0
 			results = pproc.get_top_n(results, @options["top_n"])
 		end
 		results = pproc.keep_last_one_for_crossing_boundaries(results)
 
 
-		# Returns the results
+		# Return the results
 		ann["denotations"] = [] unless ann["denotations"]
 		ann["denotations"] = format_anns(results)
 
@@ -124,11 +138,11 @@ class TextAnnotator
 	def annotate_based_on_approximate_string_matching(ann)
 		qbuilder  = QUERY_BUILDER.new
 		ssr       = SIMSTRING_RETRIEVER.new(@base_dic_name)
-		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name)
+		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
 		pproc     = POST_PROCESSOR.new
 
 
-		# Generates queries from an input text
+		# Generate queries from an input text
 		build_opts = { min_tokens: @options["min_tokens"],
 					   max_tokens: @options["max_tokens"] }
 		norm_opts  = pgr.get_string_normalization_options
@@ -137,7 +151,7 @@ class TextAnnotator
 		ext_queries = qbuilder.expand_queries(queries, @options["threshold"], ssr, pgr)
 
 
-		# Retrieves database entries
+		# Retrieve database entries
 		results = pgr.retrieve(ext_queries)
 		
 
@@ -156,6 +170,7 @@ class TextAnnotator
 		ann
 	end
 
+	# Create the annotation list (output) from the text annotation results.
 	def format_anns(anns)
 		return anns.collect do |item|
 			{ begin:  item[:offset].begin, 

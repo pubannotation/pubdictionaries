@@ -159,10 +159,10 @@ class DictionariesController < ApplicationController
     # Create a TextAnnotator instance
     #
     #   @params:
-    #     (string) params[:id]         - the base dictionary name
-    #     (User model) current_ user   - a user instance
+    #     (string)  params[:id]         - the base dictionary name
+    #     (integer) current_ user.id    - the id of the current user
     #
-    annotator = TextAnnotator.new(params[:id], current_user)
+    annotator = TextAnnotator.new(params[:id], current_user.id)
 
     # Annotate an input text
     if    opts["task"] == "annotation"

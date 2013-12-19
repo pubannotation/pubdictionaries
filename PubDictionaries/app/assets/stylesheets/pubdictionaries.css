@@ -148,15 +148,15 @@
 }
 
 
-/* Annotation page */
-#main .annotation_page pre {
-  width: 700px;
-  background-color: #eeeeff;
+/* For developers page */
+#main .web_services_page .code_sample {
+  width: 1000px;
+  word-wrap: break-word;
 }
 
-#main .annotation_page .code_sample {
-  width: 700px;
-  word-wrap: break-word;
+#main .web_services_page pre {
+  width: 1000px;
+  background-color: #eeeeff;
 }
 
 
