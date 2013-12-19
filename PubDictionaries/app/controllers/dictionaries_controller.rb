@@ -7,7 +7,7 @@ require File.join( File.dirname( __FILE__ ), 'text_annotations/text_annotator' )
 
 class DictionariesController < ApplicationController
   # Require authentication for all actions except :index and :show
-  before_filter :authenticate_user!, except: [:index, :show]
+  before_filter :authenticate_user!, except: [:index, :show, :text_annotations]
   # Disable CSRF check for actions 
   skip_before_filter :verify_authenticity_token, :only => [:text_annotations], :if => Proc.new { |c| c.request.format == 'application/json' }
 
@@ -147,28 +147,37 @@ class DictionariesController < ApplicationController
 
   # Annotate a given text using a base dictionary (and its corresponding
   #   user dictionary).
-  #
-  # Notice:
-  #     this action is called with auth_token; therefore, current_user in the session
-  #   will be used.
-  #
   def text_annotations
+    email    = params["user"]["email"]
+    password = params["user"]["password"]
+
     ann   = params["annotation"].nil? ? nil : JSON.parse(params["annotation"])
     opts  = params["options"].nil?    ? nil : JSON.parse(params["options"])
+
+    # Find the user id if the given email/password is valid.
+    user = User.find(:first, :conditions => ["email = ?", params["user"]["email"]])
+    if user.valid_password?(params["user"]["password"])
+      user_id = user.id
+    else
+      user_id = nil
+    end
 
     # Create a TextAnnotator instance
     #
     #   @params:
-    #     (string)  params[:id]         - the base dictionary name
-    #     (integer) current_ user.id    - the id of the current user
+    #     (string)  params[:id]  - the base dictionary name
+    #     (integer) user_id      - the id of the current user
     #
-    annotator = TextAnnotator.new(params[:id], current_user.id)
+    annotator = TextAnnotator.new(params[:id], user_id)
 
     # Annotate an input text
     if    opts["task"] == "annotation"
       results = annotator.annotate(ann, opts)
     elsif opts["task"] == "id_to_label"
       results = annotator.id_to_label(ann, opts)
+    else
+      ann["denotations"] = []
+      results = ann
     end
 
     # Return the result

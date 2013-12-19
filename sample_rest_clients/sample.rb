@@ -11,7 +11,8 @@ require 'rest_client'
 #
 def get_auth_token(uri, email, password)
 	# Sign into the PubDictionaries (Don't raise exceptions).
-	RestClient.post( 
+	$stderr.puts uri.inspect
+	RestClient.post(
 		uri,
 		:user         => {:email=>email, :password=>password},
 		:content_type => :json,
@@ -41,13 +42,17 @@ end
 def annotate_text(uri, auth_token, annotation, options)
 	# Prepare the connection to the text annotation service.
 	resource = RestClient::Resource.new( 
-		"#{uri}/text_annotations.json?auth_token=#{auth_token}",
-		:timeout      => 300, 
-		:open_timeout => 300,
+		#"#{uri}/text_annotations.json?auth_token=#{auth_token}",
+		"#{uri}/text_annotations.json",
+		:user => "username",
+		:password => "password",
+#		:timeout      => 300, 
+#		:open_timeout => 300,
 		)
 
 	# Annotate the text
 	json_result = resource.post( 
+		:user         => {email:"priancho@gmail.com", password:"pa1ssword"},
 		:annotation   => annotation.to_json,
 		:options      => options.to_json,
 		:content_type => :json,
@@ -77,14 +82,15 @@ end
 
 if __FILE__ == $0
 	# 1. Get the authentication token by signing in.
-	auth_token = get_auth_token("http://localhost:3000/users/sign_in.json", "priancho@gmail.com", "password")
-	if auth_token
-		$stderr.puts "Authentication token: #{auth_token}"
-		$stderr.puts
-	else
-		$stderr.puts "Authentication failed."
-		exit
-	end
+	# auth_token = get_auth_token("http://localhost:3000/users/sign_in.json", "priancho@gmail.com", "password")
+	# if auth_token
+	# 	$stderr.puts "Authentication token: #{auth_token}"
+	# 	$stderr.puts
+	# else
+	# 	$stderr.puts "Authentication failed."
+	# 	exit
+	# end
+	auth_token = ""
 
 
 	# 2. Annotate the text.
@@ -101,17 +107,18 @@ if __FILE__ == $0
 
 	$stderr.puts "Input text:"
 	$stderr.puts result["text"].inspect
-	$stderr.puts "Annotation:"
-	result["denotations"].each do |entry|
-		$stderr.puts "   #{entry.inspect} - matched string in the text: \"#{annotation["text"][entry["begin"]...entry["end"]]}\""
+	if result.has_key?("denotations")
+		$stderr.puts "Annotation:"
+		result["denotations"].each do |entry|
+			$stderr.puts "   #{entry.inspect} - matched string in the text: \"#{annotation["text"][entry["begin"]...entry["end"]]}\""
+		end
 	end
 	$stderr.puts
 
-
 	# 3. Destroy the authentication token.
-	result = destroy_auth_token("localhost:3000/users/sign_out.json", auth_token)
+	# result = destroy_auth_token("localhost:3000/users/sign_out.json", auth_token)
 
-	$stderr.puts "Delete the authentication token: #{result.code} (Code 200 is means success)."
-	$stderr.puts
+	# $stderr.puts "Delete the authentication token: #{result.code} (Code 200 is means success)."
+	# $stderr.puts
 end
 

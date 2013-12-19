@@ -10,18 +10,23 @@ require 'rest_client'
 #  * (string)  password  - The password for the email.
 #
 def get_auth_token(uri, email, password)
-	# Sign into the PubDictionaries.
-	res = RestClient.post( 
+	# Sign into the PubDictionaries (Don't raise exceptions).
+	RestClient.post( 
 		uri,
 		:user         => {:email=>email, :password=>password},
 		:content_type => :json,
 		:accept       => :json,
-		)
+	) { | response, request, result, &block |
+		result = JSON.parse(response)
 
-	# Retrieve the authentication token.
-	auth_token = JSON.parse(res)["auth_token"]
-	
-	return auth_token
+		case response.code
+		when 200
+			return result["auth_token"]
+		else
+			$stderr.puts "Error: #{result["message"]}"
+			return nil
+		end
+	}
 end
 
 # Annotate the text by using the base dictionary and the associated user dictionary, which 
@@ -81,9 +86,13 @@ if __FILE__ == $0
 
 	# 1. Get the authentication token by signing in.
 	auth_token = get_auth_token("http://pubdictionaries.dbcls.jp/users/sign_in.json", user_email, user_password)
-
-	$stderr.puts "Authentication token: #{auth_token}"
-	$stderr.puts
+	if auth_token
+		$stderr.puts "Authentication token: #{auth_token}"
+		$stderr.puts
+	else
+		$stderr.puts "Authentication failed."
+		exit
+	end
 
 
 	# 2. Annotate the text.

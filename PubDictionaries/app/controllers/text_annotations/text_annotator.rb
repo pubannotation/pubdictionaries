@@ -50,7 +50,8 @@ class TextAnnotator
 		elsif @options["matching_method"] == "approximate"
 			results = annotate_based_on_approximate_string_matching(ann)
 		else
-			results = [ ]
+			ann["denotations"] = []
+			results = ann
 		end
 
 		results
