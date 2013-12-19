@@ -5,7 +5,6 @@ gem 'stemmify'
 gem 'activerecord-import', '~> 0.3.1'
 gem 'sequel'
 gem 'triez'
-gem 'rabl'
 
 # Deploy with Capistrano
 gem 'capistrano'
