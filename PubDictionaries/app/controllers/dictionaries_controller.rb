@@ -145,47 +145,35 @@ class DictionariesController < ApplicationController
   end
 
 
-  # Annotate a given text using a base dictionary (and its corresponding
-  #   user dictionary).
+  # Annotate a given text using a base dictionary (and its corresponding user dictionary).
   def text_annotations
-    email    = params["user"]["email"]
-    password = params["user"]["password"]
+    basedic_name = params[:id]
+    ann          = params["annotation"].nil? ? nil : JSON.parse(params["annotation"])
+    opts         = params["options"].nil?    ? nil : JSON.parse(params["options"])
 
-    ann   = params["annotation"].nil? ? nil : JSON.parse(params["annotation"])
-    opts  = params["options"].nil?    ? nil : JSON.parse(params["options"])
 
-    # Find the user id if the given email/password is valid.
-    user = User.find(:first, :conditions => ["email = ?", params["user"]["email"]])
-    if user.valid_password?(params["user"]["password"])
-      user_id = user.id
+    # 1. Get the user ID if the given email/password is valid.
+    user_id = get_user_id(params["user"])
+
+    # 2. Perform a specified task.
+    case user_id
+    when :invalid
+      ann["error"] = {"message" => "Invalid email or password"}
+      result = ann
+    when :guest
+      annotator = TextAnnotator.new(basedic_name, nil)
+      result    = perform_annotation_task(annotator, ann, opts)
     else
-      user_id = nil
+      annotator = TextAnnotator.new(basedic_name, user_id)
+      result    = perform_annotation_task(annotator, ann, opts)
     end
 
-    # Create a TextAnnotator instance
-    #
-    #   @params:
-    #     (string)  params[:id]  - the base dictionary name
-    #     (integer) user_id      - the id of the current user
-    #
-    annotator = TextAnnotator.new(params[:id], user_id)
 
-    # Annotate an input text
-    if    opts["task"] == "annotation"
-      results = annotator.annotate(ann, opts)
-    elsif opts["task"] == "id_to_label"
-      results = annotator.id_to_label(ann, opts)
-    else
-      ann["denotations"] = []
-      results = ann
-    end
-
-    # Return the result
+    # Return the result.
     respond_to do |format|
-      format.json { render :json => results }
+      format.json { render :json => result }
     end
   end
-
   
 
   ###########################
@@ -193,7 +181,7 @@ class DictionariesController < ApplicationController
   ###########################
   private
 
-  # Creates a list of entries for export.
+  # Create a list of entries for export.
   def build_export_entries(export_type)
     export_entries = [ ]
 
@@ -238,12 +226,12 @@ class DictionariesController < ApplicationController
     export_entries
   end
 
-  # Converts a collection of entries in tsv format
+  # Convert a collection of entries in tsv format
   def tsv_data(entries)
     entries.collect{ |e| "#{e.view_title}\t#{e.label}\t#{e.uri}\n" }.join
   end
 
-  # Fills entries for a given dictionary
+  # Fill entries for a given dictionary
   def fill_dic(dic_params)
     input_file  = dic_params[:file]
     sep         = dic_params[:separator]
@@ -287,7 +275,7 @@ class DictionariesController < ApplicationController
     return str_error
   end
 
-  # Creates a simstring db
+  # Create a simstring db
   def create_simstring_db
     dbfile_path = Rails.root.join('public/simstring_dbs', params[:dictionary][:title]).to_s
 
@@ -307,7 +295,7 @@ class DictionariesController < ApplicationController
     logger.debug "...... Total time elapsed: #{Time.new - time_start} seconds"
   end
 
-  # Deletes a simstring db and associated files
+  # Delete a simstring db and associated files
   def delete_simstring_db( filename )
     dbfile_path = Rails.root.join('public/simstring_dbs', filename).to_s
     
@@ -315,7 +303,7 @@ class DictionariesController < ApplicationController
     begin
       File.delete(dbfile_path)
     rescue
-      # Silently ignores the error
+      # Silently ignore the error
     end
 
     # Remove auxiliary db files
@@ -328,6 +316,34 @@ class DictionariesController < ApplicationController
           # Silently ignores the error
         end
       end
+    end
+  end
+
+  # Get the user ID for a given email/password pair.
+  def get_user_id(email_password)
+    if email_password.nil? or email_password["email"] == ""
+      return :guest
+    else
+      # Find the user that first matches to the condition.
+      user = User.find_by_email(email_password["email"])     
+
+      if user and user.valid_password?(email_password["password"])
+        return user.id
+      else
+        return :invalid
+      end
+    end
+  end
+
+  #Perform a specified task.
+  def perform_annotation_task(annotator, ann, opts)
+    case opts["task"]
+    when "annotation"     # Annotate an input text (exact, approximate).
+      return annotator.annotate(ann, opts)
+    when "id_to_label"    # Retrieve the human readable labels for given IDs. 
+      return annotator.id_to_label(ann, opts)
+    else                  # Return the original annotation instance.
+      returnann
     end
   end
 

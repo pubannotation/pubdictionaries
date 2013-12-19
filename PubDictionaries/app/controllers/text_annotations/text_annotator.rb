@@ -81,11 +81,14 @@ class TextAnnotator
 		ann
 	end
 
+
+
+	###################################
+	#####     PRIVATE METHODS     #####
+	###################################
+ 	private
 	
 	# Set options for text annotations.
-	#
-	# * opts  - A hash containing annotation options.
-	#
 	def set_options(opts)
 		if not opts.nil?
 			@options["min_tokens"]      = opts["min_tokens"] if not opts["min_tokens"].nil?
@@ -95,12 +98,6 @@ class TextAnnotator
 			@options["top_n"]           = opts["top_n"] if not opts["top_n"].nil?
 		end
 	end
-
-
-	###################################
-	#####     PRIVATE METHODS     #####
-	###################################
- 	private
 
 	# Text annotation based on exact string matching.
 	def annotate_based_on_exact_string_matching(ann)

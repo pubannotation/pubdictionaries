@@ -1,28 +1,23 @@
 source 'https://rubygems.org'
 
-gem 'rails', '3.2.13'
+gem 'rails', '3.2.16'
 gem 'stemmify'
 gem 'activerecord-import', '~> 0.3.1'
 gem 'sequel'
 gem 'triez'
 
-# Deploy with Capistrano
-gem 'capistrano'
-gem 'rvm-capistrano'
-
 gem 'libv8'
 
+# Use PostgreSQL
+gem 'pg', :require => 'pg'
+
 group :development do
-  gem 'sqlite3'
 end
 
 group :test do
-  gem 'sqlite3'
 end
 
 group :production do
- # Use PostgreSQL
- gem 'pg', :require => 'pg'
  gem 'thin'
  
  # Use unicorn as the app server
