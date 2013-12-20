@@ -61,7 +61,7 @@ class TextAnnotator
 	#
 	# * ann  - A list of IDs.
 	#
-	def id_to_label(ann, opts)
+	def ids_to_labels(ann, opts)
 		pgr = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
 
 		results = {}

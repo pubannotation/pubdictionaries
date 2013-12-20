@@ -7,9 +7,9 @@ require File.join( File.dirname( __FILE__ ), 'text_annotations/text_annotator' )
 
 class DictionariesController < ApplicationController
   # Require authentication for all actions except :index and :show
-  before_filter :authenticate_user!, except: [:index, :show, :text_annotations]
+  before_filter :authenticate_user!, except: [:index, :show, :annotate_text, :ids_to_labels]
   # Disable CSRF check for actions 
-  skip_before_filter :verify_authenticity_token, :only => [:text_annotations], :if => Proc.new { |c| c.request.format == 'application/json' }
+  skip_before_filter :verify_authenticity_token, :only => [:annotate_text, :ids_to_labels], :if => Proc.new { |c| c.request.format == 'application/json' }
 
 
   ###########################
@@ -146,35 +146,50 @@ class DictionariesController < ApplicationController
 
 
   # Annotate a given text using a base dictionary (and its corresponding user dictionary).
-  def text_annotations
-    basedic_name = params[:id]
-    ann          = params["annotation"].nil? ? nil : JSON.parse(params["annotation"])
-    opts         = params["options"].nil?    ? nil : JSON.parse(params["options"])
-
-
-    # 1. Get the user ID if the given email/password is valid.
+  def annotate_text
+    basedic_name, ann, opts = get_data_params(params)
     user_id = get_user_id(params["user"])
 
-    # 2. Perform a specified task.
     case user_id
     when :invalid
       ann["error"] = {"message" => "Invalid email or password"}
-      result = ann
+      result       = ann
     when :guest
-      annotator = TextAnnotator.new(basedic_name, nil)
-      result    = perform_annotation_task(annotator, ann, opts)
+      annotator    = TextAnnotator.new(basedic_name, nil)
+      result       = annotator.annotate(ann, opts)
     else
-      annotator = TextAnnotator.new(basedic_name, user_id)
-      result    = perform_annotation_task(annotator, ann, opts)
+      annotator    = TextAnnotator.new(basedic_name, user_id)
+      result       = annotator.annotate(ann, opts)
     end
-
 
     # Return the result.
     respond_to do |format|
       format.json { render :json => result }
     end
   end
-  
+
+  # Return a list of labels for a given list of IDs.
+  def ids_to_labels
+    basedic_name, ann, opts = get_data_params(params)
+    user_id = get_user_id(params["user"])
+    
+    case user_id 
+    when :invalid
+      ann["error"] = {"message" => "Invalid email or password"}
+      result       = ann
+    when :guest
+      annotator    = TextAnnotator.new(basedic_name, nil)
+      result       = annotator.ids_to_labels(ann, opts)
+    else
+      annotator    = TextAnnotator.new(basedic_name, user_id)
+      result       = annotator.ids_to_labels(ann, opts)
+    end
+
+    # Return the result.
+    respond_to do |format|
+      format.json { render :json => result }
+    end
+  end
 
   ###########################
   #####     METHODS     #####
@@ -319,6 +334,15 @@ class DictionariesController < ApplicationController
     end
   end
 
+  # Get data parameters.
+  def get_data_params(params)
+    basedic_name = params[:id]
+    ann          = params["annotation"].nil? ? nil : JSON.parse(params["annotation"])
+    opts         = params["options"].nil?    ? nil : JSON.parse(params["options"])
+
+    return basedic_name, ann, opts
+  end
+
   # Get the user ID for a given email/password pair.
   def get_user_id(email_password)
     if email_password.nil? or email_password["email"] == nil or email_password["email"] == ""
@@ -334,17 +358,6 @@ class DictionariesController < ApplicationController
       end
     end
   end
-
-  #Perform a specified task.
-  def perform_annotation_task(annotator, ann, opts)
-    case opts["task"]
-    when "annotation"     # Annotate an input text (exact, approximate).
-      return annotator.annotate(ann, opts)
-    when "id_to_label"    # Retrieve the human readable labels for given IDs. 
-      return annotator.id_to_label(ann, opts)
-    else                  # Return the original annotation instance.
-      returnann
-    end
-  end
+  
 
 end

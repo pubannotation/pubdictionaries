@@ -27,7 +27,9 @@ PubDictionaries::Application.routes.draw do
     # Adds routes as a member, /entry/:id/...
     member do
       # Automatic text annotation.
-      post 'text_annotations'
+      post 'annotate_text'
+      post 'ids_to_labels'
+      post 'terms_to_idlists'
     end
   end
 
