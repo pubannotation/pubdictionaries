@@ -16,6 +16,7 @@ require File.join( File.dirname( __FILE__ ), 'retrieve_simstring_db' )
 require File.join( File.dirname( __FILE__ ), 'retrieve_postgresql_db' )
 require File.join( File.dirname( __FILE__ ), 'query_builder' )
 require File.join( File.dirname( __FILE__ ), 'post_processor' )
+require File.join( File.dirname( __FILE__ ), 'text_to_trie' )
 
 
 # Provide functionalities for text annotation.
@@ -39,8 +40,8 @@ class TextAnnotator
 
 	# Annotate an input text.
 	#
-	# * ann   - A hash containing text for annotation (ann["text"]).
-	# * opts  - A hash containing annotation options.
+	# * (hash) ann   - A hash containing text for annotation (ann["text"]).
+	# * (hash) opts  - A hash containing annotation options.
 	#
 	def annotate(ann, opts)
 		set_options(opts)
@@ -59,7 +60,8 @@ class TextAnnotator
 
 	# Return a hash of ID-LABEL pairs for an input list of IDs.
 	#
-	# * ann  - A list of IDs.
+	# * (list) ann  - A list of IDs (ann["ids"]).
+	# * (hash) opts  - A hash containing annotation options.
 	#
 	def ids_to_labels(ann, opts)
 		pgr = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
@@ -81,6 +83,66 @@ class TextAnnotator
 		ann
 	end
 
+	# Find ID list for each term. IDs are sorted based on the similarity
+	# between an input term and a matched term.
+	# 
+	# * (list) ann   - A list of terms (ann["terms"]).
+	# * (hash) opts  - A hash containing annotation options.
+	#                    1) opts["threshold"] : for query expansion.
+	#                    2) opts["top_n"]     : for limiting the number of IDs.
+	#
+	def terms_to_idlists(ann, opts)
+		qbuilder  = QUERY_BUILDER.new
+		ssr       = SIMSTRING_RETRIEVER.new(@base_dic_name)
+		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
+
+		# 1. Find similar terms for each input term based on the given threshold.
+		norm_opts  = pgr.get_string_normalization_options
+		trier      = TEXT_TO_TRIE.new
+		
+		exp_terms  = {}
+		ann["terms"].uniq.each do |term|
+			offsets   = [(0...term.length)]
+ 			norm_term = trier.normalize_term(term, 
+ 				norm_opts[:lowercased], norm_opts[:hyphen_replaced], norm_opts[:stemmed])
+
+			exp_terms[term] = qbuilder.expand_query(norm_term, offsets, opts["threshold"], ssr, pgr)
+
+			# Keep only top n similar terms to speed up ID search.
+			if opts["top_n"] > 0
+				exp_terms[term].sort! { |x, y| y[:sim] <=> x[:sim] }
+				exp_terms[term] = exp_terms[term][0...opts["top_n"]]
+			end
+		end
+
+		# 2. Get a list of IDs for each term.
+		exp_IDs = {}
+	 	exp_terms.each do |ori_term, sim_terms|
+	 		exp_IDs[ori_term] = []
+	 		sim_terms.each do |sim_term|
+	 			# Retrieve DB entries.
+	 			#   - It returns entreis in both :entries and :new_entries except in :removed_entries.
+	 			entries = pgr.get_entries_from_db(sim_term[:requested_query], :search_title)
+
+	 			# Save IDs.
+	 			if not entries.empty?
+	 				entries.each do |entry|
+	 					exp_IDs[ori_term].push entry[:uri]
+	 				end
+	 			end
+
+	 			# Stop the loop after havesting enough IDs.
+	 			if opts["top_n"] > 0 and exp_IDs[ori_term].size >= opts["top_n"] 
+	 				break
+	 			end
+	 		end
+	 	end
+
+	 	ann["idlists"] = [] unless ann["idlists"]
+	 	ann["idlists"] = exp_IDs
+
+	 	ann
+	 end
 
 
 	###################################
@@ -139,19 +201,17 @@ class TextAnnotator
 		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
 		pproc     = POST_PROCESSOR.new
 
-
 		# Generate queries from an input text
 		build_opts = { min_tokens: @options["min_tokens"],
 					   max_tokens: @options["max_tokens"] }
 		norm_opts  = pgr.get_string_normalization_options
 
 		queries     = qbuilder.build_queries(ann["text"], build_opts, norm_opts)
+		# Perform query expansion using both the PG and SimString DBs.
 		ext_queries = qbuilder.expand_queries(queries, @options["threshold"], ssr, pgr)
-
 
 		# Retrieve database entries
 		results = pgr.retrieve(ext_queries)
-		
 
 		# Applies post-processing methods
 		if @options["top_n"] > 0
@@ -160,7 +220,6 @@ class TextAnnotator
 		results = pproc.filter_based_on_simscore(results)
 		results = pproc.keep_last_one_for_crossing_boundaries(results)
 
-	
 		# Returns the results
 		ann["denotations"] = [] unless ann["denotations"]
 		ann["denotations"] = format_anns(results)

@@ -6,10 +6,14 @@ require File.join( File.dirname( __FILE__ ), 'text_annotations/text_annotator' )
 
 
 class DictionariesController < ApplicationController
-  # Require authentication for all actions except :index and :show
-  before_filter :authenticate_user!, except: [:index, :show, :annotate_text, :ids_to_labels]
-  # Disable CSRF check for actions 
-  skip_before_filter :verify_authenticity_token, :only => [:annotate_text, :ids_to_labels], :if => Proc.new { |c| c.request.format == 'application/json' }
+  # Require authentication for all actions except :index, :show, and some others.
+  before_filter :authenticate_user!, 
+    except: [:index, :show, :annotate_text, :ids_to_labels, :terms_to_idlists]
+
+  # Disable CSRF check for specific actions.
+  skip_before_filter :verify_authenticity_token, 
+    :only => [:annotate_text, :ids_to_labels, :terms_to_idlists], 
+    :if => Proc.new { |c| c.request.format == 'application/json' }
 
 
   ###########################
@@ -25,8 +29,6 @@ class DictionariesController < ApplicationController
     end
   end
 
-
-  #
   # Shows the content of an original dictionary and its corresponding user dictionary.
   #
   def show
@@ -65,7 +67,6 @@ class DictionariesController < ApplicationController
     end
   end
 
-
   def new
     @dictionary = Dictionary.new
     @dictionary.creator = current_user.email     # set the creator with the user name (email)
@@ -75,7 +76,6 @@ class DictionariesController < ApplicationController
       format.json { render json: @dictionary }
     end
   end
-
 
   def create
     # Creates a dictionary
@@ -106,7 +106,6 @@ class DictionariesController < ApplicationController
       end
     end
   end
-
 
   def destroy
     @dictionary = Dictionary.find_by_title(params[:id])
@@ -172,7 +171,7 @@ class DictionariesController < ApplicationController
   def ids_to_labels
     basedic_name, ann, opts = get_data_params(params)
     user_id = get_user_id(params["user"])
-    
+
     case user_id 
     when :invalid
       ann["error"] = {"message" => "Invalid email or password"}
@@ -190,6 +189,35 @@ class DictionariesController < ApplicationController
       format.json { render :json => result }
     end
   end
+
+  # For a given list of terms, find the list of IDs for each of them.
+  #
+  # * Input  : [term_1, term_2, ... ,term_n]
+  # * Output : {"term_1"=>[ID_1, ID_24, ID432], "term_2"=>[ ... ], ... }
+  #
+  def terms_to_idlists
+    basedic_name, ann, opts = get_data_params(params)
+    user_id = get_user_id(params["user"])
+
+    case user_id 
+    when :invalid
+      ann["error"] = {"message" => "Invalid email or password"}
+      result       = ann
+    when :guest
+      annotator    = TextAnnotator.new(basedic_name, nil)
+      result       = annotator.terms_to_idlists(ann, opts)
+    else
+      annotator    = TextAnnotator.new(basedic_name, user_id)
+      result       = annotator.terms_to_idlists(ann, opts)
+    end
+
+    # Return the result.
+    respond_to do |format|
+      format.json { render :json => result }
+    end
+  end
+
+
 
   ###########################
   #####     METHODS     #####

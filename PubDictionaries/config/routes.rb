@@ -9,7 +9,8 @@ PubDictionaries::Application.routes.draw do
   get "web_services/exact_string_match"
   get "web_services/approximate_string_match"
   get "web_services/ids_to_labels"
-
+  get "web_services/terms_to_idlists"
+  
   resources :users do
     resources :dictionaries
     resources :user_dictionaries

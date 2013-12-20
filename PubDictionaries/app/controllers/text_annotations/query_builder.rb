@@ -26,9 +26,9 @@ class QUERY_BUILDER
 	
 	# Create a series of normalized (!) queries from a document.
 	# 
-	# * text        - An input text.
-	# * build_opts  - A hash containing options for generating queries from the input text.
-	# * norm_opts   - A hash containing string normalization options for generating queries. 
+	# * (string) text      - An input text.
+	# * (hash) build_opts  - A hash containing options for generating queries from the input text.
+	# * (hash) norm_opts   - A hash containing string normalization options for generating queries. 
 	#
 	def build_queries(text, build_opts, norm_opts)
 		trier = TEXT_TO_TRIE.new( build_opts[:min_tokens],
@@ -57,40 +57,44 @@ class QUERY_BUILDER
 	def expand_queries(queries, threshold, ssr, pgr)
 		ext_queries = []
 		queries.each do |q, offsets|
-			basedic_new_queries = ssr.retrieve_similar_strings(q, @measure, threshold)
-			
-			userdic_new_queries = pgr.retrieve_similar_strings(q, relaxed_threshold(threshold)).delete_if do |item|
-				basedic_new_queries.include?(item)
+			ext_queries += expand_query(q, offsets, threshold, ssr, pgr)
+		end
+	
+		# @return  [ {:requested_query => string, :original_query => string, 
+		#             :range => (begin...end), :sim => float}, ... ]
+		ext_queries
+	end
+
+	def expand_query(q, offsets, threshold, ssr, pgr)
+		basedic_new_queries = ssr.retrieve_similar_strings(q, @measure, threshold)
+		
+		userdic_new_queries = pgr.retrieve_similar_strings(q, relaxed_threshold(threshold)).delete_if do |item|
+			basedic_new_queries.include?(item)
+		end
+
+		expanded_queries = []
+		offsets.each do |offset|
+			basedic_new_queries.each do |eq|
+				expanded_queries << get_formatted_query(eq, q, offset, Strsim.jaccard(eq, q))
 			end
 
-			offsets.each do |offset|
-				# Te original query is no longer necessary.
-				# ext_queries << get_formatted_query(q, q, offset, Strsim.jaccard(q, q))
-
-				basedic_new_queries.each do |eq|
-					ext_queries << get_formatted_query(eq, q, offset, Strsim.jaccard(eq, q))
-				end
-
-				# Warning: 
-				#
-				#   PostgreSQL provides cosine similarity measure only. To avoid missing 
-				# queries during query expansion, we use relaxed threshold first. Then, 
-				# the search results will be re-ordered and filtered based on Jaccard 
-				# similarity. The results that exceeds the original thresholds will be 
-				# finally used.
-				#
-				userdic_new_queries.each do |eq|
-					sim = Strsim.jaccard(eq, q)
-					if sim > threshold
-						ext_queries << get_formatted_query(eq, q, offset, sim)
-					end
+			# Warning: 
+			#
+			#   PostgreSQL provides cosine similarity measure only. To avoid missing 
+			# queries during query expansion, we use relaxed threshold first. Then, 
+			# the search results will be re-ordered and filtered based on Jaccard 
+			# similarity. The results that exceeds the original thresholds will be 
+			# finally used.
+			#
+			userdic_new_queries.each do |eq|
+				sim = Strsim.jaccard(eq, q)
+				if sim > threshold
+					expanded_queries << get_formatted_query(eq, q, offset, sim)
 				end
 			end
 		end
-	
-		#   @return  [ {:requested_query => string, :original_query => string, 
-		#               :range => (begin...end), :sim => float}, ... ]
-		ext_queries
+
+		return expanded_queries
 	end
 
 	# Change the format from queries to ext_queries

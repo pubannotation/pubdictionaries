@@ -3,9 +3,9 @@
 Encoding.default_external="UTF-8"
 Encoding.default_internal="UTF-8"
 
-=begin
 
-=end
+# Convert an input text to a trie.
+
 
 require 'set'
 require 'stemmify'
@@ -14,7 +14,7 @@ require 'triez'
 
 class TEXT_TO_TRIE
 	# Initialize a retriever instance
-	def initialize( min_tokens, max_tokens )
+	def initialize( min_tokens = 2, max_tokens = 8 )
 		@min_tokens = min_tokens
 		@max_tokens = max_tokens
 
@@ -37,7 +37,13 @@ class TEXT_TO_TRIE
 		]
 	end
 
-	# convert a text into a trie	
+	# Convert a text into a trie.
+	#
+	# * (string) text              - An input text.
+	# * (bool)   bCaseInsensitive  - Enables case-insensitive search.
+	# * (bool)   bReplaceHyphe     - Enables hyphen replacement.
+	# * (bool)   bStemming         - Enables Porter stemming.
+	#
 	def to_trie( text, bCaseInsensitive, bReplaceHyphen, bStemming )
 		trie    = Triez.new value_type: :object, default: []
 
@@ -45,27 +51,17 @@ class TEXT_TO_TRIE
 
 		(@min_tokens..@max_tokens).each do |ss_len|
 			(0..offsets.length-ss_len).each do |beg|              # Nothing happens when tokens.length-ss_len < 0
-				# get a query string
 				beg_tidx = beg
 				end_tidx = beg+ss_len
+
+				# Stopword check.				
 				q = text[offsets[beg_tidx][:begin]...offsets[end_tidx-1][:end]]
-				
-				# pass this query if it is a stopword
 				next if stopwords?( q )
 
-				# stem a token sequence 
-				if bStemming == true
-					q = stem_it( text, offsets, beg_tidx, end_tidx )
-				end
-
-				# apply string normalization
-				if bCaseInsensitive == true
-					q.downcase!
-				end
-				if bReplaceHyphen == true
-					q.gsub!("-", " ")
-				end
-
+				# Normalizations
+				q = normalize(text, offsets, beg_tidx, end_tidx, 
+						bCaseInsensitive, bReplaceHyphen, bStemming)
+	
 				# record the beginning and end offsets
 				if trie.has_key?( q )
 					value = trie[q]
@@ -88,6 +84,28 @@ class TEXT_TO_TRIE
 
 		return queries_with_offsets
 	end
+
+	# Normalize a term.
+	#
+	# * (string) term              - A term for normalization.
+	# * (bool)   bCaseInsensitive  - Enables case-insensitive search.
+	# * (bool)   bReplaceHyphe     - Enables hyphen replacement.
+	# * (bool)   bStemming         - Enables Porter stemming.
+	#
+	def normalize_term(term, bCaseInsensitive, bReplaceHyphen, bStemming)
+		offsets   = tokenize(term)
+		beg_tidx  = 0
+		end_tidx  = offsets.size
+
+		return normalize(term, offsets, beg_tidx, end_tidx,
+			bCaseInsensitive, bReplaceHyphen, bStemming)
+	end
+	
+
+	###########################
+	##### PRIVATE METHODS #####
+	###########################
+	private
 
 	def tokenize( text )
 		# 1. tokenize an input text
@@ -117,6 +135,20 @@ class TEXT_TO_TRIE
 		else
 			return false
 		end
+	end
+
+	def normalize(text, offsets, beg_tidx, end_tidx, bCaseInsensitive, bReplaceHyphen, bStemming)
+		if bStemming == true
+			new_query = stem_it( text, offsets, beg_tidx, end_tidx )
+		end
+		if bCaseInsensitive == true
+			new_query.downcase!
+		end
+		if bReplaceHyphen == true
+			new_query.gsub!("-", " ")
+		end
+
+		return new_query
 	end
 
 	def stem_it( text, offsets, beg_tidx, end_tidx )

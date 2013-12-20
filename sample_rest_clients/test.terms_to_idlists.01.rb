@@ -13,10 +13,10 @@ require 'rest_client'
 # * (hash)    annotation    - The hash including a list of labels.
 # * (hash)    options       - The hash containig options for id search.
 #
-def get_label_list(uri, email, password, annotation, options)
+def get_idlists(uri, email, password, annotation, options)
 	# Prepare the connection to the web service.
 	resource = RestClient::Resource.new( 
-		"#{uri}/text_annotations.json",
+		"#{uri}/terms_to_idlists.json",
 		:timeout      => 300, 
 		:open_timeout => 300,
 		)
@@ -51,7 +51,7 @@ end
 #
 if __FILE__ == $0
 	if ARGV.size != 3
-		$stdout.puts "Usage:  #{$0}  <email>  <password>  <uri>"
+		$stdout.puts "Usage:  #{$0}  Email  Password  URI"
 		exit
 	end
 	email      = ARGV[0]
@@ -60,22 +60,22 @@ if __FILE__ == $0
 
 
 	# Prepare data and option objects
-	annotation = { "ids" => [ "1", "3", "5", "4790", "new_id", "new_id_2"] }
-	options    = { "task" => "id_to_label" }
+	annotation = { "terms" => [ "NF-kappa B", "C-REL", "c-rel", "may_be_not_exist"] }
+	options    = { "threshold" => 0.3, "top_n" => 10 }
 
-	result     = get_label_list(uri, email, password, annotation, options)
+	result     = get_idlists(uri, email, password, annotation, options)
 
 	$stdout.puts "Input:"
-	$stdout.puts annotation["ids"].inspect
+	$stdout.puts annotation["terms"].inspect
 	
 	$stdout.puts "Output:"
 	if result.has_key? "error"
 		$stdout.puts "   Error: #{result["error"]["message"]}"
 	end
-	if result.has_key? "denotations"
-		$stdout.puts "   %-20s| %-20s" % ["ID", "LABEL"]
-		annotation["ids"].each do |id|
-			$stdout.puts "   %-20s| %-20s" % [id, result["denotations"][id]]
+	if result.has_key? "idlists"
+		$stdout.puts "   %-20s| %s" % ["TERM", "IDs"]
+		annotation["terms"].each do |term|
+			$stdout.puts "   %-10s| %s" % [term, result["idlists"][term].inspect]
 		end
 	end
 	$stdout.puts 
