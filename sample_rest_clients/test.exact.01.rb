@@ -4,7 +4,6 @@ require 'json'
 require 'rest_client'
 
 
-
 # Annotate the text by using the base dictionary and the associated user dictionary, which 
 # will be identified by the auth_token.
 #

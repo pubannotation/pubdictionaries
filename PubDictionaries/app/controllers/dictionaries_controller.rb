@@ -321,7 +321,7 @@ class DictionariesController < ApplicationController
 
   # Get the user ID for a given email/password pair.
   def get_user_id(email_password)
-    if email_password.nil? or email_password["email"] == ""
+    if email_password.nil? or email_password["email"] == nil or email_password["email"] == ""
       return :guest
     else
       # Find the user that first matches to the condition.

@@ -49,7 +49,9 @@
     <nav id="file-list-section" class="section">
   <h3 class="section-header">Defined In</h3>
   <ul>
-    <li>local.RailsAAnn.token_authentication_sample.rb
+    <li>test.approx.01.rb
+    <li>test.exact.01.rb
+    <li>test.id_to_label.01.rb
   </ul>
 </nav>
 
@@ -75,9 +77,7 @@
     
     <li ><a href="#method-i-annotate_text">#annotate_text</a>
     
-    <li ><a href="#method-i-destroy_auth_token">#destroy_auth_token</a>
-    
-    <li ><a href="#method-i-get_auth_token">#get_auth_token</a>
+    <li ><a href="#method-i-get_label_list">#get_label_list</a>
     
   </ul>
 </nav>
@@ -128,7 +128,7 @@
         
         <div class="method-heading">
           <span class="method-name">annotate_text</span><span
-            class="method-args">(uri, auth_token, annotation, options)</span>
+            class="method-args">(uri, email, password, annotation, options)</span>
           
           <span class="method-click-advice">click to toggle source</span>
           
@@ -139,38 +139,51 @@
           
           <p>Annotate the text by using the base dictionary and the associated user
 dictionary, which  will be identified by the auth_token.</p>
-
-<pre>* (string)  uri           - The URI of the sign in route. This URI involves the base dictionary name.
-* (string)  auth_token    - The authentication token that identifies the user&#39;s session in the server.
-                            The user dictionary corresponding to the base dictionary will be identified
-                            by this session information.
-* (hash)    annotation    - The hash including text for annotation.
-* (hash)    options       - The hash containig various options for annotation.</pre>
+<ul><li>
+<p>(string)  uri           - The URI of the sign in route. This URI involves
+the base dictionary name.</p>
+</li><li>
+<p>(string)  email         - User&#39;s login ID.</p>
+</li><li>
+<p>(string)  password      - User&#39;s login password.</p>
+</li><li>
+<p>(hash)    annotation    - The hash including text for annotation.</p>
+</li><li>
+<p>(hash)    options       - The hash containig various options for
+annotation.</p>
+</li></ul>
           
           
 
           
           <div class="method-source-code" id="annotate_text-source">
-            <pre><span class="ruby-comment"># File local.RailsAAnn.token_authentication_sample.rb, line 37</span>
-<span class="ruby-keyword">def</span> <span class="ruby-identifier">annotate_text</span>(<span class="ruby-identifier">uri</span>, <span class="ruby-identifier">auth_token</span>, <span class="ruby-identifier">annotation</span>, <span class="ruby-identifier">options</span>)
+            <pre><span class="ruby-comment"># File test.approx.01.rb, line 15</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">annotate_text</span>(<span class="ruby-identifier">uri</span>, <span class="ruby-identifier">email</span>, <span class="ruby-identifier">password</span>, <span class="ruby-identifier">annotation</span>, <span class="ruby-identifier">options</span>)
         <span class="ruby-comment"># Prepare the connection to the text annotation service.</span>
         <span class="ruby-identifier">resource</span> = <span class="ruby-constant">RestClient</span><span class="ruby-operator">::</span><span class="ruby-constant">Resource</span>.<span class="ruby-identifier">new</span>( 
-                <span class="ruby-node">&quot;#{uri}/text_annotations.json?auth_token=#{auth_token}&quot;</span>,
+                <span class="ruby-node">&quot;#{uri}/text_annotations.json&quot;</span>,
                 <span class="ruby-value">:timeout</span>      =<span class="ruby-operator">&gt;</span> <span class="ruby-value">300</span>, 
                 <span class="ruby-value">:open_timeout</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">300</span>,
                 )
 
-        <span class="ruby-comment"># Annotate the text</span>
-        <span class="ruby-identifier">json_result</span> = <span class="ruby-identifier">resource</span>.<span class="ruby-identifier">post</span>( 
+        <span class="ruby-comment"># Annotate the text.</span>
+        <span class="ruby-identifier">data</span> = <span class="ruby-identifier">resource</span>.<span class="ruby-identifier">post</span>( 
+                <span class="ruby-value">:user</span>         =<span class="ruby-operator">&gt;</span> {<span class="ruby-identifier">email</span><span class="ruby-value">:email</span>, <span class="ruby-identifier">password</span><span class="ruby-value">:password</span>},
                 <span class="ruby-value">:annotation</span>   =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">annotation</span>.<span class="ruby-identifier">to_json</span>,
                 <span class="ruby-value">:options</span>      =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">options</span>.<span class="ruby-identifier">to_json</span>,
                 <span class="ruby-value">:content_type</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">:json</span>,
                 <span class="ruby-value">:accept</span>       =<span class="ruby-operator">&gt;</span> <span class="ruby-value">:json</span>,
-            )
-
-        <span class="ruby-identifier">result</span> = <span class="ruby-constant">JSON</span>.<span class="ruby-identifier">parse</span>(<span class="ruby-identifier">json_result</span>)
-
-        <span class="ruby-keyword">return</span> <span class="ruby-identifier">result</span>
+        ) <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">response</span>, <span class="ruby-identifier">request</span>, <span class="ruby-identifier">result</span><span class="ruby-operator">|</span>
+                <span class="ruby-keyword">case</span> <span class="ruby-identifier">response</span>.<span class="ruby-identifier">code</span>
+                <span class="ruby-keyword">when</span> <span class="ruby-value">200</span>
+                        <span class="ruby-constant">JSON</span>.<span class="ruby-identifier">parse</span>(<span class="ruby-identifier">response</span>.<span class="ruby-identifier">body</span>)
+                <span class="ruby-keyword">else</span>
+                        <span class="ruby-identifier">$stdout</span>.<span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Error code: #{response.code}&quot;</span>
+                        <span class="ruby-identifier">annotation</span>
+                <span class="ruby-keyword">end</span>
+        <span class="ruby-keyword">end</span>
+        
+        <span class="ruby-keyword">return</span> <span class="ruby-identifier">data</span>
 <span class="ruby-keyword">end</span></pre>
           </div><!-- annotate_text-source -->
           
@@ -182,11 +195,11 @@ dictionary, which  will be identified by the auth_token.</p>
       </div><!-- annotate_text-method -->
 
     
-      <div id="method-i-destroy_auth_token" class="method-detail ">
+      <div id="method-i-get_label_list" class="method-detail ">
         
         <div class="method-heading">
-          <span class="method-name">destroy_auth_token</span><span
-            class="method-args">(uri, auth_token)</span>
+          <span class="method-name">get_label_list</span><span
+            class="method-args">(uri, email, password, annotation, options)</span>
           
           <span class="method-click-advice">click to toggle source</span>
           
@@ -195,81 +208,60 @@ dictionary, which  will be identified by the auth_token.</p>
 
         <div class="method-description">
           
-          <p>Destroy auth_token.</p>
-
-<pre>* (string)  uri           - The URI of the sign in route.
-* (string)  auth_token    - The authentication token that identifies the user&#39;s session to be destroyed.</pre>
+          <p>Get the list of labels for a list of IDs.</p>
+<ul><li>
+<p>(string)  uri           - The URI of the sign in route. This URI involves
+the base dictionary name.</p>
+</li><li>
+<p>(string)  email         - User&#39;s login ID.</p>
+</li><li>
+<p>(string)  password      - User&#39;s login password.</p>
+</li><li>
+<p>(hash)    annotation    - The hash including a list of labels.</p>
+</li><li>
+<p>(hash)    options       - The hash containig options for id search.</p>
+</li></ul>
           
           
 
           
-          <div class="method-source-code" id="destroy_auth_token-source">
-            <pre><span class="ruby-comment"># File local.RailsAAnn.token_authentication_sample.rb, line 63</span>
-<span class="ruby-keyword">def</span> <span class="ruby-identifier">destroy_auth_token</span>(<span class="ruby-identifier">uri</span>, <span class="ruby-identifier">auth_token</span>)
-        <span class="ruby-identifier">result</span> = <span class="ruby-constant">RestClient</span>.<span class="ruby-identifier">delete</span>( 
-                <span class="ruby-identifier">uri</span>,
-                <span class="ruby-value">:params</span>       =<span class="ruby-operator">&gt;</span> {<span class="ruby-value">:auth_token</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">auth_token</span>},
-                <span class="ruby-value">:content_type</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">:json</span>,
-                <span class="ruby-value">:accept</span>       =<span class="ruby-operator">&gt;</span> <span class="ruby-value">:json</span>,
-                )
-        <span class="ruby-keyword">return</span> <span class="ruby-identifier">result</span>
-<span class="ruby-keyword">end</span></pre>
-          </div><!-- destroy_auth_token-source -->
-          
-        </div>
-
-        
-
-        
-      </div><!-- destroy_auth_token-method -->
-
-    
-      <div id="method-i-get_auth_token" class="method-detail ">
-        
-        <div class="method-heading">
-          <span class="method-name">get_auth_token</span><span
-            class="method-args">(uri, email, password)</span>
-          
-          <span class="method-click-advice">click to toggle source</span>
-          
-        </div>
-        
-
-        <div class="method-description">
-          
-          <p>Get the authentication token from the PubDictionaries by signing in.</p>
-
-<pre>* (string)  uri       - The URI of the sign in route.
-* (string)  email     - The login email .
-* (string)  password  - The password for the email.</pre>
-          
-          
-
-          
-          <div class="method-source-code" id="get_auth_token-source">
-            <pre><span class="ruby-comment"># File local.RailsAAnn.token_authentication_sample.rb, line 13</span>
-<span class="ruby-keyword">def</span> <span class="ruby-identifier">get_auth_token</span>(<span class="ruby-identifier">uri</span>, <span class="ruby-identifier">email</span>, <span class="ruby-identifier">password</span>)
-        <span class="ruby-comment"># Sign into the PubDictionaries.</span>
-        <span class="ruby-identifier">res</span> = <span class="ruby-constant">RestClient</span>.<span class="ruby-identifier">post</span>( 
-                <span class="ruby-identifier">uri</span>,
-                <span class="ruby-value">:user</span>         =<span class="ruby-operator">&gt;</span> {<span class="ruby-value">:email=</span><span class="ruby-operator">&gt;</span><span class="ruby-identifier">email</span>, <span class="ruby-value">:password=</span><span class="ruby-operator">&gt;</span><span class="ruby-identifier">password</span>},
-                <span class="ruby-value">:content_type</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">:json</span>,
-                <span class="ruby-value">:accept</span>       =<span class="ruby-operator">&gt;</span> <span class="ruby-value">:json</span>,
+          <div class="method-source-code" id="get_label_list-source">
+            <pre><span class="ruby-comment"># File test.id_to_label.01.rb, line 15</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">get_label_list</span>(<span class="ruby-identifier">uri</span>, <span class="ruby-identifier">email</span>, <span class="ruby-identifier">password</span>, <span class="ruby-identifier">annotation</span>, <span class="ruby-identifier">options</span>)
+        <span class="ruby-comment"># Prepare the connection to the web service.</span>
+        <span class="ruby-identifier">resource</span> = <span class="ruby-constant">RestClient</span><span class="ruby-operator">::</span><span class="ruby-constant">Resource</span>.<span class="ruby-identifier">new</span>( 
+                <span class="ruby-node">&quot;#{uri}/text_annotations.json&quot;</span>,
+                <span class="ruby-value">:timeout</span>      =<span class="ruby-operator">&gt;</span> <span class="ruby-value">300</span>, 
+                <span class="ruby-value">:open_timeout</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">300</span>,
                 )
 
-        <span class="ruby-comment"># Retrieve the authentication token.</span>
-        <span class="ruby-identifier">auth_token</span> = <span class="ruby-constant">JSON</span>.<span class="ruby-identifier">parse</span>(<span class="ruby-identifier">res</span>)[<span class="ruby-string">&quot;auth_token&quot;</span>]
-        
-        <span class="ruby-keyword">return</span> <span class="ruby-identifier">auth_token</span>
+        <span class="ruby-comment"># Retrieve the list of labels.</span>
+        <span class="ruby-identifier">data</span> = <span class="ruby-identifier">resource</span>.<span class="ruby-identifier">post</span>( 
+                <span class="ruby-value">:user</span>         =<span class="ruby-operator">&gt;</span> {<span class="ruby-identifier">email</span><span class="ruby-value">:email</span>, <span class="ruby-identifier">password</span><span class="ruby-value">:password</span>},
+                <span class="ruby-value">:annotation</span>   =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">annotation</span>.<span class="ruby-identifier">to_json</span>,
+                <span class="ruby-value">:options</span>      =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">options</span>.<span class="ruby-identifier">to_json</span>, 
+                <span class="ruby-value">:content_type</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">:json</span>,
+                <span class="ruby-value">:accept</span>       =<span class="ruby-operator">&gt;</span> <span class="ruby-value">:json</span>,
+        ) <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">response</span>, <span class="ruby-identifier">request</span>, <span class="ruby-identifier">result</span><span class="ruby-operator">|</span>
+                <span class="ruby-keyword">case</span> <span class="ruby-identifier">response</span>.<span class="ruby-identifier">code</span>
+                <span class="ruby-keyword">when</span> <span class="ruby-value">200</span>
+                        <span class="ruby-constant">JSON</span>.<span class="ruby-identifier">parse</span>(<span class="ruby-identifier">response</span>.<span class="ruby-identifier">body</span>)
+                <span class="ruby-keyword">else</span>
+                        <span class="ruby-identifier">$stdout</span>.<span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Error code: #{response.code}&quot;</span>
+                        <span class="ruby-identifier">annotation</span>
+                <span class="ruby-keyword">end</span>
+        <span class="ruby-keyword">end</span>
+
+        <span class="ruby-keyword">return</span> <span class="ruby-identifier">data</span>
 <span class="ruby-keyword">end</span></pre>
-          </div><!-- get_auth_token-source -->
+          </div><!-- get_label_list-source -->
           
         </div>
 
         
 
         
-      </div><!-- get_auth_token-method -->
+      </div><!-- get_label_list-method -->
 
     
     </section><!-- public-instance-method-details -->
