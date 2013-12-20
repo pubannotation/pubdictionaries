@@ -3,7 +3,6 @@
 .sass-cache
 .rspec
 /log
-/tmp
 /db/*.sqlite3
 /public/system
 /coverage/
@@ -24,7 +23,7 @@
 # All logfiles and tempfiles.
 *.pid
 *.log
-/PubDictionaries/tmp
+/PubDictionaries/tmp/*
 
 # SimString compiled files #
 #########################
