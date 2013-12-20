@@ -1,7 +1,7 @@
 <div class="annotation_page">
 <div class="code_sample">
 <pre>
-	
+
 #!/usr/bin/env ruby
 
 require 'json'
@@ -20,7 +20,7 @@ require 'rest_client'
 def get_label_list(uri, email, password, annotation, options)
 	# Prepare the connection to the web service.
 	resource = RestClient::Resource.new( 
-		"#{uri}/text_annotations.json",
+		"#{uri}/ids_to_labels.json",
 		:timeout      => 300, 
 		:open_timeout => 300,
 		)
@@ -65,7 +65,7 @@ if __FILE__ == $0
 
 	# Prepare data and option objects
 	annotation = { "ids" => [ "1", "3", "5", "4790", "new_id", "new_id_2"] }
-	options    = { "task" => "id_to_label" }
+	options    = { }
 
 	result     = get_label_list(uri, email, password, annotation, options)
 
@@ -85,7 +85,6 @@ if __FILE__ == $0
 	$stdout.puts 
 
 end
-
 
 </pre>
 </div>

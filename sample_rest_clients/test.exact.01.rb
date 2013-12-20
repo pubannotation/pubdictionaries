@@ -51,7 +51,7 @@ end
 #
 if __FILE__ == $0	
 	if ARGV.size != 3
-		$stdout.puts "Usage:  #{$0}  <email>  <password>  <uri>"
+		$stdout.puts "Usage:  #{$0}  Email  Password  URI"
 		exit
 	end
 	email      = ARGV[0]
