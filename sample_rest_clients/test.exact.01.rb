@@ -8,6 +8,7 @@ require 'rest_client'
 # will be identified by the auth_token.
 #
 # * (string)  uri           - The URI of the sign in route. This URI involves the base dictionary name.
+#                             (e.g., http://localhost:3000/dictionaries/EntrezGene%20-%20Homo%20Sapiens)
 # * (string)  email         - User's login ID.
 # * (string)  password      - User's login password.
 # * (hash)    annotation    - The hash including text for annotation.

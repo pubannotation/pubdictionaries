@@ -2,11 +2,6 @@
 *.sassc
 .sass-cache
 .rspec
-/log
-/db/*.sqlite3
-/public/system
-/coverage/
-/spec/tmp
 
 # these should all be checked in to normalise the environment:
 # Gemfile.lock, .ruby-version, .ruby-gemset
@@ -15,7 +10,6 @@
 /PubDictionaries/.bundle
 /PubDictionaries/vendor/bundle
 
-
 # Database.
 /PubDictionaries/db/*.sqlite3
 /PubDictionaries/public/simstring_dbs/*
@@ -23,7 +17,6 @@
 # All logfiles and tempfiles.
 *.pid
 *.log
-/PubDictionaries/tmp/*
 
 # SimString compiled files #
 #########################
