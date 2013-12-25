@@ -1,0 +1,147 @@
+#banner {
+  background: #9c9;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid;
+  font: small-caps 40px/40px "Times New Roman", serif;
+  color: #000000;
+  text-align: center;
+}
+
+#banner img {
+  float: left;
+}
+
+/* Authentication information part */
+#authentication_information {
+  background: #5a5;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid;
+  font-size: small;
+  color: #000000;
+  text-align: right;
+}
+
+#authentication_information a {
+  font-size: small;
+  color: #000000;
+}
+
+#columns {
+  background: #141;
+}
+
+/* side-bar area */
+#side {
+  float: left;
+  padding-top: 1em;
+  padding-left: 1em;
+  padding-bottom: 1em;
+  width: 12em;
+  background: #141;
+}
+
+#side #links a {
+  display:block;     /* a-tag is an inline element so padding (and hight and width too) are ignored */
+  color: #bbffbb;
+  font-size: medium;
+  padding-top: 0.3em;
+  padding-bottom: 0.3em;
+}
+
+
+/* main body area */
+#main {
+  margin-left: 13em;
+  padding-top: 4ex;
+  padding-left: 2em;
+  background: white;
+}
+
+
+/* Common CSS */
+#main legend {     
+  font-size: 1.5em;
+  color: #0000ff;
+  background-color: #dddddd;
+  margin-bottom: 10px;
+}
+
+
+/* Welcome page */
+/*#main .welcome_page .introduction .title {
+  font-size: 2em; 
+}*/
+
+
+
+/* Dictionaries page */
+#main .dictionaries_page .entry_list .removed_dictionary_entry {
+  text-decoration: line-through;
+  background-color: #aaaaaa ;
+}
+
+#main .dictionaries_page .entry_list {
+  border-collapse: collapse;
+}
+
+#main .dictionaries_page .entry_list .search_field {
+  width: 600px;
+  text-align: left;
+  padding-top: 0.2em;
+  padding-left: 1em;
+  padding-right: 1em;
+  padding-bottom: 0.2em;   
+}
+
+#main .dictionaries_page .entry_list .search_field #entry_search {
+  width: 300px;
+}
+
+#main .dictionaries_page .entry_list .search_field #new_entry_search {
+  width: 300px;
+}
+
+#main .dictionaries_page .entry_list .sort_by {
+  width: 400px;
+  text-align: right;
+  padding-top: 0.2em;
+  padding-left: 1em;
+  padding-right: 1em;
+  padding-bottom: 0.2em;   
+}
+
+#main .dictionaries_page .entry_list .paginated_entries_info {
+  width: 800px;
+  background-color: #aaaaff;
+  padding-top: 0.2em;
+  padding-left: 1em;
+  padding-right: 1em;
+  padding-bottom: 0.2em;
+}
+
+#main .dictionaries_page .entry_list .entry_name {
+  width: 600px;
+}
+
+#main .dictionaries_page .entry_list .label {
+  width: 200px;
+}
+
+#main .dictionaries_page .entry_list .id {
+  width: 200px;
+}
+
+
+/* For developers page */
+#main .web_services_page .code_sample {
+  width: 1000px;
+  word-wrap: break-word;
+}
+
+#main .web_services_page pre {
+  width: 1000px;
+  background-color: #eeeeff;
+}
+

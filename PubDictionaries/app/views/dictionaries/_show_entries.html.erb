@@ -1,56 +1,122 @@
-<div class="entry_list">
-  <fieldset>
-    <legend>Original entries:</legend>
-    
-    <!-- Information bar -->
-    <table class="search_and_sort">
-      <tr>
-        <td class="search_field">
-          <%= form_tag dictionary_path, method: :get do %>
-            <%= label_tag :entry_search, "Query: " %>
-            <%= text_field_tag :entry_search, params[:entry_search] %>
-            <!-- Kinds of session information -->
-            <%= hidden_field_tag :entry_sort, params[:entry_sort] %>
-            <%= hidden_field_tag :new_entry_search, params[:new_entry_search] %>
-            <%= hidden_field_tag :new_entry_sort, params[:new_entry_sort] %>
-            <%= submit_tag "Search" %>
-          <% end %>
-        </td>
-        <td class="sort_by">
-          <%= form_tag dictionary_path, method: :get do %>
-            <%= select_tag :entry_sort, options_for_select(Dictionary::SORT_BY, is_nil_or_empty?(params[:entry_sort]) ? "view_title asc" : params[:entry_sort]) %>
-            <!-- Kinds of session information -->
-            <%= hidden_field_tag :entry_search, params[:entry_search] %>
-            <%= hidden_field_tag :new_entry_search, params[:new_entry_search] %>
-            <%= hidden_field_tag :new_entry_sort, params[:new_entry_sort] %>
-            <%= submit_tag "Search" %>
-          <% end %>
-        </td>
-      </tr>
-    </table>
-    <br />
 
-    <!-- A list of paginated entries -->
-    <table>
-      <tr>
-        <th class="entry_name">Entry name</th>
-        <th class="label">Label</th>
-        <th class="id">ID</th>
-        <th>Options</th>
-      </tr>
-      <%= render @pg_entries %> <!-- Uses the partial (view/entries/_entry.html.erb) -->
-      <tr>
-        <td colspan="4" class="paginated_entries_info">
-          <%= page_entries_info @pg_entries %>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="4" align="center">
-          <div class="flickr_pagination">
-            <%= will_paginate @pg_entries, param_name: 'entries_page' %>
-          </div>
-        </td>
-      </tr>    
-    </table>
-  </fieldset>
+
+<div class="entry_list">
+
+  <div id="tabs">
+    <!-- Menu bar -->
+    <ul>
+      <li><a href="#basedic_remained_entries-tab">Base entries</a></li>
+      <li><a href="#basedic_disabled_entries-tab">Disabled entries</a></li>
+      <li><a href="#userdic_new_entries-tab">New entries</a></li>
+    </ul>
+
+    <!-- Tab 1: base entries -->
+    <div id="basedic_remained_entries-tab">
+      <div class="wice-grid">
+        <%= form_tag :action => :disable_entries, :method => :post do %>
+          <% if @grid_basedic_remained_entries %>
+            <% dump_filter_parameters_as_hidden_fields(@grid_basedic_remained_entries) %>
+          
+            <% if user_signed_in? %>
+              <%= submit_tag "Disable selected entries" %>
+            <% end %>
+            <%= grid(@grid_basedic_remained_entries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}) do |g|
+              # g.blank_slate  do
+              #  "There are no records"
+              # end
+         
+              # Add checkbox buttons for each entry.
+              g.action_column
+              
+              # Show columns.
+              g.column :name => "Entry name", :attribute => "search_title" do |task|
+                task.view_title
+              end
+              g.column :name => "Label", :attribute => "label" do |task|
+                task.label
+              end
+              g.column :name => "ID", :attribute => "uri" do |task|
+                task.uri
+              end
+            end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Tab 2: disabled base entries -->
+    <div id="basedic_disabled_entries-tab">
+      <div class="wice-grid">
+        <%= form_tag :action => :disable_entries, :method => :post do %>
+          <% if @grid_basedic_disabled_entries %>
+            <% dump_filter_parameters_as_hidden_fields(@grid_basedic_disabled_entries) %>
+            
+            <% if user_signed_in? %>
+              <%= submit_tag "Enable selected entries" %>
+            <% end %>
+            <%= grid(@grid_basedic_disabled_entries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}) do |g|
+              # g.blank_slate  do
+              #  "There are no records"
+              # end
+              
+              # Add checkbox buttons for each entry.
+              g.action_column
+              
+              # Show columns.
+              g.column :name => "Entry name", :attribute => "search_title" do |task|
+                task.view_title
+              end
+              g.column :name => "Label", :attribute => "label" do |task|
+                task.label
+              end
+              g.column :name => "ID", :attribute => "uri" do |task|
+                task.uri
+              end
+            end %>
+
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Tab 3: new entries -->
+    <div id="userdic_new_entries-tab">
+       <div class="wice-grid">
+        <%= button_to 'Add a new entry', new_dictionary_entry_path(@dictionary), :method => :get %>
+
+        <%= form_tag :action => :remove_entries, :method => :post do %>
+          <% if @grid_userdic_new_entries %>
+            <% dump_filter_parameters_as_hidden_fields(@grid_userdic_new_entries) %>
+            
+            <% if user_signed_in? %>
+              <%= submit_tag "Remove selected entries" %>
+            <% end %>
+
+            <%= grid(@grid_userdic_new_entries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}) do |g|
+              # g.blank_slate  do
+              #  "There are no records"
+              # end
+              
+              # Add checkbox buttons for each entry.
+              g.action_column
+              
+              # Show columns.
+              g.column :name => "Entry name", :attribute => "search_title" do |task|
+                task.view_title
+              end
+              g.column :name => "Label", :attribute => "label" do |task|
+                task.label
+              end
+              g.column :name => "ID", :attribute => "uri" do |task|
+                task.uri
+              end
+            end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+  </div>
 </div>
+
+

@@ -32,39 +32,141 @@ class DictionariesController < ApplicationController
   # Shows the content of an original dictionary and its corresponding user dictionary.
   #
   def show
-    # Gets the selected dictionary and the user dictionary connected to it.
-    @dictionary       = Dictionary.find_by_title(params[:id])
+    # Gets the selected dictionary and the corresponding user dictionary.
+    @dictionary    = Dictionary.find_by_title(params[:id])
     if user_signed_in?
-      @user_dictionary  = @dictionary.user_dictionaries.where(user_id: current_user.id).first
+      @user_dictionary = @dictionary.user_dictionaries.find_by_user_id(current_user.id)
+    else
+      @user_dictionary = nil
     end
-         
+     
     # Export? or Show?
     if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
       # Prepares data for export.
       @export_entries = build_export_entries(params[:query])
 
     else
-      # Prepares paginated (original) entries.
-      @pg_entries = @dictionary.search_entries( params[:entry_search], 
-                                                params[:entry_sort], 
-                                                params[:entries_page] )
+      if @user_dictionary
+        basedic_disabled_entries_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
+        basedic_disabled_entries     = Entry.where(:id => basedic_disabled_entries_ids)
+        if basedic_disabled_entries_ids.empty?
+          basedic_remained_entries     = Entry.where(:dictionary_id => @dictionary.id)
+        else
+          basedic_remained_entries     = Entry.where(:dictionary_id => @dictionary.id).where("id not in (?)", basedic_disabled_entries_ids)   # id not in () not work if () is empty.
+        end
+        userdic_new_entries          = NewEntry.where(:user_dictionary_id => @user_dictionary.id)
+      else
+        basedic_disabled_entries     = nil
+        basedic_remained_entries     = Entry.where(:dictionary_id => @dictionary.id)
+        userdic_new_entries          = nil
+      end
 
-      # Prepares paginated new_entries and a set of removed entry IDs.
-      if not @user_dictionary.nil?
-        @pg_new_entries  = @user_dictionary.search_new_entries( params[:new_entry_search], 
-                                                                params[:new_entry_sort], 
-                                                                params[:new_entries_page] )
+      # 1. Disabled base entries.
+      if basedic_disabled_entries.nil?
+        @grid_basedic_disabled_entries = nil
+      else
+        if not params.has_key? :basedic_disabled_entries
+          @grid_basedic_disabled_entries = initialize_grid(basedic_disabled_entries,
+            :name => "basedic_disabled_entries",
+            :per_page => 30, )
+        else
+          Rails.logger.debug "----- #{params[:basedic_disabled_entries][:order].inspect}"
+          # @grid_basedic_disabled_entries = initialize_grid(basedic_disabled_entries,
+          @grid_basedic_disabled_entries = initialize_grid(Entry.where(:id => basedic_disabled_entries_ids),
+            :name => "basedic_disabled_entries",
+            :order => params[:basedic_disabled_entries][:order],
+            :order_direction => params[:basedic_disabled_entries][:order_direction],
+            :per_page => 30, )
+          if params[:basedic_disabled_entries][:selected]
+            @selected = params[:basedic_disabled_entries][:selected]
+          end
+        end
+      end
+
+      # 2. Remained base entries.
+      if basedic_remained_entries.nil?
+        @grid_basedic_remained_entries = nil
+      else
+        @grid_basedic_remained_entries = initialize_grid(basedic_remained_entries, 
+          :order => 'entries.search_title',
+          :order_direction => 'desc',
+          :name => "basedic_remained_entries",
+          :per_page => 30, )
+        if params[:basedic_remained_entries] && params[:basedic_remained_entries][:selected]
+          @selected = params[:basedic_remained_entries][:selected]
+        end
+      end
+
+      # 3. Prepare the Wice_Grid instance for the user_dictionary's added entries.
+      if userdic_new_entries.nil?
+        @grid_userdic_new_entries = nil
+      else
+        @grid_userdic_new_entries = initialize_grid(userdic_new_entries, 
+          :name => "userdic_new_entries",
+          :per_page => 30, )
         
-        @removed_entries = Set.new( RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq )
+        if params[:userdic_new_entries] && params[:userdic_new_entries][:selected]
+          @selected = params[:userdic_new_entries][:selected]
+        end
       end
     end
 
     respond_to do |format|
       format.html # show.html.erb
       format.tsv { send_data tsv_data(@export_entries), 
-                             filename: "#{@dictionary.title}.#{params[:query]}.tsv", 
-                            type: "text/tsv" }
+        filename: "#{@dictionary.title}.#{params[:query]}.tsv", 
+        type: "text/tsv" }
     end
+  end
+
+  # Disable (or enable) multiple selected entries (from the base dictionary).
+  def disable_entries
+    dictionary       = Dictionary.find_by_title(params[:id])
+    disabled_entries = get_user_dictionary(current_user.id, dictionary.id).removed_entries
+    
+    if params["commit"] == "Disable selected entries" \
+       and params.has_key? :basedic_remained_entries \
+       and params[:basedic_remained_entries].has_key? :selected
+      
+      params[:basedic_remained_entries][:selected].each do |id|
+        entry = dictionary.entries.find(id)
+        if not disabled_entries.exists?(entry_id: entry.id)
+          register_disabled_entry(disabled_entries, entry)
+        end
+      end
+    end
+
+    if params["commit"] == "Enable selected entries" \
+       and params.has_key? :basedic_disabled_entries \
+       and params[:basedic_disabled_entries].has_key? :selected
+
+      params[:basedic_disabled_entries][:selected].each do |id|
+        entry = dictionary.entries.find(id)
+
+        if disabled_entries.exists?(entry_id: entry.id)
+          disabled_entries.where(entry_id: entry.id).first.destroy
+        end
+      end
+    end
+
+    redirect_to :back   
+  end
+
+  # Remove multiple selected entries (from the user dictionary).
+  def remove_entries
+    dictionary       = Dictionary.find_by_title(params[:id])
+    user_dictionary  = get_user_dictionary(current_user.id, dictionary.id)
+
+    if not params[:userdic_new_entries][:selected].nil?
+      params[:userdic_new_entries][:selected].each do |id|
+        entry = user_dictionary.new_entries.find(id)
+        if not entry.nil?
+          entry.destroy
+        end
+      end
+    end
+
+    redirect_to :back   
   end
 
   def new
@@ -386,6 +488,21 @@ class DictionariesController < ApplicationController
       end
     end
   end
-  
+
+  def get_user_dictionary(user_id, dictionary_id)
+    user_dictionary = UserDictionary.where({ user_id: user_id, dictionary_id: dictionary_id }).first
+    if user_dictionary.nil?
+      user_dictionary = UserDictionary.new({ user_id: user_id, dictionary_id: dictionary_id })
+      user_dictionary.save
+    end
+
+    user_dictionary
+  end
+
+  def register_disabled_entry(disabled_entries, entry)
+    disabled_entry = disabled_entries.new
+    disabled_entry.entry_id = entry.id
+    disabled_entry.save
+  end
 
 end

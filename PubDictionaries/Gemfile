@@ -11,6 +11,9 @@ gem 'libv8'
 # Use PostgreSQL
 gem 'pg', :require => 'pg'
 
+# Grid viewer
+gem 'wice_grid'
+
 group :development do
 end
 
@@ -40,9 +43,11 @@ group :assets do
   gem 'uglifier', '>= 1.0.3'
 end
 
-gem 'jquery-rails'
+gem 'jquery-rails', '>3.0.0'
+gem 'jquery-ui-rails'
+# gem 'jquery-rails', "<3.0.0"
 
-gem 'will_paginate', '>= 3.0.pre'
+# gem 'will_paginate', '>= 3.0.pre'     # Not compatible with Wice_Grid
 gem 'devise', '3.0.3'
 
 

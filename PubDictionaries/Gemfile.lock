@@ -56,7 +56,12 @@ GEM
     jquery-rails (3.0.4)
       railties (>= 3.0, < 5.0)
       thor (>= 0.14, < 2.0)
+    jquery-ui-rails (4.1.1)
+      railties (>= 3.1.0)
     json (1.8.1)
+    kaminari (0.15.0)
+      actionpack (>= 3.0.0)
+      activesupport (>= 3.0.0)
     kgio (2.8.1)
     libv8 (3.16.14.3)
     mail (2.5.4)
@@ -129,7 +134,8 @@ GEM
       raindrops (~> 0.7)
     warden (1.2.3)
       rack (>= 1.0)
-    will_paginate (3.0.5)
+    wice_grid (3.4.2)
+      kaminari (>= 0.13.0)
 
 PLATFORMS
   ruby
@@ -138,7 +144,8 @@ DEPENDENCIES
   activerecord-import (~> 0.3.1)
   coffee-rails (~> 3.2.1)
   devise (= 3.0.3)
-  jquery-rails
+  jquery-rails (> 3.0.0)
+  jquery-ui-rails
   libv8
   pg
   rails (= 3.2.16)
@@ -150,4 +157,4 @@ DEPENDENCIES
   triez
   uglifier (>= 1.0.3)
   unicorn
-  will_paginate (>= 3.0.pre)
+  wice_grid

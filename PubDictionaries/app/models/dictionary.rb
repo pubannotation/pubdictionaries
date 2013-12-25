@@ -1,5 +1,5 @@
 class Dictionary < ActiveRecord::Base
-  default_scope :order => 'title'
+  # default_scope :order => 'title'
 
   attr_accessor :file, :separator, :sort
   attr_accessible :creator, :description, :title, :file, :stemmed, :lowercased, :hyphen_replaced, :separator, :sort

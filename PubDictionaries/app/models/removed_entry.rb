@@ -3,4 +3,6 @@ class RemovedEntry < ActiveRecord::Base
 
   belongs_to :user_dictionary
   belongs_to :entry
+
+  validates :entry_id, :uniqueness => { :scope => :user_dictionary_id }
 end

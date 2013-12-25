@@ -24,34 +24,34 @@ class EntriesController < ApplicationController
   end
 
   
-  # Destroy action works in two ways: 
-  #   1) remove a base dictionary entry (not from db) or
-  #   2) restore a removed base dictionary entry
-  #
-  def destroy
-    @dictionary = Dictionary.find_by_title(params[:dictionary_id])
-    @entry      = @dictionary.entries.find(params[:id])
+  # # Destroy action works in two ways: 
+  # #   1) remove a base dictionary entry (not from db) or
+  # #   2) restore a removed base dictionary entry
+  # #
+  # def destroy
+  #   @dictionary = Dictionary.find_by_title(params[:dictionary_id])
+  #   @entry      = @dictionary.entries.find(params[:id])
 
-    # 1. Get (or create) a user dictionary
-    user_dictionary = get_user_dictionary(current_user.id, @dictionary.id)
+  #   # 1. Get (or create) a user dictionary
+  #   user_dictionary = get_user_dictionary(current_user.id, @dictionary.id)
     
-    # 2. Remove (or restore) a base dictionary's entry
-    if user_dictionary.removed_entries.nil?
-      register_removed_entry(user_dictionary, @entry)
-    else
-      removed_entry = user_dictionary.removed_entries.where(entry_id: @entry.id).first  
+  #   # 2. Remove (or restore) a base dictionary's entry
+  #   if user_dictionary.removed_entries.nil?
+  #     register_removed_entry(user_dictionary, @entry)
+  #   else
+  #     removed_entry = user_dictionary.removed_entries.where(entry_id: @entry.id).first  
       
-      if removed_entry.nil?
-        register_removed_entry(user_dictionary, @entry)
-      else
-        removed_entry.destroy
-      end
-    end
+  #     if removed_entry.nil?
+  #       register_removed_entry(user_dictionary, @entry)
+  #     else
+  #       removed_entry.destroy
+  #     end
+  #   end
 
-    # 3. Go to the @dictionary#show 
-    # redirect_to @dictionary     # This command will show the FIRST page of the dictionary.
-    redirect_to :back             # This redirect_to will show the current page :-)
-  end
+  #   # 3. Go to the @dictionary#show 
+  #   # redirect_to @dictionary     # This command will show the FIRST page of the dictionary.
+  #   redirect_to :back             # This redirect_to will show the current page :-)
+  # end
 
   
   ###########################
@@ -70,11 +70,11 @@ class EntriesController < ApplicationController
     return user_dictionary
   end
 
-  def register_removed_entry(user_dictionary, entry)
-    removed_entry = user_dictionary.removed_entries.new
-    removed_entry.entry_id = entry.id
-    removed_entry.save
-  end
+  # def register_removed_entry(user_dictionary, entry)
+  #   removed_entry = user_dictionary.removed_entries.new
+  #   removed_entry.entry_id = entry.id
+  #   removed_entry.save
+  # end
 
 
 
