@@ -1,4 +1,5 @@
 
+// Excerpted from the Web.
 $(function() {
     //  jQueryUI 1.10 and HTML5 ready
     //      http://jqueryui.com/upgrade-guide/1.10/#removed-cookie-option 

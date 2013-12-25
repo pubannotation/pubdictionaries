@@ -134,22 +134,29 @@
 
 
   ul.pagination {
-    border: 0; margin: 0; padding: 0;
-
+    border: 0; 
+    margin: 0; 
+    padding-top: 5px;
+    padding-bottom: 5px;
+  
     li {
       border: 0; margin: 0; padding: 0;
       font-size: 15px;
       list-style: none;
+      float: left;
+      padding-left: 5px;
+      padding-right: 5px;
     }
 
-    a[rel~="prev"], a[rel~="next"] {
-      font-weight: bold;
+    a[rel="prev"], a[rel="next"] {
       border: solid 1px #FFFFFF;
     } 
 
     a {
-      border: solid 1px #DDDDDD;
+      border: solid 2px #DDDDDD;
       margin-right: 2px;
+      color: #0063dc;
+      text-decoration: none;
     }
   
     .active {
@@ -157,23 +164,25 @@
       font-weight: bold;
       display: block;
       float: left;
-      padding: 4px 6px;
     }
 
     .disabled {
-      color: #666666;
+      color: #aaaaaa;
       display: block;
       float: left;
       font-weight: bold;
-      padding: 3px 4px;
     }
 
-    a:hover{
-      border: solid 1px #666666;
+    a:hover, a:focus {
+      border-color: #003366;
+      background: #0063dc;
+      color: white; 
     }
   }
   
   .pagination_status {
+    vertical-align: middle;
+    color: #0000ff;
     font-weight: bold;
     float: right;
   }
