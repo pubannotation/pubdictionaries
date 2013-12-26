@@ -17,6 +17,7 @@
 # All logfiles and tempfiles.
 *.pid
 *.log
+/PubDictionaries/tmp/cache/assets/*
 
 # SimString compiled files #
 #########################
