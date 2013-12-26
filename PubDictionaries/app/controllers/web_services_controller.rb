@@ -1,5 +1,4 @@
-class WebServicesController < ApplicationController
-  
+class WebServicesController < ApplicationController  
   def index
   end
 

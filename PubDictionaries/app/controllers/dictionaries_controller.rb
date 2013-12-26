@@ -65,21 +65,13 @@ class DictionariesController < ApplicationController
       if basedic_disabled_entries.nil?
         @grid_basedic_disabled_entries = nil
       else
-        if not params.has_key? :basedic_disabled_entries
-          @grid_basedic_disabled_entries = initialize_grid(basedic_disabled_entries,
-            :name => "basedic_disabled_entries",
-            :per_page => 30, )
-        else
-          Rails.logger.debug "----- #{params[:basedic_disabled_entries][:order].inspect}"
-          # @grid_basedic_disabled_entries = initialize_grid(basedic_disabled_entries,
-          @grid_basedic_disabled_entries = initialize_grid(Entry.where(:id => basedic_disabled_entries_ids),
-            :name => "basedic_disabled_entries",
-            :order => params[:basedic_disabled_entries][:order],
-            :order_direction => params[:basedic_disabled_entries][:order_direction],
-            :per_page => 30, )
-          if params[:basedic_disabled_entries][:selected]
-            @selected = params[:basedic_disabled_entries][:selected]
-          end
+        @grid_basedic_disabled_entries = initialize_grid(basedic_disabled_entries,
+          :name => "basedic_disabled_entries",
+          :order => "view_title",
+          :order_direction => "asc",
+          :per_page => 30, )
+        if params[:basedic_disabled_entries] && params[:basedic_disabled_entries][:selected]
+          @selected = params[:basedic_disabled_entries][:selected]
         end
       end
 
@@ -88,9 +80,9 @@ class DictionariesController < ApplicationController
         @grid_basedic_remained_entries = nil
       else
         @grid_basedic_remained_entries = initialize_grid(basedic_remained_entries, 
-          :order => 'entries.search_title',
-          :order_direction => 'desc',
           :name => "basedic_remained_entries",
+          :order => 'view_title',
+          :order_direction => 'asc',
           :per_page => 30, )
         if params[:basedic_remained_entries] && params[:basedic_remained_entries][:selected]
           @selected = params[:basedic_remained_entries][:selected]
@@ -103,8 +95,9 @@ class DictionariesController < ApplicationController
       else
         @grid_userdic_new_entries = initialize_grid(userdic_new_entries, 
           :name => "userdic_new_entries",
+          :order => 'view_title',
+          :order_direction => 'asc',
           :per_page => 30, )
-        
         if params[:userdic_new_entries] && params[:userdic_new_entries][:selected]
           @selected = params[:userdic_new_entries][:selected]
         end

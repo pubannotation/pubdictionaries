@@ -2,3 +2,14 @@
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
+
+/* For developers page */
+#main .web_services_page .code_sample {
+  width: 1000px;
+  word-wrap: break-word;
+}
+
+#main .web_services_page pre {
+  width: 1000px;
+  background-color: #eeeeff;
+}

@@ -27,7 +27,8 @@
 </fieldset>
 <br />
 
-<%= link_to 'New Dictionary', new_dictionary_path %>
+<%#= link_to 'Create a New Dictionary', new_dictionary_path %>
+<%= button_to 'Create a New Dictionary', new_dictionary_path, :method => :get %>
 
 <div class="dictionaries_page">
 

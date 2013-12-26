@@ -32,3 +32,23 @@ $(function() {
         }
     }); 
 }); 
+
+$(window).bind("load", function() {
+    $("div.slide_show_inner_div").slideViewerPro({
+        typo: true,
+
+        galBorderWidth: 2,
+        galBorderColor: "#8888ff",
+        
+        thumbsTopMargin: 10,
+        thumbsRightMargin: 10,
+        thumbsBorderWidth: 3,
+        thumbsBorderOpacity: 0,
+        thumbsActiveBorderColor: "#aaaa22",
+        thumbsActiveBorderOpacity: 0.8,
+
+        buttonsTextColor: "#0000ff",
+        leftButtonInner: "&#8656;",
+        rightButtonInner: "&#8658;",
+    });
+});

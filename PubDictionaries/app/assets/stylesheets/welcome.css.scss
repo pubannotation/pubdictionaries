@@ -5,12 +5,28 @@
 #main div.welcome_page {
 	div.introduction {
 		div.title {
+			text-align: center;
+			color: #5555ff;
 	 		font-size: 2em; 
 	 	}
 	 	div.subtitle {
 	 		font-size: 1em; 
 			color: #555555;
 			padding-left: 1em;
+		}
+	}
+
+	div.description {
+		text-align: center;
+
+	    div.slide_show_outer_div {
+			display: inline-block;
+			
+			div.slide_show_inner_div  {
+				ul li img {
+					width: 600px;
+				}
+			}
 		}
 	}
 	div.release {
