@@ -17,6 +17,8 @@
 # All logfiles and tempfiles.
 *.pid
 *.log
+
+# Do not push precompiled assets
 /PubDictionaries/tmp/cache/assets/*
 
 # SimString compiled files #

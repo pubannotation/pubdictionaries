@@ -29,16 +29,19 @@ class DictionariesController < ApplicationController
     end
   end
 
-  # Shows the content of an original dictionary and its corresponding user dictionary.
-  #
+  # Show the content of an original dictionary and its corresponding user dictionary.
   def show
-    # Gets the selected dictionary and the corresponding user dictionary.
+    # Get the selected dictionary and the corresponding user dictionary.
     @dictionary    = Dictionary.find_by_title(params[:id])
     if user_signed_in?
       @user_dictionary = @dictionary.user_dictionaries.find_by_user_id(current_user.id)
     else
       @user_dictionary = nil
     end
+
+    # Replace the page title with the dictionary name
+    @page_title = @dictionary.title
+
      
     # Export? or Show?
     if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]

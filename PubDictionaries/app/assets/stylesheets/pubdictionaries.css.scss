@@ -1,72 +1,93 @@
-#banner {
-  background: #9c9;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid;
-  font: small-caps 40px/40px "Times New Roman", serif;
-  color: #000000;
-  text-align: center;
+
+.pubdictionaries{
+  /* Fill the bg colors without margin */
+  margin: 0px;
 }
 
-#banner img {
-  float: left;
+.banner {
+  background: #34689b;     /* NCBI's GENE page top section color */
+  text-align: center;
+  margin: 0em;
+  
+  .logo {
+    float: left;
+    img {      
+      height: 50px;
+    }
+  }
+  
+  .page_title {
+    color: #ffffff;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 3em;
+    font-variant: small-caps;
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+  }
 }
 
 /* Authentication information part */
-#authentication_information {
-  background: #5a5;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  border-bottom: 2px solid;
-  font-size: small;
+.authentication_information {
   color: #000000;
+  background: #d5d5d5;     /* NCBI's GENE page top section color */
+  font-size: small;
+  font-weight: normal;
   text-align: right;
-}
-
-#authentication_information a {
-  font-size: small;
-  color: #000000;
-}
-
-#columns {
-  background: #141;
-}
-
-/* side-bar area */
-#side {
-  float: left;
-  padding-top: 1em;
-  padding-left: 1em;
-  padding-bottom: 1em;
-  width: 12em;
-  background: #141;
-}
-
-#side #links a {
-  display:block;     /* a-tag is an inline element so padding (and hight and width too) are ignored */
-  color: #bbffbb;
-  font-size: medium;
+  margin: 0em;
   padding-top: 0.3em;
   padding-bottom: 0.3em;
+  border-bottom: 2px solid;
+
+  /* Use red color for showing logged in ID */
+  i {
+    color: #ff0000;
+  }
+
+  /* Do not change colors on sign up and sign in links */
+  a, a:link, a:visited, a:hover, a:focus, a:active {
+    color: #000000;
+    font-weight: normal;
+  }
 }
 
+.columns {
+  background: #ffffff;
 
-/* main body area */
-#main {
-  margin-left: 13em;
-  padding-top: 4ex;
-  padding-left: 2em;
-  background: white;
+  /* side-bar area */
+  .side {
+    width: 10em;
+    float: left;
+    padding-top: 1em;
+    padding-bottom: 1em;
+    padding-left: 1em;
+    padding-right: 1em;
+    background: #ffffff;
+
+    .links a {
+      display: block;     /* a-tag is an inline element so padding (and hight and width too) are ignored */
+      font-size: normal;
+      text-decoration: none;
+      padding-top: 0.3em;
+      padding-bottom: 0.3em;
+    }
+  }
+
+  /* main body area */
+  .main {
+    margin-left: 10em;
+    padding-top: 2em;
+    padding-bottom: 2em;
+    padding-left: 5em;
+    padding-right: 5em;
+    background: #ffffff;
+    
+    legend {     
+      font-size: 1.5em;
+      color: #0000ff;
+      background-color: #dddddd;
+      margin-bottom: 0.5em;
+    }
+  }
 }
-
-
-/* Common CSS */
-#main legend {     
-  font-size: 1.5em;
-  color: #0000ff;
-  background-color: #dddddd;
-  margin-bottom: 10px;
-}
-
 
 

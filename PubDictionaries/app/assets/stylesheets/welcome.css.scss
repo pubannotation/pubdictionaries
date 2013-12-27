@@ -2,40 +2,41 @@
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
-#main div.welcome_page {
-	div.introduction {
-		div.title {
-			text-align: center;
-			color: #5555ff;
-	 		font-size: 2em; 
-	 	}
-	 	div.subtitle {
-	 		font-size: 1em; 
-			color: #555555;
-			padding-left: 1em;
-		}
-	}
+.main .welcome_page {
+  .introduction {
+    .title {
+      text-align: center;
+      color: #5555ff;
+      font-size: 2em; 
+    }
+    .subtitle {
+      font-size: 1em; 
+      color: #555555;
+      padding-left: 1em;
+    }
+  }
 
-	div.description {
-		text-align: center;
+  .description {
+    text-align: center;
 
-	    div.slide_show_outer_div {
-			display: inline-block;
-			
-			div.slide_show_inner_div  {
-				ul li img {
-					width: 600px;
-				}
-			}
-		}
-	}
-	div.release {
-		div.version {
-			font-weight: bold;
-		}
-		div.information {
-			padding-left: 1em;
-		}
-	}
+    .slide_show_outer_div {
+      display: inline-block;
+      
+      .slide_show_inner_div  {
+        ul li img {
+          width: 600px;
+        }
+      }
+    }
+  }
+  
+  .release {
+    .version {
+      font-weight: bold;
+    }
+    .information {
+      padding-left: 1em;
+    }
+  }
 }
 

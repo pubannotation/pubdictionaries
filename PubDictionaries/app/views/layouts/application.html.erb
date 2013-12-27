@@ -8,13 +8,17 @@
   <%= csrf_meta_tags %>
 </head>
 
-<body id="pubdictionaries">
-  <div id="banner">
-  	<%#= image_tag("logo.png") %>
-  	<%= @page_title || "PubDictionaries" %>
+<body class="pubdictionaries">
+  <div class="banner">
+    <div class="logo">
+  	 <%= image_tag("logo.png", :alt => "logo")%>
+    </div>
+    <div class="page_title">
+  	 <%= @page_title || "PubDictionaries" %>
+    </div>
   </div>
 
-  <div id="authentication_information">
+  <div class="authentication_information">
     <% if user_signed_in? %>
       You are logged in as <i><%= current_user.email %></i> | 
       <%= link_to "Edit profile", edit_user_registration_path %> | 
@@ -26,10 +30,10 @@
     <% end %>    
   </div>
 
-  <div id="columns">
-  	<div id="side">
-      <div id="links">
-        <%= link_to "Welcome", root_path %>
+  <div class="columns">
+  	<div class="side">
+      <div class="links">
+        <%= link_to "Top", root_path %>
         <%= link_to "Manual", manual_index_path %>
         <%= link_to "Dictionaries", dictionaries_path %>
         <%= link_to "For Developers", web_services_index_path %>
@@ -38,7 +42,7 @@
       </div>
   	</div>
     
-    <div id="main">
+    <div class="main">
       <% if notice %><p><%= flash[:notice] %></p><% end %>
       <% if alert %><p><%= alert %></p><% end %>
 

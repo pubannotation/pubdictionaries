@@ -10,13 +10,11 @@ class EntriesController < ApplicationController
   # Populate the new template of the a different controller, "new_entries."
   # ?? Is this right approach ??
   def new
-    # 1. Get the current dictionary
-    @dictionary = Dictionary.find_by_title(params[:dictionary_id])
+    # Use the dictionary name as the page title.
+    @page_title = params[:dictionary_id]
 
-    # 2. Get (or create) a user dictionary belongs_to @dictionary and user
+    @dictionary = Dictionary.find_by_title(params[:dictionary_id])
     @user_dictionary = get_user_dictionary( current_user.id, @dictionary.id )
-    
-    # 3. Create a new new_entry for @user_dictionary
     @new_entry = @user_dictionary.new_entries.new
 
     # 4. Use the new view of the new_entries controller, and use the create action in the new_entries controller too.
