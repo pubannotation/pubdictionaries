@@ -1,3 +1,31 @@
-// Place all the styles related to the Manual controller here.
+// Place all the styles related to the welcome controller here.
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
+
+.main .manual_page {
+  .title {
+    text-align: center;
+    color: #5555ff;
+    font-size: 2em; 
+  }
+  .description {
+    font-size: 1em; 
+    color: #555555;
+    padding-left: 1em;
+  }
+
+  .slide_show {
+    text-align: center;
+
+    .slide_show_outer_div {
+      display: inline-block;
+    }
+  
+    .slide_show_inner_div  {
+      ul li img {
+        width: 600px;
+      }
+    }
+  }
+}
+

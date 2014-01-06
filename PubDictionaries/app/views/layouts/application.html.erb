@@ -34,7 +34,10 @@
   	<div class="side">
       <div class="links">
         <%= link_to "Top", root_path %>
-        <%= link_to "Manual", manual_index_path %>
+        <%#= link_to "Manual", manual_index_path %>
+        Manual
+        <%= link_to '&#9500;Basic Manual'.html_safe, manual_basic_path %>
+        <%= link_to '&#9492;Advanced Manual'.html_safe, manual_advanced_path %>
         <%= link_to "Dictionaries", dictionaries_path %>
         <%= link_to "For Developers", web_services_index_path %>
         <a href="mailto:priancho@gmail.com">Contact</a>

@@ -31,7 +31,7 @@ class ApplicationController < ActionController::Base
   end
   
   # Returns true if the creator of a dictionary is same to the current_user (devise gem)
-  def is_current_user_same_to_creator?(dictionary)
+  def current_user_is_creator?(dictionary)
     if dictionary.creator == current_user.email
       return true
     else 

@@ -5,26 +5,43 @@
 .main .welcome_page {
   .introduction {
     .title {
+      font-size: 2.5em;
+      line-height: 1.2em; 
       text-align: center;
-      color: #5555ff;
-      font-size: 2em; 
+      color: #000000;
     }
+
     .subtitle {
-      font-size: 1em; 
-      color: #555555;
+      font-size: 1.6em; 
+      line-height: 1.2em; 
       padding-left: 1em;
+      color: #6666cc;
     }
-  }
 
-  .description {
-    text-align: center;
-
-    .slide_show_outer_div {
-      display: inline-block;
+    .description {
+      padding-left: 1em;
+      color: #000000;
+      .core {
+        font-size: 1.4em; 
+        line-height: 1.4em; 
+      }
+      .aux {
+        font-size: 1em; 
+        line-height: 1.2em; 
+      }
       
-      .slide_show_inner_div  {
-        ul li img {
-          width: 600px;
+    }
+
+    .slide_show {
+      text-align: center;
+
+      .slide_show_outer_div {
+        display: inline-block;
+        
+        .slide_show_inner_div  {
+          ul li img {
+            width: 600px;
+          }
         }
       }
     }

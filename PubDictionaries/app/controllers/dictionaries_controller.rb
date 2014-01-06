@@ -206,15 +206,25 @@ class DictionariesController < ApplicationController
   end
 
   def destroy
+    base_dic  = Dictionary.find_by_title(params[:id])
+    user_dics = UserDictionary.where(:dictionary_id => base_dic.id)
+
+    if current_user_is_creator?(dictionary) and no_user_entries?(user_dics)
+      # Delete entries     # @dictionary.destroy - Too slow due to the validation.
+      Entry.where("dictionary_id = ?", @dictionary.id).delete_all
+
+      # Delete user empty dictionaries associated to the base dictionary.
+      user_dics.each do |udic|
+        udic.destroy
+      end
+    end
+
     @dictionary = Dictionary.find_by_title(params[:id])
     
     respond_to do |format|
-      if is_current_user_same_to_creator?(@dictionary)
-        ## This is too slow.
-        # @dictionary.destroy
+      if current_user_is_creator?(@dictionary)
 
-        ## Much faster than destroy.
-        # Deletes entries of the dictionary.
+        # @dictionary.destroy   # Too slow
         Entry.where("dictionary_id = ?", @dictionary.id).delete_all
 
         # Deletes new and removed entries of the associated user dictionaries.
@@ -501,4 +511,21 @@ class DictionariesController < ApplicationController
     disabled_entry.save
   end
 
+  # True if none of user dictionaries has new or disabled entries; otherwise, false.
+  def no_user_entries?(user_dics)
+    user_dics.each do |udic|
+      new_entries      = NewEntry.find_by_user_dictionary_id(udic.id)     # Find the first one (faster than where).
+      disabled_entries = RemovedEntry.find_by_user_dictionary_id(udic.id)
+
+      if not new_entries.nil? or not disabled_entries.nil?
+        return false
+      end
+    end
+
+    return true
+  end
+
 end
+
+
+

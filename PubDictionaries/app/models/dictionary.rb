@@ -21,6 +21,11 @@ class Dictionary < ActiveRecord::Base
               [ "ID (desc)",           "uri desc" ],
             ]
 
+  def destroy
+    
+
+  end
+
   # Supports search func.
   def search_entries(query, order, page)
     if order.nil? or order == ""

@@ -11,7 +11,8 @@ PubDictionaries::Application.routes.draw do
   get "web_services/ids_to_labels"
   get "web_services/terms_to_idlists"
 
-  get "manual/index"
+  get "manual/basic"
+  get "manual/advanced"
   
   resources :users do
     resources :dictionaries
