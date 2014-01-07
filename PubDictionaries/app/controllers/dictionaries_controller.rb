@@ -8,7 +8,8 @@ require File.join( File.dirname( __FILE__ ), 'text_annotations/text_annotator' )
 class DictionariesController < ApplicationController
   # Require authentication for all actions except :index, :show, and some others.
   before_filter :authenticate_user!, 
-    except: [:index, :show, :text_annotation, :ids_to_labels, :terms_to_idlists]
+    except: [:index, :show, :text_annotation_with_multiple_dic, :text_annotation_with_single_dic,
+      :ids_to_labels, :terms_to_idlists]
 
   # Disable CSRF check for specific actions.
   skip_before_filter :verify_authenticity_token, 
@@ -253,8 +254,8 @@ class DictionariesController < ApplicationController
 
 
   # Annotate a given text using base dictionaries (and corresponding user dictionaries).
-  def text_annotation
-    basedic_names, ann, opts = get_data_params(params)
+  def text_annotation_with_multiple_dic
+    basedic_names, ann, opts = get_data_params1(params)
     user_id = get_user_id(params["user"])
 
     results = []
@@ -280,9 +281,34 @@ class DictionariesController < ApplicationController
     end
   end
 
+  def text_annotation_with_single_dic
+    basedic_name, ann, opts = get_data_params2(params)
+    user_id = get_user_id(params["user"])
+
+    results = []
+    if user_id == :invalid
+      ann["error"] = {"message" => "Invalid email or password"}
+    else
+      annotator  = TextAnnotator.new(basedic_name, user_id)   # user_id is nil if it is guest
+      if annotator.dictionary_exist?(basedic_name) == true
+        tmp_result = annotator.annotate(ann, opts)
+        tmp_result.each do |entry|
+          entry["dictionary_name"] = basedic_name
+        end
+        results += tmp_result
+      end
+    end
+    ann["denotations"] = results
+
+    # Return the results.
+    respond_to do |format|
+      format.json { render :json => ann }
+    end
+  end
+
   # Return a list of labels for a given list of IDs.
   def ids_to_labels
-    basedic_names, ann, opts = get_data_params(params)
+    basedic_names, ann, opts = get_data_params1(params)
     user_id = get_user_id(params["user"])
 
     results = {}
@@ -322,7 +348,7 @@ class DictionariesController < ApplicationController
   # * Output : {"term_1"=>[ID_1, ID_24, ID432], "term_2"=>[ ... ], ... }
   #
   def terms_to_idlists
-    basedic_names, ann, opts = get_data_params(params)
+    basedic_names, ann, opts = get_data_params1(params)
     user_id = get_user_id(params["user"])
 
     results = {}
@@ -502,12 +528,21 @@ class DictionariesController < ApplicationController
   end
 
   # Get data parameters.
-  def get_data_params(params)
+  def get_data_params1(params)
     basedic_names = params["dictionaries"].nil? ? nil : JSON.parse(params["dictionaries"])
     ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
     opts          = params["options"].nil?      ? nil : JSON.parse(params["options"])
 
     return basedic_names, ann, opts
+  end
+
+  # Get data parameters.
+  def get_data_params2(params)
+    basedic_name  = params[:id]
+    ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
+    opts          = params["options"].nil?      ? nil : JSON.parse(params["options"])
+
+    return basedic_name, ann, opts
   end
 
   # Get the user ID for a given email/password pair.

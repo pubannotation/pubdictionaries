@@ -4,8 +4,7 @@ require 'json'
 require 'rest_client'
 
 
-# Annotate the text by using the base dictionary and the associated user dictionary, which 
-# will be identified by the auth_token.
+# Annotate the text by using the base dictionaries and the associated user dictionaries.
 #
 # * (string)  uri           - The URI of the sign in route.
 #                             (e.g., http://localhost:3000/dictionaries)

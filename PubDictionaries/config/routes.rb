@@ -7,7 +7,9 @@ PubDictionaries::Application.routes.draw do
 
   get "web_services/index"
   get "web_services/exact_string_match"
+  get "web_services/exact_string_match_single_dic"
   get "web_services/approximate_string_match"
+  get "web_services/approximate_string_match_single_dic"
   get "web_services/ids_to_labels"
   get "web_services/terms_to_idlists"
 
@@ -25,7 +27,7 @@ PubDictionaries::Application.routes.draw do
     collection do
       #   get 'multiple_new'
       #   post 'multiple_create'
-      post 'text_annotation'
+      post 'text_annotation', to: 'dictionaries#text_annotation_with_multiple_dic'
       post 'ids_to_labels'
       post 'terms_to_idlists'
     end  
@@ -35,6 +37,7 @@ PubDictionaries::Application.routes.draw do
     member do
       post 'disable_entries'
       post 'remove_entries'
+      post 'text_annotation', to: 'dictionaries#text_annotation_with_single_dic'
     end
   end
 
