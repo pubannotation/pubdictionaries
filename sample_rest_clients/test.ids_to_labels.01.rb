@@ -61,7 +61,7 @@ if __FILE__ == $0
 	password   = ARGV[1]
 	uri        = ARGV[2]
 	dics       = ARGV[3, ARGV.length]
-	annotation = { "ids" => [ "1", "3", "5", "4790", "new_id", "new_id_2"] }
+	annotation = { "ids" => [ "1", "3", "5", "100008564", "100009600", "new_id", "new_id_2"] }
 	options    = { }
 
 	result     = get_label_list(uri, dics, email, password, annotation, options)

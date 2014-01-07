@@ -65,7 +65,7 @@ if __FILE__ == $0
 	password   = ARGV[1]
 	uri        = ARGV[2]
 	dics       = ARGV[3, ARGV.length]
-	annotation = { "terms" => [ "NF-kappa B", "C-REL", "c-rel", "may_be_not_exist"] }
+	annotation = { "terms" => [ "NF-kappa B", "C-REL", "c-rel", "Brox", "may_be_not_exist"] }
 	options    = { "threshold" => 0.3, "top_n" => 10 }
 
 	result     = get_idlists(uri, dics, email, password, annotation, options)
