@@ -8,7 +8,7 @@ require File.join( File.dirname( __FILE__ ), 'text_annotations/text_annotator' )
 class DictionariesController < ApplicationController
   # Require authentication for all actions except :index, :show, and some others.
   before_filter :authenticate_user!, 
-    except: [:index, :show, :annotate_text, :ids_to_labels, :terms_to_idlists]
+    except: [:index, :show, :text_annotation, :ids_to_labels, :terms_to_idlists]
 
   # Disable CSRF check for specific actions.
   skip_before_filter :verify_authenticity_token, 
@@ -253,8 +253,7 @@ class DictionariesController < ApplicationController
 
 
   # Annotate a given text using base dictionaries (and corresponding user dictionaries).
-  def annotate_text
-    # basedic_name, ann, opts = get_data_params(params)
+  def text_annotation
     basedic_names, ann, opts = get_data_params(params)
     user_id = get_user_id(params["user"])
 
@@ -264,11 +263,13 @@ class DictionariesController < ApplicationController
     else
       basedic_names.each do |basedic_name|
         annotator  = TextAnnotator.new(basedic_name, user_id)   # user_id is nil if it is guest
-        tmp_result = annotator.annotate(ann, opts)
-        tmp_result.each do |entry|
-          entry["dictionary_name"] = basedic_name
+        if annotator.dictionary_exist?(basedic_name) == true
+          tmp_result = annotator.annotate(ann, opts)
+          tmp_result.each do |entry|
+            entry["dictionary_name"] = basedic_name
+          end
+          results += tmp_result
         end
-        results += tmp_result
       end
     end
     ann["denotations"] = results
@@ -290,17 +291,19 @@ class DictionariesController < ApplicationController
     else
       basedic_names.each do |basedic_name|
         annotator  = TextAnnotator.new(basedic_name, user_id)
-        tmp_result = annotator.ids_to_labels(ann, opts)
-        tmp_result.each_value do |id_labels|
-          id_labels.each do |label|
-            label["dictionary_name"] = basedic_name
+        if annotator.dictionary_exist?(basedic_name) == true
+          tmp_result = annotator.ids_to_labels(ann, opts)
+          tmp_result.each_value do |id_labels|
+            id_labels.each do |label|
+              label["dictionary_name"] = basedic_name
+            end
           end
-        end
-        tmp_result.each_pair do |id, labels|
-          if results.key?(id)
-            results[id] += labels
-          else
-            results[id] = labels
+          tmp_result.each_pair do |id, labels|
+            if results.key?(id)
+              results[id] += labels
+            else
+              results[id] = labels
+            end
           end
         end
       end
@@ -328,17 +331,19 @@ class DictionariesController < ApplicationController
     else
       basedic_names.each do |basedic_name|
         annotator  = TextAnnotator.new(basedic_name, user_id)
-        tmp_result = annotator.terms_to_idlists(ann, opts)
-        tmp_result.each_value do |term_to_idlist|
-          term_to_idlist.each do |idlist|
-            idlist["dictionary_name"] = basedic_name
+        if annotator.dictionary_exist?(basedic_name) == true
+          tmp_result = annotator.terms_to_idlists(ann, opts)
+          tmp_result.each_value do |term_to_idlist|
+            term_to_idlist.each do |idlist|
+              idlist["dictionary_name"] = basedic_name
+            end
           end
-        end
-        tmp_result.each_pair do |id, labels|
-          if results.key?(id)
-            results[id] += labels
-          else
-            results[id] = labels
+          tmp_result.each_pair do |id, labels|
+            if results.key?(id)
+              results[id] += labels
+            else
+              results[id] = labels
+            end
           end
         end
       end
@@ -498,9 +503,9 @@ class DictionariesController < ApplicationController
 
   # Get data parameters.
   def get_data_params(params)
-    basedic_names = params["dictionaries"]
-    ann           = params["annotation"].nil? ? nil : JSON.parse(params["annotation"])
-    opts          = params["options"].nil?    ? nil : JSON.parse(params["options"])
+    basedic_names = params["dictionaries"].nil? ? nil : JSON.parse(params["dictionaries"])
+    ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
+    opts          = params["options"].nil?      ? nil : JSON.parse(params["options"])
 
     return basedic_names, ann, opts
   end

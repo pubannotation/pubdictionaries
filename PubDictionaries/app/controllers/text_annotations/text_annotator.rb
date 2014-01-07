@@ -36,6 +36,19 @@ class TextAnnotator
 		             "threshold"        => 0.6,         # 0.0 <= "threshold" <= 1.0
 		             "top_n"            => 0,           # 0 for all results
 		           }
+		           
+		@pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
+		if @pgr.dictionary_exist?(@base_dic_name) == true
+			@ssr = SIMSTRING_RETRIEVER.new(@base_dic_name)
+		else
+			@ssr = nil
+		end
+		@qbuilder  = QUERY_BUILDER.new           
+		@pproc     = POST_PROCESSOR.new
+	end
+
+	def dictionary_exist?(dic_name)
+		return @pgr.dictionary_exist?(dic_name)
 	end
 
 	# Annotate an input text.
@@ -63,11 +76,9 @@ class TextAnnotator
 	# * (hash) opts  - A hash containing annotation options.
 	#
 	def ids_to_labels(ann, opts)
-		pgr = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
-
 		results = {}
 		ann["ids"].each do |id|
-			entries = pgr.get_entries_from_db(id, :uri)
+			entries = @pgr.get_entries_from_db(id, :uri)
 			if entries.empty?
 				results[id] = []
 			else
@@ -91,12 +102,8 @@ class TextAnnotator
 	#                    2) opts["top_n"]     : for limiting the number of IDs.
 	#
 	def terms_to_idlists(ann, opts)
-		qbuilder  = QUERY_BUILDER.new
-		ssr       = SIMSTRING_RETRIEVER.new(@base_dic_name)
-		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
-
 		# 1. Find similar terms for each input term based on the given threshold.
-		norm_opts  = pgr.get_string_normalization_options
+		norm_opts  = @pgr.get_string_normalization_options
 		trier      = TEXT_TO_TRIE.new
 		
 		exp_terms  = {}
@@ -105,7 +112,7 @@ class TextAnnotator
  			norm_term = trier.normalize_term(term, 
  				norm_opts[:lowercased], norm_opts[:hyphen_replaced], norm_opts[:stemmed])
 
-			exp_terms[term] = qbuilder.expand_query(norm_term, offsets, opts["threshold"], ssr, pgr)
+			exp_terms[term] = @qbuilder.expand_query(norm_term, offsets, opts["threshold"], @ssr, @pgr)
 
 			# Keep only top n similar terms to speed up ID search.
 			if opts["top_n"] > 0
@@ -120,7 +127,7 @@ class TextAnnotator
 	 		exp_IDs[ori_term] = []
 	 		sim_terms.each do |sim_term|
 	 			# Retrieve entries in both :entries and :new_entries except in :removed_entries.
-	 			entries = pgr.get_entries_from_db(sim_term[:requested_query], :search_title)
+	 			entries = @pgr.get_entries_from_db(sim_term[:requested_query], :search_title)
 	 			exp_IDs[ori_term] = entries.collect do |x|
 	 				{"uri" => x[:uri]}
 	 			end
@@ -133,10 +140,6 @@ class TextAnnotator
 	 	end
 
 	 	exp_IDs
-
-	 	# ann["idlists"] = [] unless ann["idlists"]
-	 	# ann["idlists"] = exp_IDs
-	 	# ann
 	 end
 
 
@@ -158,70 +161,47 @@ class TextAnnotator
 
 	# Text annotation based on exact string matching.
 	def annotate_based_on_exact_string_matching(ann)
-		qbuilder  = QUERY_BUILDER.new
-		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
-		pproc     = POST_PROCESSOR.new
-
-
 		# Generate queries from an input text
 		build_opts = { min_tokens: @options["min_tokens"],
 					   max_tokens: @options["max_tokens"] }
-		norm_opts  = pgr.get_string_normalization_options
-		
-		queries = qbuilder.build_queries(ann["text"], build_opts, norm_opts)
-
+		norm_opts  = @pgr.get_string_normalization_options
+		queries    = @qbuilder.build_queries(ann["text"], build_opts, norm_opts)
 
 		# Retrieve the entries from PostgreSQL DB
-		results = pgr.retrieve( qbuilder.change_format(queries) )
-		
+		results = @pgr.retrieve( @qbuilder.change_format(queries) )
 
 		# Apply post-processing methods
 		if @options["top_n"] > 0
-			results = pproc.get_top_n(results, @options["top_n"])
+			results = @pproc.get_top_n(results, @options["top_n"])
 		end
-		results = pproc.keep_last_one_for_crossing_boundaries(results)
+		results = @pproc.keep_last_one_for_crossing_boundaries(results)
 
-
-		# Return the results
 		format_anns(results)
-		# ann["denotations"] = [] unless ann["denotations"]
-		# ann["denotations"] = format_anns(results)
-		# ann
 	end
 
 	# Text annotation based on approximate string matching.
 	def annotate_based_on_approximate_string_matching(ann)
-		qbuilder  = QUERY_BUILDER.new
-		ssr       = SIMSTRING_RETRIEVER.new(@base_dic_name)
-		pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
-		pproc     = POST_PROCESSOR.new
-
 		# Generate queries from an input text
 		build_opts = { min_tokens: @options["min_tokens"],
 					   max_tokens: @options["max_tokens"] }
-		norm_opts  = pgr.get_string_normalization_options
+		norm_opts  = @pgr.get_string_normalization_options
 
-		queries     = qbuilder.build_queries(ann["text"], build_opts, norm_opts)
+		queries     = @qbuilder.build_queries(ann["text"], build_opts, norm_opts)
 		# Perform query expansion using both the PG and SimString DBs.
-		ext_queries = qbuilder.expand_queries(queries, @options["threshold"], ssr, pgr)
+		ext_queries = @qbuilder.expand_queries(queries, @options["threshold"], @ssr, @pgr)
 
 		# Retrieve database entries
-		results = pgr.retrieve(ext_queries)
+		results = @pgr.retrieve(ext_queries)
 
 		# Applies post-processing methods
 		if @options["top_n"] > 0
-			results = pproc.get_top_n(results, @options["top_n"])
+			results = @pproc.get_top_n(results, @options["top_n"])
 		end
-		results = pproc.filter_based_on_simscore(results)
-		results = pproc.keep_last_one_for_crossing_boundaries(results)
+		results = @pproc.filter_based_on_simscore(results)
+		results = @pproc.keep_last_one_for_crossing_boundaries(results)
 
 		# Returns the results
 		format_anns(results)
-
-		# ann["denotations"] = [] unless ann["denotations"]
-		# ann["denotations"] = format_anns(results)
-
-		# ann
 	end
 
 	# Create the annotation list (output) from the text annotation results.

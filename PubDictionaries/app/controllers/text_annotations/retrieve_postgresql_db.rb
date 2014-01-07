@@ -39,7 +39,17 @@ class POSTGRESQL_RETRIEVER
 		@results_cache = { }
 	end
 
-	# Returns the string normalization options used to create a dictionary
+	# Return true if a given dictionary exists; otherwise, false.
+	def dictionary_exist?(dic_name)
+		dics = @db[:dictionaries].where(:title => dic_name)
+		if dics.empty?
+			return false
+		else
+			return true
+		end
+	end
+
+	# Return the string normalization options used to create a dictionary.
 	def get_string_normalization_options
 		dic = @db[:dictionaries].where(:title => @dic_name).first
 		return { lowercased: dic[:lowercased], hyphen_replaced: dic[:hyphen_replaced], stemmed: dic[:stemmed] }

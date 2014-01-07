@@ -1,0 +1,54 @@
+     ##### Local - valid id/password #####     
+Input:
+["NF-kappa B", "C-REL", "c-rel", "may_be_not_exist"]
+Output:
+   TERM                | IDs
+   NF-kappa B| [{"uri"=>"4790", "dictionary_name"=>"EntrezGene - Homo Sapiens"}, {"uri"=>"sample nf kappa b id", "dictionary_name"=>"Sample dictionary"}]
+   C-REL     | [{"uri"=>"5971", "dictionary_name"=>"EntrezGene - Homo Sapiens"}]
+   c-rel     | [{"uri"=>"5971", "dictionary_name"=>"EntrezGene - Homo Sapiens"}]
+   may_be_not_exist| []
+
+     ##### Local - valid guest #####     
+Input:
+["NF-kappa B", "C-REL", "c-rel", "may_be_not_exist"]
+Output:
+   TERM                | IDs
+   NF-kappa B| [{"uri"=>"4790", "dictionary_name"=>"EntrezGene - Homo Sapiens"}]
+   C-REL     | [{"uri"=>"5971", "dictionary_name"=>"EntrezGene - Homo Sapiens"}]
+   c-rel     | [{"uri"=>"5971", "dictionary_name"=>"EntrezGene - Homo Sapiens"}]
+   may_be_not_exist| []
+
+     ##### Local - invalid dictionaries #####     
+Error code: 500
+Input:
+["NF-kappa B", "C-REL", "c-rel", "may_be_not_exist"]
+Output:
+
+     ##### Local - invalid email #####     
+Input:
+["NF-kappa B", "C-REL", "c-rel", "may_be_not_exist"]
+Output:
+   Error: Invalid email or password
+   TERM                | IDs
+   NF-kappa B| nil
+   C-REL     | nil
+   c-rel     | nil
+   may_be_not_exist| nil
+
+     ##### Local - invalid password#####     
+Input:
+["NF-kappa B", "C-REL", "c-rel", "may_be_not_exist"]
+Output:
+   Error: Invalid email or password
+   TERM                | IDs
+   NF-kappa B| nil
+   C-REL     | nil
+   c-rel     | nil
+   may_be_not_exist| nil
+
+     ##### Local - invalid uri #####     
+Error code: 404
+Input:
+["NF-kappa B", "C-REL", "c-rel", "may_be_not_exist"]
+Output:
+

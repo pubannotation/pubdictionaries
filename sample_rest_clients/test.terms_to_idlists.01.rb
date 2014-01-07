@@ -25,7 +25,7 @@ def get_idlists(uri, dics, email, password, annotation, options)
 	# Retrieve the list of labels.
 	data = resource.post( 
 		:user         => {email:email, password:password},
-		:dictionaries => dics,
+		:dictionaries => dics.to_json,
 		:annotation   => annotation.to_json,
 		:options      => options.to_json, 
 		:content_type => :json,

@@ -18,7 +18,7 @@ require 'rest_client'
 def annotate_text(uri, dics, email, password, annotation, options)
 	# Prepare the connection to the text annotation service.
 	resource = RestClient::Resource.new( 
-		"#{uri}/annotate_text.json",
+		"#{uri}/text_annotation.json",
 		:timeout      => 300, 
 		:open_timeout => 300,
 		)
@@ -26,7 +26,7 @@ def annotate_text(uri, dics, email, password, annotation, options)
 	# Annotate the text.
 	data = resource.post( 
 		:user         => {email:email, password:password},
-		:dictionaries => dics,
+		:dictionaries => dics.to_json,
 		:annotation   => annotation.to_json,
 		:options      => options.to_json,
 		:content_type => :json,

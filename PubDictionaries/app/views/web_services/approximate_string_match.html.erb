@@ -28,7 +28,7 @@ def annotate_text(uri, dics, email, password, annotation, options)
   # Annotate the text.
   data = resource.post( 
     :user         => {email:email, password:password},
-    :dictionaries => dics,
+    :dictionaries => dics.to_json,
     :annotation   => annotation.to_json,
     :options      => options.to_json,
     :content_type => :json,
