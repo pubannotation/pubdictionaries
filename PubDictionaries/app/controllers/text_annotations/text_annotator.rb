@@ -206,12 +206,14 @@ class TextAnnotator
 
 	# Create the annotation list (output) from the text annotation results.
 	def format_anns(anns)
-		return anns.collect do |item|
+		ann_ary = anns.collect do |item|
 			{ begin:  item[:offset].begin, 
 			  end:    item[:offset].end,
 			  obj:    item[:uri],
 			}
 		end
+
+		ann_ary.uniq
 	end
 
 end
