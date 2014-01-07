@@ -31,10 +31,10 @@ class TextAnnotator
 		@base_dic_name = base_dic_name
 		@user_id = user_id
 		@options = { "min_tokens"       => 1,
-		             "max_tokens"       => 5,
-		             "matching_method"  => "exact",     # "exact" or "approximate"
-		             "threshold"        => 0.6,         # 0.0 <= "threshold" <= 1.0
-		             "top_n"            => 0,           # 0 for all results
+		             "max_tokens"       => 6,
+		             "matching_method"  => "approximate",     # "exact" or "approximate"
+		             "threshold"        => 0.6,               # 0.0 <= "threshold" <= 1.0
+		             "top_n"            => 0,                 # 0 for all results
 		           }
 		           
 		@pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
