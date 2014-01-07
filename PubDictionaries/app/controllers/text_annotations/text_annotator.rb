@@ -51,8 +51,7 @@ class TextAnnotator
 		elsif @options["matching_method"] == "approximate"
 			results = annotate_based_on_approximate_string_matching(ann)
 		else
-			ann["denotations"] = []
-			results = ann
+			results = []
 		end
 
 		results
@@ -68,19 +67,19 @@ class TextAnnotator
 
 		results = {}
 		ann["ids"].each do |id|
-			# Assumes that each ID has a unique label
 			entries = pgr.get_entries_from_db(id, :uri)
 			if entries.empty?
-				results[id] = nil
+				results[id] = []
 			else
-				results[id] = entries[0][:label]	
+				# Assumes that each ID has a unique (representative) label 
+				# results[id] = entries.collect do |x|
+				# 	{"label" => x[:label]}
+				# end
+				results[id] = [ {"label" => entries[0][:label]} ]
 			end
 		end
 
-		ann["denotations"] = [] unless ann["denotations"]
-		ann["denotations"] = results
-		
-		ann
+		results
 	end
 
 	# Find ID list for each term. IDs are sorted based on the similarity
@@ -120,15 +119,10 @@ class TextAnnotator
 	 	exp_terms.each do |ori_term, sim_terms|
 	 		exp_IDs[ori_term] = []
 	 		sim_terms.each do |sim_term|
-	 			# Retrieve DB entries.
-	 			#   - It returns entreis in both :entries and :new_entries except in :removed_entries.
+	 			# Retrieve entries in both :entries and :new_entries except in :removed_entries.
 	 			entries = pgr.get_entries_from_db(sim_term[:requested_query], :search_title)
-
-	 			# Save IDs.
-	 			if not entries.empty?
-	 				entries.each do |entry|
-	 					exp_IDs[ori_term].push entry[:uri]
-	 				end
+	 			exp_IDs[ori_term] = entries.collect do |x|
+	 				{"uri" => x[:uri]}
 	 			end
 
 	 			# Stop the loop after havesting enough IDs.
@@ -138,10 +132,11 @@ class TextAnnotator
 	 		end
 	 	end
 
-	 	ann["idlists"] = [] unless ann["idlists"]
-	 	ann["idlists"] = exp_IDs
+	 	exp_IDs
 
-	 	ann
+	 	# ann["idlists"] = [] unless ann["idlists"]
+	 	# ann["idlists"] = exp_IDs
+	 	# ann
 	 end
 
 
@@ -188,10 +183,10 @@ class TextAnnotator
 
 
 		# Return the results
-		ann["denotations"] = [] unless ann["denotations"]
-		ann["denotations"] = format_anns(results)
-
-		ann
+		format_anns(results)
+		# ann["denotations"] = [] unless ann["denotations"]
+		# ann["denotations"] = format_anns(results)
+		# ann
 	end
 
 	# Text annotation based on approximate string matching.
@@ -221,10 +216,12 @@ class TextAnnotator
 		results = pproc.keep_last_one_for_crossing_boundaries(results)
 
 		# Returns the results
-		ann["denotations"] = [] unless ann["denotations"]
-		ann["denotations"] = format_anns(results)
+		format_anns(results)
 
-		ann
+		# ann["denotations"] = [] unless ann["denotations"]
+		# ann["denotations"] = format_anns(results)
+
+		# ann
 	end
 
 	# Create the annotation list (output) from the text annotation results.

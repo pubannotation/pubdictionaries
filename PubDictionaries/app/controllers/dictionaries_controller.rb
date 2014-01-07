@@ -252,49 +252,64 @@ class DictionariesController < ApplicationController
   end
 
 
-  # Annotate a given text using a base dictionary (and its corresponding user dictionary).
+  # Annotate a given text using base dictionaries (and corresponding user dictionaries).
   def annotate_text
-    basedic_name, ann, opts = get_data_params(params)
+    # basedic_name, ann, opts = get_data_params(params)
+    basedic_names, ann, opts = get_data_params(params)
     user_id = get_user_id(params["user"])
 
-    case user_id
-    when :invalid
+    results = []
+    if user_id == :invalid
       ann["error"] = {"message" => "Invalid email or password"}
-      result       = ann
-    when :guest
-      annotator    = TextAnnotator.new(basedic_name, nil)
-      result       = annotator.annotate(ann, opts)
     else
-      annotator    = TextAnnotator.new(basedic_name, user_id)
-      result       = annotator.annotate(ann, opts)
+      basedic_names.each do |basedic_name|
+        annotator  = TextAnnotator.new(basedic_name, user_id)   # user_id is nil if it is guest
+        tmp_result = annotator.annotate(ann, opts)
+        tmp_result.each do |entry|
+          entry["dictionary_name"] = basedic_name
+        end
+        results += tmp_result
+      end
     end
+    ann["denotations"] = results
 
-    # Return the result.
+    # Return the results.
     respond_to do |format|
-      format.json { render :json => result }
+      format.json { render :json => ann }
     end
   end
 
   # Return a list of labels for a given list of IDs.
   def ids_to_labels
-    basedic_name, ann, opts = get_data_params(params)
+    basedic_names, ann, opts = get_data_params(params)
     user_id = get_user_id(params["user"])
 
-    case user_id 
-    when :invalid
+    results = {}
+    if user_id == :invalid
       ann["error"] = {"message" => "Invalid email or password"}
-      result       = ann
-    when :guest
-      annotator    = TextAnnotator.new(basedic_name, nil)
-      result       = annotator.ids_to_labels(ann, opts)
     else
-      annotator    = TextAnnotator.new(basedic_name, user_id)
-      result       = annotator.ids_to_labels(ann, opts)
+      basedic_names.each do |basedic_name|
+        annotator  = TextAnnotator.new(basedic_name, user_id)
+        tmp_result = annotator.ids_to_labels(ann, opts)
+        tmp_result.each_value do |id_labels|
+          id_labels.each do |label|
+            label["dictionary_name"] = basedic_name
+          end
+        end
+        tmp_result.each_pair do |id, labels|
+          if results.key?(id)
+            results[id] += labels
+          else
+            results[id] = labels
+          end
+        end
+      end
     end
+    ann["denotations"] = results
 
     # Return the result.
     respond_to do |format|
-      format.json { render :json => result }
+      format.json { render :json => ann }
     end
   end
 
@@ -304,24 +319,35 @@ class DictionariesController < ApplicationController
   # * Output : {"term_1"=>[ID_1, ID_24, ID432], "term_2"=>[ ... ], ... }
   #
   def terms_to_idlists
-    basedic_name, ann, opts = get_data_params(params)
+    basedic_names, ann, opts = get_data_params(params)
     user_id = get_user_id(params["user"])
 
-    case user_id 
-    when :invalid
+    results = {}
+    if user_id == :invalid
       ann["error"] = {"message" => "Invalid email or password"}
-      result       = ann
-    when :guest
-      annotator    = TextAnnotator.new(basedic_name, nil)
-      result       = annotator.terms_to_idlists(ann, opts)
     else
-      annotator    = TextAnnotator.new(basedic_name, user_id)
-      result       = annotator.terms_to_idlists(ann, opts)
+      basedic_names.each do |basedic_name|
+        annotator  = TextAnnotator.new(basedic_name, user_id)
+        tmp_result = annotator.terms_to_idlists(ann, opts)
+        tmp_result.each_value do |term_to_idlist|
+          term_to_idlist.each do |idlist|
+            idlist["dictionary_name"] = basedic_name
+          end
+        end
+        tmp_result.each_pair do |id, labels|
+          if results.key?(id)
+            results[id] += labels
+          else
+            results[id] = labels
+          end
+        end
+      end
     end
+    ann["idlists"] = results
 
-    # Return the result.
+    # Return the results.
     respond_to do |format|
-      format.json { render :json => result }
+      format.json { render :json => ann }
     end
   end
 
@@ -472,17 +498,17 @@ class DictionariesController < ApplicationController
 
   # Get data parameters.
   def get_data_params(params)
-    basedic_name = params[:id]
-    ann          = params["annotation"].nil? ? nil : JSON.parse(params["annotation"])
-    opts         = params["options"].nil?    ? nil : JSON.parse(params["options"])
+    basedic_names = params["dictionaries"]
+    ann           = params["annotation"].nil? ? nil : JSON.parse(params["annotation"])
+    opts          = params["options"].nil?    ? nil : JSON.parse(params["options"])
 
-    return basedic_name, ann, opts
+    return basedic_names, ann, opts
   end
 
   # Get the user ID for a given email/password pair.
   def get_user_id(email_password)
     if email_password.nil? or email_password["email"] == nil or email_password["email"] == ""
-      return :guest
+      return nil
     else
       # Find the user that first matches to the condition.
       user = User.find_by_email(email_password["email"])     

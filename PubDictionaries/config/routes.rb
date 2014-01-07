@@ -20,22 +20,22 @@ PubDictionaries::Application.routes.draw do
   end
 
   resources :dictionaries do
-    resources :entries do
-      # add routes for a collection route, /entries/...
-      # collection do
+    resources :entries
+    # Add routes for a collection route, /dictionaries/...
+    collection do
       #   get 'multiple_new'
       #   post 'multiple_create'
-      # end  
-    end
-
-    # Adds routes as a member, /entry/:id/...
-    member do
-      post 'disable_entries'
-      post 'remove_entries'
-      # Automatic text annotation.
       post 'annotate_text'
       post 'ids_to_labels'
       post 'terms_to_idlists'
+    end  
+
+
+    # Add routes as a member, /dictionary/:id/...
+    member do
+      post 'disable_entries'
+      post 'remove_entries'
+      # post 'annotate_text'
     end
   end
 

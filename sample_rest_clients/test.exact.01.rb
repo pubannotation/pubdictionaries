@@ -7,14 +7,15 @@ require 'rest_client'
 # Annotate the text by using the base dictionary and the associated user dictionary, which 
 # will be identified by the auth_token.
 #
-# * (string)  uri           - The URI of the sign in route. This URI involves the base dictionary name.
-#                             (e.g., http://localhost:3000/dictionaries/EntrezGene%20-%20Homo%20Sapiens)
+# * (string)  uri           - The URI of the sign in route.
+#                             (e.g., http://localhost:3000/dictionaries)
+# * (array)   dics          - The list of dictionary names for annotation.
 # * (string)  email         - User's login ID.
 # * (string)  password      - User's login password.
 # * (hash)    annotation    - The hash including text for annotation.
 # * (hash)    options       - The hash containig various options for annotation.
 #
-def annotate_text(uri, email, password, annotation, options)
+def annotate_text(uri, dics, email, password, annotation, options)
 	# Prepare the connection to the text annotation service.
 	resource = RestClient::Resource.new( 
 		"#{uri}/annotate_text.json",
@@ -25,6 +26,7 @@ def annotate_text(uri, email, password, annotation, options)
 	# Annotate the text.
 	data = resource.post( 
 		:user         => {email:email, password:password},
+		:dictionaries => dics,
 		:annotation   => annotation.to_json,
 		:options      => options.to_json,
 		:content_type => :json,
@@ -45,19 +47,20 @@ end
 
 # Text code.
 #
-# * ARGV[0]  -  User's email.
-# * ARGV[1]  -  User's password.
-# * ARGV[2]  -  URI
-#
+# * ARGV[0]   -  User's email.
+# * ARGV[1]   -  User's password.
+# * ARGV[2]   -  URI
+# * ARGV[3-n] -  Dictionaries
+# 
 if __FILE__ == $0	
-	if ARGV.size != 3
-		$stdout.puts "Usage:  #{$0}  Email  Password  URI"
+	if ARGV.size < 4
+		$stdout.puts "Usage:  #{$0}  Email  Password  URI  Dic1  Dic2 ..."
 		exit
 	end
 	email      = ARGV[0]
 	password   = ARGV[1]
 	uri        = ARGV[2]
-
+	dics       = ARGV[3, ARGV.length]
 	annotation = { "text"=>"Negative regulation of human immunodeficiency virus type 1 expression in monocytes: role of the 65-kDa plus 50-kDa NF-kappa B dimer.\nAlthough monocytic cells can provide a reservoir for viral production in vivo, their regulation of human immunodeficiency virus type 1 (HIV-1) transcription can be either latent, restricted, or productive. These differences in gene expression have not been molecularly defined. In THP-1 cells with restricted HIV expression, there is an absence of DNA-protein binding complex formation with the HIV-1 promoter-enhancer associated with markedly less viral RNA production. This absence of binding was localized to the NF-kappa B region of the HIV-1 enhancer; the 65-kDa plus 50-kDa NF-kappa B heterodimer was preferentially lost. Adding purified NF-kappa B protein to nuclear extracts from cells with restricted expression overcomes this lack of binding. In addition, treatment of these nuclear extracts with sodium deoxycholate restored their ability to form the heterodimer, suggesting the presence of an inhibitor of NF-kappa B activity. Furthermore, treatment of nuclear extracts from these cells that had restricted expression with lipopolysaccharide increased viral production and NF-kappa B activity. Antiserum specific for NF-kappa B binding proteins, but not c-rel-specific antiserum, disrupted heterodimer complex formation. Thus, both NF-kappa B-binding complexes are needed for optimal viral transcription. Binding of the 65-kDa plus 50-kDa heterodimer to the HIV-1 enhancer can be negatively regulated in monocytes, providing one mechanism restricting HIV-1 gene expression."}
 	options    = {
 		"matching_method" => "exact",
@@ -66,8 +69,8 @@ if __FILE__ == $0
 		}
 
 	# Annotate the text.
-	result = annotate_text(uri, email, password, annotation, options)
-
+	result = annotate_text(uri, dics, email, password, annotation, options)
+	
 	$stdout.puts "Input:"
 	$stdout.puts result["text"].inspect
 	

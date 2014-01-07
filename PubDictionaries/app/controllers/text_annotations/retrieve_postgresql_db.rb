@@ -151,7 +151,7 @@ class POSTGRESQL_RETRIEVER
 		#     Assume that the names of base dictionaries are unique.
 		#
 		dic = @db[:dictionaries].select(:id).where(:title => @dic_name).first
-		if dic.empty?
+		if dic.nil?
 			return results
 		end
 

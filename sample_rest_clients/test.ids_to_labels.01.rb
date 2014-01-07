@@ -6,14 +6,15 @@ require 'rest_client'
 
 # Get the list of labels for a list of IDs.
 #
-# * (string)  uri           - The URI of the sign in route. This URI involves the base dictionary name.
-#                             (e.g., http://localhost:3000/dictionaries/EntrezGene%20-%20Homo%20Sapiens)
+# * (string)  uri           - The URI of the sign in route.
+#                             (e.g., http://localhost:3000/dictionaries)
+# * (array)   dics          - The list of dictionary names for annotation.
 # * (string)  email         - User's login ID.
 # * (string)  password      - User's login password.
 # * (hash)    annotation    - The hash including a list of labels.
 # * (hash)    options       - The hash containig options for id search.
 #
-def get_label_list(uri, email, password, annotation, options)
+def get_label_list(uri, dics, email, password, annotation, options)
 	# Prepare the connection to the web service.
 	resource = RestClient::Resource.new( 
 		"#{uri}/ids_to_labels.json",
@@ -24,6 +25,7 @@ def get_label_list(uri, email, password, annotation, options)
 	# Retrieve the list of labels.
 	data = resource.post( 
 		:user         => {email:email, password:password},
+		:dictionaries => dics,
 		:annotation   => annotation.to_json,
 		:options      => options.to_json, 
 		:content_type => :json,
@@ -48,22 +50,21 @@ end
 # * ARGV[0]  -  User's email.
 # * ARGV[1]  -  User's password.
 # * ARGV[2]  -  URI
+# * ARGV[3-] -  Dictionaries
 #
 if __FILE__ == $0
-	if ARGV.size != 3
-		$stdout.puts "Usage:  #{$0}  Email  Password  URI"
+	if ARGV.size < 4
+		$stdout.puts "Usage:  #{$0}  Email  Password  URI  Dic1  Dic2  ..."
 		exit
 	end
 	email      = ARGV[0]
 	password   = ARGV[1]
 	uri        = ARGV[2]
-
-
-	# Prepare data and option objects
+	dics       = ARGV[3, ARGV.length]
 	annotation = { "ids" => [ "1", "3", "5", "4790", "new_id", "new_id_2"] }
 	options    = { }
 
-	result     = get_label_list(uri, email, password, annotation, options)
+	result     = get_label_list(uri, dics, email, password, annotation, options)
 
 	$stdout.puts "Input:"
 	$stdout.puts annotation["ids"].inspect
