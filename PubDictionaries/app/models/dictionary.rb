@@ -21,7 +21,7 @@ class Dictionary < ActiveRecord::Base
   end
 
   # Return a list of dictionaries that are either public or belonging to the logged in user.
-  def self.get_showable_dictionaries(user)
+  def self.get_showables(user)
     if user == nil
       Dictionary.where(:public => true)
     else
@@ -29,6 +29,16 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
+  # 
+  def self.find_showable_by_title(title, user)
+    dic = Dictionary.find_by_title(title)
+    if not dic.nil?
+      if dic.public == true or (user != nil and user.id == dic.user_id)
+        return dic
+      end
+    end
+    return nil
+  end
 
   # true if the given base dictionary is destroyable; otherwise, false.
   def is_destroyable?(current_user)

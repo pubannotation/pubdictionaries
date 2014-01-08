@@ -23,7 +23,7 @@ class DictionariesController < ApplicationController
 
   def index
     # @dictionaries = Dictionary.all
-    @dictionaries = Dictionary.get_showable_dictionaries(current_user).all
+    @dictionaries = Dictionary.get_showables(current_user).all
 
     respond_to do |format|
       format.html # index.html.erb
@@ -33,22 +33,31 @@ class DictionariesController < ApplicationController
 
   # Show the content of an original dictionary and its corresponding user dictionary.
   def show
-    @dictionary = Dictionary.find_by_title(params[:id])
-    @page_title = @dictionary.title     # Replace the page title with the dictionary name
+    # @dictionary = Dictionary.find_by_title(params[:id])
+    @dictionary = Dictionary.find_showable_by_title(params[:id], current_user)
+    if not @dictionary.nil?
+      @page_title = @dictionary.title     # Replace the page title with the dictionary name
 
-    @user_dictionary = user_signed_in? ? @dictionary.user_dictionaries.find_by_user_id(current_user.id) : nil
+      @user_dictionary = user_signed_in? ? @dictionary.user_dictionaries.find_by_user_id(current_user.id) : nil
 
-    if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
-      @export_entries = build_export_entries(params[:query])
-    else
-      @grid_basedic_remained_entries, @grid_basedic_disabled_entries, @grid_userdic_new_entries = get_grid_views()
+      if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
+        @export_entries = build_export_entries(params[:query])
+      else
+        @grid_basedic_remained_entries, @grid_basedic_disabled_entries, @grid_userdic_new_entries = get_grid_views()
+      end
     end
 
     respond_to do |format|
-      format.html # show.html.erb
+      format.html {
+        if @dictionary.nil?
+          redirect_to dictionaries_url
+        end
+        # Otherwise, render the default view template.
+      }
       format.tsv { send_data tsv_data(@export_entries), 
         filename: "#{@dictionary.title}.#{params[:query]}.tsv", 
-        type:     "text/tsv" }
+        type:     "text/tsv" 
+      }
     end
   end
 
