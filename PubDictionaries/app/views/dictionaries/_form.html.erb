@@ -24,6 +24,11 @@
   </div>
 
   <div class="field">
+    <%= f.label :public, "Status:" %>
+    <%= f.select :public, [['Public','true'],['Private','false']] %>
+  </div>
+
+  <div class="field">
     Options for dictionary search:
     <table>
       <tr>

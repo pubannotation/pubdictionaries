@@ -2,7 +2,7 @@ class Dictionary < ActiveRecord::Base
   # default_scope :order => 'title'
 
   attr_accessor :file, :separator, :sort
-  attr_accessible :creator, :description, :title, :file, :stemmed, :lowercased, :hyphen_replaced, :separator, :sort
+  attr_accessible :creator, :description, :title, :stemmed, :lowercased, :hyphen_replaced, :public, :file, :separator, :sort
 
   belongs_to :user
 
@@ -11,43 +11,19 @@ class Dictionary < ActiveRecord::Base
 
   validates :creator, :description, :title, :presence => true
   validates :title, uniqueness: true
+  validates_inclusion_of :public, :in => [true, false]     # :presence fails when the value is false.
 
-  # Sets the constant values of the sort option.
-  SORT_BY = [ [ "Entity name (asc)",   "view_title asc" ], 
-              [ "Entity name (desc)",  "view_title desc" ],
-              [ "Label (asc)",         "label asc" ], 
-              [ "Label (desc)",        "label desc" ],
-              [ "ID (asc)",            "uri asc" ], 
-              [ "ID (desc)",           "uri desc" ],
-            ]
 
-  def destroy
-    
-
-  end
-
-  # Supports search func.
-  def search_entries(query, order, page)
-    if order.nil? or order == ""
-      order = "view_title asc"
-    end
-
-    if query
-      # :order does not work probably due to default scope. Use reorder to force it.
-      # ILIKE is not a standard SQL, its PostgreSQL's extension.
-      entries.paginate(:per_page => 15, :page => page, :conditions => 
-        ["view_title ILIKE ? or label ILIKE ? or uri ILIKE ?", "%#{query}%", "%#{query}%", "%#{query}%"])
-        .reorder(order)
-    else
-      entries.paginate(:per_page => 15, :page => page).reorder(order)
-    end
-  end
-
-  # Overrides original to_param so that it returns title, not ID, for
-  #   constructing URLs. Use Model#find_by_title() instead of 
-  #   Model.find() in controllers.
+  # Overrides original to_param so that it returns title, not ID, for constructing URLs. 
+  # Use Model#find_by_title() instead of Model.find() in controllers.
   def to_param
     title
   end
+
+  # Return a list of dictionaries that are either public or belonging to the logged in user.
+  def self.get_showable_dictionaries(user_id)
+    Dictionary.where('public = ? OR user_id = ?', true, user_id)
+  end
+
 
 end

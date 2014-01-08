@@ -11,18 +11,19 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20131216092114) do
+ActiveRecord::Schema.define(:version => 20140108053356) do
 
   create_table "dictionaries", :force => true do |t|
     t.string   "title"
     t.string   "creator"
     t.text     "description"
-    t.datetime "created_at",      :null => false
-    t.datetime "updated_at",      :null => false
+    t.datetime "created_at",                        :null => false
+    t.datetime "updated_at",                        :null => false
     t.boolean  "lowercased"
     t.boolean  "stemmed"
     t.boolean  "hyphen_replaced"
     t.integer  "user_id"
+    t.boolean  "public",          :default => true
   end
 
   add_index "dictionaries", ["creator"], :name => "index_dictionaries_on_creator"

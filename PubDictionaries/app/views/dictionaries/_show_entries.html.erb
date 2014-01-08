@@ -14,7 +14,7 @@
     <div id="basedic_remained_entries-tab">
       <div class="wice-grid">
         <%= form_tag :action => :disable_entries, :method => :post do %>
-          <% if @grid_basedic_remained_entries %>
+          <% if not @grid_basedic_remained_entries.empty? %>
             <% dump_filter_parameters_as_hidden_fields(@grid_basedic_remained_entries) %>
           
             <% if user_signed_in? %>
@@ -48,7 +48,7 @@
     <div id="basedic_disabled_entries-tab">
       <div class="wice-grid">
         <%= form_tag :action => :disable_entries, :method => :post do %>
-          <% if @grid_basedic_disabled_entries %>
+          <% if not @grid_basedic_disabled_entries.empty? %>
             <% dump_filter_parameters_as_hidden_fields(@grid_basedic_disabled_entries) %>
             
             <% if user_signed_in? %>
@@ -85,7 +85,7 @@
         <%= button_to 'Add a new entry', new_dictionary_entry_path(@dictionary), :method => :get %>
 
         <%= form_tag :action => :remove_entries, :method => :post do %>
-          <% if @grid_userdic_new_entries %>
+          <% if not @grid_userdic_new_entries.empty? %>
             <% dump_filter_parameters_as_hidden_fields(@grid_userdic_new_entries) %>
             
             <% if user_signed_in? %>

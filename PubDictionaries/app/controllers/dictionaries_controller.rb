@@ -22,7 +22,8 @@ class DictionariesController < ApplicationController
   ###########################
 
   def index
-    @dictionaries = Dictionary.all
+    # @dictionaries = Dictionary.all
+    @dictionaries = Dictionary.get_showable_dictionaries(current_user.id).all
 
     respond_to do |format|
       format.html # index.html.erb
@@ -32,87 +33,22 @@ class DictionariesController < ApplicationController
 
   # Show the content of an original dictionary and its corresponding user dictionary.
   def show
-    # Get the selected dictionary and the corresponding user dictionary.
-    @dictionary    = Dictionary.find_by_title(params[:id])
-    if user_signed_in?
-      @user_dictionary = @dictionary.user_dictionaries.find_by_user_id(current_user.id)
-    else
-      @user_dictionary = nil
-    end
+    @dictionary = Dictionary.find_by_title(params[:id])
+    @page_title = @dictionary.title     # Replace the page title with the dictionary name
 
-    # Replace the page title with the dictionary name
-    @page_title = @dictionary.title
+    @user_dictionary = user_signed_in? ? @dictionary.user_dictionaries.find_by_user_id(current_user.id) : nil
 
-     
-    # Export? or Show?
     if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
-      # Prepares data for export.
       @export_entries = build_export_entries(params[:query])
-
     else
-      if @user_dictionary
-        basedic_disabled_entries_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
-        basedic_disabled_entries     = Entry.where(:id => basedic_disabled_entries_ids)
-        if basedic_disabled_entries_ids.empty?
-          basedic_remained_entries     = Entry.where(:dictionary_id => @dictionary.id)
-        else
-          basedic_remained_entries     = Entry.where(:dictionary_id => @dictionary.id).where("id not in (?)", basedic_disabled_entries_ids)   # id not in () not work if () is empty.
-        end
-        userdic_new_entries          = NewEntry.where(:user_dictionary_id => @user_dictionary.id)
-      else
-        basedic_disabled_entries     = nil
-        basedic_remained_entries     = Entry.where(:dictionary_id => @dictionary.id)
-        userdic_new_entries          = nil
-      end
-
-      # 1. Disabled base entries.
-      if basedic_disabled_entries.nil?
-        @grid_basedic_disabled_entries = nil
-      else
-        @grid_basedic_disabled_entries = initialize_grid(basedic_disabled_entries,
-          :name => "basedic_disabled_entries",
-          :order => "view_title",
-          :order_direction => "asc",
-          :per_page => 30, )
-        if params[:basedic_disabled_entries] && params[:basedic_disabled_entries][:selected]
-          @selected = params[:basedic_disabled_entries][:selected]
-        end
-      end
-
-      # 2. Remained base entries.
-      if basedic_remained_entries.nil?
-        @grid_basedic_remained_entries = nil
-      else
-        @grid_basedic_remained_entries = initialize_grid(basedic_remained_entries, 
-          :name => "basedic_remained_entries",
-          :order => 'view_title',
-          :order_direction => 'asc',
-          :per_page => 30, )
-        if params[:basedic_remained_entries] && params[:basedic_remained_entries][:selected]
-          @selected = params[:basedic_remained_entries][:selected]
-        end
-      end
-
-      # 3. Prepare the Wice_Grid instance for the user_dictionary's added entries.
-      if userdic_new_entries.nil?
-        @grid_userdic_new_entries = nil
-      else
-        @grid_userdic_new_entries = initialize_grid(userdic_new_entries, 
-          :name => "userdic_new_entries",
-          :order => 'view_title',
-          :order_direction => 'asc',
-          :per_page => 30, )
-        if params[:userdic_new_entries] && params[:userdic_new_entries][:selected]
-          @selected = params[:userdic_new_entries][:selected]
-        end
-      end
+      @grid_basedic_remained_entries, @grid_basedic_disabled_entries, @grid_userdic_new_entries = get_grid_views()
     end
 
     respond_to do |format|
       format.html # show.html.erb
       format.tsv { send_data tsv_data(@export_entries), 
         filename: "#{@dictionary.title}.#{params[:query]}.tsv", 
-        type: "text/tsv" }
+        type:     "text/tsv" }
     end
   end
 
@@ -206,49 +142,39 @@ class DictionariesController < ApplicationController
     end
   end
 
+  # Destroy a base dictionary and the associated user dictionaries (of other users too).
   def destroy
-    base_dic  = Dictionary.find_by_title(params[:id])
-    user_dics = UserDictionary.where(:dictionary_id => base_dic.id)
+    base_dic = Dictionary.find_by_title(params[:id])
+    
+    if not is_destroyable?(base_dic)
+      ret_url = :back
+      ret_msg = "This dictionary can be deleted only by its creator."
+    else
+      # Delete the entries of the base dictionary (@dictionary.destroy is too slow).
+      Entry.where("dictionary_id = ?", base_dic.id).delete_all
 
-    if current_user_is_creator?(dictionary) and no_user_entries?(user_dics)
-      # Delete entries     # @dictionary.destroy - Too slow due to the validation.
-      Entry.where("dictionary_id = ?", @dictionary.id).delete_all
-
-      # Delete user empty dictionaries associated to the base dictionary.
-      user_dics.each do |udic|
-        udic.destroy
+      # Delete new and removed entries of the associated user dictionaries.
+      base_dic.user_dictionaries.all.each do |user_dic|
+        NewEntry.where("user_dictionary_id = ?", user_dic.id).delete_all
+        RemovedEntry.where("user_dictionary_id = ?", user_dic.id).delete_all
       end
+
+      # Delete the associated user dictionaries.
+      UserDictionary.where("dictionary_id = ?", base_dic.id).delete_all
+
+      # Delete the dictionary.
+      Dictionary.where("id = ?", base_dic.id).delete_all
+
+      # Delete the associated SimString DB.
+      delete_simstring_db(base_dic.title)
+
+      ret_url = dictionaries_url
+      ret_msg = "The dictionary is successfully deleted."
     end
 
-    @dictionary = Dictionary.find_by_title(params[:id])
-    
     respond_to do |format|
-      if current_user_is_creator?(@dictionary)
-
-        # @dictionary.destroy   # Too slow
-        Entry.where("dictionary_id = ?", @dictionary.id).delete_all
-
-        # Deletes new and removed entries of the associated user dictionaries.
-        @dictionary.user_dictionaries.all.each do |userdic|
-          NewEntry.where("user_dictionary_id = ?", userdic.id).delete_all
-          RemovedEntry.where("user_dictionary_id = ?", userdic.id).delete_all
-        end
-
-        # Deletes the associated user dictionaries.
-        UserDictionary.where("dictionary_id = ?", @dictionary.id).delete_all
-
-        # Deletes the dictionary.
-        Dictionary.where("id = ?", @dictionary.id).delete_all
-
-        # Deletes the associated SimString DB.
-        delete_simstring_db(@dictionary.title)
-
-        format.html { redirect_to dictionaries_url }
-        format.json { head :no_content }
-      else
-        format.html { redirect_to :back, notice: "This dictionary can be deleted only by its creator (#{@dictionary.creator})." }
-        # format.json ...
-      end
+      format.html{ redirect_to ret_url, notice: ret_msg }
+      format.json { head :no_content }
     end
   end
 
@@ -281,6 +207,7 @@ class DictionariesController < ApplicationController
     end
   end
 
+  # Text annotation API as a member rote.
   def text_annotation_with_single_dic
     basedic_name, ann, opts = get_data_params2(params)
     user_id = get_user_id(params["user"])
@@ -388,6 +315,59 @@ class DictionariesController < ApplicationController
   #####     METHODS     #####
   ###########################
   private
+
+  # Create grid views for remained, disabled, and new entries.
+  def get_grid_views
+    ids = RemovedEntry.get_disabled_entry_idlist(@user_dictionary)
+
+    basedic_disabled_entries = Entry.get_disabled_entries(ids)
+    basedic_remained_entries = Entry.get_remained_entries(@dictionary, ids)
+    userdic_new_entries      = NewEntry.get_new_entries(@user_dictionary)
+    
+    # 1. Remained base entries.
+    if basedic_remained_entries.empty?
+      grid_basedic_remained_entries = []
+    else
+      grid_basedic_remained_entries = initialize_grid(basedic_remained_entries, 
+        :name => "basedic_remained_entries",
+        :order => 'view_title',
+        :order_direction => 'asc',
+        :per_page => 30, )
+      if params[:basedic_remained_entries] && params[:basedic_remained_entries][:selected]
+        @selected = params[:basedic_remained_entries][:selected]
+      end
+    end
+
+    # 2. Disabled base entries.
+    if basedic_disabled_entries.empty?
+      grid_basedic_disabled_entries = []
+    else
+      grid_basedic_disabled_entries = initialize_grid(basedic_disabled_entries,
+        :name => "basedic_disabled_entries",
+        :order => "view_title",
+        :order_direction => "asc",
+        :per_page => 30, )
+      if params[:basedic_disabled_entries] && params[:basedic_disabled_entries][:selected]
+        @selected = params[:basedic_disabled_entries][:selected]
+      end
+    end
+
+    # 3. Prepare the Wice_Grid instance for the user_dictionary's added entries.
+    if userdic_new_entries.empty?
+      grid_userdic_new_entries = []
+    else
+      grid_userdic_new_entries = initialize_grid(userdic_new_entries, 
+        :name => "userdic_new_entries",
+        :order => 'view_title',
+        :order_direction => 'asc',
+        :per_page => 30, )
+      if params[:userdic_new_entries] && params[:userdic_new_entries][:selected]
+        @selected = params[:userdic_new_entries][:selected]
+      end
+    end
+
+    return grid_basedic_remained_entries, grid_basedic_disabled_entries, grid_userdic_new_entries
+  end
 
   # Create a list of entries for export.
   def build_export_entries(export_type)
@@ -577,18 +557,27 @@ class DictionariesController < ApplicationController
     disabled_entry.save
   end
 
-  # True if none of user dictionaries has new or disabled entries; otherwise, false.
-  def no_user_entries?(user_dics)
-    user_dics.each do |udic|
-      new_entries      = NewEntry.find_by_user_dictionary_id(udic.id)     # Find the first one (faster than where).
-      disabled_entries = RemovedEntry.find_by_user_dictionary_id(udic.id)
+  # true if the given base dictionary is destroyable; otherwise, false.
+  def is_destroyable?(base_dic)
+    if base_dic.user_id != current_user.id
+      return false, "Current user is not the owner of the dictionary."
+    elsif used_by_other_users?(base_dic)
+      return false, "The dictionary is used by other users."
+    else
+      return true, "The dictionary is successfully deleted."
+    end
+  end
 
-      if not new_entries.nil? or not disabled_entries.nil?
-        return false
+  def used_by_other_users?(base_dic)
+    user_dics = UserDictionary.where(:dictionary_id => base_dic.id)
+    user_dics.each do |user_dic|
+      if user_dic.user_id != current_user.id and
+        (not NewEntry.where("user_dictionary_id = ?", user_dic.id).empty? or
+         not RemovedEntry.where("user_dictionary_id = ?", user_dic.id).empty?)
+        return true
       end
     end
-
-    return true
+    return false
   end
 
 end

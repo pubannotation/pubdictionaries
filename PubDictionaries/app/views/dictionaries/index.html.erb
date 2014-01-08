@@ -7,6 +7,7 @@
     <tr>
       <th class="dictionary_name">Dictionary name</th>
       <th class="creator">Creator</th>
+      <th class="creator">Status</th>
       <th class="description">Description</th>
       <th class="options">Options</th>
     </tr>
@@ -15,6 +16,12 @@
         <tr>
           <td><%= dictionary.title %></td>
           <td><%= dictionary.creator %></td>
+          <td><%= if dictionary.public
+                    "Public"
+                  else
+                    "Private"
+                  end 
+              %></td>
           <td><%= dictionary.description %></td>
           <td>
             <%= link_to 'Show', dictionary %> |
