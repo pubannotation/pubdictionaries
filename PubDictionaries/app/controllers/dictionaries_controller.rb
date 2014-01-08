@@ -23,7 +23,7 @@ class DictionariesController < ApplicationController
 
   def index
     # @dictionaries = Dictionary.all
-    @dictionaries = Dictionary.get_showable_dictionaries(current_user.id).all
+    @dictionaries = Dictionary.get_showable_dictionaries(current_user).all
 
     respond_to do |format|
       format.html # index.html.erb
@@ -54,41 +54,41 @@ class DictionariesController < ApplicationController
 
   # Disable (or enable) multiple selected entries (from the base dictionary).
   def disable_entries
-    dictionary       = Dictionary.find_by_title(params[:id])
-    disabled_entries = get_user_dictionary(current_user.id, dictionary.id).removed_entries
-    
-    if params["commit"] == "Disable selected entries" \
-       and params.has_key? :basedic_remained_entries \
-       and params[:basedic_remained_entries].has_key? :selected
-      
-      params[:basedic_remained_entries][:selected].each do |id|
-        entry = dictionary.entries.find(id)
-        if not disabled_entries.exists?(entry_id: entry.id)
-          register_disabled_entry(disabled_entries, entry)
+    dic      = Dictionary.find_by_title(params[:id])
+    user_dic = UserDictionary.get_or_create_user_dictionary(dic, current_user)
+
+    if params["commit"] == "Disable selected entries" and 
+       params.has_key? :basedic_remained_entries and 
+       params[:basedic_remained_entries].has_key? :selected
+
+      # Register selected entries as disabled.
+      params[:basedic_remained_entries][:selected].each do |eid|
+        if not user_dic.removed_entries.exists?(entry_id: eid)
+          user_dic.removed_entries.create(entry_id: eid)
+        end
+      end
+    end
+ 
+    if params["commit"] == "Enable selected entries" and
+       params.has_key? :basedic_disabled_entries and
+       params[:basedic_disabled_entries].has_key? :selected
+
+      params[:basedic_disabled_entries][:selected].each do |eid|
+        if user_dic.removed_entries.exists?(entry_id: eid)
+          user_dic.removed_entries.find_by_entry_id(eid).destroy
         end
       end
     end
 
-    if params["commit"] == "Enable selected entries" \
-       and params.has_key? :basedic_disabled_entries \
-       and params[:basedic_disabled_entries].has_key? :selected
-
-      params[:basedic_disabled_entries][:selected].each do |id|
-        entry = dictionary.entries.find(id)
-
-        if disabled_entries.exists?(entry_id: entry.id)
-          disabled_entries.where(entry_id: entry.id).first.destroy
-        end
-      end
+    respond_to do |format|
+      format.html { redirect_to :back }
     end
-
-    redirect_to :back   
   end
 
   # Remove multiple selected entries (from the user dictionary).
   def remove_entries
     dictionary       = Dictionary.find_by_title(params[:id])
-    user_dictionary  = get_user_dictionary(current_user.id, dictionary.id)
+    user_dictionary  = UserDictionary.find_or_create(dictionary, current_user)
 
     if not params[:userdic_new_entries][:selected].nil?
       params[:userdic_new_entries][:selected].each do |id|
@@ -99,7 +99,9 @@ class DictionariesController < ApplicationController
       end
     end
 
-    redirect_to :back   
+    respond_to do |format|
+      format.html { redirect_to :back }
+    end
   end
 
   def new
@@ -114,11 +116,8 @@ class DictionariesController < ApplicationController
 
   def create
     # Creates a dictionary
-    user = User.find(current_user.id)
-
-    @dictionary = user.dictionaries.new( params[:dictionary] )
+    @dictionary         = User.find(current_user.id).dictionaries.new( params[:dictionary] )
     @dictionary.creator = current_user.email
-    
     b_basedic_saved = @dictionary.save
 
     # Fills the entries of the dictionary
@@ -146,7 +145,8 @@ class DictionariesController < ApplicationController
   def destroy
     base_dic = Dictionary.find_by_title(params[:id])
     
-    if not is_destroyable?(base_dic)
+    # if not is_destroyable?(base_dic)
+    if not base_dic.is_destroyable?(current_user)
       ret_url = :back
       ret_msg = "This dictionary can be deleted only by its creator."
     else
@@ -182,7 +182,7 @@ class DictionariesController < ApplicationController
   # Annotate a given text using base dictionaries (and corresponding user dictionaries).
   def text_annotation_with_multiple_dic
     basedic_names, ann, opts = get_data_params1(params)
-    user_id = get_user_id(params["user"])
+    user_id = User.get_user_id(params["user"])
 
     results = []
     if user_id == :invalid
@@ -210,7 +210,7 @@ class DictionariesController < ApplicationController
   # Text annotation API as a member rote.
   def text_annotation_with_single_dic
     basedic_name, ann, opts = get_data_params2(params)
-    user_id = get_user_id(params["user"])
+    user_id = User.get_user_id(params["user"])
 
     results = []
     if user_id == :invalid
@@ -236,7 +236,7 @@ class DictionariesController < ApplicationController
   # Return a list of labels for a given list of IDs.
   def ids_to_labels
     basedic_names, ann, opts = get_data_params1(params)
-    user_id = get_user_id(params["user"])
+    user_id = User.get_user_id(params["user"])
 
     results = {}
     if user_id == :invalid
@@ -276,7 +276,7 @@ class DictionariesController < ApplicationController
   #
   def terms_to_idlists
     basedic_names, ann, opts = get_data_params1(params)
-    user_id = get_user_id(params["user"])
+    user_id = User.get_user_id(params["user"])
 
     results = {}
     if user_id == :invalid
@@ -523,61 +523,6 @@ class DictionariesController < ApplicationController
     opts          = params["options"].nil?      ? nil : JSON.parse(params["options"])
 
     return basedic_name, ann, opts
-  end
-
-  # Get the user ID for a given email/password pair.
-  def get_user_id(email_password)
-    if email_password.nil? or email_password["email"] == nil or email_password["email"] == ""
-      return nil
-    else
-      # Find the user that first matches to the condition.
-      user = User.find_by_email(email_password["email"])     
-
-      if user and user.valid_password?(email_password["password"])
-        return user.id
-      else
-        return :invalid
-      end
-    end
-  end
-
-  def get_user_dictionary(user_id, dictionary_id)
-    user_dictionary = UserDictionary.where({ user_id: user_id, dictionary_id: dictionary_id }).first
-    if user_dictionary.nil?
-      user_dictionary = UserDictionary.new({ user_id: user_id, dictionary_id: dictionary_id })
-      user_dictionary.save
-    end
-
-    user_dictionary
-  end
-
-  def register_disabled_entry(disabled_entries, entry)
-    disabled_entry = disabled_entries.new
-    disabled_entry.entry_id = entry.id
-    disabled_entry.save
-  end
-
-  # true if the given base dictionary is destroyable; otherwise, false.
-  def is_destroyable?(base_dic)
-    if base_dic.user_id != current_user.id
-      return false, "Current user is not the owner of the dictionary."
-    elsif used_by_other_users?(base_dic)
-      return false, "The dictionary is used by other users."
-    else
-      return true, "The dictionary is successfully deleted."
-    end
-  end
-
-  def used_by_other_users?(base_dic)
-    user_dics = UserDictionary.where(:dictionary_id => base_dic.id)
-    user_dics.each do |user_dic|
-      if user_dic.user_id != current_user.id and
-        (not NewEntry.where("user_dictionary_id = ?", user_dic.id).empty? or
-         not RemovedEntry.where("user_dictionary_id = ?", user_dic.id).empty?)
-        return true
-      end
-    end
-    return false
   end
 
 end

@@ -15,4 +15,5 @@ class RemovedEntry < ActiveRecord::Base
   	end
   	return entries
   end
+
 end

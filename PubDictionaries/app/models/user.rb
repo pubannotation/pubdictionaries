@@ -11,5 +11,22 @@ class User < ActiveRecord::Base
 
   has_many :dictionaries, dependent: :destroy
   has_many :user_dictionaries, dependent: :destroy
+
+  # Get the user ID for the given email/password pair.
+  def self.get_user_id(params)
+    if params.nil? or params["email"] == nil or params["email"] == ""
+      return nil
+    else
+      # Find the user that first matches to the condition.
+      user = User.find_by_email(params["email"])     
+
+      if user and user.valid_password?(params["password"])
+        return user.id
+      else
+        return :invalid
+      end
+    end
+  end
+
   
 end

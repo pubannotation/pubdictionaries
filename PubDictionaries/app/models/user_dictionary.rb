@@ -34,4 +34,16 @@ class UserDictionary < ActiveRecord::Base
       new_entries.paginate :per_page => 15, :page => page, :order => order
     end
   end
+
+  # Return a user dictionary associated with the user_id and the base dictionary.
+  def self.get_or_create_user_dictionary(dictionary, current_user)
+    user_dictionary = UserDictionary.where({ user_id: current_user.id, dictionary_id: dictionary.id }).first
+    if user_dictionary.nil?
+      user_dictionary = UserDictionary.new({ user_id: current_user.id, dictionary_id: dictionary.id })
+      user_dictionary.save
+    end
+    user_dictionary
+  end
+ 
+
 end
