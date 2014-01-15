@@ -14,6 +14,9 @@ gem 'pg', :require => 'pg'
 # Grid viewer
 gem 'wice_grid'
 
+# Popup lightbox
+gem 'colorbox-rails'
+
 group :development do
 end
 

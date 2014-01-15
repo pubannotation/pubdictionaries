@@ -41,6 +41,9 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.6.3)
+    colorbox-rails (0.1.0)
+      jquery-rails
+      rails (>= 3.1.1)
     daemons (1.1.9)
     devise (3.0.3)
       bcrypt-ruby (~> 3.0)
@@ -143,6 +146,7 @@ PLATFORMS
 DEPENDENCIES
   activerecord-import (~> 0.3.1)
   coffee-rails (~> 3.2.1)
+  colorbox-rails
   devise (= 3.0.3)
   jquery-rails (> 3.0.0)
   jquery-ui-rails

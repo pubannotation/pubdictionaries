@@ -30,10 +30,10 @@ class Dictionary < ActiveRecord::Base
   end
 
   # 
-  def self.find_showable_by_title(title, user)
+  def self.find_showable_by_title(title, user_id)
     dic = Dictionary.find_by_title(title)
     if not dic.nil?
-      if dic.public == true or (user != nil and user.id == dic.user_id)
+      if dic.public == true or (user_id == dic.user_id)
         return dic
       end
     end

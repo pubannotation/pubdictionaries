@@ -187,6 +187,7 @@ class TextAnnotator
 		norm_opts  = @pgr.get_string_normalization_options
 
 		queries     = @qbuilder.build_queries(ann["text"], build_opts, norm_opts)
+
 		# Perform query expansion using both the PG and SimString DBs.
 		ext_queries = @qbuilder.expand_queries(queries, @options["threshold"], @ssr, @pgr)
 

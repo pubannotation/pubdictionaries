@@ -18,19 +18,20 @@ class NewEntriesController < ApplicationController
                   hyphen_replaced:  dictionary[:hyphen_replaced],
                   stemmed:          dictionary[:stemmed],
                 }
-    search_title = normalize_str(params[:new_entry][:view_title], norm_opts)
-
-    @new_entry = user_dictionary.new_entries.new(
-                  { view_title:   params[:new_entry][:view_title], 
-                    search_title: search_title,
-                    label:        params[:new_entry][:label], 
-                    uri:          params[:new_entry][:uri],
-                  })
+    if params[:new_entry]
+      search_title = normalize_str(params[:new_entry][:view_title], norm_opts)
+      @new_entry = user_dictionary.new_entries.new(
+                    { view_title:   params[:new_entry][:view_title], 
+                      search_title: search_title,
+                      label:        params[:new_entry][:label], 
+                      uri:          params[:new_entry][:uri],
+                    })
+    end
     
     if @new_entry.save
       redirect_to dictionary, notice: 'A new entry was successfully created.'
     else
-      render action: "new"
+      redirect_to :back
     end
   end
 

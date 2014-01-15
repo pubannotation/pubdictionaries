@@ -36,10 +36,13 @@
         <%= link_to "Top", root_path %>
         <%#= link_to "Manual", manual_index_path %>
         Manual
-        <%= link_to '&#9500;Basic Manual'.html_safe, manual_basic_path %>
-        <%= link_to '&#9492;Advanced Manual'.html_safe, manual_advanced_path %>
-        <%= link_to "Dictionaries", dictionaries_path %>
-        <%= link_to "For Developers", web_services_index_path %>
+        &#9500;Dictionaries
+        <%= link_to '&#9474;&nbsp;&#9500;Sharing'.html_safe, manual_basic_path %>
+        <%= link_to '&#9474;&nbsp;&#9492;Manipulation'.html_safe, manual_advanced_path %>
+        &#9492;Annotation
+        <%= link_to '&nbsp;&nbsp;&nbsp;&#9500;PubAnn'.html_safe, "" %>
+        <%= link_to '&nbsp;&nbsp;&nbsp;&#9492;REST-APIs'.html_safe, web_services_index_path %>
+        <%= link_to 'Dictionaries'.html_safe, dictionaries_path %>
         <a href="mailto:priancho@gmail.com">Contact</a>
         <br />
       </div>

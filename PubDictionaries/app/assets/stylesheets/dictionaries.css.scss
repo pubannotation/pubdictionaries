@@ -3,59 +3,47 @@
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
 
-/* Dictionaries page */
-#main .dictionaries_page .entry_list .removed_dictionary_entry {
-  text-decoration: line-through;
-  background-color: #aaaaaa ;
+/* dictionary information section */
+.main .dictionaries_page .dictionary_information .single_dic_rest_api_button {
+  padding-left: 2em;
+  vertical-align: middle; 
 }
 
-#main .dictionaries_page .entry_list {
-  border-collapse: collapse;
+.main .dictionaries_page .dic_ann_uri_generator {
+  .option_selection_area {
+    div.dictionary_name {
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+    div.options {
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+    div.uri {
+      .name {
+        font-size: 1.5em;
+        font-weight: bold;
+      }
+      .desc {
+        padding-left: 2em;
+      }
+    }
+  }
+
+  .description 
+    .title {
+      font-size: 1.5em;
+      text-align: center;
+    }
+    .option {
+      .name {
+        padding-left: 2em;
+        font-weight: bold;
+      }
+      .desc {
+        padding-left: 4em;
+      }
+  }
 }
 
-#main .dictionaries_page .entry_list .search_field {
-  width: 600px;
-  text-align: left;
-  padding-top: 0.2em;
-  padding-left: 1em;
-  padding-right: 1em;
-  padding-bottom: 0.2em;   
-}
 
-#main .dictionaries_page .entry_list .search_field #entry_search {
-  width: 300px;
-}
-
-#main .dictionaries_page .entry_list .search_field #new_entry_search {
-  width: 300px;
-}
-
-#main .dictionaries_page .entry_list .sort_by {
-  width: 400px;
-  text-align: right;
-  padding-top: 0.2em;
-  padding-left: 1em;
-  padding-right: 1em;
-  padding-bottom: 0.2em;   
-}
-
-#main .dictionaries_page .entry_list .paginated_entries_info {
-  width: 800px;
-  background-color: #aaaaff;
-  padding-top: 0.2em;
-  padding-left: 1em;
-  padding-right: 1em;
-  padding-bottom: 0.2em;
-}
-
-#main .dictionaries_page .entry_list .entry_name {
-  width: 600px;
-}
-
-#main .dictionaries_page .entry_list .label {
-  width: 200px;
-}
-
-#main .dictionaries_page .entry_list .id {
-  width: 200px;
-}

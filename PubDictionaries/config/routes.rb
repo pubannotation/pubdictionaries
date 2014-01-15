@@ -23,10 +23,12 @@ PubDictionaries::Application.routes.draw do
 
   resources :dictionaries do
     resources :entries
+
     # Add routes for a collection route, /dictionaries/...
     collection do
       #   get 'multiple_new'
       #   post 'multiple_create'
+      get  'text_annotation', to: 'dictionaries#text_annotation_with_multiple_dic_readme'
       post 'text_annotation', to: 'dictionaries#text_annotation_with_multiple_dic'
       post 'ids_to_labels'
       post 'terms_to_idlists'
@@ -37,6 +39,7 @@ PubDictionaries::Application.routes.draw do
     member do
       post 'disable_entries'
       post 'remove_entries'
+      get  'text_annotation', to: 'dictionaries#text_annotation_with_single_dic_readme'
       post 'text_annotation', to: 'dictionaries#text_annotation_with_single_dic'
     end
   end

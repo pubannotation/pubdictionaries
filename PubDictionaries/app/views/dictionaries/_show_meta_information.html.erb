@@ -3,8 +3,16 @@
   
   <!-- Show the meta-information of a current dictionary -->
   <table>
-    <tr><th>Creator:</th><td><%= @dictionary.creator %></td>
-    <tr><th>Description:</th><td><%= h(@dictionary.description).gsub(/\n/, '<br/>').html_safe %></td></tr>
+    <tr>
+      <th>Creator:</th>
+      <td><%= @dictionary.creator %></td>
+      <td rowspan="3" class="single_dic_rest_api_button" >
+        <%= button_to "Get Annotator URI", {controller: "dictionaries", action: "text_annotation_with_single_dic_readme"}, {:method => :get, :class => "customized_button"} %>
+      </td>
+    <tr>
+      <th>Description:</th>
+      <td><%= h(@dictionary.description).gsub(/\n/, '<br/>').html_safe %></td>
+    </tr>
     <tr>
       <th>Export:</th>
       <td>
@@ -13,7 +21,6 @@
         <%= link_to 'New', dictionary_path(format: "tsv", query: "new") %> |
         <%= link_to 'Base+Disabled', dictionary_path(format: "tsv", query: "ori") %> | 
         <%= link_to 'Base+New', dictionary_path(format: "tsv", query: "ori_del_new") %>
-        
       </td>
     </tr>
   </table>
