@@ -37,7 +37,8 @@ class DictionariesController < ApplicationController
   # Show the content of an original dictionary and its corresponding user dictionary.
   def show
     # @dictionary = Dictionary.find_by_title(params[:id])
-    @dictionary = Dictionary.find_showable_by_title(params[:id], current_user)
+    user_id = current_user.nil? ? nil : current_user.id
+    @dictionary = Dictionary.find_showable_by_title(params[:id], user_id)
     if @dictionary
       @page_title = @dictionary.title     # Replace the page title with the dictionary name
 
@@ -67,7 +68,8 @@ class DictionariesController < ApplicationController
   # Disable (or enable) multiple selected entries (from the base dictionary).
   def disable_entries
     # dic      = Dictionary.find_by_title(params[:id])
-    dic      = Dictionary.find_showable_by_title(params[:id], current_user)
+    user_id  = current_user.nil? ? nil : current_user.id
+    dic      = Dictionary.find_showable_by_title(params[:id], user_id)
     if dic
       user_dic = UserDictionary.get_or_create_user_dictionary(dic, current_user)
 
@@ -103,7 +105,8 @@ class DictionariesController < ApplicationController
   # Remove multiple selected entries (from the user dictionary).
   def remove_entries
     # dictionary       = Dictionary.find_by_title(params[:id])
-    dic      = Dictionary.find_showable_by_title(params[:id], current_user)
+    user_id = current_user.nil? ? nil : current_user.id
+    dic      = Dictionary.find_showable_by_title(params[:id], user_id)
     if dic
       user_dic = UserDictionary.get_or_create_user_dictionary(dictionary, current_user)
 
@@ -162,7 +165,8 @@ class DictionariesController < ApplicationController
   # Destroy a base dictionary and the associated user dictionaries (of other users too).
   def destroy
     # base_dic = Dictionary.find_by_title(params[:id])
-    base_dic = Dictionary.find_showable_by_title(params[:id], current_user)
+    user_id  = current_user.nil? ? nil : current_user.id
+    base_dic = Dictionary.find_showable_by_title(params[:id], user_id)
     if not base_dic  
       ret_url = :back
       ret_msg = "Cannot find a dictionary."
@@ -291,7 +295,8 @@ class DictionariesController < ApplicationController
     @annotator_uri = ""
 
     basedic_name = params[:id]
-    base_dic     = Dictionary.find_showable_by_title(basedic_name, current_user.id)
+    user_id      = current_user.nil? ? nil : current_user.id
+    base_dic     = Dictionary.find_showable_by_title(basedic_name, user_id)
     
     if base_dic.nil?
       ret_msg = "Cannot find the dictionary."
