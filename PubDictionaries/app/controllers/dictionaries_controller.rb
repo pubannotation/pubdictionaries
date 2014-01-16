@@ -25,7 +25,8 @@ class DictionariesController < ApplicationController
 
   def index
     # @dictionaries = Dictionary.all
-    @dictionaries = Dictionary.get_showables(current_user).all
+    @dictionaries = Dictionary.get_showables(current_user)
+    @grid_dictionaries = get_dictionaries_grid_view()
 
     respond_to do |format|
       format.html # index.html.erb
@@ -45,7 +46,7 @@ class DictionariesController < ApplicationController
       if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
         @export_entries = build_export_entries(params[:query])
       else
-        @grid_basedic_remained_entries, @grid_basedic_disabled_entries, @grid_userdic_new_entries = get_grid_views()
+        @grid_basedic_remained_entries, @grid_basedic_disabled_entries, @grid_userdic_new_entries = get_entries_grid_views()
       end
     end
 
@@ -205,40 +206,46 @@ class DictionariesController < ApplicationController
   def text_annotation_with_multiple_dic_readme
     @annotator_uri = ""
 
-    # basedic_name = params[:id]
-    # base_dic     = Dictionary.find_showable_by_title(basedic_name, current_user.id)
-    
-    # if base_dic.nil?
-    #   ret_msg = "Cannot find the dictionary."
-    # else
-      if params[:commit] == "Generate URI"
-        request_params = { 
-          "matching_method" => params["annotation_strategy"], 
-          "min_tokens" => params["min_tokens"],
-          "max_tokens" => params["max_tokens"],
-          "threshold" => params["threshold"],
-          "top_n" => params["top_n"],
-          }
-        @annotator_uri = "http://#{request.host}:#{request.port}#{request.fullpath.split("?")[0]}?#{request_params.to_query}"
+    if params[:commit] == "Add selected dictionaries"
+      # diclist = params[:dictionaries] == "" ? [] : JSON.parse(params[:dictionaries])
+      diclist = JSON.parse(params[:dictionaries])
+
+      if params.has_key? :dictionaries_list and params[:dictionaries_list].has_key? :selected
+        params[:dictionaries_list][:selected].each do |dic_id|
+          dic = Dictionary.find_by_id(dic_id)
+          if not dic.nil? and not diclist.include?(dic.title)
+            diclist << dic.title
+            # params[:dictionaries]? params[:dictionaries] << dic.title : params[:dictionaries] = [dic.title]
+          end
+        end
       end
-    # end
+      params[:dictionaries] = diclist.to_json
+    elsif params[:commit] == "Generate URI"
+      request_params = { 
+        # "dictionaries" => params["dictionaries"].split(/[\r\n]/).delete_if{|item| item==""},
+        "dictionaries" => params["dictionaries"],
+        "matching_method" => params["annotation_strategy"], 
+        "min_tokens" => params["min_tokens"],
+        "max_tokens" => params["max_tokens"],
+        "threshold" => params["threshold"],
+        "top_n" => params["top_n"],
+        }
+      @annotator_uri = "http://#{request.host}:#{request.port}#{request.fullpath.split("?")[0]}?#{request_params.to_query}"
+    end
 
     respond_to do |format|
       format.html 
-      # { 
-      #   if base_dic.nil?
-      #     redirect_to dictionaries_path, :message => ret_msg
-      #   end
-      # }      
     end
   end
 
   # Select dictionaries for text_annotation_with_multiple_dic_readme.
   def select_dictionaries
-    @dictionaries = Dictionary.get_showables(current_user).all
+    @dictionaries = Dictionary.get_showables(current_user)
+    @grid_dictionaries = get_dictionaries_grid_view()
+
 
     respond_to do |format|
-      format.html { render :partial => '_dictionaries#select_dictionaries' }
+      format.html { render layout: false }
     end
   end
 
@@ -425,8 +432,22 @@ class DictionariesController < ApplicationController
   ###########################
   private
 
+  # Create grid views for dictionaries
+  def get_dictionaries_grid_view
+    dictionaries_grid_view = initialize_grid(@dictionaries,
+      :name => "dictionaries_list",
+      :order => "title",
+      :order_direction => "asc",
+      :per_page => 30, )
+    if params[:dictionaries_list] && params[:dictionaries_list][:selected]
+      @selected = params[:dictionaries_list][:selected]
+    end
+  
+    return dictionaries_grid_view
+  end
+
   # Create grid views for remained, disabled, and new entries.
-  def get_grid_views
+  def get_entries_grid_views
     ids = RemovedEntry.get_disabled_entry_idlist(@user_dictionary)
 
     basedic_disabled_entries = Entry.get_disabled_entries(ids)
@@ -617,10 +638,19 @@ class DictionariesController < ApplicationController
 
   # Get data parameters.
   def get_data_params1(params)
-    basedic_names = params["dictionaries"].nil? ? nil : JSON.parse(params["dictionaries"])
+    # basedic_names = params["dictionaries"].nil? ? nil : JSON.parse(params["dictionaries"])
+    # ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
+    # opts          = params["options"].nil?      ? nil : JSON.parse(params["options"])
+    basedic_names = JSON.parse(params["dictionaries"])
     ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
-    opts          = params["options"].nil?      ? nil : JSON.parse(params["options"])
 
+    opts = {}
+    opts["min_tokens"]      = params["min_tokens"].to_i
+    opts["max_tokens"]      = params["max_tokens"].to_i
+    opts["matching_method"] = params["matching_method"]
+    opts["threshold"]       = params["threshold"].to_f
+    opts["top_n"]           = params["top_n"].to_i
+    
     return basedic_names, ann, opts
   end
 

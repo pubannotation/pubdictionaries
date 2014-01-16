@@ -4,10 +4,10 @@ require 'json'
 require 'rest_client'
 
 
-# Annotate the text by using the base dictionary and the associated user dictionary.
+# Annotate the text by using the selected dictionaries and the associated user dictionaries.
 #
-# * (string)  uri           - The URI of the sign in route. It involves a dictionary name.
-#                             (e.g., http://localhost/dictionaries/EntrezGene%20-%20Homo%20Sapiens/text_annotation?matching_method=approximate&max_tokens=6&min_tokens=1&threshold=0.6&top_n=10)
+# * (string)  uri           - The URI of the sign in route. It involves dictionary names.
+#                             (e.g., http://localhost:3000/dictionaries/text_annotation?dictionaries=%5B%22EntrezGene+-+Homo+Sapiens%22%2C%22Sample+dictionary%22%2C%22private+sample+dictionary%22%5D&matching_method=approximate&max_tokens=6&min_tokens=1&threshold=0.6&top_n=0)
 # * (string)  email         - User's login ID.
 # * (string)  password      - User's login password.
 # * (hash)    annotation    - The hash including text for annotation.

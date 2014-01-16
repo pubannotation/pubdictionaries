@@ -19,4 +19,20 @@ module DictionariesHelper
     return false
   end
 
+  def format_dic_names(diclist_json)
+    if diclist_json.nil?
+      return ""
+    else
+      diclist = JSON.parse(diclist_json)
+      ret_value = ""
+      diclist.each do |dic_name|
+        if ret_value == ""
+          ret_value = dic_name
+        else
+          ret_value += "\n#{dic_name}"
+        end
+      end
+      return ret_value
+    end
+  end
 end

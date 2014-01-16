@@ -29,6 +29,7 @@ PubDictionaries::Application.routes.draw do
       #   get 'multiple_new'
       #   post 'multiple_create'
       get  'text_annotation', to: 'dictionaries#text_annotation_with_multiple_dic_readme'
+      get  'select_dictionaries', to: 'dictionaries#select_dictionaries'
       post 'text_annotation', to: 'dictionaries#text_annotation_with_multiple_dic'
       post 'ids_to_labels'
       post 'terms_to_idlists'

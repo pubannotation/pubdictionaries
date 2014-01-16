@@ -13,10 +13,15 @@
           <ol class="options">
             <li>
               <div class="field">
-                <%= label_tag :dictionary_name, "Dictionaries:" %>
-                <%= link_to "Select", "dictionaries#select_dictionaries", :data => { :colorbox => true } %>
+                <%= label_tag :dictionaries, "Dictionaries:" %>
+                <%= link_to(
+                  "Select", 
+                  options = {action: "select_dictionaries", dictionaries: params[:dictionaries]}, 
+                  html_options = {data: { :colorbox => true }} ) 
+                %>
                 <br />
-                <%= text_area_tag :dictionary_name, params[:dictionaries], rows: 4, cols: 80, disabled: true %>
+                <%= text_area_tag :dictionaries, params[:dictionaries], rows: 4, cols: 80, disabled: true %>
+                <%= hidden_field_tag :dictionaries, params[:dictionaries] %>
               </div>
             </li>
             <li>
