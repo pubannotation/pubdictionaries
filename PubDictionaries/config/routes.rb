@@ -6,10 +6,8 @@ PubDictionaries::Application.routes.draw do
   get "welcome/index"
 
   get "web_services/index"
-  get "web_services/exact_string_match"
-  get "web_services/exact_string_match_single_dic"
-  get "web_services/approximate_string_match"
-  get "web_services/approximate_string_match_single_dic"
+  get "web_services/annotation_with_single_dic"
+  get "web_services/annotation_with_multiple_dic"
   get "web_services/ids_to_labels"
   get "web_services/terms_to_idlists"
 
