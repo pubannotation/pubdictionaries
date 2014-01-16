@@ -16,9 +16,9 @@
         g.column name: "Status", attribute: "public" do |dic| 
           dic.public == true ? "Public" : "Private" 
         end
-        g.column name: "Description", attribute: "description" do |dic| 
-          dic.description
-        end
+        # g.column name: "Description", attribute: "description" do |dic| 
+        #   dic.description
+        # end
         g.column name: "Options", filter: false do |dic|
           show_link = link_to('Show', dic)
           dele_link = link_to('Delete', dic, method: :delete, data: { confirm: 'Are you sure?' })

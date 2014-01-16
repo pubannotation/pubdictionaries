@@ -159,6 +159,6 @@ DEPENDENCIES
   therubyracer
   thin
   triez
-  uglifier (>= 1.0.3)
+  uglifier
   unicorn
   wice_grid
