@@ -13,6 +13,7 @@ PubDictionaries::Application.routes.draw do
 
   get "manual/basic"
   get "manual/advanced"
+  get "manual/pubann"
   
   resources :users do
     resources :dictionaries
