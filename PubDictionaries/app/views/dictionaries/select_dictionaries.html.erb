@@ -30,11 +30,12 @@
 
       <%=
       # For the dictionaries previously selected.
-      if params.has_key? :dictionaries
+      if params.has_key? :dictionaries and params[:dictionaries] != ""
         hidden_field_tag :dictionaries, params[:dictionaries]
       else
         hidden_field_tag :dictionaries, [].to_json
-      end %>
+      end 
+      %>
   
       <%=
       submit_tag("Add selected dictionaries", options = {:class => "customized_button"}) %>

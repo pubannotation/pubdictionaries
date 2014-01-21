@@ -55,8 +55,14 @@
           </ol>
           
           <div class="uri">
-            <div class="name">URI:</div>
-            <div class="desc"><%= @annotator_uri %></div>
+            <div class="name">URI: 
+              <%= link_to("(copy to clipboard)", "#", onclick: "copy_to_clipboard();") %>
+            </div>
+            <div class="desc">
+              <span id="annotatori_uri"><%= @annotator_uri %></span>
+              <textarea id="annotatori_uri_holdtext" style="display:none;"></textarea>
+            </div>
+
           </div>
           <br />
 

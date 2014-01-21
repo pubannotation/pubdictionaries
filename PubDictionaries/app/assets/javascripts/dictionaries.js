@@ -52,3 +52,10 @@ $(window).bind("load", function() {
         rightButtonInner: "&#8658;",
     });
 });
+
+function copy_to_clipboard() 
+{
+    annotatori_uri_holdtext.innerText = annotator_uri.innerText;
+    Copied = annotatori_uri_holdtext.createTextRange();
+    Copied.execCommand("Copy");
+}
