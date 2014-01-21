@@ -172,9 +172,10 @@ class DictionariesController < ApplicationController
       ret_msg = "Cannot find a dictionary."
     else
       # if not is_destroyable?(base_dic)
-      if not base_dic.is_destroyable?(current_user)
+      flag, msg = base_dic.is_destroyable?(current_user)
+      if flag == false
         ret_url = :back
-        ret_msg = "This dictionary can be deleted only by its creator."
+        ret_msg = msg
       else
         # Delete the entries of the base dictionary (@dictionary.destroy is too slow).
         Entry.where("dictionary_id = ?", base_dic.id).delete_all
@@ -195,7 +196,7 @@ class DictionariesController < ApplicationController
         delete_simstring_db(base_dic.title)
 
         ret_url = dictionaries_url
-        ret_msg = "The dictionary is successfully deleted."
+        ret_msg = msg
       end
     end
 

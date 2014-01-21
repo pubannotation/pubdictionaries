@@ -46,9 +46,13 @@
   }
 
   /* Do not change colors on sign up and sign in links */
-  a, a:link, a:visited, a:hover, a:focus, a:active {
+  a, a:link, a:visited {
     color: #000000;
-    font-weight: normal;
+  }
+  a:hover {
+    color: #000000;
+    background-color: #aaaaff;
+    text-decoration: none;
   }
 }
 
@@ -66,15 +70,16 @@
     background: #ffffff;
 
     .links {
-      font-size: 1.0em;
+      font-size: 1.1em;
 
       a {
-        color: #234979;     // bioportal.bioontology.org top page font color
-        text-decoration: underline;
+        color: #000000;
+        text-decoration: underline;  
       }
+      
       a:hover { 
         color: #333333;
-        background-color: #ddddff; 
+        background-color: #aaaaff; 
         text-decoration: none;
       }
       /*

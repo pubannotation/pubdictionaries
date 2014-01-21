@@ -13,6 +13,7 @@
 //= require jquery
 //= require jquery_ujs
 //= require jquery.ui.all
+//= require jquery.ui.datepicker
 //= require wice_grid
 //= require colorbox-rails
 //= require_tree .

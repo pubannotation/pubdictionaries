@@ -3,26 +3,31 @@
     <%=
       dump_filter_parameters_as_hidden_fields(@grid_dictionaries)
 
-      grid(@grid_dictionaries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}) do |g|
+      grid(@grid_dictionaries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}, hide_submit_button: true, hide_reset_button: true ) do |g|
         g.blank_slate do
           "There are no records" 
         end
-        g.column name: "Dictionary name", attribute: "title" do |dic| 
-          dic.title 
+        g.column name: "Dictionary Name", attribute: "title" do |dic| 
+          link_to dic.title, dic
         end
         g.column name: "Creator", attribute: "creator" do |dic| 
           dic.creator
         end
-        g.column name: "Status", attribute: "public" do |dic| 
+        g.column name: "Visibility", attribute: "public" do |dic| 
           dic.public == true ? "Public" : "Private" 
+        end
+        g.column name: "Created At", attribute: "created_at", filter: false do |dic| 
+          dic.created_at
         end
         # g.column name: "Description", attribute: "description" do |dic| 
         #   dic.description
         # end
-        g.column name: "Options", filter: false do |dic|
-          show_link = link_to('Show', dic)
-          dele_link = link_to('Delete', dic, method: :delete, data: { confirm: 'Are you sure?' })
-          "#{show_link} | #{dele_link}".html_safe     # html_safe is necessary to ensure rendering
+        g.column name: "", filter: false do |dic|
+          link_to image_tag('mac-trashcan.jpg', size: "16x16"), dic, method: :delete, data: { confirm: 'Are you sure to completely delete this dictionary?' }
+          # show_link = link_to('Show', dic)
+          # dele_link = link_to('Delete', dic, method: :delete, data: { confirm: 'Are you sure?' })
+          # "#{show_link} | #{dele_link}".html_safe     # html_safe is necessary to ensure rendering
+          # "#{dele_link}".html_safe     # html_safe is necessary to ensure rendering
 
           # link_to('Edit', edit_dictionary_path(@dictionary)) 
         end

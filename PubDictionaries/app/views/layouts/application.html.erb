@@ -11,10 +11,10 @@
 <body class="pubdictionaries">
   <div class="banner">
     <div class="logo">
-  	 <%= image_tag("logo.png", :alt => "logo")%>
+  	  <%= link_to image_tag("logo.png", { border: "0", alt: "Logo" }), root_path %>
     </div>
     <div class="page_title">
-  	 <%= @page_title || "PubDictionaries" %>
+  	  <%= @page_title || "PubDictionaries" %>
     </div>
   </div>
 

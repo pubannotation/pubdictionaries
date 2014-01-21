@@ -71,8 +71,7 @@ if defined?(Wice::Defaults)
   #                              Showing All Queries                          #
 
   # Enable or disable showing all queries (non-paginated table)
-  # Wice::Defaults::ALLOW_SHOWING_ALL_QUERIES = true
-  Wice::Defaults::ALLOW_SHOWING_ALL_QUERIES = false
+  Wice::Defaults::ALLOW_SHOWING_ALL_QUERIES = true
 
   # If number of all queries is more than this value, the user will be given a warning message
   Wice::Defaults::START_SHOWING_WARNING_FROM = 100
@@ -120,6 +119,11 @@ if defined?(Wice::Defaults)
       Time.parse(datetime_string)
     end
   }
+
+  # The range of years to display in jQuery Datepicker.
+  # It can always be changed dynamically with the following javascript:
+  #  $( ".hasDatepicker" ).datepicker( "option", "yearRange", "2000:2042" );
+  Wice::Defaults::DATEPICKER_YEAR_RANGE = (from = Date.current.year - 10).to_s + ':' + (from + 15).to_s
 
 
   # With Calendar helpers enabled the parameter sent is the string displayed. This lambda will be given a date string in the

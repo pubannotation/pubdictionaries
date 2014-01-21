@@ -16,6 +16,12 @@
   
     .my-header {
       background-color: #ebebeb;
+      font-size: 1.2em;
+      font-variant: small-caps;
+
+      a {
+        color: #000000;
+      }
     }
     
     // Make sure that select-all deselect-all buttons appear at the same line.
