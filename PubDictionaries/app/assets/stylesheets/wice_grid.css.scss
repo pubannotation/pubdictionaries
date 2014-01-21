@@ -11,10 +11,10 @@
 .wice-grid{
   
   .my-grid {
-    border: 1px solid red;
     width: 100%;
-  
-    .my-header {
+    border-collapse: collapse;
+
+    .wice-grid-title-row.my-header {
       background-color: #ebebeb;
       font-size: 1.2em;
       font-variant: small-caps;
@@ -22,11 +22,37 @@
       a {
         color: #000000;
       }
+
+      a:hover {
+        color: #000000;
+        background-color: #aaaaff;
+        text-decoration: none;
+      }
     }
     
     // Make sure that select-all deselect-all buttons appear at the same line.
-    .wg-filter-row.my-header .sel {
-      width: 40px;
+    .wg-filter-row.my-header {
+      background-color: #ebebeb;
+      
+      .sel { 
+        width: 40px;
+      }
+    }
+    
+    thead {
+      border: 1px solid black;
+    }
+    
+    tbody {
+      border: 1px solid black;
+      
+      td {
+        padding-right: 1em;
+      }
+      
+      td.sel {
+        padding-right: 0em; 
+      }
     }
   }
 

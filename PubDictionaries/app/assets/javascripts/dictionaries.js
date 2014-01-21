@@ -53,9 +53,8 @@ $(window).bind("load", function() {
     });
 });
 
-function copy_to_clipboard() 
-{
-    annotatori_uri_holdtext.innerText = annotator_uri.innerText;
-    Copied = annotatori_uri_holdtext.createTextRange();
-    Copied.execCommand("Copy");
-}
+$(document).ready(function() {
+    var clip = new ZeroClipboard($("#d_clip_button"))
+});
+
+

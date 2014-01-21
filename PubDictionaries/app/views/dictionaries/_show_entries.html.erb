@@ -20,7 +20,7 @@
             <% if user_signed_in? %>
               <%= submit_tag "Disable selected entries", {:class =>"customized_button"} %>
             <% end %>
-            <%= grid(@grid_basedic_remained_entries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}) do |g|
+            <%= grid(@grid_basedic_remained_entries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}, hide_submit_button: true, hide_reset_button: true) do |g|
               # g.blank_slate  do
               #  "There are no records"
               # end

@@ -73,6 +73,7 @@
       font-size: 1.1em;
 
       a {
+        display: inline;
         color: #000000;
         text-decoration: underline;  
       }
@@ -81,6 +82,11 @@
         color: #333333;
         background-color: #aaaaff; 
         text-decoration: none;
+      }
+
+      span {
+        display: inline;
+        color: #000000;
       }
       /*
       a:link {color:#FF0000;}     // unvisited link

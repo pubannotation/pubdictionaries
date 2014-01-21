@@ -139,6 +139,8 @@ GEM
       rack (>= 1.0)
     wice_grid (3.4.2)
       kaminari (>= 0.13.0)
+    zeroclipboard-rails (0.0.10)
+      railties (>= 3.1)
 
 PLATFORMS
   ruby
@@ -162,3 +164,4 @@ DEPENDENCIES
   uglifier
   unicorn
   wice_grid
+  zeroclipboard-rails
