@@ -9,6 +9,8 @@
   background: #34689b;     /* NCBI's GENE page top section color */
   text-align: center;
   margin: 0em;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
   
   .logo {
     float: left;
@@ -22,8 +24,6 @@
     font-family: "Times New Roman", Times, serif;
     font-size: 3em;
     font-variant: small-caps;
-    padding-top: 0.5em;
-    padding-bottom: 0.5em;
   }
 }
 
@@ -65,12 +65,24 @@
     padding-right: 1em;
     background: #ffffff;
 
-    .links a {
-      display: block;     /* a-tag is an inline element so padding (and hight and width too) are ignored */
-      font-size: normal;
-      text-decoration: none;
-      padding-top: 0.3em;
-      padding-bottom: 0.3em;
+    .links {
+      font-size: 1.0em;
+
+      a {
+        color: #234979;     // bioportal.bioontology.org top page font color
+        text-decoration: underline;
+      }
+      a:hover { 
+        color: #333333;
+        background-color: #ddddff; 
+        text-decoration: none;
+      }
+      /*
+      a:link {color:#FF0000;}     // unvisited link
+      a:visited {color:#00FF00;}  // visited link
+      a:hover {color:#FF00FF;}    // mouse over link
+      a:active {color:#0000FF;}   // selected link
+      */
     }
   }
 
