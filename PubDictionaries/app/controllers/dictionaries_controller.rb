@@ -106,13 +106,13 @@ class DictionariesController < ApplicationController
   def remove_entries
     # dictionary       = Dictionary.find_by_title(params[:id])
     user_id = current_user.nil? ? nil : current_user.id
-    dic      = Dictionary.find_showable_by_title(params[:id], user_id)
+    dic     = Dictionary.find_showable_by_title(params[:id], user_id)
     if dic
-      user_dic = UserDictionary.get_or_create_user_dictionary(dictionary, current_user)
+      user_dic = UserDictionary.get_or_create_user_dictionary(dic, current_user)
 
       if not params[:userdic_new_entries][:selected].nil?
         params[:userdic_new_entries][:selected].each do |id|
-          entry = user_dictionary.new_entries.find(id)
+          entry = user_dic.new_entries.find(id)
           if not entry.nil?
             entry.destroy
           end
@@ -580,8 +580,8 @@ class DictionariesController < ApplicationController
         # Model#new creates an object but not save it, while Model#create do both.
         entries << @dictionary.entries.new( { view_title:  items[0], 
                                              search_title: normalize_str(items[0], norm_opts), 
-                                             label:        items[1], 
-                                             uri:          items[2],
+                                             uri:          items[1],
+                                             label:        items[2], 
                                           } )
         if entries.length == 2000
           @dictionary.entries.import entries

@@ -16,19 +16,19 @@
     <%= f.text_field :view_title %>
   </div>
   <div class="field">
-    <%= f.label :label, "Label*" %><br />
-    <%= f.text_field :label %>
-  </div>
-  <div class="field">
     <%= f.label :uri, "ID*" %><br />
     <%= f.text_field :uri %>
+  </div>
+  <div class="field">
+    <%= f.label :label, "Label*" %><br />
+    <%= f.text_field :label %>
   </div>
   <div class="actions">
     <%= f.submit "Create a new entry", {:class =>"customized_button"} %>
   </div>
 
   <p>
-  * <i>Label</i> usually stands for the semantic class of an entry such as gene, protein, and so on.<br />
   * <i>ID</i> is usually used to be the unique identifier of an entry such as gene ID.<br />
+  * <i>Label</i> usually stands for the semantic class of an entry such as gene, protein, and so on.<br />
   </p>
 <% end %>
