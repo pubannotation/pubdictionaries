@@ -12,7 +12,9 @@ class Dictionary < ActiveRecord::Base
   validates :creator, :description, :title, :presence => true
   validates :title, uniqueness: true
   validates_inclusion_of :public, :in => [true, false]     # :presence fails when the value is false.
-
+  validates_format_of :title,                              # because of to_param overriding.
+                      :with => /^[^\.]*$/,
+                      :message => "should not contain dot!"
 
   # Overrides original to_param so that it returns title, not ID, for constructing URLs. 
   # Use Model#find_by_title() instead of Model.find() in controllers.
@@ -23,15 +25,15 @@ class Dictionary < ActiveRecord::Base
   # Return a list of dictionaries that are either public or belonging to the logged in user.
   def self.get_showables(user)
     if user == nil
-      Dictionary.where(:public => true)
+      where(:public => true)
     else
-      Dictionary.where('public = ? OR user_id = ?', true, user.id)
+      where('public = ? OR user_id = ?', true, user.id)
     end
   end
 
   # 
   def self.find_showable_by_title(title, user_id)
-    dic = Dictionary.find_by_title(title)
+    dic = find_by_title(title)
     if not dic.nil?
       if dic.public == true or (user_id == dic.user_id)
         return dic
@@ -44,7 +46,7 @@ class Dictionary < ActiveRecord::Base
   def is_destroyable?(current_user)
     if self.user_id != current_user.id
       return false, "Current user is not the owner of the dictionary."
-    elsif used_by_other_users?
+    elsif used_by_other_users?(current_user)
       return false, "The dictionary is used by other users."
     else
       return true, "The dictionary is successfully deleted."
@@ -54,11 +56,13 @@ class Dictionary < ActiveRecord::Base
 
   private
 
-  def used_by_other_users?
+  # true if other users are using this base dictionary (new entries or disabled entries exist).
+  def used_by_other_users?(current_user)
     self.user_dictionaries.each do |user_dic|
-      if not user_dic.new_entries.where("user_dictionary_id = ?", user_dic.id).empty? or
-         not user_dic.removed_entries.where("user_dictionary_id = ?", user_dic.id).empty?
-        return true
+      if user_dic.user_id != current_user.id 
+        if not user_dic.new_entries.empty? or not user_dic.removed_entries.empty?
+          return true
+        end
       end
     end
     return false

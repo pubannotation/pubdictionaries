@@ -13,68 +13,64 @@
     <!-- Tab 1: base entries -->
     <div id="basedic_remained_entries-tab">
       <div class="wice-grid">
-        <%= form_tag :action => :disable_entries, :method => :post do %>
-          <% if not @grid_basedic_remained_entries.empty? %>
-            <% dump_filter_parameters_as_hidden_fields(@grid_basedic_remained_entries) %>
-          
-            <% if user_signed_in? %>
-              <%= submit_tag "Disable selected entries", {:class =>"customized_button"} %>
-            <% end %>
-            <%= grid(@grid_basedic_remained_entries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}, hide_submit_button: true, hide_reset_button: true) do |g|
-              # g.blank_slate  do
-              #  "There are no records"
-              # end
-         
-              # Add checkbox buttons for each entry.
-              g.action_column
-              
-              # Show columns.
-              g.column :name => "Entry name", :attribute => "search_title" do |task|
-                task.view_title
-              end
-              g.column :name => "ID", :attribute => "uri" do |task|
-                task.uri
-              end
-              g.column :name => "Label", :attribute => "label" do |task|
-                task.label
-              end
-            end %>
+        <%= form_tag :action => :disable_entries do %>
+          <% dump_filter_parameters_as_hidden_fields(@g1) %>
+        
+          <% if user_signed_in? %>
+            <%= submit_tag "Disable selected entries", {:class =>"customized_button"} %>
           <% end %>
-        <% end %>
+
+          <%= grid(@g1, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}, hide_submit_button: true, hide_reset_button: true) do |g|
+            # g.blank_slate  do
+            #  "There are no records"
+            # end
+       
+            # Add checkbox buttons for each entry.
+            g.action_column
+            
+            # Show columns.
+            g.column :name => "Entry name", :attribute => "search_title" do |task|
+              task.view_title
+            end
+            g.column :name => "ID", :attribute => "uri" do |task|
+              task.uri
+            end
+            g.column :name => "Label", :attribute => "label" do |task|
+              task.label
+            end
+          end %>
+      <% end %>
       </div>
     </div>
 
     <!-- Tab 2: disabled base entries -->
     <div id="basedic_disabled_entries-tab">
       <div class="wice-grid">
-        <%= form_tag :action => :disable_entries, :method => :post do %>
-          <% if not @grid_basedic_disabled_entries.empty? %>
-            <% dump_filter_parameters_as_hidden_fields(@grid_basedic_disabled_entries) %>
-            
-            <% if user_signed_in? %>
-              <%= submit_tag "Enable selected entries", {:class =>"customized_button"} %>
-            <% end %>
-            <%= grid(@grid_basedic_disabled_entries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}) do |g|
-              # g.blank_slate  do
-              #  "There are no records"
-              # end
-              
-              # Add checkbox buttons for each entry.
-              g.action_column
-              
-              # Show columns.
-              g.column :name => "Entry name", :attribute => "search_title" do |task|
-                task.view_title
-              end
-              g.column :name => "ID", :attribute => "uri" do |task|
-                task.uri
-              end
-              g.column :name => "Label", :attribute => "label" do |task|
-                task.label
-              end
-            end %>
-
+       <%= form_tag :action => :disable_entries do %>
+          <% dump_filter_parameters_as_hidden_fields(@g2) %>
+          
+          <% if user_signed_in? %>
+            <%= submit_tag "Enable selected entries", {:class =>"customized_button"} %>
           <% end %>
+          <%= grid(@g2, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}, hide_submit_button: true, hide_reset_button: true) do |g|
+            # g.blank_slate  do
+            #  "There are no records"
+            # end
+            
+            # Add checkbox buttons for each entry.
+            g.action_column
+            
+            # Show columns.
+            g.column :name => "Entry name", :attribute => "search_title" do |task|
+              task.view_title
+            end
+            g.column :name => "ID", :attribute => "uri" do |task|
+              task.uri
+            end
+            g.column :name => "Label", :attribute => "label" do |task|
+              task.label
+            end
+          end %>
         <% end %>
       </div>
     </div>
@@ -82,36 +78,34 @@
     <!-- Tab 3: new entries -->
     <div id="userdic_new_entries-tab">
        <div class="wice-grid">
-        <%= button_to 'Add a new entry', new_dictionary_entry_path(@dictionary), {:method => :get, :class =>"customized_button"} %>
+        <%= button_to 'Add a new entry', new_dictionary_entry_path(@base_dic), {:method => :get, :class =>"customized_button"} %>
 
-        <%= form_tag :action => :remove_entries, :method => :post do %>
-          <% if not @grid_userdic_new_entries.empty? %>
-            <% dump_filter_parameters_as_hidden_fields(@grid_userdic_new_entries) %>
-            
-            <% if user_signed_in? %>
-              <%= submit_tag "Remove selected entries", {:class =>"customized_button"} %>
-            <% end %>
-
-            <%= grid(@grid_userdic_new_entries, hide_submit_button: true, hide_reset_button: true, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}) do |g|
-              # g.blank_slate  do
-              #  "There are no records"
-              # end
-              
-              # Add checkbox buttons for each entry.
-              g.action_column
-              
-              # Show columns.
-              g.column :name => "Entry name", :attribute => "search_title" do |task|
-                task.view_title
-              end
-              g.column :name => "ID", :attribute => "uri" do |task|
-                task.uri
-              end
-              g.column :name => "Label", :attribute => "label" do |task|
-                task.label
-              end
-            end %>
+        <%= form_tag :action => :remove_entries do %>
+          <% dump_filter_parameters_as_hidden_fields(@g3) %>
+          
+          <% if user_signed_in? %>
+            <%= submit_tag "Remove selected entries", {:class =>"customized_button"} %>
           <% end %>
+
+          <%= grid(@g3, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}, hide_submit_button: true, hide_reset_button: true) do |g|
+            # g.blank_slate  do
+            #  "There are no records"
+            # end
+            
+            # Add checkbox buttons for each entry.
+            g.action_column
+            
+            # Show columns.
+            g.column :name => "Entry name", :attribute => "search_title" do |task|
+              task.view_title
+            end
+            g.column :name => "ID", :attribute => "uri" do |task|
+              task.uri
+            end
+            g.column :name => "Label", :attribute => "label" do |task|
+              task.label
+            end
+          end %>
         <% end %>
       </div>
     </div>

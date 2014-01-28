@@ -5,13 +5,12 @@ class NewEntry < ActiveRecord::Base
 
   validates :label, :view_title, :search_title, :uri, :presence => true
 
-  def self.get_new_entries(user_dic)
-  	if user_dic.nil?
-  	  entries = []
-  	else
-  	  entries = NewEntry.where(:user_dictionary_id => user_dic.id)
-  	end
-  	return entries
+  def self.get_new_entries()
+    self.scoped
+  end
+
+  def self.none
+    where(:id => nil).where("id IS NOT ?", nil)
   end
 
 end

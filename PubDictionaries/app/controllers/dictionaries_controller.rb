@@ -25,7 +25,6 @@ class DictionariesController < ApplicationController
 
   def index
     # @dictionaries = Dictionary.all
-    @dictionaries = Dictionary.get_showables(current_user)
     @grid_dictionaries = get_dictionaries_grid_view()
 
     respond_to do |format|
@@ -37,29 +36,36 @@ class DictionariesController < ApplicationController
   # Show the content of an original dictionary and its corresponding user dictionary.
   def show
     # @dictionary = Dictionary.find_by_title(params[:id])
-    user_id = current_user.nil? ? nil : current_user.id
-    @dictionary = Dictionary.find_showable_by_title(params[:id], user_id)
-    if @dictionary
-      @page_title = @dictionary.title     # Replace the page title with the dictionary name
+    user_id  = current_user.nil? ? nil : current_user.id
+    @base_dic  = Dictionary.find_showable_by_title(params[:id], user_id)
+    
+    if not user_signed_in? or @base_dic.user_dictionaries.nil? 
+      @user_dic = nil
+    else
+      @user_dic = @base_dic.user_dictionaries.find_by_user_id(current_user.id)
+    end
 
-      @user_dictionary = user_signed_in? ? @dictionary.user_dictionaries.find_by_user_id(current_user.id) : nil
+    if @base_dic
+      # Replace the page title with the dictionary name
+      @page_title = @base_dic.title
 
       if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
         @export_entries = build_export_entries(params[:query])
       else
-        @grid_basedic_remained_entries, @grid_basedic_disabled_entries, @grid_userdic_new_entries = get_entries_grid_views()
+        @g1, @g2, @g3   = get_entries_grid_views()
       end
     end
 
     respond_to do |format|
       format.html {
-        if @dictionary.nil?
+        if @base_dic.nil?
           redirect_to dictionaries_url
         end
         # Otherwise, render the default view template.
       }
-      format.tsv { send_data tsv_data(@export_entries), 
-        filename: "#{@dictionary.title}.#{params[:query]}.tsv", 
+      format.tsv { 
+        send_data tsv_data(@export_entries), 
+        filename: "#{@base_dic.title}.#{params[:query]}.tsv", 
         type:     "text/tsv" 
       }
     end
@@ -67,7 +73,6 @@ class DictionariesController < ApplicationController
 
   # Disable (or enable) multiple selected entries (from the base dictionary).
   def disable_entries
-    # dic      = Dictionary.find_by_title(params[:id])
     user_id  = current_user.nil? ? nil : current_user.id
     dic      = Dictionary.find_showable_by_title(params[:id], user_id)
     if dic
@@ -439,69 +444,54 @@ class DictionariesController < ApplicationController
   private
 
   # Create grid views for dictionaries
-  def get_dictionaries_grid_view
-    dictionaries_grid_view = initialize_grid(@dictionaries,
+  def get_dictionaries_grid_view()
+    base_dics = Dictionary.get_showables(current_user)
+
+    grid_dictionaries_view = initialize_grid(base_dics,
       :name => "dictionaries_list",
       :order => "title",
       :order_direction => "asc",
       :per_page => 30, )
-    if params[:dictionaries_list] && params[:dictionaries_list][:selected]
-      @selected = params[:dictionaries_list][:selected]
-    end
+    # if params[:dictionaries_list] && params[:dictionaries_list][:selected]
+    #   @selected = params[:dictionaries_list][:selected]
+    # end
   
-    return dictionaries_grid_view
+    return grid_dictionaries_view
   end
 
   # Create grid views for remained, disabled, and new entries.
-  def get_entries_grid_views
-    ids = RemovedEntry.get_disabled_entry_idlist(@user_dictionary)
+  def get_entries_grid_views()
+    # basedic_names = params["dictionaries"].nil? ? nil : JSON.parse(params["dictionaries"])
+    ids = @user_dic.nil? ? [] : @user_dic.removed_entries.get_disabled_entry_idlist
 
-    basedic_disabled_entries = Entry.get_disabled_entries(ids)
-    basedic_remained_entries = Entry.get_remained_entries(@dictionary, ids)
-    userdic_new_entries      = NewEntry.get_new_entries(@user_dictionary)
-    
     # 1. Remained base entries.
-    if basedic_remained_entries.empty?
-      grid_basedic_remained_entries = []
-    else
-      grid_basedic_remained_entries = initialize_grid(basedic_remained_entries, 
-        :name => "basedic_remained_entries",
-        :order => "view_title",
-        :order_direction => "asc",
-        :per_page => 30, )
-      if params[:basedic_remained_entries] && params[:basedic_remained_entries][:selected]
-        @selected = params[:basedic_remained_entries][:selected]
-      end
-    end
+    remained_entries = @base_dic.entries.empty? ? Entry.none : @base_dic.entries.get_remained_entries(ids)
+    grid_basedic_remained_entries = initialize_grid(remained_entries, 
+      :name => "basedic_remained_entries",
+      :order => "view_title",        # Initial ordering column.
+      :order_direction => "asc",     # Initial ordering direction.
+      :per_page => 30, )
 
     # 2. Disabled base entries.
-    if basedic_disabled_entries.empty?
-      grid_basedic_disabled_entries = []
-    else
-      grid_basedic_disabled_entries = initialize_grid(basedic_disabled_entries,
-        :name => "basedic_disabled_entries",
-        :order => "view_title",
-        :order_direction => "asc",
-        :per_page => 30, )
-      if params[:basedic_disabled_entries] && params[:basedic_disabled_entries][:selected]
-        @selected = params[:basedic_disabled_entries][:selected]
-      end
-    end
+    disabled_entries = @base_dic.entries.empty? ? Entry.none : @base_dic.entries.get_disabled_entries(ids)
+    grid_basedic_disabled_entries = initialize_grid(disabled_entries,
+      :name => "basedic_disabled_entries",
+      :order => "view_title",
+      :order_direction => "asc",
+      :per_page => 30, )
 
-    # 3. Prepare the Wice_Grid instance for the user_dictionary's added entries.
-    if userdic_new_entries.empty?
-      grid_userdic_new_entries = []
+    # 3. New entries.
+    if @user_dic.nil?
+      new_entries = NewEntry.none
     else
-      grid_userdic_new_entries = initialize_grid(userdic_new_entries, 
-        :name => "userdic_new_entries",
-        :order => "view_title",
-        :order_direction => "asc",
-        :per_page => 30, )
-      if params[:userdic_new_entries] && params[:userdic_new_entries][:selected]
-        @selected = params[:userdic_new_entries][:selected]
-      end
+      new_entries = @user_dic.new_entries.empty? ? NewEntry.none : @user_dic.new_entries.get_new_entries
     end
-
+    grid_userdic_new_entries = initialize_grid(new_entries, 
+      :name => "userdic_new_entries",
+      :order => "view_title",
+      :order_direction => "asc",
+      :per_page => 30, )
+    
     return grid_basedic_remained_entries, grid_basedic_disabled_entries, grid_userdic_new_entries
   end
 
@@ -511,39 +501,39 @@ class DictionariesController < ApplicationController
 
     if export_type == "ori"
       # Export: all entries of an original dictionary.
-      export_entries = @dictionary.entries.select("view_title, label, uri")
+      export_entries = @base_dic.entries.select("view_title, label, uri")
 
     elsif export_type == "del"
       # Export: all deleted entries from an original dictionary.
-      if not @user_dictionary.nil?
-        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
-        export_entries = @dictionary.entries.select("view_title, label, uri").find(removed_entry_ids)
+      if not @user_dic.nil?
+        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dic.id).pluck(:entry_id).uniq
+        export_entries = @base_dic.entries.select("view_title, label, uri").find(removed_entry_ids)
       end    
 
     elsif export_type == "new"
       # Export: all new entries.
-      if not @user_dictionary.nil?
-        export_entries = @user_dictionary.new_entries.select("view_title, label, uri")
+      if not @user_dic.nil?
+        export_entries = @user_dic.new_entries.select("view_title, label, uri")
       end
 
     elsif export_type == "ori_del"
       # Export: entries of an original dictionary that are not deleted by a user.
-      if @user_dictionary.nil?
-        export_entries = @dictionary.entries
+      if @user_dic.nil?
+        export_entries = @base_dic.entries
       else
-        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
-        export_entries = @dictionary.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri")
+        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dic.id).pluck(:entry_id).uniq
+        export_entries = @base_dic.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri")
       end
 
     elsif export_type == "ori_del_new"
       # Export: a list of active entries of an original and user dictionaries.
-      if @user_dictionary.nil?
-        export_entries = @dictionary.entries
+      if @user_dic.nil?
+        export_entries = @base_dic.entries
       else
-        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dictionary.id).pluck(:entry_id).uniq
-        new_entries       = @user_dictionary.new_entries  
+        removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dic.id).pluck(:entry_id).uniq
+        new_entries       = @user_dic.new_entries  
 
-        export_entries = @dictionary.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri") + new_entries
+        export_entries = @base_dic.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri") + new_entries
       end
     end
 
@@ -581,7 +571,7 @@ class DictionariesController < ApplicationController
         entries << @dictionary.entries.new( { view_title:  items[0], 
                                              search_title: normalize_str(items[0], norm_opts), 
                                              uri:          items[1],
-                                             label:        items[2], 
+                                             label:        items[2],     # nil if label column is not given.
                                           } )
         if entries.length == 2000
           @dictionary.entries.import entries

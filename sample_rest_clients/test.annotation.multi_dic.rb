@@ -81,7 +81,7 @@ if __FILE__ == $0
 	end
 	if result.has_key? "denotations"
 		result["denotations"].each do |entry|
-			$stdout.puts "   #{entry.inspect} - matched string in the text: \"#{annotation["text"][entry["begin"]...entry["end"]]}\""
+			$stdout.puts "   #{entry.inspect} - matched string in the text: \"#{result["text"][entry["begin"]...entry["end"]]}\""
 		end
 	end
 	$stdout.puts

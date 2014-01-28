@@ -1,17 +1,17 @@
 <fieldset>
-  <legend>Dictionary name: <%= @dictionary.title %></legend>
+  <legend>Dictionary name: <%= @base_dic.title %></legend>
   
   <!-- Show the meta-information of a current dictionary -->
   <table>
     <tr>
       <th>Creator:</th>
-      <td><%= @dictionary.creator %></td>
+      <td><%= @base_dic.creator %></td>
       <td rowspan="3" class="single_dic_rest_api_button" >
         <%= button_to "Get Annotator URI", {controller: "dictionaries", action: "text_annotation_with_single_dic_readme"}, {:method => :get, :class => "customized_button"} %>
       </td>
     <tr>
       <th>Description:</th>
-      <td><%= h(@dictionary.description).gsub(/\n/, '<br/>').html_safe %></td>
+      <td><%= h(@base_dic.description).gsub(/\n/, '<br/>').html_safe %></td>
     </tr>
     <tr>
       <th>Export:</th>

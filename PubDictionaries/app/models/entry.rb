@@ -4,25 +4,25 @@ class Entry < ActiveRecord::Base
   attr_accessible :uri, :label, :view_title, :search_title
   belongs_to :dictionary
 
-  validates :uri, :label, :view_title, :search_title, :presence => true
+  validates :uri, :view_title, :search_title, :presence => true
 
   # Return a list of entries except the ones specified by skip_ids.
-  def self.get_remained_entries(dic, skip_ids)
-  	if dic.nil?
-	  entries = []
-	else
-	  if skip_ids.empty?
-	    entries = Entry.where(:dictionary_id => dic.id)
-      else
-        # id not in () not work if () is empty.
-        entries = Entry.where(:dictionary_id => dic.id).where("id not in (?)", skip_ids) 
-      end
-  	end
-  	return entries
+  def self.get_remained_entries(skip_ids = [])
+    if skip_ids.empty?
+      # Return the entries of the current dictionary.
+      self.scoped 
+    else
+      # id not in () not work if () is empty.
+      where("id not in (?)", skip_ids) 
+    end
   end
 
   def self.get_disabled_entries(skip_ids)
-  	return Entry.where(:id => skip_ids)
+    where(:id => skip_ids)
+  end
+
+  def self.none
+    where(:id => nil).where("id IS NOT ?", nil)
   end
 
 
