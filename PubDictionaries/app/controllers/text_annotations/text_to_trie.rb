@@ -140,7 +140,6 @@ class TEXT_TO_TRIE
 	def normalize(text, offsets, beg_tidx, end_tidx, bCaseInsensitive, bReplaceHyphen, bStemming)
 		new_query = get_substr( text, offsets, beg_tidx, end_tidx, bStemming )
 
-		end
 		if bCaseInsensitive == true
 			new_query.downcase!
 		end
