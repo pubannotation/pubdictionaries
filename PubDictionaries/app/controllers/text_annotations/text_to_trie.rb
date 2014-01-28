@@ -138,8 +138,8 @@ class TEXT_TO_TRIE
 	end
 
 	def normalize(text, offsets, beg_tidx, end_tidx, bCaseInsensitive, bReplaceHyphen, bStemming)
-		if bStemming == true
-			new_query = stem_it( text, offsets, beg_tidx, end_tidx )
+		new_query = get_substr( text, offsets, beg_tidx, end_tidx, bStemming )
+
 		end
 		if bCaseInsensitive == true
 			new_query.downcase!
@@ -151,7 +151,7 @@ class TEXT_TO_TRIE
 		return new_query
 	end
 
-	def stem_it( text, offsets, beg_tidx, end_tidx )
+	def get_substr( text, offsets, beg_tidx, end_tidx, bStemming )
 		query = ""
 
 		(beg_tidx...end_tidx).each do |tidx|
@@ -161,7 +161,11 @@ class TEXT_TO_TRIE
 			end
 
 			# attach a stem
-			query += text[offsets[tidx][:begin]...offsets[tidx][:end]].stem
+			if bStemming == true
+				query += text[offsets[tidx][:begin]...offsets[tidx][:end]].stem
+			else
+				query += text[offsets[tidx][:begin]...offsets[tidx][:end]]
+			end
 		end
 
 		return query
