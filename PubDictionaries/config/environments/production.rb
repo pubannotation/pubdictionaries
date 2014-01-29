@@ -2,15 +2,17 @@ PubDictionaries::Application.configure do
   # Settings specified here will take precedence over those in config/application.rb
   
   # for DEVISE
-  config.action_mailer.default_url_options = { :host => 'http://pubdictionaries.dbcls.jp' }
+  # config.action_mailer.default_url_options = { :host => 'http://pubdictionaries.dbcls.jp' }
   config.action_mailer.delivery_method = :smtp
   config.action_mailer.smtp_settings = {
-    # Refer to: http://guides.rubyonrails.org/action_mailer_basics.html
-    address: "smtp.gmail.com",
-    port: 465,
-    domain: "http://pubdictionaries.dbcls.jp",
-    user_name: "pubdictionaries@gmail.com",
-    password: "dbcls-pubdictionaries",
+    # Refer to: http://guides.rubyonrails.org/action_mailer_basics.html#action-mailer-configuration-for-gmail
+    address:              'smtp.gmail.com',
+    port:                 465,
+    domain:               'pubdictionaries.dbcls.jp',
+    user_name:            'pubdictionaries@gmail.com',
+    password:             'dbcls-pubdictionaries',
+    authentication:       'plain',
+    enable_starttls_auto: true,
   }
   
   # Code is not reloaded between requests
