@@ -7,12 +7,12 @@ PubDictionaries::Application.configure do
   config.action_mailer.smtp_settings = {
     # Refer to: http://guides.rubyonrails.org/action_mailer_basics.html#action-mailer-configuration-for-gmail
     address:              'smtp.gmail.com',
-    port:                 465,
+    port:                 587,
     domain:               'pubdictionaries.dbcls.jp',
     user_name:            'pubdictionaries@gmail.com',
     password:             'dbcls-pubdictionaries',
     authentication:       'plain',
-    enable_starttls_auto: false,
+    enable_starttls_auto: true,
   }
   
   # Code is not reloaded between requests
