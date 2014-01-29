@@ -11,6 +11,8 @@ class ApplicationController < ActionController::Base
     if (request.fullpath != "/users/sign_in" &&
       request.fullpath != "/users/sign_up" &&
       request.fullpath != "/users/password" &&
+      request.fullpath != "/users/password/new" &&
+      request.fullpath != "/users/password/edit" &&
       !request.xhr?) # don't store ajax calls
 
       if request.format == "text/html" || request.content_type == "text/html"

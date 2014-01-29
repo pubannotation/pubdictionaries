@@ -7,7 +7,7 @@ PubDictionaries::Application.configure do
   config.action_mailer.smtp_settings = {
     # Refer to: http://guides.rubyonrails.org/action_mailer_basics.html#action-mailer-configuration-for-gmail
     address:              'smtp.gmail.com',
-    port:                 587,
+    port:                 587,   # 465 with SSL, 587 with TSL, 25 with SSL when there is a trouble.
     domain:               'pubdictionaries.dbcls.jp',
     user_name:            'pubdictionaries@gmail.com',
     password:             'dbcls-pubdictionaries',
