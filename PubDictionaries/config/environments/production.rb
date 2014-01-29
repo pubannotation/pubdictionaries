@@ -3,7 +3,15 @@ PubDictionaries::Application.configure do
   
   # for DEVISE
   config.action_mailer.default_url_options = { :host => 'http://pubdictionaries.dbcls.jp' }
-
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    # Refer to: http://guides.rubyonrails.org/action_mailer_basics.html
+    address: "smtp.gmail.com",
+    port: 465,
+    domain: "http://pubdictionaries.dbcls.jp",
+    user_name: "pubdictionaries@gmail.com",
+    password: "dbcls-pubdictionaries",
+  }
   
   # Code is not reloaded between requests
   config.cache_classes = true
