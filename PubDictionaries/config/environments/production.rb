@@ -1,6 +1,10 @@
 PubDictionaries::Application.configure do
   # Settings specified here will take precedence over those in config/application.rb
+  
+  # for DEVISE
+  config.action_mailer.default_url_options = { :host => 'http://pubdictionaries.dbcls.jp' }
 
+  
   # Code is not reloaded between requests
   config.cache_classes = true
 
