@@ -12,7 +12,7 @@ PubDictionaries::Application.configure do
     user_name:            'pubdictionaries@gmail.com',
     password:             'dbcls-pubdictionaries',
     authentication:       'plain',
-    enable_starttls_auto: true,
+    enable_starttls_auto: false,
   }
   
   # Code is not reloaded between requests
