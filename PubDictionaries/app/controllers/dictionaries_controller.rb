@@ -143,6 +143,7 @@ class DictionariesController < ApplicationController
   def create
     # Creates a dictionary
     @dictionary         = User.find(current_user.id).dictionaries.new( params[:dictionary] )
+    @dictionary.title.strip!
     @dictionary.creator = current_user.email
     b_basedic_saved = @dictionary.save
 
