@@ -7,12 +7,12 @@ class ApplicationController < ActionController::Base
   after_filter :store_location
 
   def store_location
+    # It causes redirection loop after /user/password/edit
+    #
     # # store last url - this is needed for post-login redirect to whatever the user last visited.
     # if (request.fullpath != "/users/sign_in" &&
     #   request.fullpath != "/users/sign_up" &&
     #   request.fullpath != "/users/password" &&
-    #   request.fullpath != "/users/password/new" &&
-    #   request.fullpath != "/users/password/edit" &&
     #   !request.xhr?) # don't store ajax calls
 
     #   if request.format == "text/html" || request.content_type == "text/html"
@@ -26,7 +26,11 @@ class ApplicationController < ActionController::Base
     valid_time_span = 120     # 120 seconds
 
     if Time.now.utc.to_i - session[:last_request_time] < valid_time_span
-      return session[:previous_url] || root_path
+      if session.has_key? :previous_url
+        return session[:previous_url]
+      else
+        retrun root_path
+      end
     else
       return root_path
     end
