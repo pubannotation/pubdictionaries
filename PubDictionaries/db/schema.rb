@@ -39,6 +39,7 @@ ActiveRecord::Schema.define(:version => 20140206073709) do
     t.string   "search_title"
   end
 
+  add_index "entries", ["dictionary_id"], :name => "index_entries_on_dictionary_id"
   add_index "entries", ["label"], :name => "index_entries_on_label"
   add_index "entries", ["search_title"], :name => "index_entries_on_search_title"
   add_index "entries", ["uri"], :name => "index_entries_on_uri"
