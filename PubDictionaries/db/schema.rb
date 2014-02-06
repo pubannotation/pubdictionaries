@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20140108053356) do
+ActiveRecord::Schema.define(:version => 20140206073709) do
 
   create_table "dictionaries", :force => true do |t|
     t.string   "title"
@@ -39,7 +39,9 @@ ActiveRecord::Schema.define(:version => 20140108053356) do
     t.string   "search_title"
   end
 
+  add_index "entries", ["label"], :name => "index_entries_on_label"
   add_index "entries", ["search_title"], :name => "index_entries_on_search_title"
+  add_index "entries", ["uri"], :name => "index_entries_on_uri"
   add_index "entries", ["view_title"], :name => "index_entries_on_view_title"
   add_index "entries", ["view_title"], :name => "index_entries_title"
 
@@ -53,8 +55,10 @@ ActiveRecord::Schema.define(:version => 20140108053356) do
     t.string   "search_title"
   end
 
+  add_index "new_entries", ["label"], :name => "index_new_entries_on_label"
   add_index "new_entries", ["search_title"], :name => "index_new_entries_on_search_title"
   add_index "new_entries", ["search_title"], :name => "index_new_entries_search_title"
+  add_index "new_entries", ["uri"], :name => "index_new_entries_on_uri"
   add_index "new_entries", ["user_dictionary_id"], :name => "index_new_entries_on_user_dictionary_id"
   add_index "new_entries", ["view_title"], :name => "index_new_entries_on_view_title"
 
