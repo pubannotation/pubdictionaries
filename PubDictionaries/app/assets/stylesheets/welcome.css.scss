@@ -3,50 +3,60 @@
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
 .main .welcome_page {
-  .introduction {
+  .top_message {
     .title {
-      font-size: 2.5em;
-      line-height: 1.2em; 
-      text-align: center;
-      color: #000000;
+      font-size: 1.5em;
+      font-weight: normal;
     }
-
-    .subtitle {
-      font-size: 1.6em; 
-      line-height: 1.2em; 
-      padding-left: 1em;
-      color: #6666cc;
+    .desc {
+      font-size: 1.0em;
+      font-weight: normal;
     }
+  }
 
-    .description {
-      padding-left: 1em;
-      color: #000000;
-      .core {
-        font-size: 1.4em; 
-        line-height: 1.4em; 
-      }
-      .aux {
-        font-size: 1em; 
-        line-height: 1.2em; 
-      }
+  .body {
+    .latest_dictionaries {
+      table {        
+        border: 1px solid #5656ff;
+        border-collapse: collapse;
+        border-spacing: 0;
+        margin: 0px;
+        padding: 0px;
       
-    }
+        caption {
+          font-size: 1.3em;
+          text-align: left;
+          caption-side: top;
+          padding-bottom: 0.2em;
+        }
+          
+        th {
+          background-color: #ffffff;
+          border: 1px solid #5656ff;
+          text-align: center;
+          padding-left: 1em;
+          padding-right: 1em;
+          font-family: Arial;
+          font-weight: bold;
+          font-size: 1em;
+          color: #000000;
+        }
 
-    .slide_show {
-      text-align: center;
-
-      .slide_show_outer_div {
-        display: inline-block;
-        
-        .slide_show_inner_div  {
-          ul li img {
-            width: 600px;
-          }
+        td {
+          background-color: #ffffff;
+          border: 1px solid #5656ff;
+          text-align: left;
+          padding-left: 1em;
+          padding-right: 1em;
+          font-family: Arial;
+          font-weight: normal;
+          font-size: 1em;
+          color: #000000;
         }
       }
     }
   }
-  
+   
   .release {
     .version {
       font-weight: bold;

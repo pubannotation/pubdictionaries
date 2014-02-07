@@ -23,7 +23,7 @@ class Dictionary < ActiveRecord::Base
   end
 
   # Return a list of dictionaries that are either public or belonging to the logged in user.
-  def self.get_showables(user)
+  def self.get_showables(user=nil)
     if user == nil
       where(:public => true)
     else
@@ -31,7 +31,12 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
-  # 
+  # Return a list of latest showable dictionaries.
+  def self.get_latest_dictionaries(n=10)
+    where('public = ?', true).order('created_at desc').limit(n)
+  end
+
+  # Find a showable dictionary by its title.
   def self.find_showable_by_title(title, user_id)
     dic = find_by_title(title)
     if not dic.nil?
