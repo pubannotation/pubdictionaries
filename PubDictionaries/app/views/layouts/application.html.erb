@@ -32,20 +32,19 @@
 
   <div class="columns">
   	<div class="side">
-      <div class="links">
-        <%= link_to "Top", root_path %><br />
-        <%= link_to 'Dictionaries'.html_safe, dictionaries_path %><br />
-        <%#= link_to "Manual", manual_index_path %>
-        <span>Manual</span><br />
+      <div><%= link_to "Top", root_path %></div><br />
+      <div><%= link_to 'Dictionaries'.html_safe, dictionaries_path %></div><br />
+      <div>Manual<br />
         <span>&#9500;Dictionaries</span><br />
         <span>&#9474;&nbsp;&#9500;</span><%= link_to 'Sharing'.html_safe, manual_basic_path %><br />
         <span>&#9474;&nbsp;&#9492;</span><%= link_to 'Manipulation'.html_safe, manual_advanced_path %><br />
         <span>&#9492;Annotation</span><br />
         <span>&nbsp;&nbsp;&nbsp;&#9500;</span><%= link_to 'PubAnn'.html_safe, manual_pubann_path %><br />
         <span>&nbsp;&nbsp;&nbsp;&#9492;</span><%= link_to 'REST-APIs'.html_safe, web_services_index_path %><br />
-        <a href="mailto:priancho@gmail.com">Contact</a><br />
-        <br />
       </div>
+      <div><a href="mailto:priancho@gmail.com">Contact</a></div><br />
+      <br />
+
   	</div>
     
     <div class="main">

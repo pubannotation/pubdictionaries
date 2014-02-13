@@ -63,38 +63,37 @@
   .side {
     width: 10em;
     float: left;
-    padding-top: 1em;
+    padding-top: 2em;
     padding-bottom: 1em;
     padding-left: 1em;
     padding-right: 1em;
     background: #ffffff;
+    font-size: 1em;
 
-    .links {
-      font-size: 1.1em;
-
-      a {
-        display: inline;
-        color: #000000;
-        text-decoration: underline;  
-      }
-      
-      a:hover { 
-        color: #333333;
-        background-color: #aaaaff; 
-        text-decoration: none;
-      }
-
-      span {
-        display: inline;
-        color: #000000;
-      }
-      /*
-      a:link {color:#FF0000;}     // unvisited link
-      a:visited {color:#00FF00;}  // visited link
-      a:hover {color:#FF00FF;}    // mouse over link
-      a:active {color:#0000FF;}   // selected link
-      */
+    // for top-level menu items
+    div {
+      display: inline-block;
+      padding-bottom: 1em;
     }
+
+    a {
+      // display: inline;
+      color: #000000;
+      text-decoration: underline;  
+    }
+    a:hover { 
+      color: #333333;
+      background-color: #aaaaff; 
+      text-decoration: none;
+    }
+    a:visited {
+      color: #000000;
+    }
+
+    /*
+    a:link {color:#FF0000;}     // unvisited link
+    a:active {color:#0000FF;}   // selected link
+    */
   }
 
   /* main body area */
