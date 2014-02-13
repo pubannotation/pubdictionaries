@@ -1,8 +1,8 @@
 require 'set'
 
 
-require File.join( Rails.root, '..', 'simstring-1.0/swig/ruby/simstring')
-require File.join( File.dirname( __FILE__ ), 'text_annotations/text_annotator' )
+require File.join( Rails.root, '..', 'simstring/swig/ruby/simstring')
+require File.join( File.dirname( __FILE__ ), 'text_annotator' )
 
 
 class DictionariesController < ApplicationController

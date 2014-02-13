@@ -9,15 +9,13 @@ Encoding.default_internal="UTF-8"
   similarity measures, and the threshold (0.0 <= x <= 1.0).
 =end
 
-
-require File.join( File.dirname( __FILE__ ), '../../../../simstring-1.0/swig/ruby/simstring' )
-
+# require File.join( Rails.root, '..', 'simstring/swig/ruby/simstring')
 
 class SIMSTRING_RETRIEVER
 
 	# Initializes a retriever instance
 	def initialize(dic_name, sim_measure="cosine", threshold=0.6)
-		dbfile_path = File.join( File.dirname( __FILE__ ), "../../../../PubDictionaries/public/simstring_dbs", dic_name )
+		dbfile_path = File.join( Rails.root, 'public/simstring_dbs', dic_name )
 		begin 
 			@db = Simstring::Reader.new(dbfile_path)
 		rescue

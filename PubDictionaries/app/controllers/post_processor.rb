@@ -15,7 +15,7 @@ Encoding.default_internal="UTF-8"
 # require 'stemmify'
 # require 'sequel'
 
-# require File.join( File.dirname( __FILE__ ), '../simstring-1.0/swig/ruby/simstring' )
+# require File.join( Rails.root, '..', 'simstring/swig/ruby/simstring')
 # require File.join( File.dirname( __FILE__ ), 'strsim' )
 
 
