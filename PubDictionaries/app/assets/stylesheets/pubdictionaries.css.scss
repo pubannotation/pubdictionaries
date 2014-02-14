@@ -59,57 +59,116 @@
 .columns {
   background: #ffffff;
 
-  /* side-bar area */
-  .side {
-    width: 10em;
+  // 1) Menu area
+  .menu_wrap {
     float: left;
-    padding-top: 2em;
-    padding-bottom: 1em;
-    padding-left: 1em;
-    padding-right: 1em;
-    background: #ffffff;
-    font-size: 1em;
+    width: 12em;
+    // background: #ffffff;   
+    background: #eeeeff;
+    padding-top: 1em;
 
-    // for top-level menu items
-    div {
-      display: inline-block;
-      padding-bottom: 1em;
+    #cssmenu {
+      width: 12em;
     }
-
-    a {
-      // display: inline;
-      color: #000000;
-      text-decoration: underline;  
-    }
-    a:hover { 
-      color: #333333;
-      background-color: #aaaaff; 
+    #cssmenu,
+    #cssmenu ul,
+    #cssmenu li,
+    #cssmenu a {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      list-style: none;
+      font-weight: normal;
       text-decoration: none;
+      line-height: 1em;
+      font-family: sans-serif;
+      font-size: 1em;
+      position: relative;
     }
-    a:visited {
+    #cssmenu a {
+      line-height: 1.3;
+    }
+    #cssmenu > ul > li > a {
+      padding-right: 5px;
+      font-size: 2em;
+      font-weight: bold;
+      display: block;
+      // background: #bd0e36;
+      background: #ccccff;
+      // color: #ffffff;
+      color: #000000;
+      // border-bottom: 1px solid #5e071b;
+      text-transform: uppercase;
+    }
+    #cssmenu > ul > li > a > span {
+      // background: #ed1144;
+      background: #eeeeff;
+      padding: 0.8em;
+      display: block;
+      font-size: 0.5em;
+      font-weight: 300;
+    }
+    #cssmenu > ul > li > a:hover {
+      text-decoration: none;
+      color: #bd0e36;
+    }
+    #cssmenu > ul > li.active {
+      border-bottom: none;
+    }
+    #cssmenu > ul > li.active > a {
+      // color: #ffffff;
       color: #000000;
     }
+    #cssmenu > ul > li.active > a span {
+      // background: #bd0e36;
+      background: #eeeeff;
+    }
+    #cssmenu span.cnt {
+      position: absolute;
+      top: 8px;
+      right: 15px;
+      padding: 0;
+      margin: 0;
+      background: none;
+    }
 
-    /*
-    a:link {color:#FF0000;}     // unvisited link
-    a:active {color:#0000FF;}   // selected link
-    */
+    /* Sub menu */
+    #cssmenu ul ul {
+      li {
+        background: #ccccff;
+        a {
+          padding-left: 1.5em;       // To use the background color of the current element.
+          margin-right: 5px;
+          display: block;
+          // color: #ed1144;
+          color: #444444;
+          background: #eeeeff;
+          font-size: 1em;
+
+          :hover {
+            color: #bd0e36;
+          }
+
+          span {
+            padding-top: 0.4em;
+            padding-bottom: 0.4em;
+            display: block;
+            font-size: 1em;
+          }
+        }
+      }      
+    }
   }
 
-  /* main body area */
+  // 2) Main body area
   .main {
-    margin-left: 10em;
+    margin-left: 14em;
+    padding: 0em;
     padding-top: 2em;
-    padding-bottom: 2em;
-    padding-left: 5em;
-    padding-right: 5em;
     background: #ffffff;
     
-    legend {     
-      font-size: 1.5em;
-      color: #0000ff;
-      background-color: #dddddd;
-      margin-bottom: 0.5em;
+    .dictionaries_page .entry_list .ui-tabs-nav {
+      height: 2.4em;    // To avoid large background.
     }
   }
 }
@@ -171,6 +230,9 @@ pre {
   position:relative;
   top:1px;
 }
+
+
+
 
 
 

@@ -30,6 +30,7 @@
     <% end %>    
   </div>
 
+  <!-- legacy menu...
   <div class="columns">
   	<div class="side">
       <div><%= link_to "Top", root_path %></div><br />
@@ -44,9 +45,27 @@
       </div>
       <div><a href="mailto:priancho@gmail.com">Contact</a></div><br />
       <br />
-
   	</div>
-    
+  -->
+  <div class="columns">
+    <div class="menu_wrap">
+      <div id='cssmenu'>
+        <ul>
+          <li class='active'><%= link_to "<span>Top</span>".html_safe, root_path %></li>
+          <li><%= link_to '<span>Dictionaries</span>'.html_safe, dictionaries_path %></li>
+          <li class='has-sub'><a href='#'><span>Manual</span></a>
+            <ul>
+              <li class='odd'><%= link_to '<span>Sharing Dictionaries</span>'.html_safe, manual_basic_path %></li>
+              <li class='even'><%= link_to '<span>Curating Dictionaries</span>'.html_safe, manual_advanced_path %></li>
+              <li class='odd'><%= link_to '<span>Annotating with PubAnnotation</span>'.html_safe, manual_pubann_path %></li>
+              <li class='even'><%= link_to '<span>Annotating with REST-APIs</span>'.html_safe, web_services_index_path %></li>
+            </ul>
+          </li>
+          <li class='last'><a href='mailto:priancho@gmail.com'><span>Contact</span></a></li>
+        </ul>
+      </div>
+    </div>
+
     <div class="main">
       <% if notice %><p><%= flash[:notice] %></p><% end %>
       <% if alert %><p><%= alert %></p><% end %>
