@@ -67,7 +67,7 @@ class TextAnnotator
 			results = []
 		end
 
-		results
+		results 
 	end
 
 	# Return a hash of ID-LABEL pairs for an input list of IDs.

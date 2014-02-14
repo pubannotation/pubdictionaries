@@ -40,5 +40,4 @@ PubDictionaries::Application.configure do
   config.assets.debug = true
 
   config.log_level = :debug
-
 end
