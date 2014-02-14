@@ -1,0 +1,3 @@
+[submodule "simstring"]
+	path = simstring
+	url = git@github.com:priancho/simstring.git
