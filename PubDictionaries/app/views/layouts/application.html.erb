@@ -30,28 +30,18 @@
     <% end %>    
   </div>
 
-  <!-- legacy menu...
-  <div class="columns">
-  	<div class="side">
-      <div><%= link_to "Top", root_path %></div><br />
-      <div><%= link_to 'Dictionaries'.html_safe, dictionaries_path %></div><br />
-      <div>Manual<br />
-        <span>&#9500;Dictionaries</span><br />
-        <span>&#9474;&nbsp;&#9500;</span><%= link_to 'Sharing'.html_safe, manual_basic_path %><br />
-        <span>&#9474;&nbsp;&#9492;</span><%= link_to 'Manipulation'.html_safe, manual_advanced_path %><br />
-        <span>&#9492;Annotation</span><br />
-        <span>&nbsp;&nbsp;&nbsp;&#9500;</span><%= link_to 'PubAnn'.html_safe, manual_pubann_path %><br />
-        <span>&nbsp;&nbsp;&nbsp;&#9492;</span><%= link_to 'REST-APIs'.html_safe, web_services_index_path %><br />
-      </div>
-      <div><a href="mailto:priancho@gmail.com">Contact</a></div><br />
-      <br />
-  	</div>
-  -->
   <div class="columns">
     <div class="menu_wrap">
       <div id='cssmenu'>
         <ul>
           <li class='active'><%= link_to "<span>Top</span>".html_safe, root_path %></li>
+          <li class='has-sub'><a href='#'><span>Dictionaries</span></a>
+            <ul>
+              <li class='odd'><%= link_to '<span>All Dictionaries</span>'.html_safe, dictionaries_path %></li>
+              <li class='even'><%= link_to '<span>My Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "my_dic") %></li>
+              <li class='odd'><%= link_to '<span>Working Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "working_dic") %></li>
+            </ul>
+          </li>
           <li><%= link_to '<span>Dictionaries</span>'.html_safe, dictionaries_path %></li>
           <li class='has-sub'><a href='#'><span>Manual</span></a>
             <ul>

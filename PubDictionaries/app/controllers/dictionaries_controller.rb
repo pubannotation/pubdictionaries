@@ -24,18 +24,17 @@ class DictionariesController < ApplicationController
   ###########################
 
   def index
-    # @dictionaries = Dictionary.all
-    @grid_dictionaries = get_dictionaries_grid_view()
+    base_dics = Dictionary.get_showables(current_user, params[:dictionary_type])
+    @grid_dictionaries = get_dictionaries_grid_view(base_dics)
 
     respond_to do |format|
       format.html # index.html.erb
-      format.json { render json: @dictionaries }
+      format.json { render json: base_dics }
     end
   end
 
   # Show the content of an original dictionary and its corresponding user dictionary.
   def show
-    # @dictionary = Dictionary.find_by_title(params[:id])
     user_id  = current_user.nil? ? nil : current_user.id
     @base_dic  = Dictionary.find_showable_by_title(params[:id], user_id)
     
@@ -109,9 +108,9 @@ class DictionariesController < ApplicationController
 
   # Remove multiple selected entries (from the user dictionary).
   def remove_entries
-    # dictionary       = Dictionary.find_by_title(params[:id])
     user_id = current_user.nil? ? nil : current_user.id
     dic     = Dictionary.find_showable_by_title(params[:id], user_id)
+
     if dic
       user_dic = UserDictionary.get_or_create_user_dictionary(dic, current_user)
 
@@ -218,7 +217,6 @@ class DictionariesController < ApplicationController
     @annotator_uri = ""
 
     if params[:commit] == "Add selected dictionaries"
-      # diclist = params[:dictionaries] == "" ? [] : JSON.parse(params[:dictionaries])
       diclist = JSON.parse(params[:dictionaries])
 
       if params.has_key? :dictionaries_list and params[:dictionaries_list].has_key? :selected
@@ -251,9 +249,8 @@ class DictionariesController < ApplicationController
 
   # Select dictionaries for text_annotation_with_multiple_dic_readme.
   def select_dictionaries
-    @dictionaries = Dictionary.get_showables(current_user)
-    @grid_dictionaries = get_dictionaries_grid_view()
-
+    base_dics = Dictionary.get_showables(current_user)
+    @grid_dictionaries = get_dictionaries_grid_view(base_dics)
 
     respond_to do |format|
       format.html { render layout: false }
@@ -445,13 +442,11 @@ class DictionariesController < ApplicationController
   private
 
   # Create grid views for dictionaries
-  def get_dictionaries_grid_view()
-    base_dics = Dictionary.get_showables(current_user)
-
+  def get_dictionaries_grid_view(base_dics)
     grid_dictionaries_view = initialize_grid(base_dics,
       :name => "dictionaries_list",
-      :order => "title",
-      :order_direction => "asc",
+      :order => "created_at",            # Show a list of dictionaries at descending order of created_at.
+      :order_direction => "desc",
       :per_page => 30, )
     # if params[:dictionaries_list] && params[:dictionaries_list][:selected]
     #   @selected = params[:dictionaries_list][:selected]
@@ -635,9 +630,6 @@ class DictionariesController < ApplicationController
 
   # Get data parameters.
   def get_data_params1(params)
-    # basedic_names = params["dictionaries"].nil? ? nil : JSON.parse(params["dictionaries"])
-    # ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
-    # opts          = params["options"].nil?      ? nil : JSON.parse(params["options"])
     basedic_names = JSON.parse(params["dictionaries"])
     ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
 

@@ -1,8 +1,11 @@
+#
+# Define the Dictionary model.
+#
+
 class Dictionary < ActiveRecord::Base
-  # default_scope :order => 'title'
 
   attr_accessor :file, :separator, :sort
-  attr_accessible :creator, :description, :title, :stemmed, :lowercased, :hyphen_replaced, :public, :file, :separator, :sort
+  attr_accessible :title, :creator, :description, :lowercased, :stemmed, :hyphen_replaced, :user_id, :public, :file, :separator, :sort
 
   belongs_to :user
 
@@ -16,19 +19,31 @@ class Dictionary < ActiveRecord::Base
                       :with => /^[^\.]*$/,
                       :message => "should not contain dot!"
 
+  
   # Overrides original to_param so that it returns title, not ID, for constructing URLs. 
   # Use Model#find_by_title() instead of Model.find() in controllers.
   def to_param
     title
   end
 
-  # Return a list of dictionaries that are either public or belonging to the logged in user.
-  def self.get_showables(user=nil)
+  # Return a list of dictionaries.
+  def self.get_showables(user=nil, dic_type=nil)
     if user == nil
-      where(:public => true)
+      lst = where(:public => true)
     else
-      where('public = ? OR user_id = ?', true, user.id)
+      if dic_type == 'my_dic'
+        lst = where(user_id: user.id)
+
+      elsif dic_type == 'working_dic'
+        dic_ids = UserDictionary.get_dictionary_ids(user.id)
+        lst = where(id: dic_ids)
+        
+      else
+        lst = where('public = ? OR user_id = ?', true, user.id)
+      end
     end
+
+    return lst
   end
 
   # Return a list of latest showable dictionaries.

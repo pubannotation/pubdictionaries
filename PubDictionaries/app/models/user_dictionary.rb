@@ -44,6 +44,12 @@ class UserDictionary < ActiveRecord::Base
     end
     user_dictionary
   end
- 
 
+  # Get a list of dictionaries that the user is working on.
+  def self.get_dictionary_ids(user_id)
+    UserDictionary.select('distinct(dictionary_id)').where(user_id: user_id).collect do |ud|
+      ud.dictionary_id
+    end
+  end
+ 
 end
