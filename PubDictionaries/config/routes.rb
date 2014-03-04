@@ -34,7 +34,6 @@ PubDictionaries::Application.routes.draw do
       post 'terms_to_idlists'
     end  
 
-
     # Add routes as a member, /dictionary/:id/...
     member do
       post 'disable_entries'
@@ -47,6 +46,10 @@ PubDictionaries::Application.routes.draw do
   resources :user_dictionaries do
     resources :new_entries
     resources :removed_entries
+
+    collection do
+      get 'index_for_owner'
+    end
   end
 
   

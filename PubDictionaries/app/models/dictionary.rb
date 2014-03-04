@@ -29,37 +29,39 @@ class Dictionary < ActiveRecord::Base
   # Return a list of dictionaries.
   def self.get_showables(user=nil, dic_type=nil)
     if user == nil
-      lst = where(:public => true)
+      lst = where(:public => true).order('created_at desc')
     else
       if dic_type == 'my_dic'
-        lst = where(user_id: user.id)
+        lst = where(user_id: user.id).order('created_at desc')
 
       elsif dic_type == 'working_dic'
-        dic_ids = UserDictionary.get_dictionary_ids(user.id)
-        lst = where(id: dic_ids)
-        
+        dic_ids = UserDictionary.get_dictionary_ids_by_user_id(user.id)
+
+        # Sort a list based on user_dictionaries#updated_at attribute. 
+        lst = Dictionary.joins(:user_dictionaries).where("dictionaries.id IN (?)", dic_ids).order("user_dictionaries.updated_at desc")
       else
-        lst = where('public = ? OR user_id = ?', true, user.id)
+        lst = where('public = ? OR user_id = ?', true, user.id).order('created_at desc')
       end
     end
 
     return lst
   end
 
+  # Find a dictionary by its title.
+  # @return
+  #   dictionary instance - a dictionary foundnil - 'title' dictionary does not exist or not showable.
+  #    nil if it does not exist or showable dictionary by its title.
+  def self.find_showable_by_title(title, user)
+    if user.nil?
+      where(title: title).where(public: true).first
+    else
+      where(title: title).where('public = ? OR user_id = ?', true, user.id).first
+    end
+  end
+
   # Return a list of latest showable dictionaries.
   def self.get_latest_dictionaries(n=10)
     where('public = ?', true).order('created_at desc').limit(n)
-  end
-
-  # Find a showable dictionary by its title.
-  def self.find_showable_by_title(title, user_id)
-    dic = find_by_title(title)
-    if not dic.nil?
-      if dic.public == true or (user_id == dic.user_id)
-        return dic
-      end
-    end
-    return nil
   end
 
   # true if the given base dictionary is destroyable; otherwise, false.

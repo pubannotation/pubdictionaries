@@ -37,19 +37,27 @@ class UserDictionary < ActiveRecord::Base
 
   # Return a user dictionary associated with the user_id and the base dictionary.
   def self.get_or_create_user_dictionary(dictionary, current_user)
-    user_dictionary = UserDictionary.where({ user_id: current_user.id, dictionary_id: dictionary.id }).first
+    user_dictionary = where({ user_id: current_user.id, dictionary_id: dictionary.id }).first
     if user_dictionary.nil?
-      user_dictionary = UserDictionary.new({ user_id: current_user.id, dictionary_id: dictionary.id })
+      user_dictionary = new({ user_id: current_user.id, dictionary_id: dictionary.id })
       user_dictionary.save
     end
     user_dictionary
   end
 
   # Get a list of dictionaries that the user is working on.
-  def self.get_dictionary_ids(user_id)
-    UserDictionary.select('distinct(dictionary_id)').where(user_id: user_id).collect do |ud|
+  def self.get_dictionary_ids_by_user_id(user_id)
+    select('distinct(dictionary_id)').where(user_id: user_id).collect do |ud|
       ud.dictionary_id
     end
   end
+
+  def self.get_user_dictionaries_by_owner(base_dic)
+    base_dic_id = Dictionary.find_by_title(base_dic).id
+    where(dictionary_id: base_dic_id)
+  end
  
 end
+
+
+

@@ -27,23 +27,26 @@ require 'rest_client'
 #                             (e.g., http://pubdictionaries.dbcls.jp:80/dictionaries/EntrezGene%20-%20Homo%20Sapiens/text_annotation?matching_method=approximate&max_tokens=6&min_tokens=1&threshold=0.6&top_n=0)
 # * (string)  email         - User's login ID.
 # * (string)  password      - User's login password.
-# * (hash)    annotation    - The hash including text for annotation.
+# * (hash)    annotation    - The hash including the text for annotation.
 #
 def annotate_text(uri, email, password, annotation)
-  # Prepare the connection to the text annotation service.
-  resource = RestClient::Resource.new( 
-    "#{uri}",
-    :timeout      => 300, 
-    :open_timeout => 300,
-    )
+  # 1. Initialize the options hash.
+  options = {
+    :headers => {
+      :content_type => :json,
+      :accept       => :json,
+    },
+    :user         => email,
+    :password     => password, 
+    :timeout      => 9999, 
+    :open_timeout => 9999,
+  }
 
-  # Annotate the text.
-  data = resource.post( 
-    :user         => {email:email, password:password},
-    :annotation   => annotation.to_json,
-    :content_type => :json,
-    :accept       => :json,
-  ) do |response, request, result|
+  # 2. Create a rest client resource.
+  resource = RestClient::Resource.new("#{uri}", options)
+
+  # 3. Run the annotation.
+  data = resource.post(:annotation => annotation.to_json) do |response, request, result|
     case response.code
     when 200
       JSON.parse(response.body)
@@ -63,7 +66,7 @@ end
 # * ARGV[1]   -  User's password.
 # * ARGV[2]   -  URI.
 # 
-if __FILE__ == $0 
+if __FILE__ == $0  
   if ARGV.size != 3
     $stdout.puts "Usage:  #{$0}  Email  Password  URI"
     exit
@@ -85,7 +88,7 @@ if __FILE__ == $0
   end
   if result.has_key? "denotations"
     result["denotations"].each do |entry|
-      $stdout.puts "   #{entry.inspect} - matched string in the text: \"#{annotation["text"][entry["begin"]...entry["end"]]}\""
+      $stdout.puts "   #{entry.inspect} - matched string in the text: \"#{result["text"][entry["begin"]...entry["end"]]}\""
     end
   end
   $stdout.puts

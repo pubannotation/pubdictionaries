@@ -27,9 +27,9 @@ class TextAnnotator
 	# * (string)  base_dic_name  - The name of a base dictionary for annotation.
 	# * (integer) user_id        - The ID of the target user.
 	#
-	def initialize(base_dic_name, user_id)
+	def initialize(base_dic_name, user)
 		@base_dic_name = base_dic_name
-		@user_id = user_id
+		@user_id = (user and user.id)     # nil or user's id
 		@options = { "min_tokens"       => 1,
 		             "max_tokens"       => 6,
 		             "matching_method"  => "approximate",     # "exact" or "approximate"

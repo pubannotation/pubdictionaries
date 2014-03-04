@@ -24,8 +24,8 @@ class DictionariesController < ApplicationController
   ###########################
 
   def index
-    base_dics = Dictionary.get_showables(current_user, params[:dictionary_type])
-    @grid_dictionaries = get_dictionaries_grid_view(base_dics)
+    base_dics          = Dictionary.get_showables  current_user, params[:dictionary_type]
+    @grid_dictionaries = get_dictionaries_grid_view  base_dics
 
     respond_to do |format|
       format.html # index.html.erb
@@ -35,8 +35,7 @@ class DictionariesController < ApplicationController
 
   # Show the content of an original dictionary and its corresponding user dictionary.
   def show
-    user_id  = current_user.nil? ? nil : current_user.id
-    @base_dic  = Dictionary.find_showable_by_title(params[:id], user_id)
+    @base_dic  = Dictionary.find_showable_by_title  params[:id], current_user
     
     if not user_signed_in? or @base_dic.user_dictionaries.nil? 
       @user_dic = nil
@@ -48,10 +47,10 @@ class DictionariesController < ApplicationController
       # Replace the page title with the dictionary name
       @page_title = @base_dic.title
 
-      if ["ori", "del", "new", "ori_del", "ori_del_new"].include? params[:query]
-        @export_entries = build_export_entries(params[:query])
+      if ["ori", "del", "new", "ori_del", "ori_del_new"].include?  params[:query]
+        @export_entries = build_export_entries  params[:query]
       else
-        @g1, @g2, @g3   = get_entries_grid_views()
+        @g1, @g2, @g3   = get_entries_grid_views
       end
     end
 
@@ -72,10 +71,10 @@ class DictionariesController < ApplicationController
 
   # Disable (or enable) multiple selected entries (from the base dictionary).
   def disable_entries
-    user_id  = current_user.nil? ? nil : current_user.id
-    dic      = Dictionary.find_showable_by_title(params[:id], user_id)
+    dic = Dictionary.find_showable_by_title  params[:id], current_user
+
     if dic
-      user_dic = UserDictionary.get_or_create_user_dictionary(dic, current_user)
+      user_dic = UserDictionary.get_or_create_user_dictionary  dic, current_user
 
       if params["commit"] == "Disable selected entries" and 
          params.has_key? :basedic_remained_entries and 
@@ -83,8 +82,8 @@ class DictionariesController < ApplicationController
 
         # Register selected entries as disabled.
         params[:basedic_remained_entries][:selected].each do |eid|
-          if not user_dic.removed_entries.exists?(entry_id: eid)
-            user_dic.removed_entries.create(entry_id: eid)
+          if not user_dic.removed_entries.exists?  entry_id: eid
+            user_dic.removed_entries.create  entry_id: eid
           end
         end
       end
@@ -94,7 +93,7 @@ class DictionariesController < ApplicationController
          params[:basedic_disabled_entries].has_key? :selected
 
         params[:basedic_disabled_entries][:selected].each do |eid|
-          if user_dic.removed_entries.exists?(entry_id: eid)
+          if user_dic.removed_entries.exists?  entry_id: eid
             user_dic.removed_entries.find_by_entry_id(eid).destroy
           end
         end
@@ -108,15 +107,14 @@ class DictionariesController < ApplicationController
 
   # Remove multiple selected entries (from the user dictionary).
   def remove_entries
-    user_id = current_user.nil? ? nil : current_user.id
-    dic     = Dictionary.find_showable_by_title(params[:id], user_id)
+    dic = Dictionary.find_showable_by_title  params[:id], current_user
 
     if dic
-      user_dic = UserDictionary.get_or_create_user_dictionary(dic, current_user)
+      user_dic = UserDictionary.get_or_create_user_dictionary  dic, current_user
 
       if not params[:userdic_new_entries][:selected].nil?
         params[:userdic_new_entries][:selected].each do |id|
-          entry = user_dic.new_entries.find(id)
+          entry = user_dic.new_entries.find  id
           if not entry.nil?
             entry.destroy
           end
@@ -141,7 +139,7 @@ class DictionariesController < ApplicationController
 
   def create
     # Creates a dictionary
-    @dictionary         = User.find(current_user.id).dictionaries.new( params[:dictionary] )
+    @dictionary = User.find(current_user.id).dictionaries.new  params[:dictionary]
     @dictionary.title.strip!
     @dictionary.creator = current_user.email
     b_basedic_saved = @dictionary.save
@@ -149,17 +147,15 @@ class DictionariesController < ApplicationController
     # Fills the entries of the dictionary
     b_entries_saved = false
     if b_basedic_saved
-      b_entries_saved = fill_dic(params[:dictionary])
+      b_entries_saved = fill_dic  params[:dictionary]
     end
 
     respond_to do |format|
       if b_basedic_saved and b_entries_saved
         create_simstring_db
-
         format.html{ redirect_to @dictionary, notice: 'Dictionary was successfully created.' }
       elsif b_basedic_saved and not b_entries_saved
         @dictionary.destroy
-
         format.html{ redirect_to :back, notice: 'Failed to save a dictionary!' }
       else
         format.html{ render action: 'new' }
@@ -167,20 +163,22 @@ class DictionariesController < ApplicationController
     end
   end
 
+
   # Destroy a base dictionary and the associated user dictionaries (of other users too).
   def destroy
-    # base_dic = Dictionary.find_by_title(params[:id])
-    user_id  = current_user.nil? ? nil : current_user.id
-    base_dic = Dictionary.find_showable_by_title(params[:id], user_id)
+    base_dic = Dictionary.find_showable_by_title  params[:id], current_user
+
     if not base_dic  
       ret_url = :back
       ret_msg = "Cannot find a dictionary."
+
     else
       # if not is_destroyable?(base_dic)
-      flag, msg = base_dic.is_destroyable?(current_user)
+      flag, msg = base_dic.is_destroyable?  current_user
       if flag == false
         ret_url = :back
         ret_msg = msg
+
       else
         # Delete the entries of the base dictionary (@dictionary.destroy is too slow).
         Entry.where("dictionary_id = ?", base_dic.id).delete_all
@@ -198,7 +196,7 @@ class DictionariesController < ApplicationController
         Dictionary.where("id = ?", base_dic.id).delete_all
 
         # Delete the associated SimString DB.
-        delete_simstring_db(base_dic.title)
+        delete_simstring_db  base_dic.title
 
         ret_url = dictionaries_url
         ret_msg = msg
@@ -221,24 +219,25 @@ class DictionariesController < ApplicationController
 
       if params.has_key? :dictionaries_list and params[:dictionaries_list].has_key? :selected
         params[:dictionaries_list][:selected].each do |dic_id|
-          dic = Dictionary.find_by_id(dic_id)
-          if not dic.nil? and not diclist.include?(dic.title)
+          dic = Dictionary.find_by_id  dic_id
+          if not dic.nil? and not diclist.include?  dic.title
             diclist << dic.title
-            # params[:dictionaries]? params[:dictionaries] << dic.title : params[:dictionaries] = [dic.title]
           end
         end
       end
+
       params[:dictionaries] = diclist.to_json
+
     elsif params[:commit] == "Generate URI"
       request_params = { 
-        # "dictionaries" => params["dictionaries"].split(/[\r\n]/).delete_if{|item| item==""},
-        "dictionaries" => params["dictionaries"],
+        "dictionaries"    => params["dictionaries"],
         "matching_method" => params["annotation_strategy"], 
-        "min_tokens" => params["min_tokens"],
-        "max_tokens" => params["max_tokens"],
-        "threshold" => params["threshold"],
-        "top_n" => params["top_n"],
+        "min_tokens"      => params["min_tokens"],
+        "max_tokens"      => params["max_tokens"],
+        "threshold"       => params["threshold"],
+        "top_n"           => params["top_n"],
         }
+
       @annotator_uri = "http://#{request.host}:#{request.port}#{request.fullpath.split("?")[0]}?#{request_params.to_query}"
     end
 
@@ -249,8 +248,8 @@ class DictionariesController < ApplicationController
 
   # Select dictionaries for text_annotation_with_multiple_dic_readme.
   def select_dictionaries
-    base_dics = Dictionary.get_showables(current_user)
-    @grid_dictionaries = get_dictionaries_grid_view(base_dics)
+    base_dics = Dictionary.get_showables  current_user
+    @grid_dictionaries = get_dictionaries_grid_view  base_dics
 
     respond_to do |format|
       format.html { render layout: false }
@@ -259,33 +258,32 @@ class DictionariesController < ApplicationController
 
   # Annotate a given text using base dictionaries (and corresponding user dictionaries).
   def text_annotation_with_multiple_dic
-    basedic_names, ann, opts = get_data_params1(params)
-    user_id = User.get_user_id(params["user"])
-
+    basedic_names, ann, opts = get_data_params1  params
     results = []
-    if user_id == :invalid
-      ann["error"] = {"message" => "Invalid email or password"}
-    else
-      basedic_names.each do |basedic_name|
-        base_dic = Dictionary.find_showable_by_title(basedic_name, user_id)
-        if not base_dic
-          if ann.has_key?("error") and ann["error"].has_key?("message")
-            ann["error"]["message"] += ", #{basedic_name}"
-          else
-            ann["error"] = {"message" => "Cannot find a dictionary: #{basedic_name}"}
-          end
+
+    basedic_names.each do |basedic_name|
+      base_dic = Dictionary.find_showable_by_title  basedic_name, current_user
+
+      if base_dic.nil?
+        if ann.has_key?("error") and ann["error"].has_key?("message")
+          ann["error"]["message"] += ", \"#{basedic_name}\""
         else
-          annotator  = TextAnnotator.new(basedic_name, user_id)   # user_id is nil if it is guest
-          if annotator.dictionary_exist?(basedic_name) == true
-            tmp_result = annotator.annotate(ann, opts)
-            tmp_result.each do |entry|
-              entry["dictionary_name"] = basedic_name
-            end
-            results += tmp_result
+          ann["error"] = {"message" => "Cannot find dictionaries: \"#{basedic_name}\""}
+        end
+
+      else
+        annotator  = TextAnnotator.new  basedic_name, current_user
+
+        if annotator.dictionary_exist?  basedic_name
+          tmp_result = annotator.annotate  ann, opts
+          tmp_result.each do |entry|
+            entry["dictionary_name"] = basedic_name
           end
+          results += tmp_result
         end
       end
     end
+
     ann["denotations"] = results
 
     # Return the results.
@@ -297,22 +295,22 @@ class DictionariesController < ApplicationController
   # Single dictionary annotator URI generator.
   def text_annotation_with_single_dic_readme
     @annotator_uri = ""
-
-    basedic_name = params[:id]
-    user_id      = current_user.nil? ? nil : current_user.id
-    base_dic     = Dictionary.find_showable_by_title(basedic_name, user_id)
+    basedic_name   = params[:id]
+    base_dic       = Dictionary.find_showable_by_title  basedic_name, current_user
     
     if base_dic.nil?
       ret_msg = "Cannot find the dictionary."
+
     else
       if params[:commit] == "Generate URI"
         request_params = { 
           "matching_method" => params["annotation_strategy"], 
-          "min_tokens" => params["min_tokens"],
-          "max_tokens" => params["max_tokens"],
-          "threshold" => params["threshold"],
-          "top_n" => params["top_n"],
+          "min_tokens"      => params["min_tokens"],
+          "max_tokens"      => params["max_tokens"],
+          "threshold"       => params["threshold"],
+          "top_n"           => params["top_n"],
           }
+
         @annotator_uri = "http://#{request.host}:#{request.port}#{request.fullpath.split("?")[0]}?#{request_params.to_query}"
       end
     end
@@ -328,30 +326,27 @@ class DictionariesController < ApplicationController
 
   # Text annotation API as a member rote.
   def text_annotation_with_single_dic
-    basedic_name, ann, opts = get_data_params2(params)
-    user_id = User.get_user_id(params["user"])   # params["user"] = {"email"=>"..", "password"=>"..."}
+    basedic_name, ann, opts = get_data_params2  params
+    base_dic = Dictionary.find_showable_by_title  basedic_name, current_user
+    results  = []
+    
+    if base_dic.nil?
+      ann["error"] = {"message" => "Cannot find such a dictionary: \"#{basedic_name}\""}
 
-    results = []
-    if user_id == :invalid
-      ann["error"] = {"message" => "Invalid email or password"}
     else
-      base_dic = Dictionary.find_showable_by_title(basedic_name, user_id)
+      annotator  = TextAnnotator.new  basedic_name, current_user
 
-      if not base_dic
-        ann["error"] = {"message" => "Cannot find a dictionary."}
-      else
-        annotator  = TextAnnotator.new(basedic_name, user_id)   # user_id is nil if it is guest
-        if annotator.dictionary_exist?(basedic_name) == true
-          tmp_result = annotator.annotate(ann, opts)
-          tmp_result.each do |entry|
-            entry["dictionary_name"] = basedic_name
-          end
-          results += tmp_result
+      if annotator.dictionary_exist?  basedic_name
+        tmp_result = annotator.annotate  ann, opts
+        tmp_result.each do |entry|
+          entry["dictionary_name"] = basedic_name
         end
+        results += tmp_result
       end
     end
-    ann["denotations"] = results
 
+    ann["denotations"] = results
+   
     # Return the results.
     respond_to do |format|
       format.json { render :json => ann }
@@ -360,22 +355,33 @@ class DictionariesController < ApplicationController
 
   # Return a list of labels for a given list of IDs.
   def ids_to_labels
-    basedic_names, ann, opts = get_data_params1(params)
-    user_id = User.get_user_id(params["user"])
-
+    basedic_names, ann, opts = get_data_params1  params
     results = {}
-    if user_id == :invalid
-      ann["error"] = {"message" => "Invalid email or password"}
-    else
-      basedic_names.each do |basedic_name|
-        annotator  = TextAnnotator.new(basedic_name, user_id)
-        if annotator.dictionary_exist?(basedic_name) == true
-          tmp_result = annotator.ids_to_labels(ann, opts)
+    
+    basedic_names.each do |basedic_name|
+      base_dic = Dictionary.find_showable_by_title  basedic_name, current_user
+
+      # 1. Add an error message if a dictionary is not accessible
+      if base_dic.nil?
+        if ann.has_key?("error") and ann["error"].has_key("message")
+          ann["error"]["message"] += ", \"#{basedic_name}\""
+        else
+          ann["error"] = {"message" => "Cannot find dictionaries: \"#{basedic_name}\""}
+        end
+
+      # 2. Retrieve labels for each ID based on a dictionary if it is accessible.
+      else
+        annotator  = TextAnnotator.new  basedic_name, current_user
+
+        if annotator.dictionary_exist?  basedic_name
+          tmp_result = annotator.ids_to_labels  ann, opts
+
           tmp_result.each_value do |id_labels|
             id_labels.each do |label|
               label["dictionary_name"] = basedic_name
             end
           end
+
           tmp_result.each_pair do |id, labels|
             if results.key?(id)
               results[id] += labels
@@ -386,6 +392,7 @@ class DictionariesController < ApplicationController
         end
       end
     end
+
     ann["denotations"] = results
 
     # Return the result.
@@ -401,21 +408,32 @@ class DictionariesController < ApplicationController
   #
   def terms_to_idlists
     basedic_names, ann, opts = get_data_params1(params)
-    user_id = User.get_user_id(params["user"])
-
     results = {}
-    if user_id == :invalid
-      ann["error"] = {"message" => "Invalid email or password"}
-    else
-      basedic_names.each do |basedic_name|
-        annotator  = TextAnnotator.new(basedic_name, user_id)
-        if annotator.dictionary_exist?(basedic_name) == true
-          tmp_result = annotator.terms_to_idlists(ann, opts)
+
+    basedic_names.each do |basedic_name|
+      base_dic = Dictionary.find_showable_by_title  basedic_name, current_user
+
+      # 1. Add an error message if a dictionary is not accessible
+      if base_dic.nil?
+        if ann.has_key?("error") and ann["error"].has_key("message")
+          ann["error"]["message"] += ", \"#{basedic_name}\""
+        else
+          ann["error"] = {"message" => "Cannot find dictionaries: \"#{basedic_name}\""}
+        end
+
+      # 2. Retrieve labels for each ID based on a dictionary if it is accessible.
+      else
+        annotator = TextAnnotator.new  basedic_name, current_user
+
+        if annotator.dictionary_exist?  basedic_name
+          tmp_result = annotator.terms_to_idlists  ann, opts
+
           tmp_result.each_value do |term_to_idlist|
             term_to_idlist.each do |idlist|
               idlist["dictionary_name"] = basedic_name
             end
           end
+
           tmp_result.each_pair do |id, labels|
             if results.key?(id)
               results[id] += labels
@@ -426,6 +444,7 @@ class DictionariesController < ApplicationController
         end
       end
     end
+
     ann["idlists"] = results
 
     # Return the results.
@@ -445,8 +464,8 @@ class DictionariesController < ApplicationController
   def get_dictionaries_grid_view(base_dics)
     grid_dictionaries_view = initialize_grid(base_dics,
       :name => "dictionaries_list",
-      :order => "created_at",            # Show a list of dictionaries at descending order of created_at.
-      :order_direction => "desc",
+      #:order => "created_at",            # Show a list of dictionaries at descending order of created_at.
+      #:order_direction => "desc",
       :per_page => 30, )
     # if params[:dictionaries_list] && params[:dictionaries_list][:selected]
     #   @selected = params[:dictionaries_list][:selected]
