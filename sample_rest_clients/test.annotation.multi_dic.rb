@@ -26,30 +26,33 @@ require 'rest_client'
 # * (hash)    annotation    - The hash including text for annotation.
 #
 def annotate_text(uri, email, password, annotation)
-	# Prepare the connection to the text annotation service.
-	resource = RestClient::Resource.new( 
-		"#{uri}",
-		:timeout      => 300, 
-		:open_timeout => 300,
-		)
+  # 1. Initialize the options hash.
+  options = {
+    :headers => {
+      :content_type => :json,
+      :accept       => :json,
+    },
+  	:user         => email,
+    :password     => password, 
+    :timeout      => 9999, 
+    :open_timeout => 9999,
+  }
 
-	# Annotate the text.
-	data = resource.post( 
-		:user         => {email:email, password:password},
-		:annotation   => annotation.to_json,
-		:content_type => :json,
-		:accept       => :json,
-	) do |response, request, result|
-		case response.code
-		when 200
-			JSON.parse(response.body)
-		else
-			$stdout.puts "Error code: #{response.code}"
-			annotation
-		end
-	end
-	
-	return data
+  # 2. Create a rest client resource.
+  resource = RestClient::Resource.new("#{uri}", options)
+
+  # 3. Run the annotation.
+  data = resource.post(:annotation => annotation.to_json) do |response, request, result|
+    case response.code
+    when 200
+      JSON.parse(response.body)
+    else
+      $stdout.puts "Error code: #{response.code}"
+      annotation
+    end
+  end
+  
+  return data
 end
 
 
