@@ -7,7 +7,7 @@ require 'rest_client'
 # Get the list of labels for a list of IDs.
 #
 # * (string)  uri           - The URI of the sign in route.
-#                             (e.g., http://localhost:3000/dictionaries)
+#                             (e.g., http://pubdictionaries.dbcls.jp/dictionaries)
 # * (array)   dics          - The list of dictionary names for annotation.
 # * (string)  email         - User's login ID.
 # * (string)  password      - User's login password.
