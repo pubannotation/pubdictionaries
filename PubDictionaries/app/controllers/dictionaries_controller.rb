@@ -9,9 +9,9 @@ class DictionariesController < ApplicationController
   # Require authentication for all actions except :index, :show, and some others.
   before_filter :authenticate_user!, 
     except: [:index, :show, :text_annotation_with_single_dic, :text_annotation_with_single_dic_readme, 
-      :text_annotation_with_multiple_dic, :text_annotation_with_multiple_dic_readme, 
-      :select_dictionaries_for_text_annotation, :select_dictionaries_for_id_mapping,
-      :ids_to_labels, :id_mapping]
+      :text_annotation_with_multiple_dic_readme, :select_dictionaries_for_text_annotation, 
+      :text_annotation_with_multiple_dic, :id_mapping_with_multiple_dic_readme, 
+      :select_dictionaries_for_id_mapping, :id_mapping, :ids_to_labels, ]
 
   # Disable CSRF check for REST-API actions.
   skip_before_filter :verify_authenticity_token, 
