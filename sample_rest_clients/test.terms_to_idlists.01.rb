@@ -4,17 +4,15 @@ require 'json'
 require 'rest_client'
 
 
-# Get the list of labels for a list of IDs.
+# Get a list of IDs for each term.
 #
-# * (string)  uri              - The URI of the sign in route.
-#                                (e.g., http://pubdictionaries.dbcls.jp/dictionaries)
-# * (array)   dics             - The list of dictionary names for annotation.
+# * (string)  uri              - The URI generated from the "Get Mapper URL" menu.
 # * (string)  email            - User's login ID.
 # * (string)  password         - User's login password.
-# * (hash)    annotation       - The hash including a list of labels.
+# * (array)   terms            - An array of term string for mapping.
 # * (hash)    matching_options - The hash containig options for id search.
 #
-def get_idlists(uri, dics, email, password, annotation, matching_options)
+def get_idlists(uri, email, password, terms, matching_options)
   # 1. Initialize the options hash.
   options = {
     :headers => {
@@ -28,22 +26,18 @@ def get_idlists(uri, dics, email, password, annotation, matching_options)
   }
 
   # 2. Create a rest client resource.
-  resource = RestClient::Resource.new  "#{uri}/terms_to_idlists.json", options
+  resource = RestClient::Resource.new  uri, options
 
   # 3. Retrieve the list of IDs.
-  data = resource.post( 
-    :dictionaries => dics.to_json,
-    :annotation   => annotation.to_json,
-    :options      => matching_options.to_json, 
-    :content_type => :json,
-    :accept       => :json,
+  data = resource.post(
+    :terms    => terms.to_json,
+    :options  => matching_options.to_json, 
   ) do |response, request, result|
     case response.code
     when 200
       JSON.parse(response.body)
     else
       $stdout.puts "Error code: #{response.code}"
-      annotation
     end
   end
 
@@ -51,41 +45,40 @@ def get_idlists(uri, dics, email, password, annotation, matching_options)
 end
 
 
-
 # Test code.
 #
 # * ARGV[0]  -  User's email.
 # * ARGV[1]  -  User's password.
-# * ARGV[2]  -  URI
-# * ARGV[3-] -  Dictionaries
+# * ARGV[2]  -  URI including a REST-API URL & dictionaries.
 #
 if __FILE__ == $0
-  if ARGV.size < 4
-    $stdout.puts "Usage:  #{$0}  Email  Password  URI  Dic1  Dic2  ..."
+  if ARGV.size != 3
+    $stdout.puts "Usage:  #{$0}  Email  Password  URI"
     exit
   end
+
+  # 1. Prepare necessary information.
   email            = ARGV[0]
   password         = ARGV[1]
   uri              = ARGV[2]
-  dics             = ARGV[3, ARGV.length]
-  annotation       = { "terms" => [ "NF-kappa B", "C-REL", "c-rel", "Brox", "may_be_not_exist"] }
+  example_terms    = [ "NF-kappa B", "C-REL", "c-rel", "Brox", "this_term_does_not_exist"]
   matching_options = { "threshold" => 0.3, "top_n" => 10 }
-
-  result     = get_idlists(uri, dics, email, password, annotation, matching_options)
-
-  $stdout.puts "Input:"
-  $stdout.puts annotation["terms"].inspect
   
+  # 2. Retrieve a ID list for each term.
+  results = get_idlists(uri, email, password, example_terms, matching_options)
+
+  # 3. Print the mapping results.
   $stdout.puts "Output:"
-  if result.has_key? "error"
-    $stdout.puts "   Error: #{result["error"]["message"]}"
+  if results.has_key? "error"
+    $stdout.puts "   Error: #{result["error"]["message"]}\n"
   end
-  if result.has_key? "idlists"
-    $stdout.puts "   %-20s| %s" % ["TERM", "IDs"]
-    annotation["terms"].each do |term|
-      $stdout.puts "   %-10s| %s" % [term, result["idlists"][term].inspect]
-    end
+
+  $stdout.puts "   %-20s | %s" % ["TERM", "Mapped IDs"]    
+  results.each_key do |term|
+    $stdout.puts "   %-20s | %s" % [term, results[term].join(", ")]
   end
-  $stdout.puts 
 
 end
+
+
+
