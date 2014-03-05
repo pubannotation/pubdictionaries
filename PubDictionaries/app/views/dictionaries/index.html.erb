@@ -52,7 +52,10 @@
     <%= button_to 'Create a New Dictionary', new_dictionary_path, {:method => :get, :class => "customized_button"} %>
   </div>
   <div style="float:left;">
-    <%= button_to "Get Annotator URI", {controller: "dictionaries", action: "text_annotation_with_multiple_dic_readme"}, {:method => :get, :class => "customized_button"} %>
+    <%= button_to "Get Annotator URL", {controller: "dictionaries", action: "text_annotation_with_multiple_dic_readme"}, {:method => :get, :class => "customized_button"} %>
+  </div>
+  <div style="float:left;">
+    <%= button_to "Get ID Mapper URL", {controller: "dictionaries", action: "id_mapping_with_multiple_dic_readme"}, {:method => :get, :class => "customized_button"} %>
   </div>
 </div>
 
