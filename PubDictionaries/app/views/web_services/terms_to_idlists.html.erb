@@ -14,9 +14,8 @@ require 'rest_client'
 # * (string)  email            - User's login ID.
 # * (string)  password         - User's login password.
 # * (array)   terms            - An array of term string for mapping.
-# * (hash)    matching_options - The hash containig options for id search.
 #
-def get_idlists(uri, email, password, terms, matching_options)
+def get_idlists(uri, email, password, terms)
   # 1. Initialize the options hash.
   options = {
     :headers => {
@@ -33,10 +32,7 @@ def get_idlists(uri, email, password, terms, matching_options)
   resource = RestClient::Resource.new  uri, options
 
   # 3. Retrieve the list of IDs.
-  data = resource.post(
-    :terms    => terms.to_json,
-    :options  => matching_options.to_json, 
-  ) do |response, request, result|
+  data = resource.post(:terms => terms.to_json) do |response, request, result|
     case response.code
     when 200
       JSON.parse(response.body)
@@ -66,11 +62,10 @@ if __FILE__ == $0
   password         = ARGV[1]
   uri              = ARGV[2]
   example_terms    = [ "NF-kappa B", "C-REL", "c-rel", "Brox", "this_term_does_not_exist"]
-  matching_options = { "threshold" => 0.3, "top_n" => 10 }
   
   # 2. Retrieve a ID list for each term.
-  results = get_idlists(uri, email, password, example_terms, matching_options)
-
+  results = get_idlists(uri, email, password, example_terms)
+  
   # 3. Print the mapping results.
   $stdout.puts "Output:"
   if results.has_key? "error"
@@ -83,6 +78,7 @@ if __FILE__ == $0
   end
 
 end
+
 
 </pre>
 </div>
