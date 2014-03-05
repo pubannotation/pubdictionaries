@@ -460,16 +460,17 @@ class DictionariesController < ApplicationController
     dic_titles.each do |dic_title|
       dic = Dictionary.find_showable_by_title  dic_title, current_user
 
-      # 1. Add an error message if a dictionary is not accessible
-      if dic.nil?
-        if results.has_key?("error") and results["error"].has_key("message")
-          results["error"]["message"] += ", \"#{basedic_name}\""
-        else
-          results["error"] = {"message" => "Cannot find dictionaries: \"#{basedic_name}\""}
-        end
+      # Add an error message if a dictionary is not accessible
+      # if dic.nil?
+      #   if results.has_key?("error") and results["error"].has_key("message")
+      #     results["error"]["message"] += ", \"#{dic_titles}\""
+      #   else
+      #     results["error"] = {"message" => "Cannot find dictionaries: \"#{dic_titles}\""}
+      #   end
+      # 
 
-      # 2. Retrieve labels for each ID based on a dictionary if it is accessible.
-      else
+      # Retrieve labels for each ID based on a dictionary if it is accessible.
+      if not dic.nil?
         annotator = TextAnnotator.new  dic_title, current_user
 
         if annotator.dictionary_exist?  dic_title

@@ -64,13 +64,9 @@ if __FILE__ == $0
   
   # 3. Print the mapping results.
   $stdout.puts "Output:"
-  if results.has_key? "error"
-    $stdout.puts "   Error: #{result["error"]["message"]}\n"
-  end
-
   $stdout.puts "   %-20s | %s" % ["TERM", "Mapped IDs"]    
   results.each_key do |term|
-    $stdout.puts "   %-20s | %s" % [term, results[term].join(", ")]
+    $stdout.puts "   %-20s | %s" % [term, results[term].inspect]
   end
 
 end
