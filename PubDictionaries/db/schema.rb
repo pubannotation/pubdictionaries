@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20140206073709) do
+ActiveRecord::Schema.define(:version => 20140305081403) do
 
   create_table "dictionaries", :force => true do |t|
     t.string   "title"
@@ -30,13 +30,13 @@ ActiveRecord::Schema.define(:version => 20140206073709) do
   add_index "dictionaries", ["title"], :name => "index_dictionaries_on_title"
 
   create_table "entries", :force => true do |t|
-    t.string   "view_title"
+    t.text     "view_title"
     t.text     "uri"
     t.integer  "dictionary_id"
     t.datetime "created_at",    :null => false
     t.datetime "updated_at",    :null => false
-    t.string   "label"
-    t.string   "search_title"
+    t.text     "label"
+    t.text     "search_title"
   end
 
   add_index "entries", ["dictionary_id"], :name => "index_entries_on_dictionary_id"
@@ -47,13 +47,13 @@ ActiveRecord::Schema.define(:version => 20140206073709) do
   add_index "entries", ["view_title"], :name => "index_entries_title"
 
   create_table "new_entries", :force => true do |t|
-    t.string   "view_title"
-    t.string   "label"
-    t.string   "uri"
+    t.text     "view_title"
+    t.text     "label"
+    t.text     "uri"
     t.integer  "user_dictionary_id"
     t.datetime "created_at",         :null => false
     t.datetime "updated_at",         :null => false
-    t.string   "search_title"
+    t.text     "search_title"
   end
 
   add_index "new_entries", ["label"], :name => "index_new_entries_on_label"
