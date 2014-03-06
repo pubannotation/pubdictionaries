@@ -123,24 +123,24 @@ class TextAnnotator
 
     # 2. Get a list of IDs for each term.
     exp_IDs = {}
-     exp_terms.each do |ori_term, sim_terms|
-       exp_IDs[ori_term] = []
-       sim_terms.each do |sim_term|
-         # Retrieve entries in both :entries and :new_entries except in :removed_entries.
-         entries = @pgr.get_entries_from_db(sim_term[:requested_query], :search_title)
-         exp_IDs[ori_term] = entries.collect do |x|
-           {"uri" => x[:uri]}
-         end
+      exp_terms.each do |ori_term, sim_terms|
+        exp_IDs[ori_term] = []
+        sim_terms.each do |sim_term|
+          # Retrieve entries in both :entries and :new_entries except in :removed_entries.
+          entries = @pgr.get_entries_from_db(sim_term[:requested_query], :search_title)
+          exp_IDs[ori_term] = entries.collect do |x|
+            x[:uri]
+          end
 
-         # Stop the loop after havesting enough IDs.
-         if opts["top_n"] > 0 and exp_IDs[ori_term].size >= opts["top_n"] 
-           break
-         end
-       end
-     end
+          # Stop the loop after havesting enough IDs.
+          if opts["top_n"] > 0 and exp_IDs[ori_term].size >= opts["top_n"] 
+            break
+          end
+        end
+      end
 
-     exp_IDs
-   end
+      exp_IDs
+    end
 
 
   ###################################
