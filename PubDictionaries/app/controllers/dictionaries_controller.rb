@@ -380,7 +380,7 @@ class DictionariesController < ApplicationController
 
           terms_to_idlists.each_pair do |term, ids|    
             # Format the output value.
-            if opts["output_format"] == "simple" 
+            if nil == opts["output_format"] or "simple" == opts["output_format"]
               new_value = ids
             else  # opts["output_format"] == "rich"
               new_value = ids.collect do |id|
@@ -458,7 +458,7 @@ class DictionariesController < ApplicationController
             labels.uniq!
             
             # Format the output value.
-            if opts["output_format"] == "simple"
+            if nil == opts["output_format"] or "simple" == opts["output_format"]
               new_value = labels
             else  # opts["output_format"] == "rich"
               new_value = labels.collect do |label|
