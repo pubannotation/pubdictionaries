@@ -25,8 +25,10 @@ class DictionariesController < ApplicationController
   ###########################
 
   def index
-    base_dics          = Dictionary.get_showables  current_user, params[:dictionary_type]
-    @grid_dictionaries = get_dictionaries_grid_view  base_dics
+    dic_type = params[:dictionary_type]
+
+    base_dics, order, order_direction = Dictionary.get_showables  current_user, dic_type
+    @grid_dictionaries = get_dictionaries_grid_view  base_dics, order, order_direction, 30
 
     respond_to do |format|
       format.html # index.html.erb
@@ -249,7 +251,7 @@ class DictionariesController < ApplicationController
 
   # Select dictionaries for text_annotation_with_multiple_dic_readme.
   def select_dictionaries_for_text_annotation
-    base_dics = Dictionary.get_showables  current_user
+    base_dics, order, order_direction = Dictionary.get_showables  current_user
     @grid_dictionaries = get_dictionaries_grid_view  base_dics
 
     respond_to do |format|
@@ -416,7 +418,7 @@ class DictionariesController < ApplicationController
 
   # Select dictionaries for id_mapping_with_multiple_dic_readme.
   def select_dictionaries_for_id_mapping
-    base_dics = Dictionary.get_showables  current_user
+    base_dics, order, order_direction = Dictionary.get_showables  current_user
     @grid_dictionaries = get_dictionaries_grid_view  base_dics
 
     respond_to do |format|
@@ -481,12 +483,12 @@ class DictionariesController < ApplicationController
   private
 
   # Create grid views for dictionaries
-  def get_dictionaries_grid_view(base_dics)
+  def get_dictionaries_grid_view(base_dics, order = 'created_at', order_direction = 'desc', per_page = 10000)
     grid_dictionaries_view = initialize_grid(base_dics,
       :name => "dictionaries_list",
-      #:order => "created_at",            # Show a list of dictionaries at descending order of created_at.
-      #:order_direction => "desc",
-      :per_page => 30, )
+      :order => order,
+      :order_direction => order_direction,
+      :per_page => per_page, )
     # if params[:dictionaries_list] && params[:dictionaries_list][:selected]
     #   @selected = params[:dictionaries_list][:selected]
     # end
@@ -496,7 +498,6 @@ class DictionariesController < ApplicationController
 
   # Create grid views for remained, disabled, and new entries.
   def get_entries_grid_views()
-    # basedic_names = params["dictionaries"].nil? ? nil : JSON.parse(params["dictionaries"])
     ids = @user_dic.nil? ? [] : @user_dic.removed_entries.get_disabled_entry_idlist
 
     # 1. Remained base entries.
