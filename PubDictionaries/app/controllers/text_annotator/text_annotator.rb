@@ -53,16 +53,16 @@ class TextAnnotator
 
   # Annotate an input text.
   #
-  # * (hash) ann   - A hash containing text for annotation (ann["text"]).
+  # * (hash) text  - Input text.
   # * (hash) opts  - A hash containing annotation options.
   #
-  def annotate(ann, opts)
+  def annotate(text, opts)
     set_options(opts)
 
     if @options["matching_method"] == "exact"
-      results = annotate_based_on_exact_string_matching(ann)
+      results = annotate_based_on_exact_string_matching(text)
     elsif @options["matching_method"] == "approximate"
-      results = annotate_based_on_approximate_string_matching(ann)
+      results = annotate_based_on_approximate_string_matching(text)
     else
       results = []
     end
@@ -160,12 +160,12 @@ class TextAnnotator
   end
 
   # Text annotation based on exact string matching.
-  def annotate_based_on_exact_string_matching(ann)
+  def annotate_based_on_exact_string_matching(text)
     # Generate queries from an input text
     build_opts = { min_tokens: @options["min_tokens"],
              max_tokens: @options["max_tokens"] }
     norm_opts  = @pgr.get_string_normalization_options
-    queries    = @qbuilder.build_queries(ann["text"], build_opts, norm_opts)
+    queries    = @qbuilder.build_queries(text, build_opts, norm_opts)
 
     # Retrieve the entries from PostgreSQL DB
     results = @pgr.retrieve( @qbuilder.change_format(queries) )
@@ -176,17 +176,17 @@ class TextAnnotator
     end
     results = @pproc.keep_last_one_for_crossing_boundaries(results)
 
-    format_anns(results)
+    format_results(results)
   end
 
   # Text annotation based on approximate string matching.
-  def annotate_based_on_approximate_string_matching(ann)
+  def annotate_based_on_approximate_string_matching(text)
     # Generate queries from an input text
     build_opts = { min_tokens: @options["min_tokens"],
              max_tokens: @options["max_tokens"] }
     norm_opts  = @pgr.get_string_normalization_options
 
-    queries     = @qbuilder.build_queries(ann["text"], build_opts, norm_opts)
+    queries     = @qbuilder.build_queries(text, build_opts, norm_opts)
 
     # Perform query expansion using both the PG and SimString DBs.
     ext_queries = @qbuilder.expand_queries(queries, @options["threshold"], @ssr, @pgr)
@@ -202,19 +202,19 @@ class TextAnnotator
     results = @pproc.keep_last_one_for_crossing_boundaries(results)
 
     # Returns the results
-    format_anns(results)
+    format_results(results)
   end
 
-  # Create the annotation list (output) from the text annotation results.
-  def format_anns(anns)
-    ann_ary = anns.collect do |item|
+  # Reformat the results.
+  def format_results(results)
+    results_array = results.collect do |item|
       { begin:  item[:offset].begin, 
         end:    item[:offset].end,
         obj:    item[:uri],
       }
     end
 
-    ann_ary.uniq
+    results_array.uniq
   end
 
 end

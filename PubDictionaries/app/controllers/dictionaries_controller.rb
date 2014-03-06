@@ -7,17 +7,17 @@ require File.join( File.dirname( __FILE__ ), 'text_annotator/text_annotator' )
 
 class DictionariesController < ApplicationController
   # Require authentication for all actions except :index, :show, and some others.
-  before_filter :authenticate_user!, 
-    except: [:index, :show, :text_annotation_with_single_dic, :text_annotation_with_single_dic_readme, 
-      :text_annotation_with_multiple_dic_readme, :select_dictionaries_for_text_annotation, 
-      :text_annotation_with_multiple_dic, :id_mapping_with_multiple_dic_readme, 
-      :select_dictionaries_for_id_mapping, :id_mapping, :ids_to_labels, ]
+  before_filter :authenticate_user!, except: [ 
+    :index, :show, 
+    :text_annotation_with_single_dic_readme, :text_annotation_with_single_dic, 
+    :text_annotation_with_multiple_dic_readme, :select_dictionaries_for_text_annotation, :text_annotation_with_multiple_dic, 
+    :id_mapping_with_multiple_dic_readme, :select_dictionaries_for_id_mapping, :id_mapping, :ids_to_labels, 
+  ]
 
   # Disable CSRF check for REST-API actions.
-  skip_before_filter :verify_authenticity_token, 
-    :only => [:text_annotation_with_multiple_dic, :text_annotation_with_single_dic, 
-      :ids_to_labels, :id_mapping], 
-    :if => Proc.new { |c| c.request.format == 'application/json' }
+  skip_before_filter :verify_authenticity_token, :only => [
+    :text_annotation_with_multiple_dic, :text_annotation_with_single_dic, :ids_to_labels, :id_mapping
+  ], :if => Proc.new { |c| c.request.format == 'application/json' }
 
 
   ###########################
@@ -259,37 +259,22 @@ class DictionariesController < ApplicationController
 
   # Annotate a given text using base dictionaries (and corresponding user dictionaries).
   def text_annotation_with_multiple_dic
-    basedic_names, ann, opts = get_data_params1  params
-    results = []
+    basedic_names = JSON.parse(params["dictionaries"])
+    text          = params["text"]
+    opts          = get_opts_from_params(params)
 
+    # Annotate input text by using dictionaries.
+    results = []
     basedic_names.each do |basedic_name|
       base_dic = Dictionary.find_showable_by_title  basedic_name, current_user
-
-      if base_dic.nil?
-        if ann.has_key?("error") and ann["error"].has_key?("message")
-          ann["error"]["message"] += ", \"#{basedic_name}\""
-        else
-          ann["error"] = {"message" => "Cannot find dictionaries: \"#{basedic_name}\""}
-        end
-
-      else
-        annotator  = TextAnnotator.new  basedic_name, current_user
-
-        if annotator.dictionary_exist?  basedic_name
-          tmp_result = annotator.annotate  ann, opts
-          tmp_result.each do |entry|
-            entry["dictionary_name"] = basedic_name
-          end
-          results += tmp_result
-        end
+      if not base_dic.nil?
+        results += annotate_text_with_dic(text, basedic_name, opts, current_user)
       end
     end
 
-    ann["denotations"] = results
-
     # Return the results.
     respond_to do |format|
-      format.json { render :json => ann }
+      format.json { render :json => results }
     end
   end
 
@@ -327,37 +312,29 @@ class DictionariesController < ApplicationController
 
   # Text annotation API as a member rote.
   def text_annotation_with_single_dic
-    basedic_name, ann, opts = get_data_params2  params
+    basedic_name  = params[:id]
+    text          = params["text"]
+    opts          = get_opts_from_params(params)
+
+    # Annotate input text by using a dictionary.
+    results = []  
     base_dic = Dictionary.find_showable_by_title  basedic_name, current_user
-    results  = []
-    
-    if base_dic.nil?
-      ann["error"] = {"message" => "Cannot find such a dictionary: \"#{basedic_name}\""}
-
-    else
-      annotator  = TextAnnotator.new  basedic_name, current_user
-
-      if annotator.dictionary_exist?  basedic_name
-        tmp_result = annotator.annotate  ann, opts
-        tmp_result.each do |entry|
-          entry["dictionary_name"] = basedic_name
-        end
-        results += tmp_result
-      end
+    if not base_dic.nil?
+      results = annotate_text_with_dic(text, basedic_name, opts, current_user)
     end
 
-    ann["denotations"] = results
-   
     # Return the results.
     respond_to do |format|
-      format.json { render :json => ann }
+      format.json { render :json => results }
     end
   end
 
   # Return a list of labels for a given list of IDs.
   def ids_to_labels
-    basedic_names, ann, opts = get_data_params1  params
-    results = {}
+    basedic_names = JSON.parse(params["dictionaries"])
+    ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
+    opts          = get_opts_from_params(params)
+    results       = {}
     
     basedic_names.each do |basedic_name|
       base_dic = Dictionary.find_showable_by_title  basedic_name, current_user
@@ -694,22 +671,20 @@ class DictionariesController < ApplicationController
     end
   end
 
-  # Get data parameters.
-  def get_data_params1(params)
-    basedic_names = JSON.parse(params["dictionaries"])
-    ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
-    opts          = get_opts_from_params(params)
-    
-    return basedic_names, ann, opts
-  end
+  # Annotate input text by using a given dictionary.
+  def annotate_text_with_dic(text, basedic_name, opts, current_user)
+    annotator  = TextAnnotator.new  basedic_name, current_user
+    results    = []
 
-  # Get data parameters.
-  def get_data_params2(params)
-    basedic_name  = params[:id]
-    ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
-    opts          = get_opts_from_params(params)
+    if annotator.dictionary_exist?  basedic_name
+      tmp_result = annotator.annotate  text, opts
+      tmp_result.each do |entry|
+        entry["dictionary_name"] = basedic_name
+      end
+      results += tmp_result
+    end
 
-    return basedic_name, ann, opts
+    results
   end
 
   # Retrieve option values from the GET params.
