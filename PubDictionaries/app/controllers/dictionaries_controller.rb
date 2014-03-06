@@ -403,6 +403,7 @@ class DictionariesController < ApplicationController
         "dictionaries"    => params["dictionaries"],
         "threshold"       => params["threshold"],
         "top_n"           => params["top_n"],
+        "output_format"   => params["output_format"],
         }
 
       @annotator_uri = "http://#{request.host}:#{request.port}#{request.fullpath.split("?")[0]}?#{request_params.to_query}"
@@ -435,37 +436,32 @@ class DictionariesController < ApplicationController
     results    = {}
 
     dic_titles.each do |dic_title|
+      # Retrieve labels for each ID based on a dictionary if it is accessible.
       dic = Dictionary.find_showable_by_title  dic_title, current_user
 
-      # Add an error message if a dictionary is not accessible
-      # if dic.nil?
-      #   if results.has_key?("error") and results["error"].has_key("message")
-      #     results["error"]["message"] += ", \"#{dic_titles}\""
-      #   else
-      #     results["error"] = {"message" => "Cannot find dictionaries: \"#{dic_titles}\""}
-      #   end
-      # 
-
-      # Retrieve labels for each ID based on a dictionary if it is accessible.
       if not dic.nil?
         annotator = TextAnnotator.new  dic_title, current_user
 
         if annotator.dictionary_exist?  dic_title
-          # terms_to_idlists = { term1 => [ {"uri" => 123}, {"uri" => 124}, ... ], term2 => [... ], ... }
+          # Return value is in the format of 
+          #   { "term1" => [ "123", "124", ... ], "term2" => [ "243", "1052", ... ], "term3" => ... }
           terms_to_idlists = annotator.terms_to_idlists  terms, opts
 
-          terms_to_idlists.each_value do |term_to_idlist|
-            term_to_idlist.each do |idlist|
-              # terms_to_idlists = { term1 => [ {"uri" => 123, "dictionary_name" => "EntrezGene"}, ... ], ... }
-              idlist["dictionary_name"] = dic_title
+          terms_to_idlists.each_pair do |term, ids|    
+            # Format the output value.
+            if opts["output_format"] == "simple" 
+              new_value = ids
+            else  # opts["output_format"] == "rich"
+              new_value = ids.collect do |id|
+                {uri: id, dictionary_name: dic_title} 
+              end
             end
-          end
 
-          terms_to_idlists.each_pair do |id, labels|
-            if results.key?(id)
-              results[id] += labels
+            # Store the result.
+            if results.key?(term)
+              results[term] += new_value
             else
-              results[id] = labels
+              results[term] = new_value
             end
           end
         end
@@ -695,6 +691,7 @@ class DictionariesController < ApplicationController
     opts["matching_method"] = params["matching_method"]
     opts["threshold"]       = params["threshold"].to_f
     opts["top_n"]           = params["top_n"].to_i
+    opts["output_format"]   = params["output_format"]
 
     return opts
   end
