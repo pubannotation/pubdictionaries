@@ -29,22 +29,32 @@ class Dictionary < ActiveRecord::Base
   # Return a list of dictionaries.
   def self.get_showables(user=nil, dic_type=nil)
     if user == nil
-      lst = where(:public => true).order('created_at desc')
+      lst   = where(:public => true)
+      order = 'created_at'
+      order_direction = 'desc'
+
     else
       if dic_type == 'my_dic'
-        lst = where(user_id: user.id).order('created_at desc')
+        lst   = where(user_id: user.id)
+        order = 'created_at'
+        order_direction = 'desc'
 
       elsif dic_type == 'working_dic'
         dic_ids = UserDictionary.get_dictionary_ids_by_user_id(user.id)
 
         # Sort a list based on user_dictionaries#updated_at attribute. 
-        lst = Dictionary.joins(:user_dictionaries).where("dictionaries.id IN (?)", dic_ids).order("user_dictionaries.updated_at desc")
+        lst   = Dictionary.joins(:user_dictionaries).where('dictionaries.id IN (?)', dic_ids)
+        order = 'user_dictionaries.updated_at'
+        order_direction = 'desc'
+
       else
-        lst = where('public = ? OR user_id = ?', true, user.id).order('created_at desc')
+        lst   = where('public = ? OR user_id = ?', true, user.id)
+        order = 'created_at'
+        order_direction = 'desc'
       end
     end
 
-    return lst
+    return lst, order, order_direction
   end
 
   # Find a dictionary by its title.
