@@ -8,16 +8,14 @@ require 'json'
 require 'rest_client'
 
 
-# Get the list of labels for a list of IDs.
+# Get the list of labels for each ID.
 #
-# * (string)  uri           - The URI of the sign in route.
-#                             (e.g., http://localhost:3000/dictionaries)
-# * (array)   dics          - The list of dictionary names for annotation.
-# * (string)  email         - User's login ID.
-# * (string)  password      - User's login password.
-# * (hash)    annotation    - The hash including a list of labels.
+# * (string)  url       - The URL of an annotator.
+# * (string)  email     - User's login ID.
+# * (string)  password  - User's login password.
+# * (array)   ids       - An array of IDs for mapping.
 #
-def get_label_list(uri, dics, email, password, annotation)
+def get_label_list(url, email, password, ids)
   # 1. Initialize the options hash.
   options = {
     :headers => {
@@ -31,19 +29,15 @@ def get_label_list(uri, dics, email, password, annotation)
   }
 
   # 2. Create a rest client resource.
-  resource = RestClient::Resource.new  "#{uri}/ids_to_labels.json", options
+  resource = RestClient::Resource.new  url, options
 
   # 3. Retrieve the list of labels.
-  data = resource.post( 
-    :dictionaries => dics.to_json, 
-    :annotation   => annotation.to_json, 
-  ) do |response, request, result|
+  data = resource.post(:ids => ids.to_json) do |response, request, result|
     case response.code
     when 200
       JSON.parse(response.body)
     else
       $stdout.puts "Error code: #{response.code}"
-      annotation
     end
   end
 
@@ -55,41 +49,31 @@ end
 #
 # * ARGV[0]  -  User's email.
 # * ARGV[1]  -  User's password.
-# * ARGV[2]  -  URI
-# * ARGV[3-] -  Dictionaries
+# * ARGV[2]  -  Annotator URL including a REST-API URL & dictionaries.
 #
 if __FILE__ == $0
-  if ARGV.size < 4
-    $stdout.puts "Usage:  #{$0}  Email  Password  URI  Dic1  Dic2  ..."
+  if ARGV.size != 3
+    $stdout.puts "Usage:  #{$0}  Email  Password  URL"
     exit
   end
+
+  # 1. Prepare data.
   email      = ARGV[0]
   password   = ARGV[1]
-  uri        = ARGV[2]
-  dics       = ARGV[3, ARGV.length]
-  annotation = { "ids" => [ "1", "3", "5", "100008564", "100009600", "new_id", "new_id_2"] }
+  url        = ARGV[2]
+  sample_ids = [ "1", "3", "5", "100008564", "100009600", "new_id", "new_id_2"]
 
-  result     = get_label_list(uri, dics, email, password, annotation)
+  # 2. Retrive label lists for each ID.
+  results = get_label_list(url, email, password, sample_ids)
 
-  $stdout.puts "Input:"
-  $stdout.puts annotation["ids"].inspect
-  
+  # 3. Show the mapping results.
   $stdout.puts "Output:"
-  if result.has_key? "error"
-    $stdout.puts "   Error: #{result["error"]["message"]}"
+  $stdout.puts "    %-20s| %-20s" % ["ID", "Labels"]
+  results.each_pair do |id, labels|
+    $stdout.puts "    %-20s| %-20s" % [id, labels.join(", ")]
   end
-  if result.has_key? "denotations"
-    $stdout.puts "   %-20s| %-20s" % ["ID", "LABEL"]
-    annotation["ids"].each do |id|
-      $stdout.puts "   %-20s| %-20s" % [id, result["denotations"][id]]
-    end
-  end
-  $stdout.puts 
 
 end
-
-
-
 
 </pre>
 </div>

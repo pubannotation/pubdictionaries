@@ -1,5 +1,6 @@
 
 <div class="dictionaries_page">
+  <!-- 1. Index view -->
   <div class="wice-grid">
     <%= 
       dump_filter_parameters_as_hidden_fields(@grid_dictionaries)
@@ -48,6 +49,7 @@
   </div>
   <br />
 
+  <!-- 2. Buttons -->
   <div style="float:left;">
     <%= button_to 'Create a New Dictionary', new_dictionary_path, {:method => :get, :class => "customized_button"} %>
   </div>
@@ -56,6 +58,9 @@
   </div>
   <div style="float:left;">
     <%= button_to "Get ID Mapper URL", {controller: "dictionaries", action: "id_mapping_with_multiple_dic_readme"}, {:method => :get, :class => "customized_button"} %>
+  </div>
+  <div style="float:left;">
+    <%= button_to "Get Label Mapper URL", {controller: "dictionaries", action: "label_mapping_with_multiple_dic_readme"}, {:method => :get, :class => "customized_button"} %>
   </div>
 </div>
 

@@ -11,12 +11,13 @@ class DictionariesController < ApplicationController
     :index, :show, 
     :text_annotation_with_single_dic_readme, :text_annotation_with_single_dic, 
     :text_annotation_with_multiple_dic_readme, :select_dictionaries_for_text_annotation, :text_annotation_with_multiple_dic, 
-    :id_mapping_with_multiple_dic_readme, :select_dictionaries_for_id_mapping, :id_mapping, :ids_to_labels, 
+    :id_mapping_with_multiple_dic_readme, :select_dictionaries_for_id_mapping, :id_mapping,
+    :label_mapping_with_multiple_dic_readme, :select_dictionaries_for_label_mapping, :label_mapping,
   ]
 
   # Disable CSRF check for REST-API actions.
   skip_before_filter :verify_authenticity_token, :only => [
-    :text_annotation_with_multiple_dic, :text_annotation_with_single_dic, :ids_to_labels, :id_mapping
+    :text_annotation_with_multiple_dic, :text_annotation_with_single_dic, :id_mapping, :label_mapping
   ], :if => Proc.new { |c| c.request.format == 'application/json' }
 
 
@@ -218,18 +219,7 @@ class DictionariesController < ApplicationController
     @annotator_uri = ""
 
     if params[:commit] == "Add selected dictionaries"
-      diclist = JSON.parse(params[:dictionaries])
-
-      if params.has_key? :dictionaries_list and params[:dictionaries_list].has_key? :selected
-        params[:dictionaries_list][:selected].each do |dic_id|
-          dic = Dictionary.find_by_id  dic_id
-          if not dic.nil? and not diclist.include?  dic.title
-            diclist << dic.title
-          end
-        end
-      end
-
-      params[:dictionaries] = diclist.to_json
+      params[:dictionaries] = get_selected_diclist(params)
 
     elsif params[:commit] == "Generate URL"
       request_params = { 
@@ -331,74 +321,13 @@ class DictionariesController < ApplicationController
     end
   end
 
-  # Return a list of labels for a given list of IDs.
-  def ids_to_labels
-    basedic_names = JSON.parse(params["dictionaries"])
-    ann           = params["annotation"].nil?   ? nil : JSON.parse(params["annotation"])
-    opts          = get_opts_from_params(params)
-    results       = {}
-    
-    basedic_names.each do |basedic_name|
-      base_dic = Dictionary.find_showable_by_title  basedic_name, current_user
-
-      # 1. Add an error message if a dictionary is not accessible
-      if base_dic.nil?
-        if ann.has_key?("error") and ann["error"].has_key("message")
-          ann["error"]["message"] += ", \"#{basedic_name}\""
-        else
-          ann["error"] = {"message" => "Cannot find dictionaries: \"#{basedic_name}\""}
-        end
-
-      # 2. Retrieve labels for each ID based on a dictionary if it is accessible.
-      else
-        annotator  = TextAnnotator.new  basedic_name, current_user
-
-        if annotator.dictionary_exist?  basedic_name
-          tmp_result = annotator.ids_to_labels  ann, opts
-
-          tmp_result.each_value do |id_labels|
-            id_labels.each do |label|
-              label["dictionary_name"] = basedic_name
-            end
-          end
-
-          tmp_result.each_pair do |id, labels|
-            if results.key?(id)
-              results[id] += labels
-            else
-              results[id] = labels
-            end
-          end
-        end
-      end
-    end
-
-    ann["denotations"] = results
-
-    # Return the result.
-    respond_to do |format|
-      format.json { render :json => ann }
-    end
-  end
-
 
   # Multiple dictionary ID mapper URL generator.
   def id_mapping_with_multiple_dic_readme
     @annotator_uri = ""
 
     if params[:commit] == "Add selected dictionaries"
-      diclist = JSON.parse(params[:dictionaries])
-
-      if params.has_key? :dictionaries_list and params[:dictionaries_list].has_key? :selected
-        params[:dictionaries_list][:selected].each do |dic_id|
-          dic = Dictionary.find_by_id  dic_id
-          if not dic.nil? and not diclist.include?  dic.title
-            diclist << dic.title
-          end
-        end
-      end
-
-      params[:dictionaries] = diclist.to_json
+      params[:dictionaries] = get_selected_diclist(params)
 
     elsif params[:commit] == "Generate URL"
       request_params = { 
@@ -471,6 +400,84 @@ class DictionariesController < ApplicationController
     end
 
     # Return the results.
+    respond_to do |format|
+      format.json { render :json => results }
+    end
+  end
+
+  # Multiple dictionary label mapper URL generator.
+  def label_mapping_with_multiple_dic_readme
+    @annotator_uri = ""
+
+    if params[:commit] == "Add selected dictionaries"
+      params[:dictionaries] = get_selected_diclist(params)
+
+    elsif params[:commit] == "Generate URL"
+      request_params = { 
+        "dictionaries"    => params["dictionaries"],
+        "top_n"           => params["top_n"],
+        "output_format"   => params["output_format"],
+        }
+
+      @annotator_uri = "http://#{request.host}:#{request.port}#{request.fullpath.split("?")[0]}?#{request_params.to_query}"
+    end
+
+    respond_to do |format|
+      format.html 
+    end
+  end
+
+  # Select dictionaries for id_mapping_with_multiple_dic_readme.
+  def select_dictionaries_for_label_mapping
+    base_dics, order, order_direction = Dictionary.get_showables  current_user
+    @grid_dictionaries = get_dictionaries_grid_view  base_dics
+
+    respond_to do |format|
+      format.html { render layout: false }
+    end
+  end
+
+  # Return a list of labels for a given list of IDs.
+  def label_mapping
+    dic_titles = JSON.parse(params["dictionaries"])
+    ids        = params["ids"].nil?   ? nil : JSON.parse(params["ids"])
+    opts       = get_opts_from_params(params)
+    results    = {}
+    
+    dic_titles.each do |dic_title|
+      dic = Dictionary.find_showable_by_title  dic_title, current_user
+
+      if not dic.nil?
+        annotator  = TextAnnotator.new  dic_title, current_user
+
+        if annotator.dictionary_exist?  dic_title
+          ids_to_labels = annotator.ids_to_labels  ids, opts
+
+          ids_to_labels.each_pair do |id, labels|
+            # Remove duplicate labels for the same ID.
+            labels.uniq!
+            
+            # Format the output value.
+            if opts["output_format"] == "simple"
+              new_value = labels
+            else  # opts["output_format"] == "rich"
+              new_value = labels.collect do |label|
+                {label: label, dictionary_name: dic_title}
+              end
+            end
+
+            # Store the result.
+            if results.key?  id
+              results[id] += new_value
+            else
+              results[id] = new_value
+            end
+          end
+        end
+      end
+    end
+
+    # Return the result.
     respond_to do |format|
       format.json { render :json => results }
     end
@@ -697,6 +704,21 @@ class DictionariesController < ApplicationController
     return opts
   end
     
+  # Get a list of selected dictionaries.
+  def get_selected_diclist(params)
+    diclist = JSON.parse(params[:dictionaries])
+
+    if params.has_key? :dictionaries_list and params[:dictionaries_list].has_key? :selected
+      params[:dictionaries_list][:selected].each do |dic_id|
+        dic = Dictionary.find_by_id  dic_id
+        if not dic.nil? and not diclist.include?  dic.title
+          diclist << dic.title
+        end
+      end
+    end
+
+    diclist.to_json
+  end
 end
 
 

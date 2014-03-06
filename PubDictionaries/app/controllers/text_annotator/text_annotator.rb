@@ -72,24 +72,22 @@ class TextAnnotator
 
   # Return a hash of ID-LABEL pairs for an input list of IDs.
   #
-  # * (list) ann  - A list of IDs (ann["ids"]).
+  # * (array) ids  - A list of IDs
   # * (hash) opts  - A hash containing annotation options.
   #
-  def ids_to_labels(ann, opts)
+  def ids_to_labels(ids, opts)
     results = {}
-    ann["ids"].each do |id|
+
+    ids.each do |id|
+      results[id] = []
+
       entries = @pgr.get_entries_from_db(id, :uri)
-      if entries.empty?
-        results[id] = []
-      else
-        # Assumes that each ID has a unique (representative) label 
-        # results[id] = entries.collect do |x|
-        #   {"label" => x[:label]}
-        # end
-        results[id] = [ {"label" => entries[0][:label]} ]
+      entries.each do |entry|
+        results[id] << entry[:label]
       end
     end
 
+    # results = { id1:[label1, label2, ...], id2:[...], ...}
     results
   end
 

@@ -1,11 +1,11 @@
 <div class="dictionaries_page">
   <div class="dic_ann_uri_generator">
     <fieldset>
-      <legend>Dictionary Term to ID Mapper URL Generator</legend>
+      <legend>Dictionary ID to Label Mapper URL Generator</legend>
 
       <div class="option_selection_area">
 
-        <%= form_tag({:action => "id_mapping_with_multiple_dic_readme"}, {:method => :get}) do %>
+        <%= form_tag({:action => "label_mapping_with_multiple_dic_readme"}, {:method => :get}) do %>
           <div class="options">
             Options:
           </div>
@@ -16,18 +16,12 @@
                 <%= label_tag :dictionaries, "Dictionaries:" %>
                 <%= link_to(
                   "Select", 
-                  options = {action: "select_dictionaries_for_id_mapping", dictionaries: params[:dictionaries]}, 
+                  options = {action: "select_dictionaries_for_label_mapping", dictionaries: params[:dictionaries]}, 
                   html_options = {data: { :colorbox => true }} ) 
                 %>
                 <br />
                 <%= text_area_tag :dictionaries, params[:dictionaries], rows: 4, cols: 80, disabled: true %>
                 <%= hidden_field_tag :dictionaries, params[:dictionaries] %>
-              </div>
-            </li>
-            <li>
-              <div class="field">
-                <%= label_tag :threshold, "Threshold:" %>
-                <%= text_field_tag :threshold, 0.6, size: 8 %>
               </div>
             </li>
             <li>
@@ -65,18 +59,13 @@
       <div class="description">
         <div class="title">Explanation of options</div>
         <div class="option">
-          <div class="name">Threshold:</div>
-          <div class="desc">Use this value as the threshold (0.0 &lt; threshold &lt;= 1.0) for finding IDs of similar terms.</div>
-        </div>
-        <br />
-        <div class="option">
           <div class="name">Output limit:</div>
           <div class="desc">Limit the number of IDs for each term based on the similarity of the query term and a candidate term. If it is 0, all results will be returned.</div>
         </div>
         <br />
         <div class="option">
           <div class="name">Output Format:</div>
-          <div class="desc"><b>Simple format</b> returns a hash that uses a term as a key and an array of IDs associated with the key as its value. <b>Rich format</b> also returns a hash using a term as a key. However, the value associated with a key is an arrary of hashes (not an array of IDs). Each hash has ID (keyed with "uri") and the dictionary name from which the ID comes from (keyed with "dictionary_name").</div>
+          <div class="desc"><b>Simple format</b> returns a hash that uses an ID as a key and an array of labels associated with the key as its value. <b>Rich format</b> also returns a hash using an ID as a key. However, the value associated with the key is an arrary of hashes (not an array of labels). Each hash has label (keyed with "label") and the dictionary name from which the label comes from (keyed with "dictionary_name").</div>
         </div>
       </div>
       <br />

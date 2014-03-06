@@ -30,10 +30,12 @@ PubDictionaries::Application.routes.draw do
       get  'text_annotation', to: 'dictionaries#text_annotation_with_multiple_dic_readme'
       get  'select_dictionaries_for_text_annotation', to: 'dictionaries#select_dictionaries_for_text_annotation'
       post 'text_annotation', to: 'dictionaries#text_annotation_with_multiple_dic'
-      post 'ids_to_labels'
       get  'id_mapping', to: 'dictionaries#id_mapping_with_multiple_dic_readme'
       get  'select_dictionaries_for_id_mapping', to: 'dictionaries#select_dictionaries_for_id_mapping'
       post 'id_mapping', to: 'dictionaries#id_mapping'
+      get  'label_mapping', to: 'dictionaries#label_mapping_with_multiple_dic_readme'
+      get  'select_dictionaries_for_label_mapping', to: 'dictionaries#select_dictionaries_for_label_mapping'
+      post 'label_mapping', to: 'dictionaries#label_mapping'
     end  
 
     # Add routes as a member, /dictionary/:id/...
