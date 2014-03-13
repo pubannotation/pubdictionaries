@@ -57,7 +57,7 @@ if __FILE__ == $0
   email          = ARGV[0]
   password       = ARGV[1]
   url            = ARGV[2]
-  example_terms  = [ "NF-kappa B", "C-REL", "c-rel", "Brox", "this_term_does_not_exist"]
+  example_terms  = [ "NF-kappa B", "C-REL", "c-rel", "Brox", "this_term_does_not_exist", "kabuki syndrome"]
   
   # 2. Retrieve a ID list for each term.
   results = get_idlists(url, email, password, example_terms)
