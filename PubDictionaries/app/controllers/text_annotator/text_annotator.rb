@@ -36,7 +36,8 @@ class TextAnnotator
                  "threshold"        => 0.6,               # 0.0 <= "threshold" <= 1.0
                  "top_n"            => 0,                 # 0 for all results
                }
-               
+    
+    # Load sub-workers.           
     @pgr       = POSTGRESQL_RETRIEVER.new(@base_dic_name, @user_id)
     if @pgr.dictionary_exist?(@base_dic_name) == true
       @ssr = SIMSTRING_RETRIEVER.new(@base_dic_name)
@@ -215,7 +216,7 @@ class TextAnnotator
              max_tokens: @options["max_tokens"] }
     norm_opts  = @pgr.get_string_normalization_options
 
-    queries     = @qbuilder.build_queries(text, build_opts, norm_opts)
+    queries    = @qbuilder.build_queries(text, build_opts, norm_opts)
 
     # Perform query expansion using both the PG and SimString DBs.
     ext_queries = @qbuilder.expand_queries(queries, @options["threshold"], @ssr, @pgr)

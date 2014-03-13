@@ -393,17 +393,22 @@ class DictionariesController < ApplicationController
 
     # 2. Sort the results based on the similarity values.
     results.each_pair do |term, entries|   
-      entries.sort! { |x,y| y[:sim] <=> x[:sim] }
+      entries.sort! { |x, y| y[:sim] <=> x[:sim] }
     end
 
-    # 3. Keep top-n results.
+    # 3. Remove duplicate entries of the same ID.
+    results.each_pair do |term, entries|
+      results[term] = entries.uniq { |elem| elem[:uri] }     # Assume it removes the later element.
+    end
+
+    # 4. Keep top-n results.
     results.each_pair do |term, entries|   
       if opts["top_n"] < 0 and entries.size >= opts["top_n"]
         results[term] = entries[0...opts["top_n"]]
       end
     end
 
-    # 4. Format the output. 
+    # 5. Format the output. 
     results.each_pair do |term, entries|
       if opts["output_format"] == nil or opts["output_format"] == "simple"
         results[term].collect! do |entry| 
