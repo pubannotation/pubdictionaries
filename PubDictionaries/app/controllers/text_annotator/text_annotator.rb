@@ -126,7 +126,8 @@ class TextAnnotator
         sim_terms.each do |sim_term|
           # Retrieve entries in both :entries and :new_entries except in :removed_entries.
           entries = @pgr.get_entries_from_db(sim_term[:requested_query], :search_title)
-          exp_IDs[ori_term] = entries.collect do |x|
+          # Rails.logger.debug entries.inspect
+          exp_IDs[ori_term] += entries.collect do |x|
             x[:uri]
           end
 
@@ -135,6 +136,7 @@ class TextAnnotator
             break
           end
         end
+        # Rails.logger.debug exp_IDs[ori_term].inspect
       end
 
       exp_IDs
