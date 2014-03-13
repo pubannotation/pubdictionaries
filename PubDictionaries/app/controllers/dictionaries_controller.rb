@@ -366,47 +366,55 @@ class DictionariesController < ApplicationController
     opts       = get_opts_from_params(params)
     results    = {}
 
+    # 1. Get a list of entries for each term.
     dic_titles.each do |dic_title|
-      # Retrieve labels for each ID based on a dictionary if it is accessible.
-      dic = Dictionary.find_showable_by_title  dic_title, current_user
+      if Dictionary.find_showable_by_title(dic_title, current_user).nil?
+        next
+      end
 
-      if not dic.nil?
-        annotator = TextAnnotator.new  dic_title, current_user
+      annotator = TextAnnotator.new  dic_title, current_user
+      if not annotator.dictionary_exist?  dic_title
+        next
+      end
 
-        if annotator.dictionary_exist?  dic_title
-          # Return value is in the format of 
-          #   { "term1" => [ "123", "124", ... ], "term2" => [ "243", "1052", ... ], "term3" => ... }
-          terms_to_idlists = annotator.terms_to_idlists  terms, opts
+      # Retrieve an entry list for each term.
+      terms_to_entrylists = annotator.terms_to_entrylists  terms, opts
+      
+      # Add add "dictionary_name" value to each entry object and store
+      #   all of them into results.
+      terms_to_entrylists.each_pair do |term, entries|
+        entries.each do |entry| 
+          entry[:dictionary_name] = dic_title
+        end
+        
+        results[term].nil? ? results[term] = entries : results[term] += entries
+      end
+    end
 
-          terms_to_idlists.each_pair do |term, ids|    
-            # Format the output value.
-            if nil == opts["output_format"] or "simple" == opts["output_format"]
-              new_value = ids.collect { |x| x[:uri] }
-            else  # opts["output_format"] == "rich"
-              new_value = ids.collect { |x| {uri: x[:uri], sim: x[:sim], dictionary_name: dic_title } }
-            end
+    # 2. Sort the results based on the similarity values.
+    results.each_pair do |term, entries|   
+      entries.sort! { |x,y| y[:sim] <=> x[:sim] }
+    end
 
-            # Store the result.
-            if results.key?(term)
-              results[term] += new_value
-            else
-              results[term] = new_value
-            end
-          end
+    # 3. Keep top-n results.
+    results.each_pair do |term, entries|   
+      if opts["top_n"] < 0 and entries.size >= opts["top_n"]
+        results[term] = entries[0...opts["top_n"]]
+      end
+    end
+
+    # 4. Format the output. 
+    results.each_pair do |term, entries|
+      if opts["output_format"] == nil or opts["output_format"] == "simple"
+        results[term].collect! do |entry| 
+          entry[:uri]
+        end
+      else
+        results[term].collect! do |entry| 
+          { uri: entry[:uri], score: entry[:sim], dictionary_name: entry[:dictionary_name] }
         end
       end
     end
-
-    # Sort the results based on the similarity between an original query and its expanded query.
-    results.each_pair do |ori_term, lst|   
-      # 1. Sort the results based on the similarity between an original query and a similar one.
-      lst.sort! { |x,y| y[:sim] <=> x[:sim] }
-      # 2. Keep top-n results.
-      if opts["top_n"] > 0 and lst.size >= opts["top_n"]
-        results[ori_term] = lst[0...opts["top_n"]]
-      end
-    end
-
 
     # Return the results.
     respond_to do |format|
