@@ -381,11 +381,9 @@ class DictionariesController < ApplicationController
           terms_to_idlists.each_pair do |term, ids|    
             # Format the output value.
             if nil == opts["output_format"] or "simple" == opts["output_format"]
-              new_value = ids
+              new_value = ids.collect { |x| x[:uri] }
             else  # opts["output_format"] == "rich"
-              new_value = ids.collect do |id|
-                {uri: id, dictionary_name: dic_title} 
-              end
+              new_value = ids.collect { |x| {uri: x[:uri], sim: x[:sim], dictionary_name: dic_title } }
             end
 
             # Store the result.
@@ -398,6 +396,17 @@ class DictionariesController < ApplicationController
         end
       end
     end
+
+    # Sort the results based on the similarity between an original query and its expanded query.
+    results.each_pair do |ori_term, lst|   
+      # 1. Sort the results based on the similarity between an original query and a similar one.
+      lst.sort! { |x,y| y[:sim] <=> x[:sim] }
+      # 2. Keep top-n results.
+      if opts["top_n"] > 0 and lst.size >= opts["top_n"]
+        results[ori_term] = lst[0...opts["top_n"]]
+      end
+    end
+
 
     # Return the results.
     respond_to do |format|
