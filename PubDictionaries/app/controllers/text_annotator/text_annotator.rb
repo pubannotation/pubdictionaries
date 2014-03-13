@@ -99,7 +99,7 @@ class TextAnnotator
   #                    1) opts["threshold"] : for query expansion.
   #                    2) opts["top_n"]     : for limiting the number of IDs.
   #
-  def terms_to_idlists(terms, opts)
+  def terms_to_entrylists(terms, opts)
     norm_opts  = @pgr.get_string_normalization_options
     trier      = TEXT_TO_TRIE.new
     expanded_terms  = {}
