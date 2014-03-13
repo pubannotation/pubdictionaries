@@ -61,24 +61,17 @@ class POSTGRESQL_RETRIEVER
 	#  query based on PostgreSQL's trigram search (pg_trgm extension).
 	#
 	def retrieve_similar_strings(query, threshold)
-		# TODO: refactoring this...
-		basedic_id = -1
-		userdic_id = -1
-
+		# 1. Get the user dictionary id to retrieve similar tmers to the query.
 		basedic = @db[:dictionaries].select(:id).where(:title => @dic_name).all
-		if basedic.empty?
+		userdic = @db[:user_dictionaries].select(:id).
+			where(:dictionary_id => basedic.first[:id]).where(:user_id => @user_id).all
+		if userdic.empty?
 			return []
-		else
-			basedic_id  = basedic.first[:id]
-
-			userdic  = @db[:user_dictionaries].select(:id).where(:dictionary_id => basedic_id).all
-			if userdic.empty?
-				return []
-			else
-				userdic_id  = userdic.first[:id]
-			end
+		else			
+			userdic_id = userdic.first[:id]     # Assume that a user has only one user dictionary for a specific base dictionary.
 		end
 
+		# 2. Perform query expansion.
 		simfun      = Sequel.function(:similarity, :search_title, query)
 		
 		# Extracts a list of similar entry names compared to the query
@@ -97,12 +90,8 @@ class POSTGRESQL_RETRIEVER
 		# 			  		:query => query, 
 		# 			  		)
 		# end
-		
 		results = []
-		ds.all.each do |row| 
-			results << row[:search_title] 
-		end
-
+		ds.all.each { |row| results << row[:search_title] }
 		results.uniq
 	end
 

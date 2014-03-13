@@ -100,47 +100,76 @@ class TextAnnotator
   #                    2) opts["top_n"]     : for limiting the number of IDs.
   #
   def terms_to_idlists(terms, opts)
-    # 1. Find similar terms for each input term based on the given threshold.
     norm_opts  = @pgr.get_string_normalization_options
     trier      = TEXT_TO_TRIE.new
-    
-    exp_terms  = {}
+    expanded_terms  = {}
+    expanded_IDs    = {}
+
+    # 1. Perform query expansion for each input term based on a given threshold. The output 
+    # is structured as follows.
+    #
+    #  expanded_terms = { 
+    #    "an original input term 1" => [ 
+    #      {
+    #        :original_query  => "a normlaized input term 1"}
+    #        :requested_query => "a term similar to :original_query",
+    #        :offset          => a range object (absolute position within a given text),
+    #        :sim             => 0.0~1.0
+    #      },
+    #      {
+    #        :original_query  => "a normlaized input term 1"}
+    #        :requested_query => "a term similar to :original_query",
+    #        :offset          => a range object (absolute position within a given text),
+    #        :sim             => 0.0~1.0
+    #      },
+    #      ...
+    #    ],
+    #    ...
+    #  }
+    #    
     terms.uniq.each do |term|
       offsets   = [(0...term.length)]
-       norm_term = trier.normalize_term(term, 
-         norm_opts[:lowercased], norm_opts[:hyphen_replaced], norm_opts[:stemmed])
+      norm_term = trier.normalize_term(
+        term, norm_opts[:lowercased], norm_opts[:hyphen_replaced], norm_opts[:stemmed]
+      )
 
-      exp_terms[term] = @qbuilder.expand_query(norm_term, offsets, opts["threshold"], @ssr, @pgr)
+      expanded_terms[term] = @qbuilder.expand_query(norm_term, offsets, opts["threshold"], @ssr, @pgr)
 
       # Keep only top n similar terms to speed up ID search.
       if opts["top_n"] > 0
-        exp_terms[term].sort! { |x, y| y[:sim] <=> x[:sim] }
-        exp_terms[term] = exp_terms[term][0...opts["top_n"]]
+        expanded_terms[term].sort! { |x, y| y[:sim] <=> x[:sim] }
+        expanded_terms[term] = expanded_terms[term][0...opts["top_n"]]
       end
     end
 
     # 2. Get a list of IDs for each term.
-    exp_IDs = {}
-      exp_terms.each do |ori_term, sim_terms|
-        exp_IDs[ori_term] = []
-        sim_terms.each do |sim_term|
-          # Retrieve entries in both :entries and :new_entries except in :removed_entries.
-          entries = @pgr.get_entries_from_db(sim_term[:requested_query], :search_title)
-          # Rails.logger.debug entries.inspect
-          exp_IDs[ori_term] += entries.collect do |x|
-            x[:uri]
-          end
-
-          # Stop the loop after havesting enough IDs.
-          if opts["top_n"] > 0 and exp_IDs[ori_term].size >= opts["top_n"] 
-            break
-          end
+    expanded_terms.each do |ori_term, sim_terms|
+      expanded_IDs[ori_term] = []
+      
+      # 2.1. Get a list of DB entries for an original 
+      sim_terms.each do |sim_term|
+        entries = @pgr.get_entries_from_db(sim_term[:requested_query], :search_title)
+        expanded_IDs[ori_term] += entries.collect do |entry|
+          { uri: entry[:uri], sim: sim_term[:sim] }     # URI, Similarity
         end
-        # Rails.logger.debug exp_IDs[ori_term].inspect
       end
+      
 
-      exp_IDs
+      #   The following two steps should be done above level since multiple dictionaries 
+      # can affect the order.
+      
+      # 2.2. Sort the list based on the similarity value.
+      # expanded_IDs[ori_term].sort! { |x, y| y[:sim] <=> x[:sim] }
+
+      # 2.3. Sort the result.
+      #
+      # if opts["top_n"] > 0 and expanded_IDs[ori_term].size >= opts["top_n"]
+      #   expanded_IDs[ori_term] = expanded_IDs[ori_term][0...opts["top_n"]]
+      # end
     end
+
+    expanded_IDs
+  end
 
 
   ###################################

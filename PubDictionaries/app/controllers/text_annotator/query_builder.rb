@@ -67,7 +67,6 @@ class QUERY_BUILDER
 
 	def expand_query(q, offsets, threshold, ssr, pgr)
 		basedic_new_queries = ssr.retrieve_similar_strings(q, @measure, threshold)
-		
 		userdic_new_queries = pgr.retrieve_similar_strings(q, relaxed_threshold(threshold)).delete_if do |item|
 			basedic_new_queries.include?(item)
 		end
