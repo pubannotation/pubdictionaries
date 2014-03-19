@@ -1,5 +1,6 @@
 require 'set'
-
+require 'pathname'
+require 'fileutils'
 
 require File.join( Rails.root, '..', 'simstring/swig/ruby/simstring')
 require File.join( File.dirname( __FILE__ ), 'text_annotator/text_annotator' )
@@ -73,6 +74,67 @@ class DictionariesController < ApplicationController
     end
   end
 
+  def new
+    @dictionary = Dictionary.new
+    @dictionary.creator = current_user.email     # set the creator with the user name (email)
+
+    respond_to do |format|
+      format.html # new.html.erb
+      format.json { render json: @dictionary }
+    end
+  end
+
+  def create
+    # 1. Create a dictionary.
+    @dictionary = User.find(current_user.id).dictionaries.new params[:dictionary]
+    @dictionary.title.strip!
+    @dictionary.creator = current_user.email
+    @dictionary.save
+    
+    # 2. Copy an uploaded file so it will not be unlinked when the action finishes.
+    #   delayed_job will use the copied file.
+    src_uploadedfile = params[:dictionary][:file].tempfile.path
+    trg_uploadedfile = File.join("public", "tempfiles/#{@dictionary.title}")
+    FileUtils.cp  src_uploadedfile, trg_uploadedfile
+    sep              = params[:dictionary][:separator] 
+
+    # Caution!!! trg_uploadedfile must be deleted after the delayed job!!!
+    @dictionary.delay.import_entries_and_create_simstring_db  trg_uploadedfile, sep
+  
+    respond_to do |format|
+      format.html{ redirect_to dictionaries_url, 
+        notice: 'Creating a dictionary in the background...' 
+      }
+    end
+  end
+
+  # Destroy a base dictionary and the associated user dictionaries (of other users too).
+  def destroy
+    base_dic = Dictionary.find_showable_by_title  params[:id], current_user
+
+    if not base_dic  
+      ret_url = :back
+      ret_msg = "Cannot find a dictionary."
+    else
+      flag, msg = base_dic.is_destroyable?  current_user
+
+      if flag == false
+        ret_url = :back
+        ret_msg = msg
+      else
+        base_dic.destroy
+        ret_url = dictionaries_url
+        ret_msg = msg
+      end
+    end
+
+    respond_to do |format|
+      format.html{ redirect_to ret_url, notice: ret_msg }
+      format.json { head :no_content }
+    end
+  end
+
+
   # Disable (or enable) multiple selected entries (from the base dictionary).
   def disable_entries
     dic = Dictionary.find_showable_by_title  params[:id], current_user
@@ -130,89 +192,6 @@ class DictionariesController < ApplicationController
       format.html { redirect_to :back }
     end
   end
-
-  def new
-    @dictionary = Dictionary.new
-    @dictionary.creator = current_user.email     # set the creator with the user name (email)
-
-    respond_to do |format|
-      format.html # new.html.erb
-      format.json { render json: @dictionary }
-    end
-  end
-
-  def create
-    # Creates a dictionary
-    @dictionary = User.find(current_user.id).dictionaries.new  params[:dictionary]
-    @dictionary.title.strip!
-    @dictionary.creator = current_user.email
-    b_basedic_saved = @dictionary.save
-
-    # Fills the entries of the dictionary
-    b_entries_saved = false
-    if b_basedic_saved
-      b_entries_saved = fill_dic  params[:dictionary]
-    end
-
-    respond_to do |format|
-      if b_basedic_saved and b_entries_saved
-        create_simstring_db
-        format.html{ redirect_to @dictionary, notice: 'Dictionary was successfully created.' }
-      elsif b_basedic_saved and not b_entries_saved
-        @dictionary.destroy
-        format.html{ redirect_to :back, notice: 'Failed to save a dictionary!' }
-      else
-        format.html{ render action: 'new' }
-      end
-    end
-  end
-
-
-  # Destroy a base dictionary and the associated user dictionaries (of other users too).
-  def destroy
-    base_dic = Dictionary.find_showable_by_title  params[:id], current_user
-
-    if not base_dic  
-      ret_url = :back
-      ret_msg = "Cannot find a dictionary."
-
-    else
-      # if not is_destroyable?(base_dic)
-      flag, msg = base_dic.is_destroyable?  current_user
-      if flag == false
-        ret_url = :back
-        ret_msg = msg
-
-      else
-        # Delete the entries of the base dictionary (@dictionary.destroy is too slow).
-        Entry.where("dictionary_id = ?", base_dic.id).delete_all
-
-        # Delete new and removed entries of the associated user dictionaries.
-        base_dic.user_dictionaries.all.each do |user_dic|
-          NewEntry.where("user_dictionary_id = ?", user_dic.id).delete_all
-          RemovedEntry.where("user_dictionary_id = ?", user_dic.id).delete_all
-        end
-
-        # Delete the associated user dictionaries.
-        UserDictionary.where("dictionary_id = ?", base_dic.id).delete_all
-
-        # Delete the dictionary.
-        Dictionary.where("id = ?", base_dic.id).delete_all
-
-        # Delete the associated SimString DB.
-        delete_simstring_db  base_dic.title
-
-        ret_url = dictionaries_url
-        ret_msg = msg
-      end
-    end
-
-    respond_to do |format|
-      format.html{ redirect_to ret_url, notice: ret_msg }
-      format.json { head :no_content }
-    end
-  end
-
 
   # Multiple dictionary annotator URL generator.
   def text_annotation_with_multiple_dic_readme
@@ -391,25 +370,20 @@ class DictionariesController < ApplicationController
       end
     end
 
-    # 2. Sort the results based on the similarity values.
+    # 2. Perform post-processes.
     results.each_pair do |term, entries|   
+      # 2.1. Sort the results based on the similarity values.
       entries.sort! { |x, y| y[:sim] <=> x[:sim] }
-    end
 
-    # 3. Remove duplicate entries of the same ID.
-    results.each_pair do |term, entries|
+      # 2.2. Remove duplicate entries of the same ID.
       results[term] = entries.uniq { |elem| elem[:uri] }     # Assume it removes the later element.
-    end
 
-    # 4. Keep top-n results.
-    results.each_pair do |term, entries|   
+      # 2.3. Keep top-n results.
       if opts["top_n"] < 0 and entries.size >= opts["top_n"]
         results[term] = entries[0...opts["top_n"]]
       end
-    end
 
-    # 5. Format the output. 
-    results.each_pair do |term, entries|
+      # 2.4. Format the output.
       if opts["output_format"] == nil or opts["output_format"] == "simple"
         results[term].collect! do |entry| 
           entry[:uri]
@@ -421,7 +395,7 @@ class DictionariesController < ApplicationController
       end
     end
 
-    # Return the results.
+    # 3. Return the results.
     respond_to do |format|
       format.json { render :json => results }
     end
@@ -610,92 +584,6 @@ class DictionariesController < ApplicationController
     entries.collect{ |e| "#{e.view_title}\t#{e.label}\t#{e.uri}\n" }.join
   end
 
-  # Fill entries for a given dictionary
-  def fill_dic(dic_params)
-    input_file  = dic_params[:file]
-    sep         = dic_params[:separator]
-    norm_opts   = { lowercased:      dic_params[:lowercased], 
-                    hyphen_replaced: dic_params[:hyphen_replaced],
-                    stemmed:         dic_params[:stemmed],
-                  }
-    str_error   = ""
-
-    if not input_file
-      str_error = "File is not selected" 
-    else
-      # Add entries to the dictionary
-      data = input_file.read
-      data.gsub! /\r\n?/, "\n"     # replace \r, \r\n with \n
-
-      entries = []
-      data.split("\n").each do |line|
-        line.chomp!
-        items = line.split(sep)
-
-        # Model#new creates an object but not save it, while Model#create do both.
-        entries << @dictionary.entries.new( { view_title:  items[0], 
-                                             search_title: normalize_str(items[0], norm_opts), 
-                                             uri:          items[1],
-                                             label:        items[2],     # nil if label column is not given.
-                                          } )
-        if entries.length == 2000
-          @dictionary.entries.import entries
-          entries.clear
-        end
-      end
-
-      # Uses activerecord-import gem to accelerate the bulk import speed
-      # @dictionary.entries.import entries
-      if entries.length != 0
-        @dictionary.entries.import entries
-      end
-    end
-
-    return str_error
-  end
-
-  # Create a simstring db
-  def create_simstring_db
-    dbfile_path = Rails.root.join('public/simstring_dbs', params[:dictionary][:title]).to_s
-
-    #time_start = Time.new
-    #logger.debug "... Starts to generate a simstring DB."
-
-    db = Simstring::Writer.new(dbfile_path, 3, true, true)     # (filename, n-gram, begin/end marker, unicode)
-
-    # @dictionary.entries.each do |entry|     #     This is too slow
-    Entry.where(dictionary_id: @dictionary.id).pluck(:search_title).uniq.each do |search_title|
-      db.insert(search_title)
-    end
-
-    db.close
-    #logger.debug "... Finishes generating a simstring DB."
-    #logger.debug "...... Total time elapsed: #{Time.new - time_start} seconds"
-  end
-
-  # Delete a simstring db and associated files
-  def delete_simstring_db( filename )
-    dbfile_path = Rails.root.join('public/simstring_dbs', filename).to_s
-    
-    # Remove the main db file
-    begin
-      File.delete(dbfile_path)
-    rescue
-      # Silently ignore the error
-    end
-
-    # Remove auxiliary db files
-    pattern = dbfile_path + ".[0-9]+.cdb"
-    Dir.glob(dbfile_path + '.*.cdb').each do |aux_file|
-      if /#{pattern}/.match(aux_file) 
-        begin
-          File.delete(aux_file)
-        rescue
-          # Silently ignores the error
-        end
-      end
-    end
-  end
 
   # Annotate input text by using a given dictionary.
   def annotate_text_with_dic(text, basedic_name, opts, current_user)
