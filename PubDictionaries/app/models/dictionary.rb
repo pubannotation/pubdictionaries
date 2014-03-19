@@ -61,6 +61,7 @@ class Dictionary < ActiveRecord::Base
     return lst, order, order_direction
   end
 
+
   # Find a dictionary by its title.
   # @return
   #   dictionary instance - a dictionary foundnil - 'title' dictionary does not 
@@ -107,6 +108,7 @@ class Dictionary < ActiveRecord::Base
 
     return true
   end
+
 
   # Clean-up entries, user_dictionaries, and simstring db in a fast way.
   def destroy_entries_and_simstring_db
@@ -169,39 +171,59 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
-  def read_entries(fp, separator, max_entries)
-    new_entries = []
+  def read_entries(fp, sep, max)
+    entries = []
 
-    (0...max_entries).each do |n|
-      if fp.eof?
-        $stderr.puts "-- 3"
-        break
+    while entries.size < max and not fp.eof?
+      line = fp.readline.strip!
+
+      if is_proper_raw_entry? line, sep
+        title, uri, label = parse_raw_entry_from  line, sep
+        entries << assemble_entry_from(title, uri, label)
       else
-        $stderr.puts "-- 4"
-        line  = fp.readline.strip!
-        items = line.split separator
-    
-        # Create an array of entries.
-        e = Entry.new( 
-          { view_title:   items[0], 
-            search_title: normalize_str(
-              items[0], 
-              { lowercased: self.lowercased, 
-                hyphen_replaced: self.hyphen_replaced, 
-                stemmed: self.stemmed,
-              } ), 
-            uri:          items[1],
-            label:        items[2],     # nil if label column is not given.
-          } )
-        $stderr.puts "-- 5"
-        e.dictionary_id = self.id
-        new_entries << e
-        $stderr.puts "-- 6"
+        # Currently, we ignore bad input lines.
+        next
       end
     end
 
-    return new_entries
+    return entries
   end
+
+  # Do sanity checks on raw input line.
+  def is_proper_raw_entry?(line, sep)
+    # Max length is 255 since all Entry fields are string type.
+    return false if line.length > 255
+
+    items = line.split separator
+    return false if items.size < 2 or items.size > 3
+
+    return true
+  end
+
+  def parse_raw_entry_from(line, sep)
+    items = line.split separator
+
+    if items.size == 2
+      return items[0], items[1], ""
+    else
+      return items[0], items[1], items[2]
+    end
+  end
+
+  def assemble_entry_from(title, uri, label)
+    e = Entry.new
+
+    e.dictionary_id = self.id
+    e.view_title    = title
+    e.search_title  = normalize_str( title, 
+      {lowercased: self.lowercased, hyphen_replaced: self.hyphen_replaced, stemmed: self.stemmed}
+    )
+    e.uri           = uri
+    e.label         = label
+
+    return e
+  end
+
 
   # Create a SimString DB.
   def create_ssdb
