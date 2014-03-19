@@ -8,4 +8,5 @@ if [ "$old_pid" == "" ]; then
 else
 	echo "Kill an old master process"
 	kill $old_pid
+	RAILS_ENV=production script/delayed_job stop
 fi
