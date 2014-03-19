@@ -22,12 +22,9 @@ class Dictionary < ActiveRecord::Base
                       :with => /^[^\.]*$/,
                       :message => "should not contain dot!"
 
-  # after_save :import_entries_and_create_simstring_db
-  before_destroy :destroy_entries_and_simstring_db
-
   
   def to_param
-    # Overrides original to_param so that it returns title, not ID, for constructing URLs. 
+    # Override the original to_param so that it returns title, not ID, for constructing URLs. 
     # Use Model#find_by_title() instead of Model.find() in controllers.
     title
   end
@@ -107,6 +104,31 @@ class Dictionary < ActiveRecord::Base
     end
 
     File.delete file
+
+    return true
+  end
+
+  # Clean-up entries, user_dictionaries, and simstring db in a fast way.
+  def destroy_entries_and_simstring_db
+    # 1. Delete the entries of a base dictionary.
+    #    - Use "delete_all" instead of "destroy" to speed up.
+    #
+    # self.entries.delete_all  # Caution!!!  This will delete each entry at a time!!
+    Entry.delete_all  ["dictionary_id = ?", self.id]
+
+    # 2. Delete user dictionaries associated with the base dictionary, 
+    #   and their entries.
+    self.user_dictionaries.each do |user_dic|
+      # user_dic.new_entries.delete_all
+      # user_dic.removed_entries.delete_all
+      NewEntry.delete_all  ["user_dictionary_id = ?", user_dic.id]
+      RemovedEntry.delete_all  ["user_dictionary_id = ?", user_dic.id]
+
+      user_dic.destroy
+    end
+
+    # 3. Delete the associated SimString DB.
+    delete_ssdb
 
     return true
   end
@@ -208,27 +230,6 @@ class Dictionary < ActiveRecord::Base
   ######################################################
   #####     Codes for destroying a dictionary.     #####
   ######################################################
-
-  # Clean-up entries, user_dictionaries, and simstring db in a fast way.
-  def destroy_entries_and_simstring_db
-    # 1. Delete the entries of a base dictionary.
-    #    - Use "delete_all" instead of "destroy" to speed up.
-    self.entries.delete_all
-
-    # 2. Delete user dictionaries associated with the base dictionary, 
-    #   and their entries.
-    self.user_dictionaries.each do |user_dic|
-      user_dic.new_entries.delete_all
-      user_dic.removed_entries.delete_all
-
-      user_dic.destroy
-    end
-
-    # 3. Delete the associated SimString DB.
-    delete_ssdb
-
-    return true
-  end
 
   def delete_ssdb
     dbfile_path = Rails.root.join('public/simstring_dbs', self.title).to_s

@@ -122,7 +122,11 @@ class DictionariesController < ApplicationController
         ret_url = :back
         ret_msg = msg
       else
+        # Speed up the deletion speed by using delete_all.
+        base_dic.destroy_entries_and_simstring_db  
+        # Delete a dictionary with 0 entries (FAST! :-)
         base_dic.destroy
+        
         ret_url = dictionaries_url
         ret_msg = msg
       end
