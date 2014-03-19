@@ -158,12 +158,12 @@ class Dictionary < ActiveRecord::Base
   ########################################################
 
   # Import entries.
-  def import_entries(file, separator)
+  def import_entries(file, sep)
     if file.nil?
       return false
     else
       fp = File.open(file)
-      while (tmp_entries = read_entries(fp, separator, 1000)) != [] do
+      while (tmp_entries = read_entries(fp, sep, 1000)) != [] do
         self.entries.import tmp_entries
       end
       fp.close()
@@ -182,7 +182,6 @@ class Dictionary < ActiveRecord::Base
         entries << assemble_entry_from(title, uri, label)
       else
         # Currently, we ignore bad input lines.
-        next
       end
     end
 
@@ -192,16 +191,20 @@ class Dictionary < ActiveRecord::Base
   # Do sanity checks on raw input line.
   def is_proper_raw_entry?(line, sep)
     # Max length is 255 since all Entry fields are string type.
-    return false if line.length > 255
+    if line.length > 255
+      return false
+    end
 
-    items = line.split separator
-    return false if items.size < 2 or items.size > 3
+    items = line.split sep
+    if items.size < 2 or items.size > 3
+      return false
+    end
 
     return true
   end
 
   def parse_raw_entry_from(line, sep)
-    items = line.split separator
+    items = line.split sep
 
     if items.size == 2
       return items[0], items[1], ""
