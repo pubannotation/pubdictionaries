@@ -12,5 +12,6 @@ else
 	# Shut down the old process gracefully and reload it
 	echo "Kill an old master process and reload a new one"
 	kill -s USR2 $old_pid
+	RAILS_ENV=production script/delayed_job stop
 	RAILS_ENV=production script/delayed_job -n 4 start
 fi
