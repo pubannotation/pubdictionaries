@@ -99,7 +99,7 @@ class DictionariesController < ApplicationController
     sep              = params[:dictionary][:separator] 
 
     # Caution!!! trg_uploadedfile must be deleted after the delayed job!!!
-    @dictionary.delay.import_entries_and_create_simstring_db  trg_uploadedfile, sep
+    @dictionary.import_entries_and_create_simstring_db  trg_uploadedfile, sep
   
     respond_to do |format|
       format.html{ redirect_to dictionaries_url, 
