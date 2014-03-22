@@ -162,7 +162,9 @@ class Dictionary < ActiveRecord::Base
     if file.nil?
       return false
     else
-      fp = File.open(file)
+      # "textmode: true" option automatically converts all newline variants to \n
+      fp = File.open(file, textmode: true)     
+
       while (tmp_entries = read_entries(fp, sep, 1000)) != [] do
         self.entries.import tmp_entries
       end
@@ -175,7 +177,7 @@ class Dictionary < ActiveRecord::Base
     entries = []
 
     while entries.size < max and not fp.eof?
-      line = fp.readline.strip!
+      line = fp.readline.strip!     # This can't handle "\r" (OSX) newline!
 
       if is_proper_raw_entry? line, sep
         title, uri, label = parse_raw_entry_from  line, sep
