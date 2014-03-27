@@ -6,9 +6,10 @@ require File.join( Rails.root, '..', 'simstring/swig/ruby/simstring')
 class Dictionary < ActiveRecord::Base
   include StringManipulator
 
-
   attr_accessor :file, :separator, :sort
-  attr_accessible :title, :creator, :description, :lowercased, :stemmed, :hyphen_replaced, :user_id, :public, :file, :separator, :sort
+  attr_accessible :title, :creator, :description, :lowercased, :stemmed, :hyphen_replaced,
+    :user_id, :public, :created_by_delayed_job, :confirmed_error_messages, :error_messages,
+    :file, :separator, :sort
 
   belongs_to :user
 
@@ -33,13 +34,13 @@ class Dictionary < ActiveRecord::Base
   # Return a list of dictionaries.
   def self.get_showables(user=nil, dic_type=nil)
     if user == nil
-      lst   = where(:public => true)
+      lst   = where(:public => true).where(:created_by_delayed_job => true)
       order = 'created_at'
       order_direction = 'desc'
 
     else
       if dic_type == 'my_dic'
-        lst   = where(user_id: user.id)
+        lst   = where(user_id: user.id).where(:created_by_delayed_job => true)
         order = 'created_at'
         order_direction = 'desc'
 
@@ -47,12 +48,12 @@ class Dictionary < ActiveRecord::Base
         dic_ids = UserDictionary.get_dictionary_ids_by_user_id(user.id)
 
         # Sort a list based on user_dictionaries#updated_at attribute. 
-        lst   = Dictionary.joins(:user_dictionaries).where('dictionaries.id IN (?)', dic_ids)
+        lst   = Dictionary.joins(:user_dictionaries).where('dictionaries.id IN (?)', dic_ids).where(:created_by_delayed_job => true)
         order = 'user_dictionaries.updated_at'
         order_direction = 'desc'
 
       else
-        lst   = where('public = ? OR user_id = ?', true, user.id)
+        lst   = where('public = ? OR user_id = ?', true, user.id).where(:created_by_delayed_job => true)
         order = 'created_at'
         order_direction = 'desc'
       end
@@ -68,15 +69,15 @@ class Dictionary < ActiveRecord::Base
   #   exist or not showable. nil if it does not exist or showable dictionary by its title.
   def self.find_showable_by_title(title, user)
     if user.nil?
-      where(title: title).where(public: true).first
+      where(:title => title).where(:public => true).where(:created_by_delayed_job => true).first
     else
-      where(title: title).where('public = ? OR user_id = ?', true, user.id).first
+      where(:title => title).where('public = ? OR user_id = ?', true, user.id).where(:created_by_delayed_job => true).first
     end
   end
 
   # Return a list of latest showable dictionaries.
   def self.get_latest_dictionaries(n=10)
-    where('public = ?', true).order('created_at desc').limit(n)
+    where('public = ?', true).where(:created_by_delayed_job => true).order('created_at desc').limit(n)
   end
 
   # true if the given base dictionary is destroyable; otherwise, false.
@@ -95,6 +96,7 @@ class Dictionary < ActiveRecord::Base
   def import_entries_and_create_simstring_db(file, separator)
     # 1. Import entries.
     if import_entries(file, separator) == false
+      Entry.delete_all  ["dictionary_id = ?", self.id]
       return false
     end
     
@@ -106,7 +108,9 @@ class Dictionary < ActiveRecord::Base
 
     File.delete file
 
-    return true
+    # 3. Check that this job is done!
+    self.created_by_delayed_job = true
+    save
   end
 
 
@@ -115,14 +119,11 @@ class Dictionary < ActiveRecord::Base
     # 1. Delete the entries of a base dictionary.
     #    - Use "delete_all" instead of "destroy" to speed up.
     #
-    # self.entries.delete_all  # Caution!!!  This will delete each entry at a time!!
     Entry.delete_all  ["dictionary_id = ?", self.id]
 
     # 2. Delete user dictionaries associated with the base dictionary, 
     #   and their entries.
     self.user_dictionaries.each do |user_dic|
-      # user_dic.new_entries.delete_all
-      # user_dic.removed_entries.delete_all
       NewEntry.delete_all  ["user_dictionary_id = ?", user_dic.id]
       RemovedEntry.delete_all  ["user_dictionary_id = ?", user_dic.id]
 
@@ -160,12 +161,14 @@ class Dictionary < ActiveRecord::Base
   # Import entries.
   def import_entries(file, sep)
     if file.nil?
+      self.error_messages += "File stream is nil!\n"
       return false
     else
       # "textmode: true" option automatically converts all newline variants to \n
-      fp = File.open(file, textmode: true)     
+      fp = File.open(file, textmode: true)
+      kline = 0
 
-      while (tmp_entries = read_entries(fp, sep, 1000)) != [] do
+      while (tmp_entries = read_entries(fp, sep, 1000, kline)) != [] do
         self.entries.import tmp_entries
       end
       fp.close()
@@ -173,33 +176,39 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
-  def read_entries(fp, sep, max)
+  def read_entries(fp, sep, max, kline)
     entries = []
 
     while entries.size < max and not fp.eof?
       line = fp.readline.strip!     # This can't handle "\r" (OSX) newline!
-      Rails.logger.debug line.inspect
 
-      if is_proper_raw_entry? line, sep
+      if is_proper_raw_entry? line, sep, kline
         title, uri, label = parse_raw_entry_from  line, sep
-        entries << assemble_entry_from(title, uri, label)
-      else
-        # Currently, we ignore bad input lines.
+        entries << assemble_entry_from(title, uri, label)        
       end
+
+      kline += 1
     end
 
     return entries
   end
 
   # Do sanity checks on raw input line.
-  def is_proper_raw_entry?(line, sep)
-    # Max length is 255 since all Entry fields are string type.
+  def is_proper_raw_entry?(line, sep, kline)
+    if line == ""
+      # Silently ignore blank lines.
+      return false
+    end
+
     if line.length > 255
+      # Max length is 255 since all Entry fields are string type.
+      self.error_messages += "#{kline}-th line is longer than 255 and ignored!\n"
       return false
     end
 
     items = line.split sep
     if items.size < 2 or items.size > 3
+      self.error_messages += "#{kline}-th line consists of less than 2 or more than 3 fields!\n"
       return false
     end
 

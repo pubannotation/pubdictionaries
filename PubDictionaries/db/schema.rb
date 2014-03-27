@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20140319055143) do
+ActiveRecord::Schema.define(:version => 20140327062727) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -33,13 +33,16 @@ ActiveRecord::Schema.define(:version => 20140319055143) do
     t.string   "title"
     t.string   "creator"
     t.text     "description"
-    t.datetime "created_at",                        :null => false
-    t.datetime "updated_at",                        :null => false
+    t.datetime "created_at",                                  :null => false
+    t.datetime "updated_at",                                  :null => false
     t.boolean  "lowercased"
     t.boolean  "stemmed"
     t.boolean  "hyphen_replaced"
     t.integer  "user_id"
-    t.boolean  "public",          :default => true
+    t.boolean  "public",                   :default => true
+    t.boolean  "created_by_delayed_job",   :default => false
+    t.boolean  "confirmed_error_messages", :default => false
+    t.text     "error_messages",           :default => ""
   end
 
   add_index "dictionaries", ["creator"], :name => "index_dictionaries_on_creator"
