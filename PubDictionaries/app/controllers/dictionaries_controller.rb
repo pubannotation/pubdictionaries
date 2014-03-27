@@ -42,20 +42,33 @@ class DictionariesController < ApplicationController
   def show
     @base_dic  = Dictionary.find_showable_by_title  params[:id], current_user
     
-    if not user_signed_in? or @base_dic.user_dictionaries.nil? 
-      @user_dic = nil
-    else
-      @user_dic = @base_dic.user_dictionaries.find_by_user_id(current_user.id)
+    # Decide whether to upload the dictionary or not.
+    if params[:upload_confirmation] and params[:upload_confirmation] == "discard"
+      @base_dic.destroy_entries_and_simstring_db
+      @base_dic.destroy
+      @base_dic = nil
+    elsif params[:upload_confirmation] and params[:upload_confirmation] == "confirm"
+      @base_dic.confirmed_error_messages = true
+      @base_dic.save!
     end
 
+    # Prepare variables for the view.
     if @base_dic
-      # Replace the page title with the dictionary name
-      @page_title = @base_dic.title
-
-      if ["ori", "del", "new", "ori_del", "ori_del_new"].include?  params[:query]
-        @export_entries = build_export_entries  params[:query]
+      if not user_signed_in? or @base_dic.user_dictionaries.nil? 
+        @user_dic = nil
       else
-        @g1, @g2, @g3   = get_entries_grid_views
+        @user_dic = @base_dic.user_dictionaries.find_by_user_id(current_user.id)
+      end
+
+      if @base_dic
+        # Replace the page title with the dictionary name
+        @page_title = @base_dic.title
+
+        if ["ori", "del", "new", "ori_del", "ori_del_new"].include?  params[:query]
+          @export_entries = build_export_entries  params[:query]
+        else
+          @g1, @g2, @g3   = get_entries_grid_views
+        end
       end
     end
 
@@ -89,20 +102,21 @@ class DictionariesController < ApplicationController
     @dictionary = User.find(current_user.id).dictionaries.new params[:dictionary]
     @dictionary.title.strip!
     @dictionary.creator = current_user.email
-    # @dictionary.save
     
- 
     respond_to do |format|
       if @dictionary.save
         run_create_as_a_delayed_job @dictionary, params
+        
         format.html{ redirect_to dictionaries_url, 
           notice: 'Creating a dictionary in the background...' 
         }
       else
-        
+        @dictionary.destroy
+        format.html{ render action: "new" }
       end
     end
   end
+
   def run_create_as_a_delayed_job(dictionary, params)
     # Copy an uploaded file so it will not be unlinked when the action finishes.
     #   delayed_job will use the copied file.

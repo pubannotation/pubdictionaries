@@ -1,16 +1,23 @@
 <div class="dictionaries_page">
 
-  <!-- Show information about a dictionary -->
-  <div class="dictionary_information">
-    <%= render 'show_meta_information' %>
-  </div>
-  <br />
+  <% if @base_dic.confirmed_error_messages == true %>
+    <!-- Show information about a dictionary -->
+    <div class="dictionary_information">
+      <%= render 'show_meta_information' %>
+    </div>
+    <br />
 
-  <!-- Show a list of (original) entries -->
-  <% if not @base_dic.entries.empty? %>
-    <%= render 'show_entries' %>
+    <!-- Show a list of (original) entries -->
+    <% if not @base_dic.entries.empty? %>
+      <%= render 'show_entries' %>
+    <% end %>
+    <br />
+  <% else %>
+    <div class="dictionary_information">
+      <%= render 'show_error_messages' %>
+    </div>
+    <br />
   <% end %>
-  <br />
 
   <%= link_to 'Back', dictionaries_path %>
 
