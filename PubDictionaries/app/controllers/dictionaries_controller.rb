@@ -89,9 +89,22 @@ class DictionariesController < ApplicationController
     @dictionary = User.find(current_user.id).dictionaries.new params[:dictionary]
     @dictionary.title.strip!
     @dictionary.creator = current_user.email
-    @dictionary.save
+    # @dictionary.save
     
-    # 2. Copy an uploaded file so it will not be unlinked when the action finishes.
+ 
+    respond_to do |format|
+      if @dictionary.save
+        run_create_as_a_delayed_job @dictionary, params
+        format.html{ redirect_to dictionaries_url, 
+          notice: 'Creating a dictionary in the background...' 
+        }
+      else
+        
+      end
+    end
+  end
+  def run_create_as_a_delayed_job(dictionary, params)
+    # Copy an uploaded file so it will not be unlinked when the action finishes.
     #   delayed_job will use the copied file.
     src_uploadedfile = params[:dictionary][:file].tempfile.path
     trg_uploadedfile = File.join("public", "tempfiles/#{@dictionary.title}")
@@ -99,13 +112,7 @@ class DictionariesController < ApplicationController
     sep              = params[:dictionary][:separator] 
 
     # Caution!!! trg_uploadedfile must be deleted after the delayed job!!!
-    @dictionary.delay.import_entries_and_create_simstring_db  trg_uploadedfile, sep
-  
-    respond_to do |format|
-      format.html{ redirect_to dictionaries_url, 
-        notice: 'Creating a dictionary in the background...' 
-      }
-    end
+    dictionary.delay.import_entries_and_create_simstring_db  trg_uploadedfile, sep
   end
 
   # Destroy a base dictionary and the associated user dictionaries (of other users too).

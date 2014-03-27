@@ -178,6 +178,7 @@ class Dictionary < ActiveRecord::Base
 
     while entries.size < max and not fp.eof?
       line = fp.readline.strip!     # This can't handle "\r" (OSX) newline!
+      Rails.logger.debug line.inspect
 
       if is_proper_raw_entry? line, sep
         title, uri, label = parse_raw_entry_from  line, sep
