@@ -26,6 +26,19 @@ class DictionariesController < ApplicationController
   #####     ACTIONS     #####
   ###########################
 
+  def get_delayed_job_diclist
+    if current_user
+      base_dics = Dictionary.get_unfinished_dictionaries current_user
+      
+      lst = base_dics.collect do |d|
+        d.title
+      end
+
+      # render json: ["test test test test test 1","test test test 2","test 3"]
+      render json: lst
+    end
+  end
+
   def index
     dic_type = params[:dictionary_type]
 

@@ -13,18 +13,23 @@
   </table>
 </fieldset>
 <br />
+<br />
 
 <table>
   <tr>
-    <th>Error messages:</th>
+    <th>The following errors have been detected while uploading the dictionary!</th>
   </tr>
   <tr>
     <td>
-      <% @base_dic.error_messages.split("\n").each do |line| %>
-        <%= line %>
-        <br />
+      <% @base_dic.error_messages.split("\n").each_with_index do |line, index| %>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <%= "#{index+1}. #{line}" %> <br />
       <% end %>
+      <br />
     </td>
+  </tr>
+  <tr>
+    <td>Confirm if you want to upload the file. Erroraneous lines will be discarded.<br />
+      Or Discard if you want to fix the errors and re-upload the dictionary.</td>
   </tr>
 </table>
 <br />

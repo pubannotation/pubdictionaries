@@ -58,3 +58,52 @@ $(document).ready(function() {
 });
 
 
+/* Run refresh_delayed_job_diclist() periodically. Setting a variable with 
+*    setInterval() will trigger the function automaitcally when the Web page
+*    is opened.
+*/
+var delayed_job_diclist = setInterval(function(){refresh_delayed_job_diclist()}, 5000);
+
+/* This is an AJAX function that updates a list of delayed jobs of
+*    creating new dictionaries.
+*/
+function refresh_delayed_job_diclist()
+{
+    var xmlhttp;
+
+    if (window.XMLHttpRequest) {
+        // For IE7+, Firefox, Chrome, Opera, Safari
+        xmlhttp = new XMLHttpRequest();
+    }else {
+        // For IE6, IE5
+        xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+    }
+
+    // A function to be run in async. mode.
+    xmlhttp.onreadystatechange = function() {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            data = JSON.parse(xmlhttp.responseText);
+            htmlText = ""
+            
+            for (i = 0; i < data.length; ++i) {
+                htmlText += (i+1).toString() + ". " + data[i] + "<br />"
+            }
+            
+            var d = new Date();
+            htmlText += "<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;At " + d.toLocaleTimeString()
+
+            document.getElementById("delayed_job_diclist").innerHTML = htmlText;
+        }
+    }
+
+    // Add "?t=" to avoid getting a cached result.
+    xmlhttp.open("GET", "http://localhost:3000/dictionaries/get_delayed_job_diclist?t="+ Math.random(), true);
+    xmlhttp.send();
+}
+
+
+
+
+
+
+
