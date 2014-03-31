@@ -34,7 +34,7 @@
     <div class="menu_wrap">
       <div id='cssmenu'>
         <ul>
-          <li class='active'><%= link_to "<span>Top</span>".html_safe, root_path %></li>
+          <li class='active'><%= link_to "<span>About</span>".html_safe, about_index_path %></li>
           <li class='has-sub'><a href='#'><span>Dictionaries</span></a>
             <ul>
               <li class='odd'><%= link_to '<span>All Dictionaries</span>'.html_safe, dictionaries_path %></li>
@@ -52,6 +52,21 @@
           </li>
           <li class='last'><a href='mailto:priancho@gmail.com'><span>Contact</span></a></li>
         </ul>
+      </div>
+
+      <!-- Show a list of unfinished delayed jobs of creating dictionaries. -->
+      <br />
+      <div class="delayed_job_queue">
+        <% if current_user %>
+          <div class="title">Waiting List 
+            <span title="Dictionaries that are currently being uploaded will be shown in this list">
+              <%= image_tag("question_mark.jpg", { border: "0", size: "12x12", alt: "qmark" }) %>
+            </span>
+          </div>
+          <div class="job_list_box">
+            <div id="delayed_job_diclist"><br/></div>
+          </div>
+        <% end %>
       </div>
     </div>
 

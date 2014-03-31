@@ -34,26 +34,37 @@ class Dictionary < ActiveRecord::Base
   # Return a list of dictionaries.
   def self.get_showables(user=nil, dic_type=nil)
     if user == nil
-      lst   = where(:public => true).where(:created_by_delayed_job => true)
+      # Get a list of publicly available dictionaries.
+      lst = where('public = ? AND confirmed_error_messages = ?', true, true)
       order = 'created_at'
       order_direction = 'desc'
 
     else
       if dic_type == 'my_dic'
-        lst   = where(user_id: user.id).where(:created_by_delayed_job => true)
+        # Get a list of dictionaries of the current user.
+        lst = where('user_id = ? AND created_by_delayed_job = ?', user.id, true)
         order = 'created_at'
         order_direction = 'desc'
 
       elsif dic_type == 'working_dic'
         dic_ids = UserDictionary.get_dictionary_ids_by_user_id(user.id)
 
-        # Sort a list based on user_dictionaries#updated_at attribute. 
-        lst   = Dictionary.joins(:user_dictionaries).where('dictionaries.id IN (?)', dic_ids).where(:created_by_delayed_job => true)
+        # Get a list of working dictionaries. Dictionaries, which are not confirmed, will
+        #   be shown if those are created by the current user, whereas only confirmed 
+        #   dictionaries will be shown if they are created by other users.
+        lst = Dictionary.joins(:user_dictionaries).
+                where('dictionaries.id IN (?)', dic_ids).
+                where('(dictionaries.user_id = ? AND created_by_delayed_job = ?)
+                  OR (dictionaries.user_id != ? AND confirmed_error_messages = ?)',
+                  user.id, true, user.id, true)
         order = 'user_dictionaries.updated_at'
         order_direction = 'desc'
 
       else
-        lst   = where('public = ? OR user_id = ?', true, user.id).where(:created_by_delayed_job => true)
+        # Get a list of all dictionaries.
+        lst = where('(user_id != ? AND public = ? AND confirmed_error_messages = ?) 
+                OR (user_id = ? AND created_by_delayed_job = ?)',
+                user.id, true, true, user.id, true)
         order = 'created_at'
         order_direction = 'desc'
       end
@@ -69,16 +80,23 @@ class Dictionary < ActiveRecord::Base
   #   exist or not showable. nil if it does not exist or showable dictionary by its title.
   def self.find_showable_by_title(title, user)
     if user.nil?
-      where(:title => title).where(:public => true).where(:created_by_delayed_job => true).first
+      where(:title => title).where('public = ?', true).where(:created_by_delayed_job => true).first
     else
       where(:title => title).where('public = ? OR user_id = ?', true, user.id).where(:created_by_delayed_job => true).first
     end
   end
 
+
   # Return a list of latest showable dictionaries.
   def self.get_latest_dictionaries(n=10)
-    where('public = ?', true).where(:created_by_delayed_job => true).order('created_at desc').limit(n)
+    where('public = ? AND confirmed_error_messages = ?', true, true).order('created_at desc').limit(n)
   end
+
+  # Get a list of unfinished work.
+  def self.get_unfinished_dictionaries(user)
+    where(user_id: user.id).where(created_by_delayed_job: false)
+  end
+
 
   # true if the given base dictionary is destroyable; otherwise, false.
   def is_destroyable?(current_user)

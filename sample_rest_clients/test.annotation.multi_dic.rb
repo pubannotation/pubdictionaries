@@ -40,7 +40,7 @@ def annotate_text(url, email, password, text)
   }
 
   # 2. Create a rest client resource.
-  resource = RestClient::Resource.new("#{url}", options)
+  resource = RestClient::Resource.new(url, options)
 
   # 3. Run the annotation.
   data = resource.post(:text => text) do |response, request, result|

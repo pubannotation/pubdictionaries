@@ -156,7 +156,29 @@
             font-size: 1em;
           }
         }
-      }      
+      }
+    }
+
+    .delayed_job_queue {
+      padding-left: 1em;
+      padding-right: 1em;
+
+      .title {
+        color: #0000ff;
+        font-size: 1em;
+        text-align: center;
+      }
+
+      .job_list_box {
+        border-style: dotted;
+        border-color: #aaaaff;
+        border-width: 2px;
+          
+      }
+
+      #delayed_job_diclist {
+        font-size: 1em;
+      }
     }
   }
 

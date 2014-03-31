@@ -5,16 +5,18 @@ PubDictionaries::Application.routes.draw do
   
   get "welcome/index"
 
+  get "about/index"
+
+  get "manual/basic"
+  get "manual/advanced"
+  get "manual/pubann"
+  
   get "web_services/index"
   get "web_services/annotation_with_single_dic"
   get "web_services/annotation_with_multiple_dic"
   get "web_services/ids_to_labels"
   get "web_services/terms_to_idlists"
 
-  get "manual/basic"
-  get "manual/advanced"
-  get "manual/pubann"
-  
   resources :users do
     resources :dictionaries
     resources :user_dictionaries
@@ -36,6 +38,7 @@ PubDictionaries::Application.routes.draw do
       get  'label_mapping', to: 'dictionaries#label_mapping_with_multiple_dic_readme'
       get  'select_dictionaries_for_label_mapping', to: 'dictionaries#select_dictionaries_for_label_mapping'
       post 'label_mapping', to: 'dictionaries#label_mapping'
+      get  'get_delayed_job_diclist'
     end  
 
     # Add routes as a member, /dictionary/:id/...
