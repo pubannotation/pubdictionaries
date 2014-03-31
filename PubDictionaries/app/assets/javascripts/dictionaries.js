@@ -62,7 +62,7 @@ $(document).ready(function() {
 *    setInterval() will trigger the function automaitcally when the Web page
 *    is opened.
 */
-var delayed_job_diclist = setInterval(function(){refresh_delayed_job_diclist()}, 5000);
+
 
 /* This is an AJAX function that updates a list of delayed jobs of
 *    creating new dictionaries.
