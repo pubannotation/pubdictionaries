@@ -97,7 +97,7 @@ function refresh_delayed_job_diclist()
     }
 
     // Add "?t=" to avoid getting a cached result.
-    xmlhttp.open("GET", "http://localhost:3000/dictionaries/get_delayed_job_diclist?t="+ Math.random(), true);
+    xmlhttp.open("GET", ROOT_PATH + "/dictionaries/get_delayed_job_diclist?t="+ Math.random(), true);
     xmlhttp.send();
 }
 
