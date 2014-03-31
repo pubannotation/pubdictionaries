@@ -213,18 +213,24 @@ class Dictionary < ActiveRecord::Base
 
   # Do sanity checks on raw input line.
   def is_proper_raw_entry?(line, sep, kline)
+    
+    # Line check.
     if line == ""
       # Silently ignore blank lines.
       return false
     end
 
-    if line.length > 255
-      # Max length is 255 since all Entry fields are string type.
-      self.error_messages += "#{kline}-th line is longer than 255 and ignored!\n"
-      return false
+    # Field-wise check.
+    items = line.split sep
+    
+    items.each do |item|
+      if item.length > 255
+        # Max length is 255 since all Entry fields are string type.
+        self.error_messages += "#{kline}-th line has a field that is longer than 255!\n"
+        return false
+      end
     end
 
-    items = line.split sep
     if items.size < 2 or items.size > 3
       self.error_messages += "#{kline}-th line consists of less than 2 or more than 3 fields!\n"
       return false
