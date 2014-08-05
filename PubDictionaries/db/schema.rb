@@ -63,7 +63,6 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
   add_index "entries", ["search_title"], :name => "index_entries_on_search_title"
   add_index "entries", ["uri"], :name => "index_entries_on_uri"
   add_index "entries", ["view_title"], :name => "index_entries_on_view_title"
-  add_index "entries", ["view_title"], :name => "index_entries_title"
 
   create_table "new_entries", :force => true do |t|
     t.string   "view_title"
@@ -77,7 +76,6 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
 
   add_index "new_entries", ["label"], :name => "index_new_entries_on_label"
   add_index "new_entries", ["search_title"], :name => "index_new_entries_on_search_title"
-  add_index "new_entries", ["search_title"], :name => "index_new_entries_search_title"
   add_index "new_entries", ["uri"], :name => "index_new_entries_on_uri"
   add_index "new_entries", ["user_dictionary_id"], :name => "index_new_entries_on_user_dictionary_id"
   add_index "new_entries", ["view_title"], :name => "index_new_entries_on_view_title"
@@ -91,10 +89,6 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
 
   add_index "removed_entries", ["entry_id"], :name => "index_removed_entries_on_entry_id"
   add_index "removed_entries", ["user_dictionary_id"], :name => "index_removed_entries_on_user_dictionary_id"
-
-  create_table "test_trgm", :id => false, :force => true do |t|
-    t.text "t"
-  end
 
   create_table "user_dictionaries", :force => true do |t|
     t.integer  "user_id"
