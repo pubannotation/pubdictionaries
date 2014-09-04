@@ -1,7 +1,7 @@
 #
 # Define the Dictionary model.
 #
-require File.join( Rails.root, '..', 'simstring/swig/ruby/simstring')
+require File.join( Rails.root, 'lib/simstring/swig/ruby/simstring')
 
 class Dictionary < ActiveRecord::Base
   include StringManipulator

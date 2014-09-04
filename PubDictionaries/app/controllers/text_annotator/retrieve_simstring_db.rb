@@ -9,7 +9,7 @@ Encoding.default_internal="UTF-8"
   similarity measures, and the threshold (0.0 <= x <= 1.0).
 =end
 
-# require File.join( Rails.root, '..', 'simstring/swig/ruby/simstring')
+# require File.join( Rails.root, 'lib/simstring/swig/ruby/simstring')
 
 class SIMSTRING_RETRIEVER
 

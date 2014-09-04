@@ -2,7 +2,7 @@ require 'set'
 require 'pathname'
 require 'fileutils'
 
-require File.join( Rails.root, '..', 'simstring/swig/ruby/simstring')
+require File.join( Rails.root, 'lib/simstring/swig/ruby/simstring')
 require File.join( File.dirname( __FILE__ ), 'text_annotator/text_annotator' )
 
 
