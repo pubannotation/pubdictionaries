@@ -23,26 +23,26 @@
 
 # SimString compiled files #
 #########################
-PubDictionaries/simstring/Makefile
-PubDictionaries/simstring/config.h
-PubDictionaries/simstring/config.log
-PubDictionaries/simstring/config.status
-PubDictionaries/simstring/frontend/.deps/
-PubDictionaries/simstring/frontend/Makefile
-PubDictionaries/simstring/include/Makefile
-PubDictionaries/simstring/sample/.deps/
-PubDictionaries/simstring/sample/Makefile
-PubDictionaries/simstring/stamp-h1
-PubDictionaries/simstring/swig/Makefile
-PubDictionaries/simstring/swig/python/setup.py
-PubDictionaries/simstring/swig/ruby/Makefile
-PubDictionaries/simstring/swig/ruby/export.cpp
-PubDictionaries/simstring/swig/ruby/export.h
-PubDictionaries/simstring/swig/ruby/export.i
-PubDictionaries/simstring/swig/ruby/export.o
-PubDictionaries/simstring/swig/ruby/export_wrap.o
-PubDictionaries/simstring/swig/ruby/extconf.rb
-PubDictionaries/simstring/swig/ruby/simstring.bundle
+PubDictionaries/lib/simstring/Makefile
+PubDictionaries/lib/simstring/config.h
+PubDictionaries/lib/simstring/config.log
+PubDictionaries/lib/simstring/config.status
+PubDictionaries/lib/simstring/frontend/.deps/
+PubDictionaries/lib/simstring/frontend/Makefile
+PubDictionaries/lib/simstring/include/Makefile
+PubDictionaries/lib/simstring/sample/.deps/
+PubDictionaries/lib/simstring/sample/Makefile
+PubDictionaries/lib/simstring/stamp-h1
+PubDictionaries/lib/simstring/swig/Makefile
+PubDictionaries/lib/simstring/swig/python/setup.py
+PubDictionaries/lib/simstring/swig/ruby/Makefile
+PubDictionaries/lib/simstring/swig/ruby/export.cpp
+PubDictionaries/lib/simstring/swig/ruby/export.h
+PubDictionaries/lib/simstring/swig/ruby/export.i
+PubDictionaries/lib/simstring/swig/ruby/export.o
+PubDictionaries/lib/simstring/swig/ruby/export_wrap.o
+PubDictionaries/lib/simstring/swig/ruby/extconf.rb
+PubDictionaries/lib/simstring/swig/ruby/simstring.bundle
 
 
 # Temporary files #
