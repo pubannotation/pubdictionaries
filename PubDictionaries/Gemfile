@@ -22,12 +22,20 @@ gem 'daemons'
 # gem 'jquery-rails', "<3.0.0"
 # gem 'will_paginate', '>= 3.0.pre'     # Not compatible with Wice_Grid
 
+group :development, :test do
+  gem 'rspec-rails', '~> 2.0'
+end
 
 group :development do
   gem 'guard-livereload', require: false
 end
 
 group :test do
+  gem 'spork-rails'
+  gem 'factory_girl_rails'
+  gem 'simplecov', :require => false
+  gem 'sqlite3'
+  gem 'capybara'
 end
 
 group :production do

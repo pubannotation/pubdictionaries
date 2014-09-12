@@ -65,3 +65,6 @@ PubDictionaries/vendor/cache
 
 # tempfiles
 PubDictionaries/public/tempfiles
+
+# coverage reposts
+/coverage
