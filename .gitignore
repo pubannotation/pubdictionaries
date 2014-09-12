@@ -59,3 +59,9 @@ PubDictionaries/lib/simstring/swig/ruby/simstring.bundle
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# vendor/cache
+PubDictionaries/vendor/cache
+
+# tempfiles
+PubDictionaries/public/tempfiles
