@@ -54,4 +54,17 @@
   }
 }
 
-
+.finished_icon,
+.unfinished_icon{
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+.finished_icon{
+  background: url(circle-ok.png) no-repeat;
+  background-size: 18px;
+}
+.unfinished_icon{
+  background: url(circle-minus.png) no-repeat;
+  background-size: 18px;
+}

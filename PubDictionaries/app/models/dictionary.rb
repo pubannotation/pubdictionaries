@@ -97,6 +97,10 @@ class Dictionary < ActiveRecord::Base
     where(user_id: user.id).where(created_by_delayed_job: false)
   end
 
+  def unfinished?
+    created_by_delayed_job == false
+  end
+
 
   # true if the given base dictionary is destroyable; otherwise, false.
   def is_destroyable?(current_user)

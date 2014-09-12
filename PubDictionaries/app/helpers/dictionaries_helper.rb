@@ -35,4 +35,13 @@ module DictionariesHelper
       return ret_value
     end
   end
+
+  def dictionary_status(dictionary)
+    if dictionary.unfinished?
+      css_class = 'unfinished_icon'
+    else
+      css_class = 'finished_icon'
+    end
+    content_tag :span, nil, class: css_class
+  end
 end

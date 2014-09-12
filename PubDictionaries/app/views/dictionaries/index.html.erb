@@ -44,6 +44,9 @@
           # "#{show_link} | #{dele_link}".html_safe     # html_safe is necessary to ensure rendering
           # "#{dele_link}".html_safe     # html_safe is necessary to ensure rendering
         end
+        g.column name: "status" do |dic| 
+          dictionary_status(dic)
+        end
       end
     %>
   </div>
