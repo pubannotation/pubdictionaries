@@ -24,6 +24,7 @@ gem 'daemons'
 
 
 group :development do
+  gem 'guard-livereload', require: false
 end
 
 group :test do
