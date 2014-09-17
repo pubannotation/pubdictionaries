@@ -57,14 +57,14 @@
 .finished_icon,
 .unfinished_icon{
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 .finished_icon{
   background: url(circle-ok.png) no-repeat;
-  background-size: 16px;
+  background-size: 20px;
 }
 .unfinished_icon{
   background: url(pause.png) no-repeat;
-  background-size: 16px;
+  background-size: 20px;
 }
