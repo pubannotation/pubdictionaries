@@ -209,12 +209,15 @@ describe Dictionary do
   describe 'create_ssdb' do
     before do
       @dictionary = FactoryGirl.create(:dictionary) 
+      FactoryGirl.create(:entry, dictionary_id: @dictionary.id)
+      @dictionary.reload
     end
 
     context 'db.insert successfully' do
       before do
         db = double(:db)
         Simstring::Writer.stub(:new).and_return(db)
+        db.stub(:insert).and_return(nil)
         db.stub(:close).and_return(nil)
       end
 
