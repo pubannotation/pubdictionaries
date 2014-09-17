@@ -17,6 +17,7 @@ class Dictionary < ActiveRecord::Base
   has_many :user_dictionaries, :dependent => :destroy
 
   validates :creator, :description, :title, :presence => true
+  validates :file, presence: true,  on: :create 
   validates :title, uniqueness: true
   validates_inclusion_of :public, :in => [true, false]     # :presence fails when the value is false.
   validates_format_of :title,                              # because of to_param overriding.
