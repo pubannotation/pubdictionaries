@@ -1,5 +1,9 @@
 require 'simplecov'
-SimpleCov.start
+SimpleCov.start do
+  add_group "Models", "app/models"
+  add_group "Controllers", "app/controllers"
+  add_group "Helpers", "app/helpers"
+end
 require 'rubygems'
 require 'spork'
 #uncomment the following line to use spork with the debugger
