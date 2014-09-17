@@ -32,7 +32,7 @@ class Dictionary < ActiveRecord::Base
 
 
   # Return a list of dictionaries.
-  def self.get_showables(user=nil, dic_type=nil)
+  def self.get_showables(user = nil, dic_type = nil)
     if user == nil
       # Get a list of publicly available dictionaries.
       lst = where('public = ? AND confirmed_error_messages = ?', true, true)
@@ -62,9 +62,8 @@ class Dictionary < ActiveRecord::Base
 
       else
         # Get a list of all dictionaries.
-        lst = where('(user_id != ? AND public = ? AND confirmed_error_messages = ?) 
-                OR (user_id = ? AND created_by_delayed_job = ?)',
-                user.id, true, true, user.id, true)
+        lst = where('(user_id != ? AND public = ? AND confirmed_error_messages = ?) OR (user_id = ?)',
+                user.id, true, true, user.id)
         order = 'created_at'
         order_direction = 'desc'
       end
