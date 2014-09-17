@@ -1,7 +1,6 @@
 *.rbc
 *.sassc
 .sass-cache
-.rspec
 !.gitkeep
 
 # these should all be checked in to normalise the environment:
