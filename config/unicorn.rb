@@ -6,7 +6,7 @@ development_root = `pwd`.gsub("\n","")
 
 
 working_directory   (rails_env == 'production' ? production_root : development_root)
-worker_processes    (rails_env == 'production' ? 8 : 2)
+worker_processes    (rails_env == 'production' ? 4 : 2)
 preload_app         true
 timeout             99999
 
@@ -55,5 +55,3 @@ after_fork do |server, worker|
 	# between any number of forked children (assuming your kernel
 	# correctly implements pread()/pwrite() system calls)
 end
-
-
