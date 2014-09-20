@@ -29,24 +29,8 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
 
   add_index "delayed_jobs", ["priority", "run_at"], :name => "delayed_jobs_priority"
 
-  create_table "dictionaries", :force => true do |t|
-    t.string   "title"
-    t.string   "creator"
-    t.text     "description"
-    t.datetime "created_at",                                  :null => false
-    t.datetime "updated_at",                                  :null => false
-    t.boolean  "lowercased"
-    t.boolean  "stemmed"
-    t.boolean  "hyphen_replaced"
-    t.integer  "user_id"
-    t.boolean  "public",                   :default => true
-    t.boolean  "created_by_delayed_job",   :default => false
-    t.boolean  "confirmed_error_messages", :default => false
-    t.text     "error_messages",           :default => ""
-  end
-
-  add_index "dictionaries", ["creator"], :name => "index_dictionaries_on_creator"
-  add_index "dictionaries", ["title"], :name => "index_dictionaries_on_title"
+# Could not dump table "dictionaries" because of following StandardError
+#   Unknown type 'bool' for column 'lowercased'
 
   create_table "entries", :force => true do |t|
     t.string   "view_title"
@@ -63,7 +47,6 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
   add_index "entries", ["search_title"], :name => "index_entries_on_search_title"
   add_index "entries", ["uri"], :name => "index_entries_on_uri"
   add_index "entries", ["view_title"], :name => "index_entries_on_view_title"
-  add_index "entries", ["view_title"], :name => "index_entries_title"
 
   create_table "new_entries", :force => true do |t|
     t.string   "view_title"
@@ -77,7 +60,6 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
 
   add_index "new_entries", ["label"], :name => "index_new_entries_on_label"
   add_index "new_entries", ["search_title"], :name => "index_new_entries_on_search_title"
-  add_index "new_entries", ["search_title"], :name => "index_new_entries_search_title"
   add_index "new_entries", ["uri"], :name => "index_new_entries_on_uri"
   add_index "new_entries", ["user_dictionary_id"], :name => "index_new_entries_on_user_dictionary_id"
   add_index "new_entries", ["view_title"], :name => "index_new_entries_on_view_title"
@@ -91,10 +73,6 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
 
   add_index "removed_entries", ["entry_id"], :name => "index_removed_entries_on_entry_id"
   add_index "removed_entries", ["user_dictionary_id"], :name => "index_removed_entries_on_user_dictionary_id"
-
-  create_table "test_trgm", :id => false, :force => true do |t|
-    t.text "t"
-  end
 
   create_table "user_dictionaries", :force => true do |t|
     t.integer  "user_id"

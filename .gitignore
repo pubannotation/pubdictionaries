@@ -7,47 +7,23 @@
 # Gemfile.lock, .ruby-version, .ruby-gemset
 
 # Bundler config
-/PubDictionaries/.bundle
-/PubDictionaries/vendor/bundle
+.bundle
+vendor/bundle
 
 # Database.
-/PubDictionaries/db/*.sqlite3
-/PubDictionaries/public/simstring_dbs/*
+db/*.sqlite3
+public/simstring_dbs/*
 
 # All logfiles and tempfiles.
 *.pid
 *.log
 
-# Do not push precompiled assets
-/PubDictionaries/tmp/cache/assets/*
-
-# SimString compiled files #
-#########################
-PubDictionaries/lib/simstring/Makefile
-PubDictionaries/lib/simstring/config.h
-PubDictionaries/lib/simstring/config.log
-PubDictionaries/lib/simstring/config.status
-PubDictionaries/lib/simstring/frontend/.deps/
-PubDictionaries/lib/simstring/frontend/Makefile
-PubDictionaries/lib/simstring/include/Makefile
-PubDictionaries/lib/simstring/sample/.deps/
-PubDictionaries/lib/simstring/sample/Makefile
-PubDictionaries/lib/simstring/stamp-h1
-PubDictionaries/lib/simstring/swig/Makefile
-PubDictionaries/lib/simstring/swig/python/setup.py
-PubDictionaries/lib/simstring/swig/ruby/Makefile
-PubDictionaries/lib/simstring/swig/ruby/export.cpp
-PubDictionaries/lib/simstring/swig/ruby/export.h
-PubDictionaries/lib/simstring/swig/ruby/export.i
-PubDictionaries/lib/simstring/swig/ruby/export.o
-PubDictionaries/lib/simstring/swig/ruby/export_wrap.o
-PubDictionaries/lib/simstring/swig/ruby/extconf.rb
-PubDictionaries/lib/simstring/swig/ruby/simstring.bundle
-
-
 # Temporary files #
 ###################
+tmp/*
 *.swp
+public/tempfiles
+vendor/cache
 
 
 # OS generated files #
@@ -60,11 +36,5 @@ PubDictionaries/lib/simstring/swig/ruby/simstring.bundle
 ehthumbs.db
 Thumbs.db
 
-# vendor/cache
-PubDictionaries/vendor/cache
-
-# tempfiles
-PubDictionaries/public/tempfiles
-
-# coverage reposts
-/coverage
+# coverage reports
+coverage
