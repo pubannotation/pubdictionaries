@@ -1,0 +1,3 @@
+[submodule "lib/simstring"]
+	path = lib/simstring
+	url = https://github.com/pubannotation/simstring.git
