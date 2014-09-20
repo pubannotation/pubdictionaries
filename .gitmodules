@@ -1,4 +1,0 @@
-[submodule "PubDictionaries/lib/simstring"]
-	path = PubDictionaries/lib/simstring
-	url = git@github.com:pubannotation/simstring.git
-  ignore = dirty
