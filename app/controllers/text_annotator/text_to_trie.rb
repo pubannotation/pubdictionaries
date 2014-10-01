@@ -120,6 +120,8 @@ class TEXT_TO_TRIE
 			abs_pos = cur_pos + t.length 
 		end
 
+    # token_indices example
+    # [{:begin=>0, :end=>4}] 
 		return token_indices
 	end
 	

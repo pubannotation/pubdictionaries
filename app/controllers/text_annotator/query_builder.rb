@@ -105,6 +105,7 @@ class QUERY_BUILDER
 			end
 		end
 
+    # [{:requested_query => "q", :original_query => "q", :offset => 1, :sim => 1.0}] 
 		ext_queries
 	end
 

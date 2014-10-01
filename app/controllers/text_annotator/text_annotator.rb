@@ -102,6 +102,8 @@ class TextAnnotator
   #
   def terms_to_entrylists(terms, opts)
     norm_opts  = @pgr.get_string_normalization_options
+    # norm_opts value
+    # { lowercased: dic[:lowercased], hyphen_replaced: dic[:hyphen_replaced], stemmed: dic[:stemmed] }
     trier      = TEXT_TO_TRIE.new
     expanded_terms  = {}
     expanded_IDs    = {}

@@ -12,7 +12,7 @@ describe Dictionary do
         expect(@dictionary.send(:import_entries, nil, 'sep')).to be_falsey
       end
 
-      it 'shoud add dictionary.error_messages' do
+      it 'should add dictionary.error_messages' do
         expect{@dictionary.send(:import_entries, nil, 'sep')}.to change{@dictionary.error_messages}
       end
     end
