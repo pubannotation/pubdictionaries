@@ -389,8 +389,8 @@ class DictionariesController < ApplicationController
         next
       end
 
-      annotator = TextAnnotator.new  dic_title, current_user
-      if not annotator.dictionary_exist?  dic_title
+      annotator = TextAnnotator.new dic_title, current_user
+      if not annotator.dictionary_exist? dic_title
         next
       end
 
