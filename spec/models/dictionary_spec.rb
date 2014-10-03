@@ -276,7 +276,7 @@ describe Dictionary do
         end
 
         it 'should not update dictionary.created_by_delayed_job to true' do
-          expect{@dictionary.import_entries_and_create_simstring_db('', ',')}.to_not change{@dictionary.created_by_delayed_job}.from(false).to(true)
+          expect{@dictionary.import_entries_and_create_simstring_db('', ',')}.not_to change{@dictionary.created_by_delayed_job}.from(false)
         end
       end
     end
@@ -307,7 +307,7 @@ describe Dictionary do
         end
 
         it 'should not update dictionary.created_by_delayed_job to true' do
-          expect{@dictionary.import_entries_and_create_simstring_db('', ',')}.to_not change{@dictionary.created_by_delayed_job}.from(false).to(true)
+          expect{@dictionary.import_entries_and_create_simstring_db('', ',')}.not_to change{@dictionary.created_by_delayed_job}.from(false)
         end
       end
     end
