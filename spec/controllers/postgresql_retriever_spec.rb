@@ -262,6 +262,19 @@ describe POSTGRESQL_RETRIEVER do
           end
         end
       end
+
+      context 'when user_dics is blak' do
+        let(:query) {'uri'}
+        let!(:entry_not_removed) { FactoryGirl.create(:entry, dictionary_id: dictionary.id, uri: query, label: 'not removed label', view_title: 'not removed view_title') }
+
+        it 'should return hash from new_entries' do 
+          expect(pgr.get_entries_from_db(query, :uri)).to eql(
+            [
+              {label: entry_not_removed[:label], uri: entry_not_removed[:uri], title: entry_not_removed[:view_title]}
+            ]
+          )
+        end 
+      end
     end
   end
 

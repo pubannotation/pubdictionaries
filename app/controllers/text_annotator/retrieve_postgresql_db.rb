@@ -159,6 +159,7 @@ class POSTGRESQL_RETRIEVER
 		end
 		
 		# 3. Retrieve the entries for a given query except those are marked as removed
+    removed_entry_idlist = [0] if removed_entry_idlist.blank?
 		ds = @db::Entry.where(:dictionary_id => dic[:id]).where(target_column => query).where('id NOT IN (?)', removed_entry_idlist)
 		ds.all.each do |row|
 			results << { label: row[:label], uri: row[:uri], title: row[:view_title] }
