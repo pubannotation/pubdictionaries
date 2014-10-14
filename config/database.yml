@@ -20,6 +20,8 @@ test:
   encoding: utf8
   database: pubdictionaries_test
   pool: 5
+  username: nlp
+  password: dbcls_nlp_unicorn_development
 
 production:
   adapter: postgresql
