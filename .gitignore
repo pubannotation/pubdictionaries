@@ -20,10 +20,11 @@ public/simstring_dbs/*
 
 # Temporary files #
 ###################
-tmp/*
+tmp/
 *.swp
-public/tempfiles
-vendor/cache
+public/tempfiles/
+public/assets/
+vendor/cache/
 
 
 # OS generated files #
