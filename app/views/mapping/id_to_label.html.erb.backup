@@ -1,0 +1,16 @@
+<h1>Mapping#id_to_label</h1>
+
+<%= form_tag do %>
+  <%= label_tag(:ids, "IDs:") %>
+  <%= text_area_tag(:ids) %>
+  <br/>
+  <%= label_tag(:dictionaries, "Dictionaries:") %>
+  <%= text_area_tag(:dictionaries) %>
+  <br/>
+  <%= label_tag(:simple_output, "Simple output") %>
+  <%= radio_button_tag(:output_format, "simple") %>
+  <%= label_tag(:rich_output, "Rich output") %>
+  <%= radio_button_tag(:output_format, "rich") %>
+  <br/>
+  <%= submit_tag("Search") %>
+<% end %>

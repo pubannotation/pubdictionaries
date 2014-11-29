@@ -1,0 +1,31 @@
+<h1>Mapping#term_to_id</h1>
+
+<%= form_tag do %>
+  <%= label_tag(:terms, "Terms:") %>
+  <%= text_area_tag(:terms) %>
+  <br/>
+  <%= label_tag(:dictionaries, "Dictionaries:") %>
+  <%= text_area_tag(:dictionaries) %>
+  <br/>
+  <%= label_tag(:min_tokens, "Min_tokens") %>
+  <%= text_field_tag(:min_tokens) %>
+  <br/>
+  <%= label_tag(:max_tokens, "Max_tokens") %>
+  <%= text_field_tag(:max_tokens) %>
+  <br/>
+  <%= label_tag(:matching_method, "Matching_method") %>
+  <%= text_field_tag(:matching_method) %>
+  <br/>
+  <%= label_tag(:threshold, "Threshold") %>
+  <%= text_field_tag(:threshold) %>
+  <br/>
+  <%= label_tag(:top_n, "Top_n") %>
+  <%= text_field_tag(:top_n) %>
+  <br/>
+  <%= label_tag(:simple_output, "Simple output") %>
+  <%= radio_button_tag(:output_format, "simple") %>
+  <%= label_tag(:rich_output, "Rich output") %>
+  <%= radio_button_tag(:output_format, "rich") %>
+  <br/>
+  <%= submit_tag("Search") %>
+<% end %>

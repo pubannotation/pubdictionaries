@@ -354,7 +354,7 @@ class DictionariesController < ApplicationController
         "output_format"   => params["output_format"],
         }
 
-      @annotator_uri = "http://#{request.host}:#{request.port}#{request.fullpath.split("?")[0]}?#{request_params.to_query}"
+      @annotator_uri = "http://#{request.host_with_port}#{request.fullpath.split("?")[0]}?#{request_params.to_query}"
     end
 
     respond_to do |format|
@@ -378,8 +378,9 @@ class DictionariesController < ApplicationController
   # * Output : {"term_1"=>[{"uri"=>111, "dictionary_name"=>"EntrezGene"}, {... }, ...], ...}
   #
   def id_mapping
+    params["terms"] = params["_json"] if params["_json"].present? && params["_json"].class == Array
     dic_titles = JSON.parse(params["dictionaries"])
-    terms      = params["terms"].nil? ? nil : JSON.parse(params["terms"])
+    terms      = params["terms"]
     opts       = get_opts_from_params(params)
     results    = {}
 
@@ -473,8 +474,9 @@ class DictionariesController < ApplicationController
 
   # Return a list of labels for a given list of IDs.
   def label_mapping
+    params["ids"] = params["_json"] if params["_json"].present? && params["_json"].class == Array
     dic_titles = JSON.parse(params["dictionaries"])
-    ids        = params["ids"].nil?   ? nil : JSON.parse(params["ids"])
+    ids        = params["ids"]
     opts       = get_opts_from_params(params)
     results    = {}
     
@@ -639,7 +641,6 @@ class DictionariesController < ApplicationController
     results
   end
 
-  # Retrieve option values from the GET params.
   def get_opts_from_params(params)
     opts = {}
     opts["min_tokens"]      = params["min_tokens"].to_i
@@ -647,7 +648,7 @@ class DictionariesController < ApplicationController
     opts["matching_method"] = params["matching_method"]
     opts["threshold"]       = params["threshold"].to_f
     opts["top_n"]           = params["top_n"].to_i
-    opts["output_format"]   = params["output_format"]
+    opts["output_format"]   = params["output"]
 
     return opts
   end

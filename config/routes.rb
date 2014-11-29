@@ -1,5 +1,20 @@
 PubDictionaries::Application.routes.draw do
 
+  resources :mapping do
+    collection do
+      get  "term_to_id"
+      post "term_to_id", to: "mapping#term_to_id_post"
+
+      get  "id_to_label"
+      post "id_to_label", to: "mapping#id_to_label_post"
+
+      get  "text_annotation"
+      post "text_annotation", to: "mapping#text_annotation_post"
+
+      get  'select_dictionaries', to: 'mapping#select_dictionaries'
+    end
+  end
+
   # devise_for :users
   devise_for :users
   

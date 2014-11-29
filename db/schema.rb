@@ -29,8 +29,24 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
 
   add_index "delayed_jobs", ["priority", "run_at"], :name => "delayed_jobs_priority"
 
-# Could not dump table "dictionaries" because of following StandardError
-#   Unknown type 'bool' for column 'lowercased'
+  create_table "dictionaries", :force => true do |t|
+    t.string   "title"
+    t.string   "creator"
+    t.text     "description"
+    t.datetime "created_at",                                  :null => false
+    t.datetime "updated_at",                                  :null => false
+    t.boolean  "lowercased"
+    t.boolean  "stemmed"
+    t.boolean  "hyphen_replaced"
+    t.integer  "user_id"
+    t.boolean  "public",                   :default => true
+    t.boolean  "created_by_delayed_job",   :default => false
+    t.boolean  "confirmed_error_messages", :default => false
+    t.text     "error_messages",           :default => ""
+  end
+
+  add_index "dictionaries", ["creator"], :name => "index_dictionaries_on_creator"
+  add_index "dictionaries", ["title"], :name => "index_dictionaries_on_title"
 
   create_table "entries", :force => true do |t|
     t.string   "view_title"

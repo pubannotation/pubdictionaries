@@ -1,0 +1,63 @@
+<div class="dictionaries_page">
+  <div class="dic_ann_uri_generator">
+    <fieldset>
+      <legend>URL Generator for ID-to-label mapping</legend>
+
+      <h1 style="color:red">This feature does not work for the moment.<br/>We are sorry for the inconvenience.</h1>
+
+      <div class="option_selection_area">
+
+        <%= form_tag({:action => "id_to_label"}, {:method => :get}) do %>
+          <h2>1. Select dictionaries</h2>
+      
+          <div class="field">
+            <%= link_to(
+              "Select", 
+              options = {action: "select_dictionaries", dictionaries: params[:dictionaries], from: :id_to_label}, 
+              html_options = {data: { :colorbox => true }, class: "customized_button"} ) 
+            %>
+            <%= link_to(
+              "Reset", 
+              options = {action: "id_to_label", dictionaries: ""}, 
+              html_options = {class: "customized_button"} ) 
+            %>
+            <br />
+            <%= text_area_tag :dictionaries, params[:dictionaries], rows: 4, cols: 80, disabled: true %>
+            <%= hidden_field_tag :dictionaries, params[:dictionaries] %>
+          </div>
+
+          <h2>2. Specify options</h2>
+          <ul class="options">
+            <li>
+              <div class="field">
+                <%= label_tag :output_format, "Output format:" %>
+                <%= select_tag :output_format, options_for_select([["Simple", "simple"], ["Rich", "rich"]], "simple") %>
+                <ul>
+                <li><em>Simple</em> format shows only the labels.</li>
+                <li><em>Rich</em> format shows labels together with the source dictionary.</li>
+                </ul>
+              </div>
+            </li>
+          </ul>
+
+          <h2>3. Generate URL</h2>
+          <%= submit_tag "Generate", {:class => "customized_button", :method => :get} %>
+          <br />
+          <%= text_area_tag :annotator_uri, @annotator_uri, rows: 4, cols: 80, disabled: true %>
+
+          <h2>!. You can POST a list of terms to the URL, to get their IDs</h2>
+          for example
+          <pre>curl -d '["id1", "id2", ...]' "URL"</pre>
+
+        <% end %>
+        <br />
+      </div>
+      <br />
+
+    </fieldset>
+    <br />
+
+    <%= link_to 'Back', :back %>
+  </div>
+</div>
+
