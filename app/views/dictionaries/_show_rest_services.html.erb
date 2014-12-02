@@ -1,0 +1,12 @@
+<div>
+<h4 style="display:inline-block">REST services: </h4>
+<%= link_to 'Term to Id'.html_safe,
+    term_to_id_mapping_index_path(commit: "Add selected dictionaries", dictionaries: @base_dic.title) %>
+|
+<%= link_to 'Id to Label'.html_safe,
+    id_to_label_mapping_index_path(commit: "Add selected dictionaries", dictionaries: @base_dic.title) %>
+|
+<%= link_to 'Text annotation'.html_safe,
+    text_annotation_mapping_index_path(commit: "Add selected dictionaries", dictionaries: @base_dic.title) %>
+
+</div>

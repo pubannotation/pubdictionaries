@@ -2,8 +2,14 @@
 
   <% if @base_dic.confirmed_error_messages == true %>
     <!-- Show information about a dictionary -->
-    <div class="dictionary_information">
-      <%= render 'show_meta_information' %>
+    <div class="infobox">
+      <fieldset>
+        <legend>Dictionary name: <%= @base_dic.title %></legend>
+
+        <%= render 'show_meta_information' %>
+        <%= render 'show_export_options' %>
+        <%= render 'show_rest_services' %>
+      </fieldset>
     </div>
     <br />
 
@@ -13,7 +19,7 @@
     <% end %>
     <br />
   <% else %>
-    <div class="dictionary_information">
+    <div class="infobox">
       <%= render 'show_error_messages' %>
     </div>
     <br />

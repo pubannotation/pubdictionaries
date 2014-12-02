@@ -481,10 +481,9 @@ class DictionariesController < ApplicationController
     results    = {}
     
     dic_titles.each do |dic_title|
-      dic = Dictionary.find_showable_by_title  dic_title, current_user
-
+      dic = Dictionary.find_showable_by_title dic_title, current_user
       if not dic.nil?
-        annotator  = TextAnnotator.new  dic_title, current_user
+        annotator  = TextAnnotator.new dic_title, current_user
 
         if annotator.dictionary_exist?  dic_title
           ids_to_labels = annotator.ids_to_labels  ids, opts

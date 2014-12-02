@@ -43,13 +43,13 @@ module MappingHelper
   end
 
   def annotate_text_with_dic(text, basedic_name, opts, current_user)
-    annotator  = TextAnnotator.new  basedic_name, current_user
-    results    = []
+    annotator = TextAnnotator.new basedic_name, current_user
+    results   = []
 
-    if annotator.dictionary_exist?  basedic_name
-      tmp_result = annotator.annotate  text, opts
+    if annotator.dictionary_exist? basedic_name
+      tmp_result = annotator.annotate text, opts
       tmp_result.each do |entry|
-        entry["dictionary_name"] = basedic_name
+        entry["dictionary"] = basedic_name
       end
       results += tmp_result
     end

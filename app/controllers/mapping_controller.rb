@@ -84,7 +84,7 @@ class MappingController < ApplicationController
           end
         else
           results[term].collect! do |entry| 
-            { id: entry[:uri], score: entry[:sim], source: entry[:dictionary_name] }
+            { id: entry[:uri], score: entry[:sim], dictionary: entry[:dictionary_name] }
           end
         end
       end
@@ -126,38 +126,21 @@ class MappingController < ApplicationController
     opts["output_format"] = params["output_format"]
     results    = {}
     
-    if ids.present?
-      dic_titles.each do |dic_title|
-        dic = Dictionary.find_showable_by_title dic_title, current_user
-
-        unless dic.nil?
-          annotator = TextAnnotator.new dic_title, current_user
-
-          if annotator.dictionary_exist? dic_title
-            ids_to_labels = annotator.ids_to_labels ids, opts
-
-            ids_to_labels.each_pair do |id, labels|
-              # Remove duplicate labels for the same ID.
-              labels.uniq!
-              
-              # Format the output value.
-              if nil == opts["output_format"] or "simple" == opts["output_format"]
-                new_value = labels
-              else  # opts["output_format"] == "rich"
-                new_value = labels.collect do |label|
-                  {label: label, dictionary_name: dic_title}
-                end
-              end
-
-              # Store the result.
-              if results.key?  id
-                results[id] += new_value
-              else
-                results[id] = new_value
-              end
+    dics = dic_titles.map{|t| Dictionary.find_showable_by_title t, current_user}.compact
+    if dics.present? && ids.present?
+      ids.each do |id|
+        results[id] = []
+        dics.each do |dic|
+          entry = Entry.where(uri: id, dictionary_id: dic).first
+          if entry.present?
+            results[id] << if opts["output_format"] == "rich"
+              {label: entry.view_title, dictionary: dic.title}
+            else
+              entry.view_title
             end
           end
         end
+        results[id].uniq!
       end
     end
 

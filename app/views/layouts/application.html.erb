@@ -46,22 +46,24 @@
           <li class='has-sub'><a href='#'><span>Dictionaries</span></a>
             <ul>
               <li class='odd'><%= link_to '<span>All Dictionaries</span>'.html_safe, dictionaries_path %></li>
+              <% if user_signed_in? %>
               <li class='even'><%= link_to '<span>My Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "my_dic") %></li>
-              <li class='odd'><%= link_to '<span>Working Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "working_dic") %></li>
+              <% end %>
+              <!-- <li class='odd'><%= link_to '<span>Working Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "working_dic") %></li> -->
             </ul>
           </li>
-          <li class='has-sub'><a href='#'><span>Mapping</span></a>
+          <li class='has-sub'><a href='#'><span>Mappings</span></a>
             <ul>
               <li class='odd'><%= link_to '<span>Term to Id</span>'.html_safe, term_to_id_mapping_index_path %></li>
               <li class='even'><%= link_to '<span>Id to Label</span>'.html_safe, id_to_label_mapping_index_path %></li>
-              <li class='odd'><%= link_to '<span>Text annotation</span>'.html_safe, text_annotation_mapping_index_path %></li>
+              <li class='odd'><%= link_to '<span>Text Annotation</span>'.html_safe, text_annotation_mapping_index_path %></li>
             </ul>
-          <li class='has-sub'><a href='#'><span>Manual</span></a>
+          <li class='has-sub'><a href='#'><span>Guides</span></a>
             <ul>
               <li class='odd'><%= link_to '<span>Sharing Dictionaries</span>'.html_safe, manual_basic_path %></li>
               <li class='even'><%= link_to '<span>Curating Dictionaries</span>'.html_safe, manual_advanced_path %></li>
-              <li class='odd'><%= link_to '<span>Annotating with PubAnnotation</span>'.html_safe, manual_pubann_path %></li>
-              <li class='even'><%= link_to '<span>Annotating with REST-APIs</span>'.html_safe, web_services_index_path %></li>
+              <!-- <li class='odd'><%= link_to '<span>Annotating with PubAnnotation</span>'.html_safe, manual_pubann_path %></li> -->
+              <!-- <li class='even'><%= link_to '<span>Annotating with REST-APIs</span>'.html_safe, web_services_index_path %></li> -->
             </ul>
           </li>
           <!-- <li class='last'><a href='mailto:pubdictionaries@gmail.com'><span>Contact</span></a></li> -->

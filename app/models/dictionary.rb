@@ -78,7 +78,7 @@ class Dictionary < ActiveRecord::Base
   # @return
   #   dictionary instance - a dictionary foundnil - 'title' dictionary does not 
   #   exist or not showable. nil if it does not exist or showable dictionary by its title.
-  def self.find_showable_by_title(title, user)
+  def self.find_showable_by_title(title, user = nil)
     if user.nil?
       where(:title => title).where('public = ?', true).where(:created_by_delayed_job => true).first
     else

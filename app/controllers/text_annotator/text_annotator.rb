@@ -240,9 +240,9 @@ class TextAnnotator
   # Reformat the results.
   def format_results(results)
     results_array = results.collect do |item|
-      { begin:  item[:offset].begin, 
-        end:    item[:offset].end,
-        obj:    item[:uri],
+      {
+        span: {begin: item[:offset].begin, end: item[:offset].end},
+        obj: item[:uri],
       }
     end
 
