@@ -45,7 +45,7 @@
 
           <h2>!. You can POST a list of ids to the URL, to get their labels.</h2>
           for example
-          <pre>curl -d '["id1", "id2", ...]' URL</pre>
+          <pre>curl -H "content-type:application/json" -d '["id1", "id2", ...]' URL</pre>
 
         <% end %>
         <br />
