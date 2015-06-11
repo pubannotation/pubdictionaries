@@ -1,4 +1,27 @@
+require 'elasticsearch/model'
+
 class Entry < ActiveRecord::Base
+  include Elasticsearch::Model
+  include Elasticsearch::Model::Callbacks
+
+  settings analysis: {
+    tokenizer: {
+      ngram_tokenizer: {
+        type: "nGram",
+        min_gram: "2",
+        max_gram: "3",
+        token_chars: [
+          "letter",
+          "digit"
+        ]
+      }
+    },
+    analyzer: {
+      ngram_analyzer: {
+        tokenizer: "ngram_tokenizer"
+      }
+    }
+  }
   # default_scope :order => 'view_title'
   
   attr_accessible :uri, :label, :view_title, :search_title
