@@ -23,6 +23,26 @@ class Entry < ActiveRecord::Base
     }
   }
   # default_scope :order => 'view_title'
+
+  def self.search_suggest(query)
+    search(
+      suggest: {
+        text: query
+      },
+      size: 1000
+    )#.records.collect{|n| n.view_title}.uniq
+  end
+
+  def self.search_more_like_this(query)
+    search(query: {
+      more_like_this: {
+        fields: [:view_title],
+        like_text: query,
+        min_term_freq: 1,
+        max_query_terms: 5
+      }
+    })#.collect{|n| n.view_title}.uniq
+  end
   
   attr_accessible :uri, :label, :view_title, :search_title
   belongs_to :dictionary

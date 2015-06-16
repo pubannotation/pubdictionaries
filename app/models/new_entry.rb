@@ -4,24 +4,80 @@ class NewEntry < ActiveRecord::Base
   include Elasticsearch::Model
   include Elasticsearch::Model::Callbacks
 
-  settings analysis: {
-    tokenizer: {
-      ngram_tokenizer: {
-        type: "nGram",
-        min_gram: 1,
-        max_gram: 50,
-        token_chars: [ "letter", "digit" ]
+  # settings analysis: {
+  #   tokenizer: {
+  #     ngram_tokenizer: {
+  #       type: "nGram",
+  #       min_gram: 1,
+  #       max_gram: 50,
+  #       token_chars: [ "letter", "digit" ]
+  #     }
+  #   },
+  #   analyzer: {
+  #     ngram_analyzer: {
+  #       tokenizer: "ngram_tokenizer"
+  #     }
+  #   }
+  # }
+
+  def self.search_suggest(query)
+    search(
+    suggest: {
+      text: query
+    }
+    )#.collect{|n| n.view_title}.uniq
+  end
+
+  def self.search_test(query)
+    search(query).records.collect{|new_entry| new_entry.view_title }.uniq
+  end
+
+  def self.search_more_like_this(query)
+    search(query: {
+      more_like_this: {
+        fields: [:view_title],
+        like_text: query,
+        min_term_freq: 1,
+        max_query_terms: 5
+      }
+    })#.collect{|n| n.view_title}.uniq
+  end
+
+  def self.search_ngram(query)
+    search(query: {
+      more_like_this: {
+        fields: [:view_title],
+        like_text: query,
+        min_term_freq: 1,
+        max_query_terms: 5
+      }
+    }).collect{|n| n.view_title}.uniq
+  end
+
+  def self.search_fuzzy(query)
+    # fuzzy search does not list all records
+    search( query: {
+      multi_match: {
+        fields: [:view_title, :search_title],
+        query: query,
+        fuzziness: 1
+      }
+    }).records.collect{|n| n.view_title}.uniq
+  end
+
+  def self.search_similar(query)
+    search(similarity: {
+      my_similarity: {
       }
     },
-    analyzer: {
-      ngram_analyzer: {
-        tokenizer: "ngram_tokenizer"
+    query: {
+      more_like_this: {
+        fields: [:view_title],
+        like_text: query,
+        min_term_freq: 1,
+        max_query_terms: 5
       }
-    }
-  }
-
-  def self.search_test(phrase)
-    search(phrase).records.collect{|new_entry| new_entry.view_title }.uniq
+    }).collect{|n| n.view_title}.uniq
   end
 
   mappings do
