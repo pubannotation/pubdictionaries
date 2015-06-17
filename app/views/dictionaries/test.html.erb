@@ -1,0 +1,15 @@
+<%= form_tag '', method: :get do -%>
+  <%= text_field_tag :query, params[:query] -%>
+  <%= submit_tag 'search'-%>
+<% end -%>
+
+<% n = 1 -%>
+<% @entries.each do |entry| -%>
+  <p>
+    <%= n -%>:
+    <%= entry.view_title -%>
+    <% n += 1 -%>
+  </p>
+<% end %>
+
+<%= paginate @entries -%>

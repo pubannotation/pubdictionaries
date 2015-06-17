@@ -21,6 +21,7 @@ gem 'delayed_job_active_record'
 gem 'daemons'
 gem 'elasticsearch-model'
 gem 'elasticsearch-rails'
+gem 'kaminari'
 # gem 'jquery-rails', "<3.0.0"
 # gem 'will_paginate', '>= 3.0.pre'     # Not compatible with Wice_Grid
 

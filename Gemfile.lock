@@ -260,6 +260,7 @@ DEPENDENCIES
   guard-livereload
   jquery-rails (> 3.0.0)
   jquery-ui-rails
+  kaminari
   libv8
   pg
   rails (= 3.2.16)

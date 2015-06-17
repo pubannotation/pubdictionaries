@@ -62,6 +62,7 @@ PubDictionaries::Application.routes.draw do
       post 'remove_entries'
       get  'text_annotation', to: 'dictionaries#text_annotation_with_single_dic_readme'
       post 'text_annotation', to: 'dictionaries#text_annotation_with_single_dic'
+      get 'test'
     end
   end
 

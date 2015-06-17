@@ -14,6 +14,7 @@ class DictionariesController < ApplicationController
     :text_annotation_with_multiple_dic_readme, :select_dictionaries_for_text_annotation, :text_annotation_with_multiple_dic, 
     :id_mapping_with_multiple_dic_readme, :select_dictionaries_for_id_mapping, :id_mapping,
     :label_mapping_with_multiple_dic_readme, :select_dictionaries_for_label_mapping, :label_mapping,
+    :test
   ]
 
   # Disable CSRF check for REST-API actions.
@@ -98,6 +99,11 @@ class DictionariesController < ApplicationController
         type:     "text/tsv" 
       }
     end
+  end
+
+  def test
+    search_results = Entry.search_fuzzy(params[:query])
+    @entries = search_results.page(params[:page])
   end
 
   def new

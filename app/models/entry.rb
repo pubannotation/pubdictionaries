@@ -10,10 +10,7 @@ class Entry < ActiveRecord::Base
         type: "nGram",
         min_gram: "2",
         max_gram: "3",
-        token_chars: [
-          "letter",
-          "digit"
-        ]
+        token_chars: [ "letter", "digit" ]
       }
     },
     analyzer: {
@@ -22,26 +19,69 @@ class Entry < ActiveRecord::Base
       }
     }
   }
-  # default_scope :order => 'view_title'
+
+  def self.search_ngram(query)
+    search(
+      settings: {
+        analysis: {
+          analyzer:{
+            my_ngram_analyser: {
+              tokenizer: 'my_ngram_analyser'
+            }
+          },
+          tokenizer: {
+            my_ngram_tokenizer: {
+              type: 'nGram',
+              min_gram: 1,
+              max_gram: 5,
+              token_chars: [ "letter", "digit" ]
+            }
+          }
+        }
+      },
+      size: 1000
+    )
+
+  end
 
   def self.search_suggest(query)
     search(
       suggest: {
-        text: query
+        text: query,
+        simple_phrase: {
+          phrase: {
+            field: view_title,
+            size: 1
+          }
+        }
       },
       size: 1000
-    )#.records.collect{|n| n.view_title}.uniq
+    )
   end
 
   def self.search_more_like_this(query)
-    search(query: {
-      more_like_this: {
-        fields: [:view_title],
-        like_text: query,
-        min_term_freq: 1,
-        max_query_terms: 5
+    search(
+      query: {
+        more_like_this: {
+          fields: [:view_title],
+          like_text: query,
+          min_term_freq: 1,
+          max_query_terms: 5
+        }
       }
-    })#.collect{|n| n.view_title}.uniq
+    )
+  end
+
+  def self.search_fuzzy(query)
+    search(
+      query: {
+        multi_match: {
+          fields: [:view_title, :search_title],
+          query: query,
+          fuzziness: 2
+        }
+      }
+    )
   end
   
   attr_accessible :uri, :label, :view_title, :search_title
