@@ -41,7 +41,7 @@
           <h2>3. Generate URL</h2>
           <%= submit_tag "Generate", {:class => "customized_button", :method => :get} %>
           <br />
-          <%= text_area_tag :annotator_uri, @annotator_uri, rows: 4, cols: 80, disabled: true %>
+          <%= text_area_tag :annotator_uri, @annotator_uri, rows: 4, cols: 80 %>
 
           <h2>!. You can POST a list of ids to the URL, to get their labels.</h2>
           for example
