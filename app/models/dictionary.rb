@@ -15,6 +15,9 @@ class Dictionary < ActiveRecord::Base
 
   has_many :entries, :dependent => :destroy
   has_many :user_dictionaries, :dependent => :destroy
+  has_many :expressions_uris
+  has_many :expressions, through: :expressions_uris
+  has_many :uris, through: :expressions_uris
 
   validates :creator, :description, :title, :presence => true
   validates :file, presence: true,  on: :create 

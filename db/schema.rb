@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20140327062727) do
+ActiveRecord::Schema.define(:version => 20150624045947) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -64,6 +64,22 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
   add_index "entries", ["uri"], :name => "index_entries_on_uri"
   add_index "entries", ["view_title"], :name => "index_entries_on_view_title"
 
+  create_table "expressions", :force => true do |t|
+    t.string   "words"
+    t.datetime "created_at", :null => false
+    t.datetime "updated_at", :null => false
+  end
+
+  create_table "expressions_uris", :force => true do |t|
+    t.integer  "expression_id"
+    t.integer  "uri_id"
+    t.integer  "dictionary_id"
+    t.datetime "created_at",    :null => false
+    t.datetime "updated_at",    :null => false
+  end
+
+  add_index "expressions_uris", ["expression_id", "uri_id", "dictionary_id"], :name => "index_exp_uri_dic", :unique => true
+
   create_table "new_entries", :force => true do |t|
     t.string   "view_title"
     t.string   "label"
@@ -80,6 +96,14 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
   add_index "new_entries", ["user_dictionary_id"], :name => "index_new_entries_on_user_dictionary_id"
   add_index "new_entries", ["view_title"], :name => "index_new_entries_on_view_title"
 
+  create_table "pg_search_documents", :force => true do |t|
+    t.text     "content"
+    t.integer  "searchable_id"
+    t.string   "searchable_type"
+    t.datetime "created_at",      :null => false
+    t.datetime "updated_at",      :null => false
+  end
+
   create_table "removed_entries", :force => true do |t|
     t.integer  "user_dictionary_id"
     t.integer  "entry_id"
@@ -89,6 +113,12 @@ ActiveRecord::Schema.define(:version => 20140327062727) do
 
   add_index "removed_entries", ["entry_id"], :name => "index_removed_entries_on_entry_id"
   add_index "removed_entries", ["user_dictionary_id"], :name => "index_removed_entries_on_user_dictionary_id"
+
+  create_table "uris", :force => true do |t|
+    t.string   "resource"
+    t.datetime "created_at", :null => false
+    t.datetime "updated_at", :null => false
+  end
 
   create_table "user_dictionaries", :force => true do |t|
     t.integer  "user_id"
