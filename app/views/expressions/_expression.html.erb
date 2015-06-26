@@ -1,0 +1,31 @@
+<% if expression_counter == 0 -%>
+  
+  <table id='expressions'>
+    <tr style="vertical-align: top">
+      <th>
+        Expression<br />
+        <%= text_field_tag :query, params[:query] -%>
+      </th>
+      <th>
+        URI
+      </th>
+    </tr>
+<% end -%>
+
+  <tr class="expression">
+    <td class="word">
+      <%= expression.words -%>
+      <% p expression -%>
+    </td>
+    <td class="uris">
+      <% Expression.find(expression.id).uris.each do |uri| -%>
+        <%= "#{ uri.resource } " -%>
+      <% end -%>
+    </td>
+  </tr>
+
+<% if expression_counter == ( @expressions.size - 1 ) -%>
+  </table>
+  <%= paginate @expressions, outer_window: 2 -%>
+  <%= @expressions.total_count -%>
+<% end -%>

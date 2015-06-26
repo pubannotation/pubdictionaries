@@ -55,6 +55,13 @@ class DictionariesController < ApplicationController
   # Show the content of an original dictionary and its corresponding user dictionary.
   def show
     @base_dic  = Dictionary.find_showable_by_title  params[:id], current_user
+
+    per_page = 30
+    if params[:query]
+      @expressions = Expression.search_fuzzy(params[:query]).page(params[:page]).per(per_page)
+    else
+      @expressions = @base_dic.expressions.page(params[:page]).per(per_page)
+    end
     
     # Decide whether to upload the dictionary or not.
     if params[:upload_confirmation] and params[:upload_confirmation] == "discard"

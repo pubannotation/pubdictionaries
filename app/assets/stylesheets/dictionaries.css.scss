@@ -69,3 +69,14 @@
   background: url(pause.png) no-repeat;
   background-size: 20px;
 }
+
+#expressions{
+ border-collapse: collapse;
+ width: 100%;
+}
+
+#expressions th,
+#expressions td{
+  border: 1px solid #000;
+  padding: 0.5em;
+}
