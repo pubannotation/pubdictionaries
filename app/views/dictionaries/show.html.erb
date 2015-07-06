@@ -13,8 +13,24 @@
     </div>
     <br />
 
-    <%= form_tag '', method: :get do -%>
+    <%= link_to 'Back to list', dictionary_path(@base_dic) -%>
+
+    <table id='expressions' style="margin-top: 1em;">
+      <tr style="vertical-align: top">
+        <th class="expression">
+          Expression<br />
+          <%= render partial: 'dictionaries/search_form', locals: {model: 'expression'} -%>
+        </th>
+        <th class="uri">
+         Id 
+          <%= render partial: 'dictionaries/search_form', locals: {model: 'uri'} -%>
+        </th>
+      </tr>
+    </table>
+    <% if @expressions.present? -%>
       <%= render partial: 'expressions/expression', collection: @expressions -%>
+    <% else -%>
+      <%= render partial: 'uris/uri', collection: @uris -%>
     <% end -%>
 
     <!-- Show a list of (original) entries -->

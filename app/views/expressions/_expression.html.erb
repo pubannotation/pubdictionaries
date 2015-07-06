@@ -1,25 +1,15 @@
 <% if expression_counter == 0 -%>
-  
   <table id='expressions'>
-    <tr style="vertical-align: top">
-      <th>
-        Expression<br />
-        <%= text_field_tag :query, params[:query] -%>
-      </th>
-      <th>
-        URI
-      </th>
-    </tr>
 <% end -%>
 
   <tr class="expression">
-    <td class="word">
+    <td class="expression">
       <%= expression.words -%>
-      <% p expression -%>
     </td>
-    <td class="uris">
-      <% Expression.find(expression.id).uris.each do |uri| -%>
+    <td class="uri">
+      <% expression.uris.dictionary(@base_dic.id).uniq.each do |uri| -%>
         <%= "#{ uri.resource } " -%>
+        <br />
       <% end -%>
     </td>
   </tr>

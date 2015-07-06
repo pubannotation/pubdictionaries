@@ -15,37 +15,44 @@
         g.column name: "Creator", attribute: "creator" do |dic| 
           dic.creator
         end
-        g.column name: "Visibility", attribute: "public" do |dic| 
-          dic.public == true ? "Public" : "Private" 
-        end
+        #g.column name: "Visibility", attribute: "public" do |dic| 
+          #dic.public == true ? "Public" : "Private" 
+        #end
         g.column name: "Created At", attribute: "created_at", filter: false do |dic| 
           dic.created_at
         end
         # g.column name: "Description", attribute: "description" do |dic| 
         #   dic.description
         # end
-        g.column name: "Functions", filter: false do |dic|
-          link_array = ""
-          if current_user and (User.find_by_id(current_user.id).email == dic.creator)
-            link_array = 
-              link_to(image_tag('patch.jpg', size: "16x16", alt: "Show related user dictionaries"),
-              {controller: "user_dictionaries", action: "index_for_owner", base_dic: dic},
-              )
-          end
-          link_array += 
-            link_to(image_tag('mac-trashcan.jpg', size: "16x16", alt: "Delete this dictionary"), 
-            dic, 
-            method: :delete, 
-            data: {confirm: 'Are you sure to completely delete this dictionary?'})
 
-          link_array.html_safe
-          # show_link = link_to('Show', dic)
-          # dele_link = link_to('Delete', dic, method: :delete, data: { confirm: 'Are you sure?' })
-          # "#{show_link} | #{dele_link}".html_safe     # html_safe is necessary to ensure rendering
-          # "#{dele_link}".html_safe     # html_safe is necessary to ensure rendering
-        end
-        g.column name: "status" do |dic| 
-          dictionary_status(dic)
+        if params[:dictionary_type] == 'my_dic'
+          g.column name: "Functions", filter: false do |dic|
+            link_array = ""
+            if current_user and (User.find_by_id(current_user.id).email == dic.creator)
+              link_array = 
+                link_to(image_tag('patch.jpg', size: "16x16", alt: "Show related user dictionaries"),
+                {controller: "user_dictionaries", action: "index_for_owner", base_dic: dic},
+                )
+              link_array += 
+                link_to(image_tag('edit.png', size: "16x16", alt: "Edit this dictionary"),
+                edit_dictionary_path(dic.title)
+                )
+            end
+            link_array += 
+              link_to(image_tag('mac-trashcan.jpg', size: "16x16", alt: "Delete this dictionary"), 
+              dic, 
+              method: :delete, 
+              data: {confirm: 'Are you sure to completely delete this dictionary?'})
+
+            link_array.html_safe
+            # show_link = link_to('Show', dic)
+            # dele_link = link_to('Delete', dic, method: :delete, data: { confirm: 'Are you sure?' })
+            # "#{show_link} | #{dele_link}".html_safe     # html_safe is necessary to ensure rendering
+            # "#{dele_link}".html_safe     # html_safe is necessary to ensure rendering
+          end
+          g.column name: "status" do |dic| 
+            dictionary_status(dic)
+          end
         end
       end
     %>

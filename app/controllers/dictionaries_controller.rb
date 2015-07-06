@@ -54,13 +54,19 @@ class DictionariesController < ApplicationController
 
   # Show the content of an original dictionary and its corresponding user dictionary.
   def show
-    @base_dic  = Dictionary.find_showable_by_title  params[:id], current_user
+    @base_dic  = Dictionary.find_showable_by_title params[:id], current_user
 
     per_page = 30
     if params[:query]
-      @expressions = Expression.search_fuzzy(params[:query]).page(params[:page]).per(per_page)
+      case params[:model] 
+      when 'expression'
+        @expressions = Expression.search_fuzzy(params[:query]).records.includes(:uris).dictionary(@base_dic.id).uniq.page(params[:page]).per(per_page)
+      when 'uri'
+        @uris = Uri.search_fuzzy(params[:query]).records.includes(:expressions).dictionary(@base_dic.id).page(params[:page]).per(per_page)
+      else
+      end
     else
-      @expressions = @base_dic.expressions.page(params[:page]).per(per_page)
+      @expressions = @base_dic.expressions.includes(:uris).uniq.page(params[:page]).per(per_page) if @base_dic.expressions.present?
     end
     
     # Decide whether to upload the dictionary or not.
@@ -116,6 +122,7 @@ class DictionariesController < ApplicationController
   def new
     @dictionary = Dictionary.new
     @dictionary.creator = current_user.email     # set the creator with the user name (email)
+    @submit_text = 'Create'
 
     respond_to do |format|
       format.html # new.html.erb
@@ -125,15 +132,15 @@ class DictionariesController < ApplicationController
 
   def create
     # 1. Create a dictionary.
-    @dictionary = User.find(current_user.id).dictionaries.new params[:dictionary]
+    @dictionary = current_user.dictionaries.new(params[:dictionary])
     @dictionary.title.strip!
     @dictionary.creator = current_user.email
     
     respond_to do |format|
       if @dictionary.save
-        run_create_as_a_delayed_job @dictionary, params
-        
-        format.html{ redirect_to dictionaries_url, 
+        run_create_as_a_delayed_job(@dictionary, params)        
+        format.html{ 
+          redirect_to dictionaries_url, 
           notice: 'Creating a dictionary in the background...' 
         }
       else
@@ -141,6 +148,23 @@ class DictionariesController < ApplicationController
         format.html{ render action: "new" }
       end
     end
+  end
+
+  def edit
+    @dictionary = Dictionary.find_showable_by_title( params[:id], current_user )
+    @submit_text = 'Update'
+  end
+  
+  def update
+    @dictionary = Dictionary.find_showable_by_title( params[:id], current_user )
+    @dictionary.update_attributes(params[:dictionary])
+    if params[:dictionary][:file].present?
+      flash[:notice] = 'Creating a dictionary in the background...' 
+      @dictionary.cleanup
+      run_create_as_a_delayed_job(@dictionary, params)        
+    end
+
+    redirect_to dictionaries_path(dictionary_type: 'my_dic')
   end
 
   def run_create_as_a_delayed_job(dictionary, params)
@@ -152,7 +176,7 @@ class DictionariesController < ApplicationController
     sep              = params[:dictionary][:separator] 
 
     # Caution!!! trg_uploadedfile must be deleted after the delayed job!!!
-    dictionary.delay.import_entries_and_create_simstring_db  trg_uploadedfile, sep
+    dictionary.delay.import_expressions_from_file(trg_uploadedfile, sep)
   end
 
   # Destroy a base dictionary and the associated user dictionaries (of other users too).
@@ -170,7 +194,7 @@ class DictionariesController < ApplicationController
         ret_msg = msg
       else
         # Speed up the deletion speed by using delete_all.
-        base_dic.destroy_entries_and_simstring_db  
+        base_dic.cleanup
         # Delete a dictionary with 0 entries (FAST! :-)
         base_dic.destroy
         

@@ -34,7 +34,6 @@ class Dictionary < ActiveRecord::Base
     title
   end
 
-
   # Return a list of dictionaries.
   def self.get_showables(user = nil, dic_type = nil)
     if user == nil
@@ -46,7 +45,7 @@ class Dictionary < ActiveRecord::Base
     else
       if dic_type == 'my_dic'
         # Get a list of dictionaries of the current user.
-        lst = where('user_id = ? AND created_by_delayed_job = ?', user.id, true)
+        lst = where('user_id = ?', user.id)
         order = 'created_at'
         order_direction = 'desc'
 
@@ -116,8 +115,137 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
+  def cleanup
+    update_attribute(:created_by_delayed_job, false)
+    # Delete  expressions belongs_to only one dictionary
+    expressions = self.expressions.where(dictionaries_count: 1)
+    if expressions.present?
+      ids = expressions.collect{|e| e.id}
+      Expression.where('id IN (?)', ids).delete_all
+    end
+
+    # Delete  uris belongs_to only one dictionary
+    uris = self.uris.where(dictionaries_count: 1)
+    if uris.present?
+      ids = uris.collect{|e| e.id}
+      Uri.where('id IN (?)', ids).delete_all
+    end
+
+    # destroy is required because needs callback to decrement dictionaries_count for expression and uri.
+    self.expressions_uris.destroy_all
+  end
 
   # Refactored as a method for delayed_job
+  def import_expressions_from_file(file, separator)
+    started_at = DateTime.now
+    # 1. Import expressions.
+    if import_expressions(file, separator) == false
+      # TODO delete current expressions
+      self.cleanup
+      return false
+    end
+    
+    File.delete(file)
+
+    # 3. Check that this job is done!
+    self.created_by_delayed_job = true
+
+    Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Expression', scope: "diff"))
+    Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Uri', scope: "diff"))
+    save
+  end
+
+  # Import expressions.
+  def import_expressions(file, sep)
+    if file.nil?
+      self.error_messages += "File stream is nil!\n"
+      return false
+    else
+      # "textmode: true" option automatically converts all newline variants to \n
+      fp = File.open(file, textmode: true)
+      kline = 0
+      while (tmp_expressions = read_expressions(fp, sep, kline)) != [] do
+      end
+      fp.close()
+      return true
+    end
+  end
+
+  def read_expressions(fp, sep, kline)
+    expressions = []
+    # while expressions.size < max and not fp.eof?
+    while not fp.eof?
+      line = fp.readline.strip!     # This can't handle "\r" (OSX) newline!
+      if is_proper_raw_expression?(line, sep, kline)
+        words, uri = parse_raw_expression(line, sep)
+        expressions << save_expressions_uris(words, uri)        
+      end
+      kline += 1
+    end
+    return expressions
+  end
+
+  def is_proper_raw_expression?(line, sep, kline)
+    # Line check.
+    if line == ""
+      # Silently ignore blank lines.
+      return false
+    end
+
+    # Field-wise check.
+    items = line.split( sep )
+    if items.size < 2
+      self.error_messages += "#{kline}-th line consists of less than 2 fields!\n"
+      return false
+    end
+
+    items.each do |item|
+      if item.length > 255
+        # Max length is 255 since all Entry fields are string type.
+        self.error_messages += "#{kline}-th line has a field that is longer than 255!\n"
+        return false
+      end
+    end
+
+    return true
+  end
+
+  def parse_raw_expression(line, sep)
+    items = line.split( sep )
+    return items[0], items[1]
+  end
+
+  def save_expressions_uris(words, resource)
+    # TODO check if expression already exists?
+    ActiveRecord::Base.transaction do
+      expression = Expression.find_by_words(words)
+      expression = Expression.create({words: words}) if expression.blank?
+
+      # TODO check if resource already exists?
+      uri = Uri.find_by_resource(resource)
+      uri = Uri.create({resource: resource}) if uri.blank?
+
+      expression_uri = self.expressions_uris.create({expression_id: expression.id, uri_id: uri.id})
+      return expression if expression_uri.valid?
+    end
+
+  end
+
+
+  def assemble_entry_from(title, uri, label)
+    e = Entry.new
+
+    e.dictionary_id = self.id
+    e.view_title    = title
+    e.search_title  = normalize_str( title, 
+      {lowercased: self.lowercased, hyphen_replaced: self.hyphen_replaced, stemmed: self.stemmed}
+    )
+    e.uri           = uri
+    e.label         = label
+
+    return e
+  end
+
   def import_entries_and_create_simstring_db(file, separator)
     # 1. Import entries.
     if import_entries(file, separator) == false
