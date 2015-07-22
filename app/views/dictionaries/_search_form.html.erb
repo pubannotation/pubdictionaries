@@ -1,7 +1,10 @@
-<% query_value = params[:query] if params[:model] == model -%>
 <%= form_tag '', method: :get do -%>
-  <%= text_field_tag :query, query_value -%>
-  <%= hidden_field_tag :model, model -%>
+  <%= label_tag :model, 'Search for' -%>
+  <%= select_tag :model, options_for_select([['All', 'all'], ['Expression', 'expression'], ['Id', 'uri'] ], params[:model]) -%>
+  <%= label_tag :order, 'Order' -%>
+  <%= select_tag :order, options_for_select([['Default', 'default'], ['Alphabetical', 'alphabetical']], params[:order]) -%>
+  <br />
+  <%= text_field_tag :query, params[:query] -%>
   <%= submit_tag 'Search' -%>
   <%= submit_tag 'Clear', id: 'reset' -%>
 <% end -%>

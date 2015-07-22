@@ -28,7 +28,7 @@
         if params[:dictionary_type] == 'my_dic'
           g.column name: "Functions", filter: false do |dic|
             link_array = ""
-            if current_user and (User.find_by_id(current_user.id).email == dic.creator)
+            if current_user && current_user.email == dic.creator
               link_array = 
                 link_to(image_tag('patch.jpg', size: "16x16", alt: "Show related user dictionaries"),
                 {controller: "user_dictionaries", action: "index_for_owner", base_dic: dic},

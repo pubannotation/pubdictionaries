@@ -60,13 +60,32 @@ class DictionariesController < ApplicationController
     if params[:query]
       case params[:model] 
       when 'expression'
-        @expressions = Expression.search_fuzzy(params[:query]).records.includes(:uris).dictionary(@base_dic.id).uniq.page(params[:page]).per(per_page)
+        expressions = Expression.search_fuzzy(params[:query]).records.includes(:uris).dictionary(@base_dic.id)
+        expression_ids = expressions.collect{|expression| expression.id }
+        if params[:order] == 'alphabetical'
+          @expressions_uris = ExpressionsUri.includes(:expression).where(['dictionary_id = ? AND expression_id IN (?)', @base_dic.id, expression_ids]).page(params[:page]).order('expressions.words ASC').per(per_page)
+        else
+          @expressions_uris = ExpressionsUri.includes(:expression).where(['dictionary_id = ? AND expression_id IN (?)', @base_dic.id, expression_ids]).page(params[:page]).per(per_page)
+        end
+        sanitized_query = ActiveRecord::Base.send(:sanitize_sql_array, ["position(id::text in '#{ expression_ids.join(',')}')"])
+        @expressions_uris = ExpressionsUri.includes(:expression).where(['dictionary_id = ? AND expression_id IN (?)', @base_dic.id, expression_ids]).page(params[:page]).order(sanitized_query).per(per_page)
+        
       when 'uri'
-        @uris = Uri.search_fuzzy(params[:query]).records.includes(:expressions).dictionary(@base_dic.id).page(params[:page]).per(per_page)
+        uris = Uri.search_fuzzy(params[:query]).records.includes(:expressions).dictionary(@base_dic.id)
+        uri_ids = uris.collect{|uri| uri.id }
+        @expressions_uris = ExpressionsUri.includes(:expression).where(['dictionary_id = ? AND uri_id IN (?)', @base_dic.id, uri_ids]).page(params[:page]).order('expressions.words DESC').per(per_page)
+      when 'all'
+        expressions = Expression.search_fuzzy(params[:query]).records.includes(:uris).dictionary(@base_dic.id)
+        expression_ids = expressions.collect{|expression| expression.id }
+        uris = Uri.search_fuzzy(params[:query]).records.includes(:expressions).dictionary(@base_dic.id)
+        uri_ids = uris.collect{|uri| uri.id }
+        @expressions_uris = ExpressionsUri.includes(:expression).where(['dictionary_id = ? AND ( expression_id IN (?) OR uri_id IN (?) )', @base_dic.id, expression_ids, uri_ids]).page(params[:page]).order('expressions.words DESC').per(per_page)
       else
       end
     else
-      @expressions = @base_dic.expressions.includes(:uris).uniq.page(params[:page]).per(per_page) if @base_dic.expressions.present?
+      expressions = @base_dic.expressions.includes(:uris).uniq.page(params[:page]).per(per_page) if @base_dic.expressions.present?
+      expression_ids = expressions.collect{|expression| expression.id }
+      @expressions_uris = ExpressionsUri.includes(:expression).where(['dictionary_id = ? AND expression_id IN (?)', @base_dic.id, expression_ids]).page(params[:page]).order('expressions.words ASC').per(per_page)
     end
     
     # Decide whether to upload the dictionary or not.

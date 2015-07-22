@@ -7,37 +7,34 @@
         <legend>Dictionary name: <%= @base_dic.title %></legend>
 
         <%= render 'show_meta_information' %>
-        <%= render 'show_export_options' %>
+        <%#= render 'show_export_options' %>
         <%= render 'show_rest_services' %>
       </fieldset>
     </div>
     <br />
 
-    <%= link_to 'Back to list', dictionary_path(@base_dic) -%>
+    <%= link_to 'Show all', dictionary_path(@base_dic) -%>
+
+    <%= render partial: 'dictionaries/search_form', locals: {model: 'uri'} -%>
 
     <table id='expressions' style="margin-top: 1em;">
       <tr style="vertical-align: top">
         <th class="expression">
           Expression<br />
-          <%= render partial: 'dictionaries/search_form', locals: {model: 'expression'} -%>
         </th>
         <th class="uri">
          Id 
-          <%= render partial: 'dictionaries/search_form', locals: {model: 'uri'} -%>
         </th>
       </tr>
     </table>
-    <% if @expressions.present? -%>
-      <%= render partial: 'expressions/expression', collection: @expressions -%>
-    <% else -%>
-      <%= render partial: 'uris/uri', collection: @uris -%>
-    <% end -%>
 
-    <!-- Show a list of (original) entries -->
-    <% if not @base_dic.entries.empty? %>
-      <%= render 'show_entries' %>
-    <% end %>
-    <br />
+    <% if @expressions_uris.present? -%>
+      <%= render partial: 'expressions_uris/expressions_uri', collection: @expressions_uris -%>
+    <% else -%>
+      <% if @expressions.present? -%>
+        <%= render partial: 'expressions/expression', collection: @expressions -%>
+      <% end -%>
+    <% end -%>
   <% else %>
     <div class="infobox">
       <%= render 'show_error_messages' %>
@@ -45,6 +42,7 @@
     <br />
   <% end %>
 
-  <%= link_to 'Back', dictionaries_path %>
+
+  <%= link_to 'Back', dictionaries_path, style: 'display:block' -%>
 
 </div>

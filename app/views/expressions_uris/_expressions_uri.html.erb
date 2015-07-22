@@ -1,0 +1,17 @@
+<% if expressions_uri_counter == 0 -%>
+  <table id='expressions'>
+<% end -%>
+
+  <tr class="expression">
+    <td class="expression">
+      <%= expressions_uri.expression.words -%>
+    </td>
+    <td class="uri">
+      <%= "#{ expressions_uri.uri.resource } " -%>
+    </td>
+  </tr>
+
+<% if expressions_uri_counter == ( @expressions_uris.size - 1 ) -%>
+  </table>
+  <%= paginate @expressions_uris, outer_window: 2 -%>
+<% end -%>
