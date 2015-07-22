@@ -31,6 +31,8 @@ end
 
 group :development do
   gem 'guard-livereload', require: false
+  gem 'faker'
+  gem 'rails-erd'
 end
 
 group :test do
