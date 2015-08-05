@@ -19,3 +19,9 @@
 //= require zeroclipboard
 //= require_tree .
 
+$(document).ready(function(){
+  $("#reset").click(function() {
+    $(this).closest('form').find("input[type=text], textarea").val("");
+    $(this).closest('form').reset();
+  });
+});

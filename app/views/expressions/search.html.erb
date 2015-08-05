@@ -1,0 +1,55 @@
+<!-- Seach from -->
+<%= form_tag '', method: :get, id: 'SearchExpression' do -%>
+  <%= label_tag :output -%>
+  <%= select_tag :output, options_for_select([['Id', 'id'], ['Full', 'full']], params[:output]) -%>
+
+  <%= label_tag :fuzziness -%>
+  <%= select_tag :fuzziness, options_for_select(%w(0 1 2), params[:fuzziness] ||= 2) -%>
+
+  <%= text_field_tag :terms, params[:terms] -%>
+
+  <!-- Dictionaries -->
+  <% if @dictionaries -%>
+    <fieldset style='margin: 0.5em 0'>
+      Filter by dictionaries<br />
+      <% @dictionaries.each do |dictionary| -%>
+        <%= check_box_tag 'dictionaries[]', dictionary.title, true, id: "dictionaries_#{dictionary.id}" -%>
+        <%= label_tag "dictionaries_#{dictionary.id}", dictionary.title -%>
+        <br />
+      <% end -%>
+
+    </fieldset>
+  <% end -%>
+
+  <%= submit_tag 'Search' -%>
+  <%= submit_tag 'Clear', type: 'reset', id: 'reset' -%>
+  <br />
+<% end -%>
+
+<!-- Search results -->
+<%= render partial: 'expressions_uris/expressions_uri', collection: @expressions_uris -%>
+
+<!-- REST API -->
+
+<% if params[:commit] -%>
+  <!-- Copy to clipboard -->
+  <div style='margin-top:1em'>
+    <%= link_to 'REST service URL',  rest_api_search_expression_url, target: '_blank' -%>
+    <br />
+    <textarea id='fe_text' style="width: 95%; height: 1.5em;"><%= rest_api_search_expression_url -%></textarea>
+    <br />
+    <button style='margin-top:0.5em' data-clipboard-target='fe_text' data-clipboard-text='Default clipboard text from attribute' id='d_clip_button' title='Click me to copy to clipboard.'>
+      <b>Copy to clipboard</b>
+    </button>
+  </div>
+  <script>
+    $(document).ready(function() {
+      var clip = new ZeroClipboard($("#d_clip_button"))
+    });
+
+    $("#clear-test").on("click", function(){
+      $("#fe_text").val("Copy me!");
+      $("#testarea").val("");
+    });
+  </script>
+<% end -%>

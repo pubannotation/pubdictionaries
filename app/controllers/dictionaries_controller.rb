@@ -43,7 +43,7 @@ class DictionariesController < ApplicationController
   def index
     dic_type = params[:dictionary_type]
 
-    base_dics, order, order_direction = Dictionary.get_showables  current_user, dic_type
+    base_dics, order, order_direction = Dictionary.get_showables( current_user, dic_type )
     @grid_dictionaries = get_dictionaries_grid_view  base_dics, order, order_direction, 30
 
     respond_to do |format|
@@ -61,7 +61,7 @@ class DictionariesController < ApplicationController
       # TODO deletege to model
       case params[:model] 
       when 'expression'
-        expressions = Expression.search_fuzzy(params[:query]).records.includes(:uris).dictionary(@base_dic.id)
+        expressions = Expression.search_fuzzy({query: params[:query]}).records.includes(:uris).dictionary(@base_dic.id)
         if expressions
           expression_ids = expressions.collect{|expression| expression.id }.uniq
           expressions_uris = ExpressionsUri.dictionary_expressions(@base_dic.id, expression_ids).page(params[:page])
@@ -73,7 +73,7 @@ class DictionariesController < ApplicationController
           @expressions_uris = expressions_uris.order(order).per(per_page)
         end
       when 'uri'
-        uris = Uri.search_fuzzy(params[:query]).records.includes(:expressions).dictionary(@base_dic.id)
+        uris = Uri.search_fuzzy({query: params[:query]}).records.includes(:expressions).dictionary(@base_dic.id)
         if uris
           uri_ids = uris.collect{|uri| uri.id }.uniq
           expressions_uris = ExpressionsUri.dictionary_uris(@base_dic.id, uri_ids).page(params[:page])
@@ -85,7 +85,7 @@ class DictionariesController < ApplicationController
           @expressions_uris = expressions_uris.order(order).per(per_page)
         end
       when 'all'
-        expressions = Expression.search_fuzzy(params[:query]).records.includes(:uris).dictionary(@base_dic.id)
+        expressions = Expression.search_fuzzy({query: params[:query]}).records.includes(:uris).dictionary(@base_dic.id)
         if expressions
           expression_ids = expressions.collect{|expression| expression.id }.uniq
           if params[:order] == 'alphabetical'
@@ -94,20 +94,26 @@ class DictionariesController < ApplicationController
             order = ActiveRecord::Base.send(:sanitize_sql_array, ["position(expression_id::text in '#{ expression_ids.join(',')}')"])
           end
         end
-        uris = Uri.search_fuzzy(params[:query]).records.includes(:expressions).dictionary(@base_dic.id)
+        uris = Uri.search_fuzzy({query: params[:query]}).records.includes(:expressions).dictionary(@base_dic.id)
         uri_ids = uris.collect{|uri| uri.id }.uniq if uris
         @expressions_uris = ExpressionsUri.includes(:expression).where(['dictionary_id = ? AND ( expression_id IN (?) OR uri_id IN (?) )', @base_dic.id, expression_ids, uri_ids]).page(params[:page]).order(order).per(per_page)
       else
       end
     else
-      expressions = @base_dic.expressions.includes(:uris).uniq.page(params[:page]).per(per_page) if @base_dic.expressions.present?
+      expressions = @base_dic.expressions.includes(:uris) if @base_dic.present?
+      if expressions.size < 1000
+        expressions = expressions.page(params[:page]).per(per_page)
+      else
+        # no pagination if have many expressions
+        expressions = expressions.limit(per_page)
+      end
       expression_ids = expressions.collect{|expression| expression.id }
-      @expressions_uris = ExpressionsUri.includes(:expression).where(['dictionary_id = ? AND expression_id IN (?)', @base_dic.id, expression_ids]).page(params[:page]).order('expressions.words ASC').per(per_page)
+      @expressions_uris = ExpressionsUri.includes(:expression, :uri).where(['dictionary_id = ? AND expression_id IN (?)', @base_dic.id, expression_ids]).page(params[:page]).order('expressions.words ASC').per(per_page)
     end
     
     # Decide whether to upload the dictionary or not.
     if params[:upload_confirmation] and params[:upload_confirmation] == "discard"
-      @base_dic.destroy_entries_and_simstring_db
+      # @base_dic.destroy_entries_and_simstring_db
       @base_dic.destroy
       @base_dic = nil
     elsif params[:upload_confirmation] and params[:upload_confirmation] == "confirm"

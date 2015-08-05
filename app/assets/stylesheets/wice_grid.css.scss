@@ -69,17 +69,6 @@
     cursor: pointer;
   }
 
-  .desc,  .asc{
-    padding-right: 18px;
-    text-decoration:none;
-  }
-
-  .desc {
-    background: transparent url(/assets/icons/grid/arrow_down.gif) right no-repeat
-  }
-  .asc  {
-    background: transparent url(/assets/icons/grid/arrow_up.gif)   right no-repeat
-  }
 
   .submit.clickable{
     background: transparent url(/assets/icons/grid/table_refresh.png) no-repeat;

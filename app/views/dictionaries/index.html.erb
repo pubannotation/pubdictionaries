@@ -12,8 +12,11 @@
         g.column name: "Dictionary Name", attribute: "title" do |dic| 
           link_to dic.title, dic
         end
-        g.column name: "Creator", attribute: "creator" do |dic| 
-          dic.creator
+
+        if params[:dictionary_type] != 'my_dic'
+          g.column name: "Creator", attribute: "creator" do |dic| 
+            dic.creator
+          end
         end
         #g.column name: "Visibility", attribute: "public" do |dic| 
           #dic.public == true ? "Public" : "Private" 
@@ -28,16 +31,15 @@
         if params[:dictionary_type] == 'my_dic'
           g.column name: "Functions", filter: false do |dic|
             link_array = ""
-            if current_user && current_user.email == dic.creator
-              link_array = 
-                link_to(image_tag('patch.jpg', size: "16x16", alt: "Show related user dictionaries"),
-                {controller: "user_dictionaries", action: "index_for_owner", base_dic: dic},
-                )
+            # Deleted dictionary creator match to show edit, deltete links.
+            link_array = 
+              link_to(image_tag('patch.jpg', size: "16x16", alt: "Show related user dictionaries"),
+                      {controller: "user_dictionaries", action: "index_for_owner", base_dic: dic},
+                     )
               link_array += 
                 link_to(image_tag('edit.png', size: "16x16", alt: "Edit this dictionary"),
-                edit_dictionary_path(dic.title)
-                )
-            end
+                        edit_dictionary_path(dic.title)
+                       )
             link_array += 
               link_to(image_tag('mac-trashcan.jpg', size: "16x16", alt: "Delete this dictionary"), 
               dic, 

@@ -15,6 +15,9 @@ class Expression < ActiveRecord::Base
   scope :dictionary, lambda{|dictionary_id|
     joins(:expressions_uris).where('expressions_uris.dictionary_id = ?', dictionary_id)
   }
+  scope :dictionaries, lambda{|dictionary_ids|
+    joins(:expressions_uris).where('expressions_uris.dictionary_id IN (?)', dictionary_ids)
+  }
 
   def as_indexed_json(options={})
     as_json(
@@ -23,13 +26,26 @@ class Expression < ActiveRecord::Base
     )
   end
 
-  def self.search_fuzzy(query)
+  def self.search_fuzzy(arguments = {})
+    arguments[:fuzziness] ||= 2
+    # search(
+    #   query: {
+    #     multi_match: {
+    #       fields: [:words],
+    #       query: query,
+    #       fuzziness: 2
+    #     }
+    #   }
+    # )
+    # OR search if query include comma
+    arguments[:query] = arguments[:query].split(',') if arguments[:query] =~ /\,/
     search(
       query: {
-        multi_match: {
-          fields: [:words],
-          query: query,
-          fuzziness: 2
+        match: {
+          words:{
+            query: arguments[:query],
+            fuzziness: arguments[:fuzziness]
+          }
         }
       }
     )
@@ -40,5 +56,4 @@ class Expression < ActiveRecord::Base
       uris.where(['expressions_uris.dictionary_id = ?', dictionary_id]).first 
     end
   end
-
 end

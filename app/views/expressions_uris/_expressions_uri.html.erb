@@ -1,5 +1,18 @@
 <% if expressions_uri_counter == 0 -%>
   <table id='expressions'>
+    <tr class="expression">
+      <% if params[:action] == 'search' -%>
+        <th>
+            <%= search_order_link('expression') -%>
+        </th>
+        <th>
+            <%= search_order_link('id') -%>
+        </th>
+        <th>
+            <%= search_order_link('dictionary') -%>
+        </th>
+      <% end -%>
+    </tr>
 <% end -%>
 
   <tr class="expression">
@@ -9,6 +22,11 @@
     <td class="uri">
       <%= "#{ expressions_uri.uri.resource } " -%>
     </td>
+    <% if params[:action] == 'search' -%>
+      <td class="dictionary">
+        <%= link_to expressions_uri.dictionary.title, dictionary_path(expressions_uri.dictionary.title) -%>
+      </td>
+    <% end -%>
   </tr>
 
 <% if expressions_uri_counter == ( @expressions_uris.size - 1 ) -%>

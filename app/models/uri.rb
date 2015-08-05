@@ -26,13 +26,23 @@ class Uri < ActiveRecord::Base
     )
   end
 
-  def self.search_fuzzy(query)
+  def self.search_fuzzy(arguments = {})
+    # search(
+    #   query: {
+    #     multi_match: {
+    #       fields: [:resource],
+    #       query: query,
+    #       fuzziness: 2
+    #     }
+    #   }
+    # )
     search(
       query: {
-        multi_match: {
-          fields: [:resource],
-          query: query,
-          fuzziness: 2
+        match: {
+          _all:{
+            query: arguments[:query],
+            fuzziness: 1
+          }
         }
       }
     )
