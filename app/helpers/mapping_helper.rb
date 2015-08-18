@@ -57,4 +57,19 @@ module MappingHelper
     results
   end
 
+  def rest_api_search_expression_url
+    rest_api_params_hash = {terms: params[:terms], output: params[:output], format: 'json'}
+    rest_api_params_hash[:format] = params[:format] if params[:format]
+    rest_api_params_hash[:fuzziness] = params[:fuzziness] if params[:fuzziness]
+    rest_api_params = rest_api_params_hash.to_param
+    if params[:dictionaries]
+      dictionaries = Array.new
+      params[:dictionaries].each do |dictionary_title|
+        dictionaries << "dictionaries[]=#{dictionary_title}"
+      end
+      rest_api_params += "&#{dictionaries.join('&')}"
+    end
+    "http://#{request.host_with_port}#{url_for(controller: 'mapping', action: params[:action])}?#{rest_api_params}"
+  end
+
 end

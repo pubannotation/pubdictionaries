@@ -1,3 +1,16 @@
 // Place all the styles related to the mapping controller here.
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
+.search_target_dic{
+  padding: 3px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  margin: 5px 0;
+  background-color: #fafafa;
+  position: relative;
+  padding-right: 15px;
+}
+#search_target_dictionaries .search_target_dic{
+  float: left;
+  margin-right: 0.5em;
+}

@@ -13,6 +13,10 @@ PubDictionaries::Application.routes.draw do
       post "text_annotation", to: "mapping#text_annotation_post"
 
       get  'select_dictionaries', to: 'mapping#select_dictionaries'
+
+      get "search"
+      get "expression_to_id"
+      get "id_to_expression"
     end
   end
 
@@ -75,14 +79,6 @@ PubDictionaries::Application.routes.draw do
       get 'index_for_owner'
     end
   end
-
-  resources :expressions, only: [] do
-    collection do
-      get 'search'
-      post 'search'
-    end
-  end
-
   
   # The priority is based upon order of creation:
   # first created -> highest priority.

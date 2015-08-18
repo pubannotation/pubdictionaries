@@ -4,6 +4,7 @@
 <head>
   <title>PubDictionaries</title>
   <%= stylesheet_link_tag    "application", :media => "all" %>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
   <%= javascript_include_tag "application" %>
   <%= csrf_meta_tags %>
   <script type="text/javascript" charset="utf-8">
@@ -52,9 +53,13 @@
               <!-- <li class='odd'><%= link_to '<span>Working Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "working_dic") %></li> -->
             </ul>
           </li>
+          <li class='has-sub'><a href='#'><span>Search </span></a>
+            <ul>
+              <li class='odd'><%= link_to '<span>Terms</span>'.html_safe, search_mapping_index_path %></li>
+            </ul>
           <li class='has-sub'><a href='#'><span>Mappings</span></a>
             <ul>
-              <li class='odd'><%= link_to '<span>Term to Id</span>'.html_safe, search_expressions_path %></li>
+              <li class='odd'><%= link_to '<span>Term to Id</span>'.html_safe, expression_to_id_mapping_index_path %></li>
               <li class='even'><%= link_to '<span>Id to Label</span>'.html_safe, id_to_label_mapping_index_path %></li>
               <li class='odd'><%= link_to '<span>Text Annotation</span>'.html_safe, text_annotation_mapping_index_path %></li>
             </ul>
@@ -95,6 +100,7 @@
       <%= yield %>
     </div>
   </div>
-</body>
 
+  <%= yield :bottom_js -%>
+</body>
 </html>
