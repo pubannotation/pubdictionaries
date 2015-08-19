@@ -9,7 +9,7 @@ class Dictionary < ActiveRecord::Base
   attr_accessor :file, :separator, :sort
   attr_accessible :title, :creator, :description, :lowercased, :stemmed, :hyphen_replaced,
     :user_id, :public, :created_by_delayed_job, :confirmed_error_messages, :error_messages,
-    :file, :separator, :sort
+    :file, :separator, :sort, :language
 
   belongs_to :user
 
