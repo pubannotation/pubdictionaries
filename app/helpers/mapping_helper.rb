@@ -57,7 +57,7 @@ module MappingHelper
     results
   end
 
-  def rest_api_search_expression_url
+  def rest_api_search_expression_url(text_for)
     rest_api_params_hash = {terms: params[:terms], output: params[:output], format: 'json'}
     rest_api_params_hash[:format] = params[:format] if params[:format]
     rest_api_params_hash[:fuzziness] = params[:fuzziness] if params[:fuzziness]
@@ -69,7 +69,11 @@ module MappingHelper
       end
       rest_api_params += "&#{dictionaries.join('&')}"
     end
-    "http://#{request.host_with_port}#{url_for(controller: 'mapping', action: params[:action])}?#{rest_api_params}"
+    case text_for
+    when 'curl'
+      "curl -d '#{rest_api_params}' http://#{request.host_with_port}#{url_for(controller: 'mapping', action: params[:action])}"
+    when 'href'
+      "http://#{request.host_with_port}#{url_for(controller: 'mapping', action: params[:action])}?#{rest_api_params}"
+    end
   end
-
 end

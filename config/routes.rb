@@ -16,7 +16,9 @@ PubDictionaries::Application.routes.draw do
 
       get "search"
       get "expression_to_id"
+      post "expression_to_id"
       get "id_to_expression"
+      post "id_to_expression"
     end
   end
 
