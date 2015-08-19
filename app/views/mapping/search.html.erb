@@ -10,12 +10,16 @@
 
   <!-- Dictionaries -->
   <% if @dictionaries -%>
-    <fieldset style='margin: 0.5em 0'>
+    <fieldset id='search_target_dictionaries'>
       Filter by dictionaries<br />
       <% @dictionaries.each do |dictionary| -%>
-        <%= check_box_tag 'dictionaries[]', dictionary.title, true, id: "dictionaries_#{dictionary.id}" -%>
-        <%= label_tag "dictionaries_#{dictionary.id}", dictionary.title -%>
-        <br />
+        <%#= check_box_tag 'dictionaries[]', dictionary.title, true, id: "dictionaries_#{dictionary.id}" -%>
+        <%#= label_tag "dictionaries_#{dictionary.id}", dictionary.title -%>
+        <div class="search_target_dic pointer" onclick="$(this).remove()">
+          <i class="fa fa-times-circle"></i>
+          <%= dictionary.title -%>
+          <%= hidden_field_tag 'dictionaries[]', dictionary.title -%>
+        </div>
       <% end -%>
 
     </fieldset>

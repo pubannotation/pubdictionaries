@@ -15,6 +15,9 @@ class Uri < ActiveRecord::Base
   scope :dictionary, lambda{|dictionary_id|
     joins(:expressions_uris).where('expressions_uris.dictionary_id = ?', dictionary_id)
   }
+  scope :dictionaries, lambda{|dictionary_ids|
+    joins(:expressions_uris).where('expressions_uris.dictionary_id IN (?)', dictionary_ids)
+  }
   scope :dictionary_expression, lambda{|dictionary_id, expression_id|
     joins(:expressions_uris).where('expressions_uris.dictionary_id = ? AND expressions_uris.expression_id = ?', dictionary_id, expression_id)
   }
