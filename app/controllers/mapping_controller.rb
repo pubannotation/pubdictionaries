@@ -8,18 +8,19 @@ class MappingController < ApplicationController
   ], :if => Proc.new { |c| c.request.format == 'application/json' }
 
   def search 
+    @dictionaries, order, order_direction = Dictionary.get_showables( current_user, nil)
     if params[:terms].present?
       if params[:dictionaries].present?
         # when filtered by dictionaries
-        @dictionaries = Dictionary.where(['title IN (?)', params[:dictionaries]])
-        if @dictionaries.present?
-          dictionary_ids = @dictionaries.collect{|dictionary| dictionary.id }
+        @search_target_dictionaries = Dictionary.where(['title IN (?)', params[:dictionaries]])
+        if @search_target_dictionaries.present?
+          dictionary_ids = @search_target_dictionaries.collect{|dictionary| dictionary.id }
           expressions = Expression.search_fuzzy({query: params[:terms], fuzziness: params[:fuzziness]}).records.dictionaries(dictionary_ids).includes(:uris)
         end
       else
         # when not filtered by dictionaries
         expressions = Expression.search_fuzzy({query: params[:terms], fuzziness: params[:fuzziness]}).records.includes(:uris)
-        @dictionaries = expressions.collect{|d| d.dictionaries }.flatten.uniq
+        @search_target_dictionaries = expressions.collect{|d| d.dictionaries }.flatten.uniq
       end
 
       if expressions
@@ -42,6 +43,7 @@ class MappingController < ApplicationController
         end
         @expressions_uris = expressions_uris.order(order).per(per_page)
       end
+      @dictionaries = @dictionaries - @search_target_dictionaries if @search_target_dictionaries.present?
     end
 
     respond_to do |format|

@@ -1,3 +1,5 @@
+<%= render partial: 'select_dictionaries' -%>
+
 <!-- Seach from -->
 <%= form_tag '', method: :get, id: 'SearchExpression' do -%>
   <%= label_tag :output -%>
@@ -9,21 +11,10 @@
   <%= text_field_tag :terms, params[:terms] -%>
 
   <!-- Dictionaries -->
-  <% if @dictionaries -%>
-    <fieldset id='search_target_dictionaries'>
-      Filter by dictionaries<br />
-      <% @dictionaries.each do |dictionary| -%>
-        <%#= check_box_tag 'dictionaries[]', dictionary.title, true, id: "dictionaries_#{dictionary.id}" -%>
-        <%#= label_tag "dictionaries_#{dictionary.id}", dictionary.title -%>
-        <div class="search_target_dic pointer" onclick="$(this).remove()">
-          <i class="fa fa-times-circle"></i>
-          <%= dictionary.title -%>
-          <%= hidden_field_tag 'dictionaries[]', dictionary.title -%>
-        </div>
-      <% end -%>
-
-    </fieldset>
-  <% end -%>
+  <fieldset id='search_target_dictionaries' style='margin: 0.5em 0'>
+    Filter by dictionaries<br />
+    <%= render partial: 'dictionaries/search_target_dictionary', collection: @search_target_dictionaries, locals: {icon_class: 'times'} -%>
+  </fieldset>
 
   <%= submit_tag 'Search' -%>
   <%= submit_tag 'Clear', type: 'reset', id: 'reset' -%>
@@ -32,10 +23,3 @@
 
 <!-- Search results -->
 <%= render partial: 'expressions_uris/expressions_uri', collection: @expressions_uris -%>
-
-<!-- REST API -->
-
-<% if params[:commit] -%>
-  <!-- Copy to clipboard -->
-  <%= render partial: 'rest_service_url' -%>
-<% end -%>

@@ -1,6 +1,0 @@
-<% html = render partial: 'dictionaries/search_target_dictionary', collection: [add_search_target_dictionary] -%>
-<% append = html.gsub('"', "'") -%>
-<div class="search_target_dic pointer" onclick="$('#search_target_dictionaries').append('<%= j append -%>'); $(this).remove()">
-  <i class="fa fa-plus-circle"></i>
-  <%= add_search_target_dictionary.title -%>
-</div>

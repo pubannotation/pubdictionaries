@@ -1,9 +1,5 @@
-<% if local_assigns[:self_render] -%>
-  <% html = render partial: 'dictionaries/add_search_target_dictionary', collection: [search_target_dictionary] -%>
-<% end -%>
-
-<%= div_for(search_target_dictionary, class: 'search_target_dic pointer', onclick: "$(this).remove(); $('#dialog').append('#{ j html }')") do -%>
-  <i class='fa fa-times-circle'></i>
+<%= div_for(search_target_dictionary, class: 'search_target_dic pointer', onclick: "toggleDictionary($(this))") do -%>
+  <i class="fa fa-<%= icon_class -%>-circle"></i>
   <%= hidden_field_tag 'dictionaries[]', search_target_dictionary.title, id: "dictionaries_#{search_target_dictionary.id}" -%>
   <%= search_target_dictionary.title -%>
 <% end -%>
