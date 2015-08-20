@@ -15,7 +15,7 @@
   <!-- Dictionaries -->
   <fieldset id='search_target_dictionaries' style='margin: 0.5em 0'>
     Filter by dictionaries<br />
-    <%= render partial: 'dictionaries/search_target_dictionary', collection: @search_target_dictionaries, locals: {icon_class: 'times'} -%>
+    <%= render partial: 'search_target_dictionary', collection: @search_target_dictionaries, locals: {icon_class: 'times'} -%>
   </fieldset>
 
   <%= submit_tag 'Search' -%>
