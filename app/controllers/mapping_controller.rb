@@ -9,6 +9,7 @@ class MappingController < ApplicationController
 
   def search 
     @dictionaries, order, order_direction = Dictionary.get_showables( current_user, nil)
+    @dictionaries_include_resuls = []
     if params[:terms].present?
       if params[:dictionaries].present?
         # when filtered by dictionaries
@@ -43,6 +44,7 @@ class MappingController < ApplicationController
         end
         @expressions_uris = expressions_uris.order(order).per(per_page)
       end
+      @dictionaries_include_resuls = expressions_uris.collect{|eu| eu.dictionary}.uniq if expressions_uris.present?
       @dictionaries = @dictionaries - @search_target_dictionaries if @search_target_dictionaries.present?
     end
 
@@ -56,6 +58,7 @@ class MappingController < ApplicationController
 
   def expression_to_id
     @dictionaries, order, order_direction = Dictionary.get_showables( current_user, nil)
+    @dictionaries_include_resuls = []
     if params[:dictionaries].present?
       # when filtered by dictionaries
       @search_target_dictionaries = Dictionary.where(['title IN (?)', params[:dictionaries]])
@@ -90,6 +93,7 @@ class MappingController < ApplicationController
       else
         order = ActiveRecord::Base.send(:sanitize_sql_array, ["position(expression_id::text in '#{ expression_ids.join(',')}')"])
       end
+      @dictionaries_include_resuls = expressions_uris.collect{|eu| eu.dictionary}.uniq if expressions_uris.present?
       @expressions_uris = expressions_uris.order(order).per(per_page)
     end
 
@@ -104,6 +108,7 @@ class MappingController < ApplicationController
 
   def id_to_expression
     @dictionaries, order, order_direction = Dictionary.get_showables( current_user, nil)
+    @dictionaries_include_resuls = []
     if params[:dictionaries].present?
       # when filtered by dictionaries
       @search_target_dictionaries = Dictionary.where(['title IN (?)', params[:dictionaries]])
@@ -138,6 +143,7 @@ class MappingController < ApplicationController
       else
         order = ActiveRecord::Base.send(:sanitize_sql_array, ["position(uri_id::text in '#{ uri_ids.join(',')}')"])
       end
+      @dictionaries_include_resuls = expressions_uris.collect{|eu| eu.dictionary}.uniq if expressions_uris.present?
       @expressions_uris = expressions_uris.order(order).per(per_page)
     end
 
