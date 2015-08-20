@@ -10,7 +10,6 @@
 
   <%= label_tag :output -%>
   <%= select_tag :output, options_for_select([['Id', 'id'], ['Full', 'full']], params[:output]) -%>
-  <br />
 
   <% if params[:action] == 'expression_to_id' -%>
     <%= label_tag :fuzziness -%>

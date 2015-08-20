@@ -2,6 +2,12 @@
 
 <!-- Seach from -->
 <%= form_tag '', method: :get, id: 'SearchExpression' do -%>
+  <!-- Dictionaries -->
+  <fieldset id='search_target_dictionaries' style='margin: 0.5em 0'>
+    Filter by dictionaries<br />
+    <%= render partial: 'search_target_dictionary', collection: @search_target_dictionaries, locals: {icon_class: 'times'} -%>
+  </fieldset>
+
   <div id="form_validate_message"></div>
   <%= label_tag :output -%>
   <%= select_tag :output, options_for_select([['Id', 'id'], ['Full', 'full']], params[:output]) -%>
@@ -12,14 +18,11 @@
   <%= label_tag :terms -%>
   <%= text_field_tag :terms, params[:terms] -%>
 
-  <!-- Dictionaries -->
-  <fieldset id='search_target_dictionaries' style='margin: 0.5em 0'>
-    Filter by dictionaries<br />
-    <%= render partial: 'search_target_dictionary', collection: @search_target_dictionaries, locals: {icon_class: 'times'} -%>
-  </fieldset>
 
-  <%= submit_tag 'Search' -%>
-  <%= submit_tag 'Clear', type: 'reset', id: 'reset' -%>
+  <div style='margin:1em 0'>
+    <%= submit_tag 'Search' -%>
+    <%= submit_tag 'Clear', type: 'reset', id: 'reset' -%>
+  </div>
   <br />
 <% end -%>
 
