@@ -2,12 +2,14 @@
 
 <!-- Seach from -->
 <%= form_tag '', method: :get, id: 'SearchExpression' do -%>
+  <div id="form_validate_message"></div>
   <%= label_tag :output -%>
   <%= select_tag :output, options_for_select([['Id', 'id'], ['Full', 'full']], params[:output]) -%>
 
   <%= label_tag :fuzziness -%>
   <%= select_tag :fuzziness, options_for_select(%w(0 1 2), params[:fuzziness] ||= 2) -%>
 
+  <%= label_tag :terms -%>
   <%= text_field_tag :terms, params[:terms] -%>
 
   <!-- Dictionaries -->
@@ -23,3 +25,13 @@
 
 <!-- Search results -->
 <%= render partial: 'expressions_uris/expressions_uri', collection: @expressions_uris -%>
+
+<script type="text/javascript">
+  $('#SearchExpression').submit(function(){
+      if( !$('#terms').val() ) {
+        $('#terms').css("border", "2px solid #f00");
+        $('#form_validate_message').append("Set terms");
+        return false;
+      }
+  });
+</script>
