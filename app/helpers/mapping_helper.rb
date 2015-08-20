@@ -59,8 +59,13 @@ module MappingHelper
 
   def rest_api_search_expression_url(text_for)
     rest_api_params_hash = {terms: params[:terms], output: params[:output], format: 'json'}
-    rest_api_params_hash[:format] = params[:format] if params[:format]
-    rest_api_params_hash[:fuzziness] = params[:fuzziness] if params[:fuzziness]
+    # Define params for curl request
+    rest_api_params_keys = %w(format fuzziness order_key order)
+    rest_api_params_keys.each do |key|
+      if params[key].present?
+        rest_api_params_hash[key.to_sym] = params[key]
+      end
+    end
     rest_api_params = rest_api_params_hash.to_param
     if params[:dictionaries]
       dictionaries = Array.new
