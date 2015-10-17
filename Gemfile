@@ -22,6 +22,7 @@ gem 'daemons'
 gem 'elasticsearch-model'
 gem 'elasticsearch-rails'
 gem 'kaminari'
+gem 'rails-jquery-autocomplete'
 # gem 'jquery-rails', "<3.0.0"
 # gem 'will_paginate', '>= 3.0.pre'     # Not compatible with Wice_Grid
 

@@ -22,6 +22,7 @@ class DictionariesController < ApplicationController
     :text_annotation_with_multiple_dic, :text_annotation_with_single_dic, :id_mapping, :label_mapping
   ], :if => Proc.new { |c| c.request.format == 'application/json' }
 
+  autocomplete :expression, :words
 
   ###########################
   #####     ACTIONS     #####

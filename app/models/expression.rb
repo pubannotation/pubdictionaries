@@ -26,6 +26,32 @@ class Expression < ActiveRecord::Base
     )
   end
 
+  def self.suggest_expression(arguments = {})
+    operator = 'or'
+    if arguments[:operator] == 'exact'
+      operator = 'and' 
+    end
+    size = arguments[:size].to_i if arguments[:size].present?
+
+    search(
+      :min_score => 1,
+      :size => 10,
+      sort: [
+        '_score'
+      ],
+      query: {
+        match: {
+          words: {
+            query: arguments[:query],
+            type: :phrase_prefix,
+            operator: operator,
+            fuzziness: 0
+          }
+        }
+      }
+    )
+  end
+
   def self.search_fuzzy(arguments = {})
     arguments[:fuzziness] ||= 2
     # search(

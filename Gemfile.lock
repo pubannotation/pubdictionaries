@@ -166,6 +166,8 @@ GEM
       activesupport (>= 3.2)
       choice (~> 0.2.0)
       ruby-graphviz (~> 1.2)
+    rails-jquery-autocomplete (1.0.2)
+      rails (>= 3.2)
     railties (3.2.16)
       actionpack (= 3.2.16)
       activesupport (= 3.2.16)
@@ -275,6 +277,7 @@ DEPENDENCIES
   pg
   rails (= 3.2.16)
   rails-erd
+  rails-jquery-autocomplete
   rspec-rails (~> 2.0)
   sass-rails (~> 3.2.3)
   sequel

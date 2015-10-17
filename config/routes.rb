@@ -19,6 +19,7 @@ PubDictionaries::Application.routes.draw do
       post "expression_to_id"
       get "id_to_expression"
       post "id_to_expression"
+      get :autocomplete_expression_name 
     end
   end
 
