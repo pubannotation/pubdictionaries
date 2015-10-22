@@ -2,9 +2,9 @@ PubDictionaries::Application.routes.draw do
 
   resources :mapping do
     collection do
-      # get  "term_to_id"
-      # post "term_to_id", to: "mapping#term_to_id_post"
-      get "term_to_id", to: "mapping#term_to_id_post"
+      get  "term_to_id"
+      post "term_to_id", to: "mapping#term_to_id_post"
+      # get "term_to_id", to: "mapping#term_to_id_post"
 
       get  "id_to_label"
       post "id_to_label", to: "mapping#id_to_label_post"
