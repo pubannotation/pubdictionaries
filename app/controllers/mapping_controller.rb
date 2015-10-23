@@ -12,7 +12,7 @@ class MappingController < ApplicationController
   def autocomplete_expression_name
     expressions = Expression.suggest_expression({query: params[:term], operator: 'and'}).records.to_a.collect{|expression| expression.words if ( expression.words =~ /^#{ params[:term] }.*/ ) == 0 }.sort_by{|expression| expression.downcase}
     unique_expressions = expressions.compact.uniq if expressions.present?
-    render json: unique_expressions.to_json
+    render json: unique_expressions.to_json if unique_expressions.present?
   end
 
   def search 
