@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20150819061447) do
+ActiveRecord::Schema.define(:version => 20160318161501) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -33,42 +33,40 @@ ActiveRecord::Schema.define(:version => 20150819061447) do
     t.string   "title"
     t.string   "creator"
     t.text     "description"
-    t.datetime "created_at",                                  :null => false
-    t.datetime "updated_at",                                  :null => false
+    t.datetime "created_at",                        :null => false
+    t.datetime "updated_at",                        :null => false
     t.boolean  "lowercased"
     t.boolean  "stemmed"
     t.boolean  "hyphen_replaced"
     t.integer  "user_id"
-    t.boolean  "public",                   :default => true
-    t.boolean  "created_by_delayed_job",   :default => false
-    t.boolean  "confirmed_error_messages", :default => false
-    t.text     "error_messages",           :default => ""
+    t.boolean  "public",          :default => true
+    t.text     "issues",          :default => ""
     t.string   "language"
+    t.boolean  "ready",           :default => true
   end
 
   add_index "dictionaries", ["creator"], :name => "index_dictionaries_on_creator"
   add_index "dictionaries", ["title"], :name => "index_dictionaries_on_title"
 
-  create_table "entries", :force => true do |t|
-    t.string   "view_title"
-    t.string   "uri"
-    t.integer  "dictionary_id"
-    t.datetime "created_at",    :null => false
-    t.datetime "updated_at",    :null => false
-    t.string   "label"
-    t.string   "search_title"
+  create_table "dictionaries_entries", :id => false, :force => true do |t|
+    t.integer "dictionary_id"
+    t.integer "entry_id"
   end
 
-  add_index "entries", ["dictionary_id"], :name => "index_entries_on_dictionary_id"
-  add_index "entries", ["label"], :name => "index_entries_on_label"
-  add_index "entries", ["search_title"], :name => "index_entries_on_search_title"
-  add_index "entries", ["uri"], :name => "index_entries_on_uri"
-  add_index "entries", ["view_title"], :name => "index_entries_on_view_title"
+  add_index "dictionaries_entries", ["dictionary_id", "entry_id"], :name => "index_dictionaries_entries_on_dictionary_id_and_entry_id"
+
+  create_table "entries", :force => true do |t|
+    t.datetime "created_at",                        :null => false
+    t.datetime "updated_at",                        :null => false
+    t.integer  "label_id"
+    t.integer  "uri_id"
+    t.integer  "dictionaries_count", :default => 0
+  end
 
   create_table "expressions", :force => true do |t|
     t.string   "words"
-    t.datetime "created_at", :null => false
-    t.datetime "updated_at", :null => false
+    t.datetime "created_at",                        :null => false
+    t.datetime "updated_at",                        :null => false
     t.integer  "dictionaries_count", :default => 0
   end
 
@@ -81,6 +79,13 @@ ActiveRecord::Schema.define(:version => 20150819061447) do
   end
 
   add_index "expressions_uris", ["expression_id", "uri_id", "dictionary_id"], :name => "index_exp_uri_dic", :unique => true
+
+  create_table "labels", :force => true do |t|
+    t.string   "value"
+    t.datetime "created_at",                   :null => false
+    t.datetime "updated_at",                   :null => false
+    t.integer  "entries_count", :default => 0
+  end
 
   create_table "new_entries", :force => true do |t|
     t.string   "view_title"
@@ -98,14 +103,6 @@ ActiveRecord::Schema.define(:version => 20150819061447) do
   add_index "new_entries", ["user_dictionary_id"], :name => "index_new_entries_on_user_dictionary_id"
   add_index "new_entries", ["view_title"], :name => "index_new_entries_on_view_title"
 
-  create_table "pg_search_documents", :force => true do |t|
-    t.text     "content"
-    t.integer  "searchable_id"
-    t.string   "searchable_type"
-    t.datetime "created_at",      :null => false
-    t.datetime "updated_at",      :null => false
-  end
-
   create_table "removed_entries", :force => true do |t|
     t.integer  "user_dictionary_id"
     t.integer  "entry_id"
@@ -117,10 +114,10 @@ ActiveRecord::Schema.define(:version => 20150819061447) do
   add_index "removed_entries", ["user_dictionary_id"], :name => "index_removed_entries_on_user_dictionary_id"
 
   create_table "uris", :force => true do |t|
-    t.string   "resource"
-    t.datetime "created_at", :null => false
-    t.datetime "updated_at", :null => false
-    t.integer  "dictionaries_count", :default => 0
+    t.string   "value"
+    t.datetime "created_at",                   :null => false
+    t.datetime "updated_at",                   :null => false
+    t.integer  "entries_count", :default => 0
   end
 
   create_table "user_dictionaries", :force => true do |t|

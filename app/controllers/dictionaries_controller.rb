@@ -2,7 +2,6 @@ require 'set'
 require 'pathname'
 require 'fileutils'
 
-require File.join( Rails.root, 'lib/simstring/swig/ruby/simstring')
 require File.join( File.dirname( __FILE__ ), 'text_annotator/text_annotator' )
 
 
@@ -55,103 +54,62 @@ class DictionariesController < ApplicationController
 
   # Show the content of an original dictionary and its corresponding user dictionary.
   def show
-    @base_dic  = Dictionary.find_showable_by_title params[:id], current_user
+    # @base_dic  = Dictionary.find_showable_by_title params[:id], current_user
+    @dic  = Dictionary.accessible(current_user).find_by_title(params[:id])
 
-    per_page = 30
-    if params[:query]
-      # TODO deletege to model
-      case params[:model] 
-      when 'expression'
-        expressions = Expression.search_fuzzy({query: params[:query]}).records.includes(:uris).dictionary(@base_dic.id)
-        if expressions
-          expression_ids = expressions.collect{|expression| expression.id }.uniq
-          expressions_uris = ExpressionsUri.dictionary_expressions(@base_dic.id, expression_ids).page(params[:page])
-          if params[:order] == 'alphabetical'
-            order = 'expressions.words ASC'
-          else
-            order = ActiveRecord::Base.send(:sanitize_sql_array, ["position(expression_id::text in '#{ expression_ids.join(',')}')"])
-          end
-          @expressions_uris = expressions_uris.order(order).per(per_page)
-        end
-      when 'uri'
-        uris = Uri.search_fuzzy({query: params[:query]}).records.includes(:expressions).dictionary(@base_dic.id)
-        if uris
-          uri_ids = uris.collect{|uri| uri.id }.uniq
-          expressions_uris = ExpressionsUri.dictionary_uris(@base_dic.id, uri_ids).page(params[:page])
-          if params[:order] == 'alphabetical'
-            order = 'expressions.words ASC'
-          else
-            order = ActiveRecord::Base.send(:sanitize_sql_array, ["position(uri_id::text in '#{ uri_ids.join(',')}')"])
-          end
-          @expressions_uris = expressions_uris.order(order).per(per_page)
-        end
-      when 'all'
-        expressions = Expression.search_fuzzy({query: params[:query]}).records.includes(:uris).dictionary(@base_dic.id)
-        if expressions
-          expression_ids = expressions.collect{|expression| expression.id }.uniq
-          if params[:order] == 'alphabetical'
-            order = 'expressions.words ASC'
-          else
-            order = ActiveRecord::Base.send(:sanitize_sql_array, ["position(expression_id::text in '#{ expression_ids.join(',')}')"])
-          end
-        end
-        uris = Uri.search_fuzzy({query: params[:query]}).records.includes(:expressions).dictionary(@base_dic.id)
-        uri_ids = uris.collect{|uri| uri.id }.uniq if uris
-        @expressions_uris = ExpressionsUri.includes(:expression).where(['dictionary_id = ? AND ( expression_id IN (?) OR uri_id IN (?) )', @base_dic.id, expression_ids, uri_ids]).page(params[:page]).order(order).per(per_page)
+    if @dic.ready
+      per_page = 30
+      if params[:label_search]
+        searched = Label.search_as_text(params[:label_search], @dic)
+        labels = searched.records.records
+        @entries = labels.inject([]){|s, label| s + label.entries}
+      elsif params[:id_search]
+        uri = @dic.uris.find_by_value(params[:id_search])
+        @entries = uri.entries
       else
+        @entries = @dic.entries.page(params[:page]).per(per_page) if @dic.present?
       end
-    else
-      expressions = @base_dic.expressions.includes(:uris) if @base_dic.present?
-      if expressions.size < 1000
-        expressions = expressions.page(params[:page]).per(per_page)
-      else
-        # no pagination if have many expressions
-        expressions = expressions.limit(per_page)
-      end
-      expression_ids = expressions.collect{|expression| expression.id }
-      @expressions_uris = ExpressionsUri.includes(:expression, :uri).where(['dictionary_id = ? AND expression_id IN (?)', @base_dic.id, expression_ids]).page(params[:page]).order('expressions.words ASC').per(per_page)
-    end
-    
-    # Decide whether to upload the dictionary or not.
-    if params[:upload_confirmation] and params[:upload_confirmation] == "discard"
-      # @base_dic.destroy_entries_and_simstring_db
-      @base_dic.destroy
-      @base_dic = nil
-    elsif params[:upload_confirmation] and params[:upload_confirmation] == "confirm"
-      @base_dic.confirmed_error_messages = true
-      @base_dic.save!
-    end
-
-    # Prepare variables for the view.
-    if @base_dic
-      if not user_signed_in? or @base_dic.user_dictionaries.nil? 
-        @user_dic = nil
-      else
-        @user_dic = @base_dic.user_dictionaries.find_by_user_id(current_user.id)
+      
+      # Decide whether to upload the dictionary or not.
+      if params[:upload_confirmation] and params[:upload_confirmation] == "discard"
+        @dic.destroy
+        @dic = nil
+      elsif params[:upload_confirmation] and params[:upload_confirmation] == "confirm"
+        @dic.confirmed = true
+        @dic.save!
       end
 
-      if @base_dic
-        # Replace the page title with the dictionary name
-        @page_title = @base_dic.title
-
-        if ["ori", "del", "new", "ori_del", "ori_del_new"].include?  params[:query]
-          @export_entries = build_export_entries  params[:query]
+      # Prepare variables for the view.
+      if @dic
+        if not user_signed_in? or @dic.user_dictionaries.nil? 
+          @user_dic = nil
         else
-          @g1, @g2, @g3   = get_entries_grid_views
+          @user_dic = @dic.user_dictionaries.find_by_user_id(current_user.id)
+        end
+
+        if @dic
+          # Replace the page title with the dictionary name
+          @page_title = @dic.title
+
+          if ["ori", "del", "new", "ori_del", "ori_del_new"].include?  params[:query]
+            @export_entries = build_export_entries  params[:query]
+          else
+            @g1, @g2, @g3   = get_entries_grid_views
+          end
         end
       end
     end
 
     respond_to do |format|
       format.html {
-        if @base_dic.nil?
+        if @dic.nil?
           redirect_to dictionaries_url
         end
         # Otherwise, render the default view template.
       }
       format.tsv { 
         send_data tsv_data(@export_entries), 
-        filename: "#{@base_dic.title}.#{params[:query]}.tsv", 
+        filename: "#{@dic.title}.#{params[:query]}.tsv", 
         type:     "text/tsv" 
       }
     end
@@ -174,21 +132,15 @@ class DictionariesController < ApplicationController
   end
 
   def create
-    # 1. Create a dictionary.
-    @dictionary = current_user.dictionaries.new(params[:dictionary])
-    @dictionary.title.strip!
-    @dictionary.creator = current_user.email
-    
+    dictionary = current_user.dictionaries.new(params[:dictionary])
+    dictionary.title.strip!
+    dictionary.user = current_user
+
     respond_to do |format|
-      if @dictionary.save
-        run_create_as_a_delayed_job(@dictionary, params)        
-        format.html{ 
-          redirect_to dictionaries_url, 
-          notice: 'Creating a dictionary in the background...' 
-        }
+      if dictionary.save
+        format.html {redirect_to dictionaries_url, notice: 'Empty dictionary created.'}
       else
-        @dictionary.destroy
-        format.html{ render action: "new" }
+        format.html {redirect_to dictionaries_url, notice: 'Creation of a dictionary failed.'}
       end
     end
   end
@@ -210,36 +162,24 @@ class DictionariesController < ApplicationController
     redirect_to dictionaries_path(dictionary_type: 'my_dic')
   end
 
-  def run_create_as_a_delayed_job(dictionary, params)
-    # Copy an uploaded file so it will not be unlinked when the action finishes.
-    #   delayed_job will use the copied file.
-    src_uploadedfile = params[:dictionary][:file].tempfile.path
-    trg_uploadedfile = File.join("public", "tempfiles/#{@dictionary.title}")
-    FileUtils.cp  src_uploadedfile, trg_uploadedfile
-    sep              = params[:dictionary][:separator] 
-
-    # Caution!!! trg_uploadedfile must be deleted after the delayed job!!!
-    dictionary.delay.import_expressions_from_file(trg_uploadedfile, sep)
-  end
-
   # Destroy a base dictionary and the associated user dictionaries (of other users too).
   def destroy
-    base_dic = Dictionary.find_showable_by_title  params[:id], current_user
+    dic = Dictionary.editable(current_user).find_by_title(params[:id])
 
-    if not base_dic  
+    if not dic  
       ret_url = :back
       ret_msg = "Cannot find a dictionary."
     else
-      flag, msg = base_dic.is_destroyable?  current_user
+      flag, msg = dic.is_destroyable?  current_user
 
       if flag == false
         ret_url = :back
         ret_msg = msg
       else
         # Speed up the deletion speed by using delete_all.
-        base_dic.cleanup
+        dic.cleanup
         # Delete a dictionary with 0 entries (FAST! :-)
-        base_dic.destroy
+        dic.destroy
         
         ret_url = dictionaries_url
         ret_msg = msg
@@ -623,7 +563,7 @@ class DictionariesController < ApplicationController
     ids = @user_dic.nil? ? [] : @user_dic.removed_entries.get_disabled_entry_idlist
 
     # 1. Remained base entries.
-    remained_entries = @base_dic.entries.empty? ? Entry.none : @base_dic.entries.get_remained_entries(ids)
+    remained_entries = @dic.entries.empty? ? Entry.none : @dic.entries.get_remained_entries(ids)
     grid_basedic_remained_entries = initialize_grid(remained_entries, 
       :name => "basedic_remained_entries",
       :order => "view_title",        # Initial ordering column.
@@ -631,7 +571,7 @@ class DictionariesController < ApplicationController
       :per_page => 30, )
 
     # 2. Disabled base entries.
-    disabled_entries = @base_dic.entries.empty? ? Entry.none : @base_dic.entries.get_disabled_entries(ids)
+    disabled_entries = @dic.entries.empty? ? Entry.none : @dic.entries.get_disabled_entries(ids)
     grid_basedic_disabled_entries = initialize_grid(disabled_entries,
       :name => "basedic_disabled_entries",
       :order => "view_title",

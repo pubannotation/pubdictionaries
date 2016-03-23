@@ -4,20 +4,10 @@ class Expression < ActiveRecord::Base
   include Elasticsearch::Model
   include Elasticsearch::Model::Callbacks
 
-  has_and_belongs_to_many :uris
-  has_many :expressions_uris
-  # count up/down dictionaries_count when save/destroy entries_uri
-  has_many :dictionaries, through: :expressions_uris
+  has_many :label_entries, :class_name => 'Entry', :as => :label, :dependent => :destroy
+  has_many :uri_entries, :class_name => 'Entry', :as => :uri, :dependent => :destroy
 
-  scope :diff, where(['created_at > ?', 1.hour.ago])
-  attr_accessible :words
-
-  scope :dictionary, lambda{|dictionary_id|
-    joins(:expressions_uris).where('expressions_uris.dictionary_id = ?', dictionary_id)
-  }
-  scope :dictionaries, lambda{|dictionary_ids|
-    joins(:expressions_uris).where('expressions_uris.dictionary_id IN (?)', dictionary_ids)
-  }
+  attr_accessible :value
 
   def as_indexed_json(options={})
     as_json(

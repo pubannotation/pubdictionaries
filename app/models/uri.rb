@@ -1,53 +1,27 @@
 require 'elasticsearch/model'
 
 class Uri < ActiveRecord::Base
-  include Elasticsearch::Model
-  include Elasticsearch::Model::Callbacks
+  has_many :entries, :dependent => :destroy
+  has_many :dictionaries, :through => :entries
 
-  attr_accessible :resource
+  attr_accessible :value
 
-  has_and_belongs_to_many :expressions
-  has_many :expressions_uris
-  # count up/down dictionaries_count when save/destroy entries_uri
-  has_many :dictionaries, through: :expressions_uris
-
-  scope :diff, where(['created_at > ?', 1.day.ago])
-  scope :dictionary, lambda{|dictionary_id|
-    joins(:expressions_uris).where('expressions_uris.dictionary_id = ?', dictionary_id)
-  }
-  scope :dictionaries, lambda{|dictionary_ids|
-    joins(:expressions_uris).where('expressions_uris.dictionary_id IN (?)', dictionary_ids)
-  }
-  scope :dictionary_expression, lambda{|dictionary_id, expression_id|
-    joins(:expressions_uris).where('expressions_uris.dictionary_id = ? AND expressions_uris.expression_id = ?', dictionary_id, expression_id)
-  }
-
-  def as_indexed_json(options={})
-    as_json(
-      only: [:id, :resource],
-      include: [:expressions, :expressions_uris]  
-    )
+  def self.get_by_value(value)
+    uri = self.find_by_value(value)
+    if uri.nil?
+      uri = self.new({value: value})
+      uri.save
+    end
+    uri
   end
 
-  def self.search_fuzzy(arguments = {})
-    # search(
-    #   query: {
-    #     multi_match: {
-    #       fields: [:resource],
-    #       query: query,
-    #       fuzziness: 2
-    #     }
-    #   }
-    # )
-    search(
-      query: {
-        match: {
-          _all:{
-            query: arguments[:query],
-            fuzziness: 1
-          }
-        }
-      }
-    )
+  def entries_count_up
+    increment!(:entries_count)
   end
+
+  def entries_count_down
+    decrement!(:entries_count)
+    destroy if entries_count == 0
+  end
+
 end

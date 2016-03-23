@@ -1,44 +1,75 @@
 #
 # Define the Dictionary model.
 #
-require File.join( Rails.root, 'lib/simstring/swig/ruby/simstring')
-
 class Dictionary < ActiveRecord::Base
   include StringManipulator
 
   attr_accessor :file, :separator, :sort
   attr_accessible :title, :creator, :description, :lowercased, :stemmed, :hyphen_replaced,
-    :user_id, :public, :created_by_delayed_job, :confirmed_error_messages, :error_messages,
-    :file, :separator, :sort, :language
+    :user_id, :public, :file, :separator, :sort, :language
+
+  attr_accessible :ready
+  attr_accessible :issues
 
   belongs_to :user
 
-  has_many :entries, :dependent => :destroy
-  has_many :user_dictionaries, :dependent => :destroy
-  has_many :expressions_uris
-  has_many :expressions, through: :expressions_uris
-  has_many :uris, through: :expressions_uris
+  has_and_belongs_to_many :entries,
+    :after_add => :entry_dictionaries_count_up,
+    :after_remove => :entry_dictionaries_count_down
 
-  validates :creator, :description, :title, :presence => true
-  validates :file, presence: true,  on: :create 
+  has_many :labels, :through => :entries
+  has_many :uris, :through => :entries
+
+  has_many :user_dictionaries, :dependent => :destroy
+
+  # validates :creator, :description, :title, :presence => true
+  # validates :file, presence: true,  on: :create 
+  validates :user_id, presence: true 
   validates :title, uniqueness: true
   validates_inclusion_of :public, :in => [true, false]     # :presence fails when the value is false.
   validates_format_of :title,                              # because of to_param overriding.
                       :with => /^[^\.]*$/,
                       :message => "should not contain dot!"
 
-  
+  def entry_dictionaries_count_up(entry)
+    entry.dictionaries_count_up
+  end
+
+  def entry_dictionaries_count_down(entry)
+    entry.dictionaries_count_down
+  end
+
   def to_param
     # Override the original to_param so that it returns title, not ID, for constructing URLs. 
     # Use Model#find_by_title() instead of Model.find() in controllers.
     title
   end
 
+  scope :accessible, -> (user) {
+    if user.nil?
+      where('public = ?', true)
+    else
+      where('public = ? OR user_id = ?', true, user.id)
+    end
+  }
+
+  scope :editable, -> (user) {
+    if user.nil?
+      none
+    else
+      where('user_id = ?', user.id)
+    end
+  }
+
+  def editable?(user)
+    user && user_id == user.id
+  end
+
   # Return a list of dictionaries.
   def self.get_showables(user = nil, dic_type = nil)
     if user == nil
       # Get a list of publicly available dictionaries.
-      lst = where('public = ? AND confirmed_error_messages = ?', true, true)
+      lst = where('public = ? AND ready = ?', true, true)
       order = 'created_at'
       order_direction = 'desc'
 
@@ -57,15 +88,15 @@ class Dictionary < ActiveRecord::Base
         #   dictionaries will be shown if they are created by other users.
         lst = Dictionary.joins(:user_dictionaries).
                 where('dictionaries.id IN (?)', dic_ids).
-                where('(dictionaries.user_id = ? AND created_by_delayed_job = ?)
-                  OR (dictionaries.user_id != ? AND confirmed_error_messages = ?)',
+                where('(dictionaries.user_id = ? AND ready = ?)
+                  OR (dictionaries.user_id != ? AND ready = ?)',
                   user.id, true, user.id, true)
         order = 'user_dictionaries.updated_at'
         order_direction = 'desc'
 
       else
         # Get a list of all dictionaries.
-        lst = where('(user_id != ? AND public = ? AND confirmed_error_messages = ?) OR (user_id = ?)',
+        lst = where('(user_id != ? AND public = ? AND ready = ?) OR (user_id = ?)',
                 user.id, true, true, user.id)
         order = 'created_at'
         order_direction = 'desc'
@@ -82,25 +113,25 @@ class Dictionary < ActiveRecord::Base
   #   exist or not showable. nil if it does not exist or showable dictionary by its title.
   def self.find_showable_by_title(title, user = nil)
     if user.nil?
-      where(:title => title).where('public = ?', true).where(:created_by_delayed_job => true).first
+      where(:title => title).where('public = ?', true).where(:ready => true).first
     else
-      where(:title => title).where('public = ? OR user_id = ?', true, user.id).where(:created_by_delayed_job => true).first
+      where(:title => title).where('public = ? OR user_id = ?', true, user.id).where(:ready => true).first
     end
   end
 
 
   # Return a list of latest showable dictionaries.
   def self.get_latest_dictionaries(n=10)
-    where('public = ? AND confirmed_error_messages = ?', true, true).order('created_at desc').limit(n)
+    where('public = ? AND ready = ?', true, true).order('created_at desc').limit(n)
   end
 
   # Get a list of unfinished work.
   def self.get_unfinished_dictionaries(user)
-    where(user_id: user.id).where(created_by_delayed_job: false)
+    where(user_id: user.id).where(ready: false)
   end
 
   def unfinished?
-    created_by_delayed_job == false
+    ready == false
   end
 
 
@@ -116,179 +147,60 @@ class Dictionary < ActiveRecord::Base
   end
 
   def cleanup
-    update_attribute(:created_by_delayed_job, false)
-    # Delete  expressions belongs_to only one dictionary
-    expressions = self.expressions.where(dictionaries_count: 1)
-    if expressions.present?
-      ids = expressions.collect{|e| e.id}
-      Expression.where('id IN (?)', ids).delete_all
-    end
-
-    # Delete  uris belongs_to only one dictionary
-    uris = self.uris.where(dictionaries_count: 1)
-    if uris.present?
-      ids = uris.collect{|e| e.id}
-      Uri.where('id IN (?)', ids).delete_all
-    end
-
-    # destroy is required because needs callback to decrement dictionaries_count for expression and uri.
-    self.expressions_uris.destroy_all
   end
 
   # Refactored as a method for delayed_job
-  def import_expressions_from_file(file, separator)
-    started_at = DateTime.now
-    # 1. Import expressions.
-    if import_expressions(file, separator) == false
-      # TODO delete current expressions
-      self.cleanup
-      return false
+  def load_from_file(file, separator = "\t")
+    # Note: "textmode: true" option automatically converts all newline variants to \n
+    # fp = File.open(file, textmode: true)
+
+    begin
+      ActiveRecord::Base.transaction do
+        File.foreach(file).with_index do |line, line_no|
+          label, uri = parse_entry_line(line, separator, line_no)
+          self.entries << Entry.get_by_value(label, uri) unless label.nil?
+        end
+        update_attribute(:ready, true)
+      end
+    # rescue => e
+      # self.cleanup
     end
-    
-    File.delete(file)
 
-    # 3. Check that this job is done!
-    self.created_by_delayed_job = true
+    # File.delete(file)
 
-    Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Expression', scope: "diff"))
+    Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Label', scope: "diff"))
     Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Uri', scope: "diff"))
-    save
   end
 
-  # Import expressions.
-  def import_expressions(file, sep)
-    if file.nil?
-      self.error_messages += "File stream is nil!\n"
-      return false
-    else
-      # "textmode: true" option automatically converts all newline variants to \n
-      fp = File.open(file, textmode: true)
-      kline = 0
-      while (tmp_expressions = read_expressions(fp, sep, kline)) != [] do
-      end
-      fp.close()
-      return true
-    end
-  end
+  def parse_entry_line(line, sep, line_no)
+    line.strip!
 
-  def read_expressions(fp, sep, kline)
-    expressions = []
-    # while expressions.size < max and not fp.eof?
-    while not fp.eof?
-      line = fp.readline.strip!     # This can't handle "\r" (OSX) newline!
-      if is_proper_raw_expression?(line, sep, kline)
-        words, uri = parse_raw_expression(line, sep)
-        expressions << save_expressions_uris(words, uri)        
-      end
-      kline += 1
-    end
-    return expressions
-  end
-
-  def is_proper_raw_expression?(line, sep, kline)
-    # Line check.
-    if line == ""
+    if line == ''
       # Silently ignore blank lines.
-      return false
+      return nil
     end
 
     # Field-wise check.
-    items = line.split( sep )
+    items = line.split sep
+
     if items.size < 2
-      self.error_messages += "#{kline}-th line consists of less than 2 fields!\n"
-      return false
+      self.issues += "#{line_no}-th line has #{items.size} field(s).\n"
+      return nil
     end
 
     items.each do |item|
       if item.length > 255
-        # Max length is 255 since all Entry fields are string type.
-        self.error_messages += "#{kline}-th line has a field that is longer than 255!\n"
-        return false
+        self.issues += "#{line_no}-th line has a field that is longer than 255!\n"
+        return nil
       end
     end
 
-    return true
+    return items
   end
 
-  def parse_raw_expression(line, sep)
-    items = line.split( sep )
-    return items[0], items[1]
-  end
-
-  def save_expressions_uris(words, resource)
-    # TODO check if expression already exists?
-    ActiveRecord::Base.transaction do
-      expression = Expression.find_by_words(words)
-      expression = Expression.create({words: words}) if expression.blank?
-
-      # TODO check if resource already exists?
-      uri = Uri.find_by_resource(resource)
-      uri = Uri.create({resource: resource}) if uri.blank?
-
-      expression_uri = self.expressions_uris.create({expression_id: expression.id, uri_id: uri.id})
-      return expression if expression_uri.valid?
-    end
-
-  end
-
-
-  def assemble_entry_from(title, uri, label)
-    e = Entry.new
-
-    e.dictionary_id = self.id
-    e.view_title    = title
-    e.search_title  = normalize_str( title, 
-      {lowercased: self.lowercased, hyphen_replaced: self.hyphen_replaced, stemmed: self.stemmed}
-    )
-    e.uri           = uri
-    e.label         = label
-
-    return e
-  end
-
-  def import_entries_and_create_simstring_db(file, separator)
-    # 1. Import entries.
-    if import_entries(file, separator) == false
-      Entry.delete_all  ["dictionary_id = ?", self.id]
-      return false
-    end
+  def remove
     
-    # 2. Create a SimString DB.
-    if create_ssdb == false
-      delete_ssdb
-      return false
-    end
-
-    File.delete file
-
-    # 3. Check that this job is done!
-    self.created_by_delayed_job = true
-    save
   end
-
-
-  # Clean-up entries, user_dictionaries, and simstring db in a fast way.
-  def destroy_entries_and_simstring_db
-    # 1. Delete the entries of a base dictionary.
-    #    - Use "delete_all" instead of "destroy" to speed up.
-    #
-    Entry.delete_all  ["dictionary_id = ?", self.id]
-
-    # 2. Delete user dictionaries associated with the base dictionary, 
-    #   and their entries.
-    self.user_dictionaries.each do |user_dic|
-      NewEntry.delete_all  ["user_dictionary_id = ?", user_dic.id]
-      RemovedEntry.delete_all  ["user_dictionary_id = ?", user_dic.id]
-
-      user_dic.destroy
-    end
-
-    # 3. Delete the associated SimString DB.
-    delete_ssdb
-
-    return true
-  end
-
 
   #######
   private
@@ -306,150 +218,5 @@ class Dictionary < ActiveRecord::Base
     return false
   end
 
-
-  ########################################################
-  #####     Codes for creating a new dictionary.     #####
-  ########################################################
-
-  # Import entries.
-  def import_entries(file, sep)
-    if file.nil?
-      self.error_messages += "File stream is nil!\n"
-      return false
-    else
-      # "textmode: true" option automatically converts all newline variants to \n
-      fp = File.open(file, textmode: true)
-      kline = 0
-
-      while (tmp_entries = read_entries(fp, sep, 1000, kline)) != [] do
-        self.entries.import tmp_entries
-      end
-      fp.close()
-      return true
-    end
-  end
-
-  def read_entries(fp, sep, max, kline)
-    entries = []
-
-    while entries.size < max and not fp.eof?
-      line = fp.readline.strip!     # This can't handle "\r" (OSX) newline!
-
-      if is_proper_raw_entry? line, sep, kline
-        title, uri, label = parse_raw_entry_from  line, sep
-        entries << assemble_entry_from(title, uri, label)        
-      end
-
-      kline += 1
-    end
-
-    return entries
-  end
-
-  # Do sanity checks on raw input line.
-  def is_proper_raw_entry?(line, sep, kline)
-    
-    # Line check.
-    if line == ""
-      # Silently ignore blank lines.
-      return false
-    end
-
-    # Field-wise check.
-    items = line.split sep
-    
-    items.each do |item|
-      if item.length > 255
-        # Max length is 255 since all Entry fields are string type.
-        self.error_messages += "#{kline}-th line has a field that is longer than 255!\n"
-        return false
-      end
-    end
-
-    if items.size < 2 or items.size > 3
-      self.error_messages += "#{kline}-th line consists of less than 2 or more than 3 fields!\n"
-      return false
-    end
-
-    return true
-  end
-
-  def parse_raw_entry_from(line, sep)
-    items = line.split sep
-
-    if items.size == 2
-      return items[0], items[1], ""
-    else
-      return items[0], items[1], items[2]
-    end
-  end
-
-  def assemble_entry_from(title, uri, label)
-    e = Entry.new
-
-    e.dictionary_id = self.id
-    e.view_title    = title
-    e.search_title  = normalize_str( title, 
-      {lowercased: self.lowercased, hyphen_replaced: self.hyphen_replaced, stemmed: self.stemmed}
-    )
-    e.uri           = uri
-    e.label         = label
-
-    return e
-  end
-
-
-  # Create a SimString DB.
-  def create_ssdb
-    dbfile_path = Rails.root.join('public/simstring_dbs', self.title).to_s
-
-    begin
-      # Simstring::Writer.new(db_filename, n-gram, begin/end marker, unicode)
-      db = Simstring::Writer.new  dbfile_path, 3, true, true     
-    rescue => e
-      logger.error "Failed to create a SimString DB: #{e}"
-      return false
-    end
-    
-    # @dictionary.entries.each do |entry|     # This is too slow. 
-    # Entry.where(dictionary_id: @dictionary.id).pluck(:search_title).uniq.each do |search_title|
-    self.entries.pluck(:search_title).uniq.each do |search_title|
-      db.insert  search_title
-    end
-
-    db.close
-
-    return true
-  end
-  
-
-  ######################################################
-  #####     Codes for destroying a dictionary.     #####
-  ######################################################
-
-  def delete_ssdb
-    dbfile_path = Rails.root.join('public/simstring_dbs', self.title).to_s
-    
-    # Remove the main db file
-    begin
-      File.delete  dbfile_path
-    rescue => e
-      Rails.logger.debug "Failed to delete a simstring DB: #{e}"
-    end
-
-    # Remove auxiliary db files
-    pattern = dbfile_path + ".[0-9]+.cdb"
-    Dir.glob(dbfile_path + '.*.cdb').each do |aux_file|
-      if /#{pattern}/.match(aux_file) 
-        begin
-          File.delete  aux_file
-        rescue
-          # Silently ignore the error
-        end
-      end
-    end
-  end
-
- 
 end
 

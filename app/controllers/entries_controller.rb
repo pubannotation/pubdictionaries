@@ -21,7 +21,25 @@ class EntriesController < ApplicationController
     render template: 'new_entries/new'
   end
 
-  
+  def create
+    begin
+      dic = Dictionary.editable(current_user).find_by_title(params[:dictionary_id])
+      raise ArgumentError, "There is no such a dictionary in your management." if dic.nil?
+      source_filepath = params[:file].tempfile.path
+      target_filepath = File.join('tmp', "upload-#{dic.title}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
+      FileUtils.cp source_filepath, target_filepath
+      dic.load_from_file(target_filepath)
+      respond_to do |format|
+        format.html {redirect_to :back, notice: 'Upload task created.'}
+      end
+    rescue
+      respond_to do |format|
+        format.html {redirect_to :back, notice: 'Upload failed.'}
+      end
+    end
+  end
+
+
   # # Destroy action works in two ways: 
   # #   1) remove a base dictionary entry (not from db) or
   # #   2) restore a removed base dictionary entry

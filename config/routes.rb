@@ -46,6 +46,8 @@ PubDictionaries::Application.routes.draw do
   end
 
   resources :dictionaries do
+    post 'entries', to: 'entries#create'
+
     resources :entries
 
     # Add routes for a collection route, /dictionaries/...

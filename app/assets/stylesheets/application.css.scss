@@ -9,10 +9,13 @@
  * compiled file, but it's generally better to create a new file per style scope.
  *
  *= require_self
- *= require jquery.ui.all
+ *= require jquery-ui
  *= require colorbox-rails
  *= require_tree .
  */
+
+@import "font-awesome-sprockets";
+@import "font-awesome";
 
 nav.pagination{
   margin: 1em 0;

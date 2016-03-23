@@ -1,0 +1,19 @@
+<table id="entries">
+  <tr>
+    <th class="label">
+      Label
+      <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
+	      <%= text_field_tag :label_search, params[:label_search] -%>
+  	    <%= submit_tag 'Search' -%>
+  	  <% end -%>
+    </th>
+    <th class="uri">
+      Id
+      <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
+      	<%= text_field_tag :id_search, params[:id_search] -%>
+      	<%= submit_tag 'Search' -%>
+  	  <% end -%>
+    </th>
+  </tr>
+  <%= render partial: "entries/entry", collection: @entries -%>
+</table>

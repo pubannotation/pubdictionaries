@@ -17,11 +17,6 @@
     <%= f.label :title, "Dictionary name:" %><br />
     <%= f.text_field :title %>
   </div>
-  
-  <div class="field">
-    <%= f.label :creator, "Creator:" %><br />
-    <%= f.text_field :creator, readonly: true %>
-  </div>
 
   <div class="field">
     <%= f.label :public, "Status:" %>
@@ -32,54 +27,10 @@
     <%= f.label :language, "Language:" %><br />
     <%= f.text_field :language -%>
   </div>
-
-  <div class="field">
-    Options for dictionary search:
-    <table>
-      <tr>
-        <td width="20"></td>
-        <td><%= f.label :lowercased, "1. Use case-insensitive search" %></td>
-        <td><%= f.check_box :lowercased, {:checked => true }%></td>
-      </tr>
-      <tr>
-        <td width="20"></td>
-        <td><%= f.label :hyphen_replaced, "2. Replace a hyphen with a space" %></td>
-        <td><%= f.check_box :hyphen_replaced, {:checked => true }%></td>
-      </tr>
-      <tr>
-        <td width="20"></td>
-        <td><%= f.label :stemmed, "3. Perform stemming using Porter stemmer" %></td>
-        <td><%= f.check_box :stemmed, {:checked => true }%></td>
-      </tr>
-    </table>
-  </div>
   
   <div class="field">
-    <%= f.label :description, "Description of this dictionary:" %><br />
-    <%= f.text_area :description %>
-  </div>
-
-  <div>
-    <pre>
--- Upload a dictionary file --
-
-  A dictionary file is a plan text file in which every row represents a different entry. An entry consists of two mandatory elements, <b>1) entry name</b> and <b>2) ID</b>, and one optional element, <b>3) label</b>, where these elements are separated by a tab or a comma (depending on the element separator chosen below). 
-
-  <b>Be careful that a selected separator should not be used as a part of entry name, label, nor ID.</b>
-    </pre>
-
-    <br />
-    <div class="field">
-      <%= f.label :separator, "Separator:" %>
-      <%= f.radio_button :separator, "\t", {checked: true} %> Tab, 
-      <%= f.radio_button :separator, "," %> Comma
-    </div>
-
-    <div class="field">
-      <%= f.label :file, "Dictionary File:" %>
-      <%= f.file_field :file %>
-    </div>
-    <br/>
+    <%= f.label :description, "Description:" %><br />
+    <%= f.text_area :description, cols: 40, rows: 5 %>
   </div>
 
   <div class="actions">

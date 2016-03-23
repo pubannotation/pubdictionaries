@@ -4,15 +4,15 @@ gem 'rails', '3.2.16'
 gem 'activerecord-import', '~> 0.3.1'
 gem 'libv8'
 
-
 gem 'stemmify'
 gem 'sequel'
 gem 'triez'
 
-
+# gem 'sqlite3'
 gem 'pg', :require => 'pg'   # Use PostgreSQL
 gem 'wice_grid'              # Grid viewer for tab-separated data view.
 gem 'colorbox-rails'         # Popup lightbox for selecting dictionaries.
+gem 'font-awesome-sass'
 gem 'jquery-rails', '>3.0.0' # Jquery.
 gem 'jquery-ui-rails'        # Jquery.
 gem 'devise', '3.0.3'
@@ -40,8 +40,8 @@ group :test do
   gem 'spork-rails'
   gem 'factory_girl_rails'
   gem 'simplecov', :require => false
-  gem 'sqlite3'
   gem 'capybara'
+  gem 'test-unit'
 end
 
 group :production do

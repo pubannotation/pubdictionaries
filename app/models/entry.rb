@@ -1,93 +1,40 @@
 require 'elasticsearch/model'
 
 class Entry < ActiveRecord::Base
-  include Elasticsearch::Model
-  include Elasticsearch::Model::Callbacks
+  belongs_to :label
+  belongs_to :uri
+  has_and_belongs_to_many :dictionaries
+  attr_accessible :title, :view_title, :search_title
+  attr_accessible :label, :uri
+  attr_accessible :label_id, :uri_id
 
-  settings analysis: {
-    tokenizer: {
-      ngram_tokenizer: {
-        type: "nGram",
-        min_gram: "2",
-        max_gram: "3",
-        token_chars: [ "letter", "digit" ]
-      }
-    },
-    analyzer: {
-      ngram_analyzer: {
-        tokenizer: "ngram_tokenizer"
-      }
-    }
-  }
+  def self.get_by_value(label_value, uri_value)
+    label = Label.get_by_value(label_value)
+    uri = Uri.get_by_value(uri_value)
 
-  def self.search_ngram(query)
-    search(
-      settings: {
-        analysis: {
-          analyzer:{
-            my_ngram_analyser: {
-              tokenizer: 'my_ngram_analyser'
-            }
-          },
-          tokenizer: {
-            my_ngram_tokenizer: {
-              type: 'nGram',
-              min_gram: 1,
-              max_gram: 5,
-              token_chars: [ "letter", "digit" ]
-            }
-          }
-        }
-      },
-      size: 1000
-    )
+    entry = self.find_by_label_id_and_uri_id(label.id, uri.id)
+    if entry.nil?
+      entry = self.new(label_id: label.id, uri_id: uri.id)
+      entry.save
 
+      label.entries_count_up
+      uri.entries_count_up
+    end
+    entry
   end
 
-  def self.search_suggest(query)
-    search(
-      suggest: {
-        text: query,
-        simple_phrase: {
-          phrase: {
-            field: view_title,
-            size: 1
-          }
-        }
-      },
-      size: 1000
-    )
+  def dictionaries_count_up
+    increment!(:dictionaries_count)
   end
 
-  def self.search_more_like_this(query)
-    search(
-      query: {
-        more_like_this: {
-          fields: [:view_title],
-          like_text: query,
-          min_term_freq: 1,
-          max_query_terms: 5
-        }
-      }
-    )
+  def dictionaries_count_down
+    decrement!(:dictionaries_count)
+    if dictionaries_count == 0
+      label.entries_count_down
+      uri.entries_count_down
+      destroy
+    end
   end
-
-  def self.search_fuzzy(query)
-    search(
-      query: {
-        multi_match: {
-          fields: [:view_title, :search_title],
-          query: query,
-          fuzziness: 2
-        }
-      }
-    )
-  end
-  
-  attr_accessible :uri, :label, :view_title, :search_title
-  belongs_to :dictionary
-
-  validates :uri, :view_title, :search_title, :presence => true
 
   # Return a list of entries except the ones specified by skip_ids.
   def self.get_remained_entries(skip_ids = [])
@@ -107,6 +54,5 @@ class Entry < ActiveRecord::Base
   def self.none
     where(:id => nil).where("id IS NOT ?", nil)
   end
-
 
 end

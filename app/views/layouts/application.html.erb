@@ -46,22 +46,15 @@
           <li class='active'><%= link_to "<span>About</span>".html_safe, about_index_path %></li>
           <li class='has-sub'><a href='#'><span>Dictionaries</span></a>
             <ul>
-              <li class='odd'><%= link_to '<span>All Dictionaries</span>'.html_safe, dictionaries_path %></li>
-              <% if user_signed_in? %>
-              <li class='even'><%= link_to '<span>My Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "my_dic") %></li>
-              <% end %>
-              <!-- <li class='odd'><%= link_to '<span>Working Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "working_dic") %></li> -->
+              <li><%= link_to '<span>List</span>'.html_safe, dictionaries_path %></li>
+              <li><%= link_to '<span>Search</span>'.html_safe, search_mapping_index_path %></li>
             </ul>
           </li>
-          <li class='has-sub'><a href='#'><span>Search </span></a>
+          <li class='has-sub'><a href='#'><span>API</span></a>
             <ul>
-              <li class='odd'><%= link_to '<span>Terms</span>'.html_safe, search_mapping_index_path %></li>
-            </ul>
-          <li class='has-sub'><a href='#'><span>Mappings</span></a>
-            <ul>
-              <li class='odd'><%= link_to '<span>Expression to Id</span>'.html_safe, expression_to_id_mapping_index_path %></li>
-              <li class='even'><%= link_to '<span>Id to Expression</span>'.html_safe, id_to_expression_mapping_index_path %></li>
-              <li class='odd'><%= link_to '<span>Text Annotation</span>'.html_safe, text_annotation_mapping_index_path %></li>
+              <li><%= link_to '<span>To get Ids</span>'.html_safe, expression_to_id_mapping_index_path %></li>
+              <li><%= link_to '<span>To get labels</span>'.html_safe, id_to_expression_mapping_index_path %></li>
+              <li><%= link_to '<span>To annotate text</span>'.html_safe, text_annotation_mapping_index_path %></li>
             </ul>
           <li class='has-sub'><a href='#'><span>Guides</span></a>
             <ul>

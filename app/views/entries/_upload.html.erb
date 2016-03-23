@@ -1,0 +1,31 @@
+<fieldset class="dialog">
+<legend>Upload</legend>
+<%= form_tag dictionary_entries_path(@dic), multipart: true do -%>
+  <% if @dic.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@dic.errors.count, "error") %> prohibited this dictionary from being saved:</h2>
+
+      <ul>
+      <% @dic.errors.full_messages.each do |msg| %>
+        <li><%= msg %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <p>
+  You can upload a dictionary file in the TSV (tab-separated values) format: 
+  each line represents a dictionary entry which is a pair of a <i>label</i> and an <i>Id.</i>
+  </p>
+
+  <div class="field">
+    <%= label_tag :file, "Dictionary File:" %>
+    <%= file_field_tag :file %>
+  </div>
+
+  <div class="actions">
+    <%= submit_tag @submit_text, {:class =>"customized_button"} %>
+  </div>
+
+<% end %>
+</fieldset>

@@ -1,4 +1,3 @@
-
 <div class="dictionaries_page">
   <!-- 1. Index view -->
   <div class="wice-grid">
@@ -7,7 +6,7 @@
 
       grid(@grid_dictionaries, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}, hide_submit_button: true, hide_reset_button: true ) do |g|
         g.blank_slate do
-          "There are no records" 
+          "No dictionary." 
         end
         g.column name: "Dictionary Name", attribute: "title" do |dic| 
           link_to dic.title, dic
@@ -19,7 +18,7 @@
 
         if params[:dictionary_type] != 'my_dic'
           g.column name: "Creator", attribute: "creator" do |dic| 
-            dic.creator
+            dic.user.email
           end
         end
         #g.column name: "Visibility", attribute: "public" do |dic| 
@@ -31,35 +30,6 @@
         # g.column name: "Description", attribute: "description" do |dic| 
         #   dic.description
         # end
-
-        if params[:dictionary_type] == 'my_dic'
-          g.column name: "Functions", filter: false do |dic|
-            link_array = ""
-            # Deleted dictionary creator match to show edit, deltete links.
-            link_array = 
-              link_to(image_tag('patch.jpg', size: "16x16", alt: "Show related user dictionaries"),
-                      {controller: "user_dictionaries", action: "index_for_owner", base_dic: dic},
-                     )
-              link_array += 
-                link_to(image_tag('edit.png', size: "16x16", alt: "Edit this dictionary"),
-                        edit_dictionary_path(dic.title)
-                       )
-            link_array += 
-              link_to(image_tag('mac-trashcan.jpg', size: "16x16", alt: "Delete this dictionary"), 
-              dic, 
-              method: :delete, 
-              data: {confirm: 'Are you sure to completely delete this dictionary?'})
-
-            link_array.html_safe
-            # show_link = link_to('Show', dic)
-            # dele_link = link_to('Delete', dic, method: :delete, data: { confirm: 'Are you sure?' })
-            # "#{show_link} | #{dele_link}".html_safe     # html_safe is necessary to ensure rendering
-            # "#{dele_link}".html_safe     # html_safe is necessary to ensure rendering
-          end
-          g.column name: "status" do |dic| 
-            dictionary_status(dic)
-          end
-        end
       end
     %>
   </div>

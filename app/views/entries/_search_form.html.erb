@@ -1,0 +1,17 @@
+<%= form_tag '', method: :get do -%>
+  <%= label_tag :model, 'Search for' -%>
+  <%= select_tag :model, options_for_select([['All', 'all'], ['Label', 'label'], ['Id', 'uri'] ], params[:model]) -%>
+  <%= label_tag :order, 'Order' -%>
+  <%= select_tag :order, options_for_select([['Default', 'default'], ['Alphabetical', 'alphabetical']], params[:order]) -%>
+  <br />
+  <%= autocomplete_field_tag 'query', params[:query], autocomplete_expression_name_mapping_index_path -%>
+  <%= submit_tag 'Search' -%>
+  <%= submit_tag 'Clear', id: 'reset' -%>
+<% end -%>
+
+<script>
+  $("#reset").click(function(){
+   $(this).closest('form').find("input[type=text], textarea").val("");
+    return false
+  });
+</script>

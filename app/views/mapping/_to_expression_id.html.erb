@@ -19,8 +19,8 @@
   <!-- Copy to clipboard -->
   <%= render partial: 'rest_service_url' -%>
 
-  <%= label_tag :terms -%>
-  <%= autocomplete_field_tag 'terms', params[:terms], autocomplete_expression_name_mapping_index_path -%>
+  <%= label_tag :Labels -%>
+  <%= text_field_tag 'terms', params[:terms] -%>
   <br />
 
   <div style='margin:1em 0'>

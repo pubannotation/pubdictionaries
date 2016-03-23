@@ -66,15 +66,42 @@ if defined?(Wice::Defaults)
   Wice::Defaults::NEGATION_IN_STRING_FILTERS = false
 
 
+  # Each WiceGrid filter column is defined in two classes, one used for rendering the filter, the other
+  # for generating query conditions. All these columns are in lib/wice/columns/*.rb .
+  # File lib/wice/columns/column_processor_index.rb lists all predefined processors.
+  # In most cases a processor is chosen automatically based on the DB column type,
+  # for example, integer columns
+  # can have two of processors, the default one with one input field, and a processor called "range",
+  # with 2 input fields. In this case it is possible to specify a processor in the column definition:
+  #
+  #     g.column filter_type: :range
+  #
+  # It is also possible to define you own processors:
+  #
+  #     Wice::Defaults::ADDITIONAL_COLUMN_PROCESSORS = {
+  #       some_key_identifying_new_column_type:  ['AViewColumnProcessorClass', 'ConditionsGeneratorClass'],
+  #       another_key_identifying_new_column_type:  ['AnotherViewColumnProcessorClass', 'AnotherConditionsGeneratorClass']
+  #     }
+  #
+  # Column processor keys/names should not coincide with the existing keys/names (see lib/wice/columns/column_processor_index.rb)
+  # the value is a 2-element array with 2 strings, the first should be a name of view processor class inherited from
+  # Wice::Columns::ViewColumn, the second should be a name of conditions generator class inherited from
+  # Wice::Columns::ConditionsGeneratorColumn .
+
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
   #                              Showing All Queries                          #
 
-  # Enable or disable showing all queries (non-paginated table)
+  # Enable or disable showing all records (non-paginated table)
   Wice::Defaults::ALLOW_SHOWING_ALL_QUERIES = true
 
   # If number of all queries is more than this value, the user will be given a warning message
   Wice::Defaults::START_SHOWING_WARNING_FROM = 100
+
+
+  # Hide the "show all" link if the number of all records is more than...
+  # set to nil to shows it always
+  Wice::Defaults::HIDE_ALL_LINK_FROM = nil
 
 
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -90,6 +117,7 @@ if defined?(Wice::Defaults)
 
   # The default style of the date and datetime helper
   # * <tt>:calendar</tt> - JS calendar
+  # * <tt>:html5</tt> - HTML5 date input field
   # * <tt>:standard</tt> - standard Rails date and datetime helpers
   Wice::Defaults::HELPER_STYLE = :calendar
 
@@ -144,4 +172,6 @@ if defined?(Wice::Defaults)
   # popup calendar will be shown relative to the popup trigger element or to the mouse pointer
   Wice::Defaults::POPUP_PLACEMENT_STRATEGY = :trigger # :pointer
 
+  # The name of the page method (should correspond to Kaminari.config.page_method_name)
+  Wice::Defaults::PAGE_METHOD_NAME = :page
 end
