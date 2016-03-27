@@ -27,97 +27,49 @@ class DictionariesController < ApplicationController
   #####     ACTIONS     #####
   ###########################
 
-  def get_delayed_job_diclist
-    if current_user
-      base_dics = Dictionary.get_unfinished_dictionaries current_user
-      
-      lst = base_dics.collect do |d|
-        d.title
-      end
-
-      # render json: ["test test test test test 1","test test test 2","test 3"]
-      render json: lst
-    end
-  end
-
   def index
-    dic_type = params[:dictionary_type]
-
-    base_dics, order, order_direction = Dictionary.get_showables( current_user, dic_type )
-    @grid_dictionaries = get_dictionaries_grid_view  base_dics, order, order_direction, 30
+    @dictionaries_grid = initialize_grid(Dictionary.active.accessible(current_user),
+      :order => 'created_at',
+      :order_direction => 'desc',
+      :per_page => 10
+    )
 
     respond_to do |format|
       format.html # index.html.erb
-      format.json { render json: base_dics }
+      format.json { render json: dics }
     end
   end
 
-  # Show the content of an original dictionary and its corresponding user dictionary.
+
   def show
-    # @base_dic  = Dictionary.find_showable_by_title params[:id], current_user
-    @dic  = Dictionary.accessible(current_user).find_by_title(params[:id])
+    begin
+      @dictionary = Dictionary.active.accessible(current_user).find_by_title(params[:id])
+      raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
 
-    if @dic.ready
-      per_page = 30
       if params[:label_search]
-        searched = Label.search_as_text(params[:label_search], @dic)
-        labels = searched.records.records
-        @entries = labels.inject([]){|s, label| s + label.entries}
+        @labels = Label.search_as_text(params[:label_search], @dictionary, params[:page]).records
+        @entries = @labels.inject([]){|s, label| s + label.entries}
       elsif params[:id_search]
-        uri = @dic.uris.find_by_value(params[:id_search])
-        @entries = uri.entries
+        uri = @dictionary.uris.find_by_value(params[:id_search])
+        @entries = uri.entries.page(params[:page])
       else
-        @entries = @dic.entries.page(params[:page]).per(per_page) if @dic.present?
-      end
-      
-      # Decide whether to upload the dictionary or not.
-      if params[:upload_confirmation] and params[:upload_confirmation] == "discard"
-        @dic.destroy
-        @dic = nil
-      elsif params[:upload_confirmation] and params[:upload_confirmation] == "confirm"
-        @dic.confirmed = true
-        @dic.save!
+        @entries = @dictionary.entries.page(params[:page]) if @dictionary.present?
       end
 
-      # Prepare variables for the view.
-      if @dic
-        if not user_signed_in? or @dic.user_dictionaries.nil? 
-          @user_dic = nil
-        else
-          @user_dic = @dic.user_dictionaries.find_by_user_id(current_user.id)
-        end
-
-        if @dic
-          # Replace the page title with the dictionary name
-          @page_title = @dic.title
-
-          if ["ori", "del", "new", "ori_del", "ori_del_new"].include?  params[:query]
-            @export_entries = build_export_entries  params[:query]
-          else
-            @g1, @g2, @g3   = get_entries_grid_views
-          end
-        end
+      respond_to do |format|
+        format.html
+        format.tsv { 
+          send_data tsv_data(@entries), 
+          filename: "#{@dictionary.title}.#{params[:query]}.tsv", 
+          type:     "text/tsv" 
+        }
+      end
+    rescue => e
+      respond_to do |format|
+        format.html {redirect_to dictionaries_url, notice: e.message}
+        format.tsv {}
       end
     end
-
-    respond_to do |format|
-      format.html {
-        if @dic.nil?
-          redirect_to dictionaries_url
-        end
-        # Otherwise, render the default view template.
-      }
-      format.tsv { 
-        send_data tsv_data(@export_entries), 
-        filename: "#{@dic.title}.#{params[:query]}.tsv", 
-        type:     "text/tsv" 
-      }
-    end
-  end
-
-  def test
-    search_results = Entry.search_fuzzy(params[:query])
-    @entries = search_results.page(params[:page])
   end
 
   def new
@@ -162,33 +114,25 @@ class DictionariesController < ApplicationController
     redirect_to dictionaries_path(dictionary_type: 'my_dic')
   end
 
-  # Destroy a base dictionary and the associated user dictionaries (of other users too).
+
   def destroy
-    dic = Dictionary.editable(current_user).find_by_title(params[:id])
+    begin
+      dictionary = Dictionary.editable(current_user).find_by_title(params[:id])
+      raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
-    if not dic  
-      ret_url = :back
-      ret_msg = "Cannot find a dictionary."
-    else
-      flag, msg = dic.is_destroyable?  current_user
+      dictionary.update_attribute(:active, false)
+      delayed_job = Delayed::Job.enqueue DestroyDictionaryJob.new(dictionary), queue: :general
+      Job.create({name:"Destroy dictionary", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
 
-      if flag == false
-        ret_url = :back
-        ret_msg = msg
-      else
-        # Speed up the deletion speed by using delete_all.
-        dic.cleanup
-        # Delete a dictionary with 0 entries (FAST! :-)
-        dic.destroy
-        
-        ret_url = dictionaries_url
-        ret_msg = msg
+      respond_to do |format|
+        format.html {redirect_to dictionaries_path, notice: "The dictionary, #{dictionary.title}, is deleted."}
+        format.json {head :no_content}
       end
-    end
-
-    respond_to do |format|
-      format.html{ redirect_to ret_url, notice: ret_msg }
-      format.json { head :no_content }
+    rescue => e
+      respond_to do |format|
+        format.html {redirect_to :back, notice: e.message}
+        format.json {head :no_content}
+      end
     end
   end
 
@@ -551,46 +495,8 @@ class DictionariesController < ApplicationController
       :order => order,
       :order_direction => order_direction,
       :per_page => per_page, )
-    # if params[:dictionaries_list] && params[:dictionaries_list][:selected]
-    #   @selected = params[:dictionaries_list][:selected]
-    # end
   
     return grid_dictionaries_view
-  end
-
-  # Create grid views for remained, disabled, and new entries.
-  def get_entries_grid_views()
-    ids = @user_dic.nil? ? [] : @user_dic.removed_entries.get_disabled_entry_idlist
-
-    # 1. Remained base entries.
-    remained_entries = @dic.entries.empty? ? Entry.none : @dic.entries.get_remained_entries(ids)
-    grid_basedic_remained_entries = initialize_grid(remained_entries, 
-      :name => "basedic_remained_entries",
-      :order => "view_title",        # Initial ordering column.
-      :order_direction => "asc",     # Initial ordering direction.
-      :per_page => 30, )
-
-    # 2. Disabled base entries.
-    disabled_entries = @dic.entries.empty? ? Entry.none : @dic.entries.get_disabled_entries(ids)
-    grid_basedic_disabled_entries = initialize_grid(disabled_entries,
-      :name => "basedic_disabled_entries",
-      :order => "view_title",
-      :order_direction => "asc",
-      :per_page => 30, )
-
-    # 3. New entries.
-    if @user_dic.nil?
-      new_entries = NewEntry.none
-    else
-      new_entries = @user_dic.new_entries.empty? ? NewEntry.none : @user_dic.new_entries.get_new_entries
-    end
-    grid_userdic_new_entries = initialize_grid(new_entries, 
-      :name => "userdic_new_entries",
-      :order => "view_title",
-      :order_direction => "asc",
-      :per_page => 30, )
-    
-    return grid_basedic_remained_entries, grid_basedic_disabled_entries, grid_userdic_new_entries
   end
 
   # Create a list of entries for export.

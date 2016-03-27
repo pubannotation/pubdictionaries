@@ -36,19 +36,37 @@ class Entry < ActiveRecord::Base
     end
   end
 
-  # Return a list of entries except the ones specified by skip_ids.
-  def self.get_remained_entries(skip_ids = [])
-    if skip_ids.empty?
-      # Return the entries of the current dictionary.
-      self.scoped 
-    else
-      # id not in () not work if () is empty.
-      where("id not in (?)", skip_ids) 
+  def self.load_from_file(filename, dictionary)
+    # Note: "textmode: true" option automatically converts all newline variants to \n
+    # fp = File.open(file, textmode: true)
+
+    begin
+      ActiveRecord::Base.transaction do
+        File.foreach(filename) do |line|
+          label, uri = read_entry_line(line)
+          dictionary.entries << Entry.get_by_value(label, uri) unless label.nil?
+        end
+        update_attribute(:entries_count)
+      end
     end
+
+    # File.delete(file)
+    # Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Label', scope: "diff"))
+    # Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Uri', scope: "diff"))
   end
 
-  def self.get_disabled_entries(skip_ids)
-    where(:id => skip_ids)
+  def self.read_entry_line(line)
+    line.strip!
+
+    return nil if line == ''
+    return nil if line.start_with? '#'
+
+    items = line.split(/\t/)
+    return nil if items.size < 2
+
+    items.each{|item| return nil if item.length < 2 && item.length > 32}
+
+    [items[0], items[1]]
   end
 
   def self.none

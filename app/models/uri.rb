@@ -1,7 +1,7 @@
 require 'elasticsearch/model'
 
 class Uri < ActiveRecord::Base
-  has_many :entries, :dependent => :destroy
+  has_many :entries
   has_many :dictionaries, :through => :entries
 
   attr_accessible :value

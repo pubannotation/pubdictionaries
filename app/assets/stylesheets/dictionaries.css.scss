@@ -4,13 +4,16 @@
 
 
 /* dictionary information section */
+.infobox {
+  margin: 5px 0;
+}
+
+.infobox h4 {display: inline-block; margin: 0}
+
 .main .dictionaries_page .infobox .single_dic_rest_api_button {
   padding-left: 2em;
   vertical-align: middle; 
 }
-
-.infobox h4 {display: inline-block; margin: 0}
-.infobox div {margin: 2px}
 
 .main .dictionaries_page .dic_ann_uri_generator {
   legend {

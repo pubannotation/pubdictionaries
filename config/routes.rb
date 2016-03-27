@@ -47,6 +47,7 @@ PubDictionaries::Application.routes.draw do
 
   resources :dictionaries do
     post 'entries', to: 'entries#create'
+    put 'entries/empty', to: 'entries#empty'
 
     resources :entries
 
@@ -73,6 +74,14 @@ PubDictionaries::Application.routes.draw do
       get  'text_annotation', to: 'dictionaries#text_annotation_with_single_dic_readme'
       post 'text_annotation', to: 'dictionaries#text_annotation_with_single_dic'
       get 'test'
+    end
+  end
+
+  resources :dictionaries do
+    resources :jobs do
+      member do
+        get 'messages' => 'messages#index'
+      end
     end
   end
 

@@ -1,6 +1,3 @@
-#
-# Define the Dictionary model.
-#
 class Dictionary < ActiveRecord::Base
   include StringManipulator
 
@@ -8,7 +5,7 @@ class Dictionary < ActiveRecord::Base
   attr_accessible :title, :creator, :description, :lowercased, :stemmed, :hyphen_replaced,
     :user_id, :public, :file, :separator, :sort, :language
 
-  attr_accessible :ready
+  attr_accessible :active
   attr_accessible :issues
 
   belongs_to :user
@@ -19,8 +16,7 @@ class Dictionary < ActiveRecord::Base
 
   has_many :labels, :through => :entries
   has_many :uris, :through => :entries
-
-  has_many :user_dictionaries, :dependent => :destroy
+  has_many :jobs, :dependent => :destroy
 
   # validates :creator, :description, :title, :presence => true
   # validates :file, presence: true,  on: :create 
@@ -45,6 +41,8 @@ class Dictionary < ActiveRecord::Base
     title
   end
 
+  scope :active, where(active: true)
+
   scope :accessible, -> (user) {
     if user.nil?
       where('public = ?', true)
@@ -65,42 +63,23 @@ class Dictionary < ActiveRecord::Base
     user && user_id == user.id
   end
 
+  def empty_entries
+    entries.delete_all
+    update_attribute(:entries_count, 0)
+  end
+
   # Return a list of dictionaries.
   def self.get_showables(user = nil, dic_type = nil)
     if user == nil
       # Get a list of publicly available dictionaries.
-      lst = where('public = ? AND ready = ?', true, true)
+      lst = where('public = ? AND active = ?', true, true)
       order = 'created_at'
       order_direction = 'desc'
 
     else
-      if dic_type == 'my_dic'
-        # Get a list of dictionaries of the current user.
-        lst = where('user_id = ?', user.id)
-        order = 'created_at'
-        order_direction = 'desc'
-
-      elsif dic_type == 'working_dic'
-        dic_ids = UserDictionary.get_dictionary_ids_by_user_id(user.id)
-
-        # Get a list of working dictionaries. Dictionaries, which are not confirmed, will
-        #   be shown if those are created by the current user, whereas only confirmed 
-        #   dictionaries will be shown if they are created by other users.
-        lst = Dictionary.joins(:user_dictionaries).
-                where('dictionaries.id IN (?)', dic_ids).
-                where('(dictionaries.user_id = ? AND ready = ?)
-                  OR (dictionaries.user_id != ? AND ready = ?)',
-                  user.id, true, user.id, true)
-        order = 'user_dictionaries.updated_at'
-        order_direction = 'desc'
-
-      else
-        # Get a list of all dictionaries.
-        lst = where('(user_id != ? AND public = ? AND ready = ?) OR (user_id = ?)',
-                user.id, true, true, user.id)
-        order = 'created_at'
-        order_direction = 'desc'
-      end
+      # Get a list of all dictionaries.
+      lst = where('(user_id != ? AND public = ? AND active = ?) OR (user_id = ?)',
+              user.id, true, true, user.id)
     end
 
     return lst, order, order_direction
@@ -113,25 +92,25 @@ class Dictionary < ActiveRecord::Base
   #   exist or not showable. nil if it does not exist or showable dictionary by its title.
   def self.find_showable_by_title(title, user = nil)
     if user.nil?
-      where(:title => title).where('public = ?', true).where(:ready => true).first
+      where(:title => title).where('public = ?', true).where(:active => true).first
     else
-      where(:title => title).where('public = ? OR user_id = ?', true, user.id).where(:ready => true).first
+      where(:title => title).where('public = ? OR user_id = ?', true, user.id).where(:active => true).first
     end
   end
 
 
   # Return a list of latest showable dictionaries.
   def self.get_latest_dictionaries(n=10)
-    where('public = ? AND ready = ?', true, true).order('created_at desc').limit(n)
+    where('public = ? AND active = ?', true, true).order('created_at desc').limit(n)
   end
 
   # Get a list of unfinished work.
   def self.get_unfinished_dictionaries(user)
-    where(user_id: user.id).where(ready: false)
+    where(user_id: user.id).where(active: false)
   end
 
   def unfinished?
-    ready == false
+    active == false
   end
 
 
@@ -146,61 +125,6 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
-  def cleanup
-  end
-
-  # Refactored as a method for delayed_job
-  def load_from_file(file, separator = "\t")
-    # Note: "textmode: true" option automatically converts all newline variants to \n
-    # fp = File.open(file, textmode: true)
-
-    begin
-      ActiveRecord::Base.transaction do
-        File.foreach(file).with_index do |line, line_no|
-          label, uri = parse_entry_line(line, separator, line_no)
-          self.entries << Entry.get_by_value(label, uri) unless label.nil?
-        end
-        update_attribute(:ready, true)
-      end
-    # rescue => e
-      # self.cleanup
-    end
-
-    # File.delete(file)
-
-    Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Label', scope: "diff"))
-    Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Uri', scope: "diff"))
-  end
-
-  def parse_entry_line(line, sep, line_no)
-    line.strip!
-
-    if line == ''
-      # Silently ignore blank lines.
-      return nil
-    end
-
-    # Field-wise check.
-    items = line.split sep
-
-    if items.size < 2
-      self.issues += "#{line_no}-th line has #{items.size} field(s).\n"
-      return nil
-    end
-
-    items.each do |item|
-      if item.length > 255
-        self.issues += "#{line_no}-th line has a field that is longer than 255!\n"
-        return nil
-      end
-    end
-
-    return items
-  end
-
-  def remove
-    
-  end
 
   #######
   private

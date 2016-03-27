@@ -1,26 +1,20 @@
-<div class="dictionaries_page">
+<%= render 'title' %>
 
-  <div class="infobox">
-    <fieldset>
-      <legend>Dictionary name: <%= @dic.title %></legend>
-      <%= render 'profile' %>
-    </fieldset>
-  </div>
+<% if @dictionary.editable?(current_user) %>
+	<div class="control">
+		<%= link_to(
+			'<i class="fa fa-cog fa-lg"></i>'.html_safe,
+			edit_dictionary_path(@dictionary.title),
+			title: 'settings'
+		) %>
+	</div>
+<% end %>
 
-  <%= link_to 'Back', dictionaries_path, style: 'display:block' -%>
+<%= render 'infobox' %>
 
-  <% if @dic.ready %>
-    <% if @entries.present? %>
-      <%= link_to 'Show all', dictionary_path(@dic) if params[:label_search] || params[:id_search] -%>
-      <%= render partial: 'entries/table' -%>
-    <% else %>
-      <p>The dictionary is currently empty.</p>
-    <% end %>
-  <% else %>
-    <p>The dictionary is under preparation.</p>
-  <% end %>
-
-  <% if user_signed_in? && @dic.editable?(current_user) -%>
-    <%= render partial: 'entries/upload' -%>
-  <% end %>
-</div>
+<% if @entries.present? %>
+	<%= link_to 'Show all', dictionary_path(@dictionary) if params[:label_search] || params[:id_search] -%>
+	<%= render partial: 'entries/table' -%>
+<% else %>
+	<p>The dictionary is currently empty.</p>
+<% end %>

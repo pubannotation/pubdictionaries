@@ -1,19 +1,29 @@
-<table id="entries">
-  <tr>
-    <th class="label">
-      Label
-      <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
-	      <%= text_field_tag :label_search, params[:label_search] -%>
-  	    <%= submit_tag 'Search' -%>
-  	  <% end -%>
-    </th>
-    <th class="uri">
-      Id
-      <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
-      	<%= text_field_tag :id_search, params[:id_search] -%>
-      	<%= submit_tag 'Search' -%>
-  	  <% end -%>
-    </th>
-  </tr>
+<table class="entries">
+  <thead>
+    <tr>
+      <th class="label">
+        Label
+        <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
+  	      <%= text_field_tag :label_search, params[:label_search] -%>
+    	    <%= submit_tag 'Search' -%>
+    	  <% end -%>
+      </th>
+      <th class="uri">
+        Id
+        <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
+        	<%= text_field_tag :id_search, params[:id_search] -%>
+        	<%= submit_tag 'Search' -%>
+    	  <% end -%>
+      </th>
+    </tr>
+  </thead>
   <%= render partial: "entries/entry", collection: @entries -%>
 </table>
+
+<div class="table-control">
+<% if @labels %>
+  <%= paginate @labels %>
+<% else %>
+  <%= paginate @entries %>
+<% end %>
+</div>

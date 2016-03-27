@@ -1,0 +1,15 @@
+<div class="infobox">
+<table>
+
+<tr>
+<th>Creator</th>
+<td><%= @dictionary.user.email %></td>
+</tr>
+
+<tr>
+<th>Description</th>
+<td><%= h(@dictionary.description).gsub(/\n/, '<br/>').html_safe %></td>
+</tr>
+
+</table>
+</div>

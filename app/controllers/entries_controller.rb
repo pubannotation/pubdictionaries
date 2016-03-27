@@ -2,11 +2,6 @@ class EntriesController < ApplicationController
   # Requires authentication for all actions
   before_filter :authenticate_user!
  
-
-  ###########################
-  #####     Actions     #####
-  ###########################
-
   # Populate the new template of the a different controller, "new_entries."
   # ?? Is this right approach ??
   def new
@@ -23,22 +18,45 @@ class EntriesController < ApplicationController
 
   def create
     begin
-      dic = Dictionary.editable(current_user).find_by_title(params[:dictionary_id])
+      dic = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])
       raise ArgumentError, "There is no such a dictionary in your management." if dic.nil?
       source_filepath = params[:file].tempfile.path
       target_filepath = File.join('tmp', "upload-#{dic.title}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
       FileUtils.cp source_filepath, target_filepath
-      dic.load_from_file(target_filepath)
+
+      # Entry.load_from_file(target_filepath, dic)
+
+      delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dic), queue: :general
+      Job.create({name:"Load entries from file", dictionary_id:dic.id, delayed_job_id:delayed_job.id})
+
       respond_to do |format|
-        format.html {redirect_to :back, notice: 'Upload task created.'}
+        format.html {redirect_to :back}
       end
-    rescue
+    rescue => e
       respond_to do |format|
-        format.html {redirect_to :back, notice: 'Upload failed.'}
+        format.html {redirect_to :back, notice: e.message}
       end
     end
   end
 
+  def empty
+    begin
+      dictionary = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])
+      raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+
+      # dictionary.empty_entries
+      delayed_job = Delayed::Job.enqueue EmptyEntriesJob.new(dictionary), queue: :general
+      Job.create({name:"Empty entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+
+      respond_to do |format|
+        format.html{ redirect_to :back }
+      end
+    rescue => e
+      respond_to do |format|
+        format.html{ redirect_to :back, notice: e.message }
+      end
+    end
+  end
 
   # # Destroy action works in two ways: 
   # #   1) remove a base dictionary entry (not from db) or
@@ -91,7 +109,5 @@ class EntriesController < ApplicationController
   #   removed_entry.entry_id = entry.id
   #   removed_entry.save
   # end
-
-
 
 end

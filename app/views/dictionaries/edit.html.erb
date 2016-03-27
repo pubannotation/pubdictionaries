@@ -1,12 +1,13 @@
-<div class="dictionaries_page">
+<%= render 'title' %>
 
 <fieldset>
-  <legend>Editing dictionary</legend>
+  <legend>Edit</legend>
   <%= render 'form' %>
 </fieldset>
-<br />
 
-<%= link_to 'Show', @dictionary %> |
-<%= link_to 'Back', dictionaries_path %>
 
-<div class="dictionaries_page">
+<% if @dictionary.jobs.count == 0 %>
+	<%= render partial: 'commands' -%>
+<% else %>
+	<%= render partial: 'last_task' -%>
+<% end %>

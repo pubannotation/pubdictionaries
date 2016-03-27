@@ -1,0 +1,51 @@
+<div class="control">
+  <%= link_to(
+      '<i class="fa fa-trash-o fa-lg"></i>'.html_safe, 
+      dictionary_entries_empty_path(@dictionary),
+      title: 'Empty',
+      method: :put,
+      data: {confirm: 'Are you sure to empty this dictionary?'}
+    )
+  %>
+
+  <%= link_to(
+      '<i class="fa fa-bomb fa-lg"></i>'.html_safe, 
+      @dictionary, 
+      title: 'Delete',
+      method: :delete, 
+      data: {confirm: 'Are you sure to completely delete this dictionary?'}
+    )
+  %>
+</div>
+
+<fieldset class="dialog">
+  <legend>Upload</legend>
+  <%= form_tag dictionary_entries_path(@dictionary), multipart: true do -%>
+    <% if @dictionary.errors.any? %>
+      <div id="error_explanation">
+        <h2><%= pluralize(@dictionary.errors.count, "error") %> prohibited this dictionary from being saved:</h2>
+        <ul>
+          <% @dictionary.errors.full_messages.each do |msg| %>
+            <li><%= msg %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <p>You can upload a dictionary in a TSV (tab-separated values) file:
+    each line represents a dictionary entry which is a pair of a <i>label</i> and an <i>Id.</i></p>
+    <ul>
+      <li>An empty line or a line beginning with a pound sign ('#') will be skipped.</li>
+      <li>A line with only one value will be skipped.</li>
+      <li>If a line has more than two values, only the first two will be read, and the remaining will be ignored.</li>
+      <li>If a line has a label shorter than 2 or longer than 32, the line will be skipped.</li>
+    </ul>
+    <% if @dictionary.entries.empty? %>
+      <%= file_field_tag :file, required: true %><br/>
+      <%= submit_tag 'Upload', class: "button" %>
+    <% else %>
+      <i>Current implementation requires a dictionary to be emptied before a new upload.</i>
+    <% end %>
+  <% end %>
+</fieldset>
+

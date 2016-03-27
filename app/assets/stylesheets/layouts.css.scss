@@ -1,0 +1,69 @@
+.header {
+  position:relative;
+  background: #34689b;     /* NCBI's GENE page top section color */
+  color: #ffffff;
+  padding: 0.5em;
+  vertical-align: bottom;
+
+  a {
+    color: #dddddd;
+  }
+
+  a:visited {
+    color: #dddddd;
+  }
+
+  a:hover {
+    color: #ffffff;
+    background-color: #34689b;
+  }
+
+  .logo {
+    display: inline-block;
+    vertical-align: bottom;
+    font-size: 2em;
+    font-variant: small-caps;
+  }
+
+  nav {
+    display: inline-block;
+    vertical-align: bottom;
+    margin: 0 10px;
+
+    ul {
+      margin: 0;
+      padding: 0;
+
+      li {
+        display: inline-block;
+        margin: 0;
+        padding: 0 5px;
+      }
+    }
+  }
+
+  .account {
+    position: absolute;
+    right: 5px;
+    top: 9px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+}
+
+
+// 2) Main body area
+.main {
+  position:relative;
+  padding: 5px;
+  
+  .control {
+    position: absolute;
+    right: 5px;
+    top: 9px;
+  }
+
+  .dictionaries_page .entry_list .ui-tabs-nav {
+    height: 2.4em;    // To avoid large background.
+  }
+}

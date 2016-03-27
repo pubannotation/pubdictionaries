@@ -32,12 +32,12 @@ class Label < ActiveRecord::Base
     end
   end
 
-  has_many :entries, :dependent => :destroy
+  has_many :entries
   has_many :dictionaries, :through => :entries
 
   attr_accessible :value
 
-  scope :diff, where(['created_at > ?', 1.hour.ago])
+  scope :diff, where(['created_at > ?', 2.hour.ago])
 
   def self.get_by_value(value)
     label = self.find_by_value(value)
@@ -64,7 +64,7 @@ class Label < ActiveRecord::Base
     )
   end
 
-  def self.search_as_text(keywords, dictionary = nil)
+  def self.search_as_text(keywords, dictionary = nil, page)
     self.__elasticsearch__.search(
       query: {
         filtered: {
@@ -84,7 +84,7 @@ class Label < ActiveRecord::Base
           }
         }
       }
-    )
+    ).page(page)
   end
 
   def self.search_as_term(keywords, dictionary = nil)
@@ -135,6 +135,11 @@ class Label < ActiveRecord::Base
         }
       }
     )
+  end
+
+  def self.index_diff
+    @@diff_flag = false
+    Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Doc', scope: "diff"))
   end
 
 end

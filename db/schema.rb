@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20160318161501) do
+ActiveRecord::Schema.define(:version => 20160327010724) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -42,7 +42,8 @@ ActiveRecord::Schema.define(:version => 20160318161501) do
     t.boolean  "public",          :default => true
     t.text     "issues",          :default => ""
     t.string   "language"
-    t.boolean  "ready",           :default => true
+    t.boolean  "active",          :default => true
+    t.integer  "entries_count",   :default => 0
   end
 
   add_index "dictionaries", ["creator"], :name => "index_dictionaries_on_creator"
@@ -79,6 +80,21 @@ ActiveRecord::Schema.define(:version => 20160318161501) do
   end
 
   add_index "expressions_uris", ["expression_id", "uri_id", "dictionary_id"], :name => "index_exp_uri_dic", :unique => true
+
+  create_table "jobs", :force => true do |t|
+    t.string   "name"
+    t.integer  "dictionary_id"
+    t.integer  "delayed_job_id"
+    t.text     "message"
+    t.integer  "num_items"
+    t.integer  "num_dones"
+    t.datetime "begun_at"
+    t.datetime "ended_at"
+    t.datetime "registered_at"
+  end
+
+  add_index "jobs", ["delayed_job_id"], :name => "index_jobs_on_delayed_job_id"
+  add_index "jobs", ["dictionary_id"], :name => "index_jobs_on_dictionary_id"
 
   create_table "labels", :force => true do |t|
     t.string   "value"
