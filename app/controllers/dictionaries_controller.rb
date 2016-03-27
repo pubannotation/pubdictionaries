@@ -119,6 +119,7 @@ class DictionariesController < ApplicationController
     begin
       dictionary = Dictionary.editable(current_user).find_by_title(params[:id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+      raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 
       dictionary.update_attribute(:active, false)
       delayed_job = Delayed::Job.enqueue DestroyDictionaryJob.new(dictionary), queue: :general

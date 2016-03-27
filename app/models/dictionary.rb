@@ -29,9 +29,11 @@ class Dictionary < ActiveRecord::Base
 
   def entry_dictionaries_count_up(entry)
     entry.dictionaries_count_up
+    entry.label.__elasticsearch__.update_document
   end
 
   def entry_dictionaries_count_down(entry)
+    entry.label.__elasticsearch__.update_document
     entry.dictionaries_count_down
   end
 

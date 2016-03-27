@@ -6,14 +6,16 @@
   </legend>
 	<p>"<%= job.name %>"</p>
   <ul>
-	  <li>started at <%= job.begun_at %></li>
-	  <% unless job.ended_at.nil? %>
-		  <% if job.message.nil? %>
-		    <li>finished at <%= job.ended_at %></li>
-		    <li>without problem.</li>
-		  <% else %>
-		    <li>failed at <%= job.ended_at %></li>
-		    <li>with message, "<%= job.message %>".</li>
+	  <% unless job.begun_at.nil? %>
+		  <li>started at <%= job.begun_at %></li>
+		  <% unless job.ended_at.nil? %>
+			  <% if job.message.nil? %>
+			    <li>finished at <%= job.ended_at %></li>
+			    <li>without problem.</li>
+			  <% else %>
+			    <li>failed at <%= job.ended_at %></li>
+			    <li>with message, "<%= job.message %>".</li>
+			  <% end %>
 		  <% end %>
 	  <% end %>
   </ul>

@@ -6,6 +6,21 @@
 /* dictionary information section */
 .infobox {
   margin: 5px 0;
+
+  table {
+    border-collapse: collapse;
+    border: 1px solid gray;
+    tr {
+      border: 1px solid gray;
+      th, td {
+        border: 1px solid gray;
+        padding: 2px;
+      }
+      th {
+        background-color: #ccccff;
+      }
+    }
+  }
 }
 
 .infobox h4 {display: inline-block; margin: 0}

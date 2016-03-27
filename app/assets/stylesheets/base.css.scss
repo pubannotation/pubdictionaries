@@ -84,6 +84,10 @@ a {
   text-decoration: none;
 }
 
+.button:visited {
+  color: #ffffff;
+}
+
 .button:hover {
   background: #3cb0fd;
   background-image: -webkit-linear-gradient(top, #3cb0fd, #3498db);

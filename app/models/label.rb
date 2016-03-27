@@ -38,12 +38,14 @@ class Label < ActiveRecord::Base
   attr_accessible :value
 
   scope :diff, where(['created_at > ?', 2.hour.ago])
+  scope :added_after, -> (time) {where('created_at > ?', time)}
 
   def self.get_by_value(value)
     label = self.find_by_value(value)
     if label.nil?
       label = self.new({value: value})
       label.save
+      # label.__elasticsearch__.index_document
     end
     label
   end
@@ -54,7 +56,10 @@ class Label < ActiveRecord::Base
 
   def entries_count_down
     decrement!(:entries_count)
-    destroy if entries_count == 0
+    if entries_count == 0
+      # __elasticsearch__.delete_document
+      destroy
+    end
   end
 
   def as_indexed_json(options={})
@@ -136,10 +141,4 @@ class Label < ActiveRecord::Base
       }
     )
   end
-
-  def self.index_diff
-    @@diff_flag = false
-    Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Doc', scope: "diff"))
-  end
-
 end

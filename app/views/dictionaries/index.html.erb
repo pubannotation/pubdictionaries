@@ -19,6 +19,10 @@
         dic.entries_count
       end
 
+      g.column name: "Created By", attribute: "user_id", filter: false do |dic| 
+        dic.user.email
+      end
+
       g.column name: "Created At", attribute: "created_at", filter: false do |dic| 
         dic.created_at
       end
@@ -26,10 +30,10 @@
   %>
 </div>
 
-  <!-- 2. Buttons -->
-  <div style="float:left;">
-    <%= button_to 'Create a New Dictionary', new_dictionary_path, {:method => :get, :class => "customized_button"} %>
-  </div>
+
+<%= button_to('Create a New Dictionary', new_dictionary_path, :method => :get, :class => "button") unless current_user.nil? %>
+
+
 <!--   <div style="float:left;">
     <%= button_to "Get Annotator URL", {controller: "dictionaries", action: "text_annotation_with_multiple_dic_readme"}, {:method => :get, :class => "customized_button"} %>
   </div>
