@@ -16,7 +16,6 @@ gem 'font-awesome-sass'
 gem 'jquery-rails', '>3.0.0' # Jquery.
 gem 'jquery-ui-rails'        # Jquery.
 gem 'devise', '3.0.3'
-gem 'zeroclipboard-rails'
 gem 'delayed_job_active_record'
 gem 'daemons'
 gem 'kaminari'

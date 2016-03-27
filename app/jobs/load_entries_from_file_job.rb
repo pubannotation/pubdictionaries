@@ -8,8 +8,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
         File.foreach(filename) do |line|
           label, uri = Entry.read_entry_line(line)
           unless label.nil?
-            entry = Entry.get_by_value(label, uri)
-          	dictionary.entries << entry
+          	dictionary.entries << Entry.get_by_value(label, uri)
           	count += 1
           end
         end
