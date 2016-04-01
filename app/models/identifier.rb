@@ -1,18 +1,18 @@
 require 'elasticsearch/model'
 
-class Uri < ActiveRecord::Base
+class Identifier < ActiveRecord::Base
   has_many :entries
   has_many :dictionaries, :through => :entries
 
   attr_accessible :value
 
   def self.get_by_value(value)
-    uri = self.find_by_value(value)
-    if uri.nil?
-      uri = self.new({value: value})
-      uri.save
+    identifier = self.find_by_value(value)
+    if identifier.nil?
+      identifier = self.new({value: value})
+      identifier.save
     end
-    uri
+    identifier
   end
 
   def entries_count_up

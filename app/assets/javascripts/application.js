@@ -16,4 +16,5 @@
 //= require jquery-ui/datepicker
 //= require wice_grid
 //= require colorbox-rails
+//= require zeroclipboard
 //= require_tree .

@@ -1,6 +1,0 @@
-<% include_results = @dictionaries_include_resuls.include?( search_target_dictionary ) if @search_target_dictionaries.present? -%>
-<%= div_for(search_target_dictionary, class: "search_target_dic pointer include_results_#{include_results }", onclick: "toggleDictionary($(this))") do -%>
-  <i class="fa fa-<%= icon_class -%>-circle"></i>
-  <%= hidden_field_tag 'dictionaries[]', search_target_dictionary.title, id: "dictionaries_#{search_target_dictionary.id}" -%>
-  <%= search_target_dictionary.title -%>
-<% end -%>

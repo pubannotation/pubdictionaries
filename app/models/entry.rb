@@ -2,23 +2,23 @@ require 'elasticsearch/model'
 
 class Entry < ActiveRecord::Base
   belongs_to :label
-  belongs_to :uri
+  belongs_to :identifier
   has_and_belongs_to_many :dictionaries
   attr_accessible :title, :view_title, :search_title
-  attr_accessible :label, :uri
-  attr_accessible :label_id, :uri_id
+  attr_accessible :label, :identifier
+  attr_accessible :label_id, :identifier_id
 
-  def self.get_by_value(label_value, uri_value)
+  def self.get_by_value(label_value, identifier_value)
     label = Label.get_by_value(label_value)
-    uri = Uri.get_by_value(uri_value)
+    identifier = Identifier.get_by_value(identifier_value)
 
-    entry = self.find_by_label_id_and_uri_id(label.id, uri.id)
+    entry = self.find_by_label_id_and_identifier_id(label.id, identifier.id)
     if entry.nil?
-      entry = self.new(label_id: label.id, uri_id: uri.id)
+      entry = self.new(label_id: label.id, identifier_id: identifier.id)
       entry.save
 
       label.entries_count_up
-      uri.entries_count_up
+      identifier.entries_count_up
     end
     entry
   end
@@ -31,7 +31,7 @@ class Entry < ActiveRecord::Base
     decrement!(:dictionaries_count)
     if dictionaries_count == 0
       label.entries_count_down
-      uri.entries_count_down
+      identifier.entries_count_down
       destroy
     end
   end
@@ -43,8 +43,8 @@ class Entry < ActiveRecord::Base
     begin
       ActiveRecord::Base.transaction do
         File.foreach(filename) do |line|
-          label, uri = read_entry_line(line)
-          dictionary.entries << Entry.get_by_value(label, uri) unless label.nil?
+          label, identifier = read_entry_line(line)
+          dictionary.entries << Entry.get_by_value(label, identifier) unless label.nil?
         end
         update_attribute(:entries_count)
       end
@@ -52,7 +52,7 @@ class Entry < ActiveRecord::Base
 
     # File.delete(file)
     # Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Label', scope: "diff"))
-    # Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Uri', scope: "diff"))
+    # Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Identifier', scope: "diff"))
   end
 
   def self.read_entry_line(line)

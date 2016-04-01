@@ -11,17 +11,23 @@
 
 <body>
   <div class="header">
-    <div class="logo">
-      <%= link_to image_tag("logo.svg", { height: "20px", border: "0", alt: "Logo" }), root_path %>
+    <div id="logo">
+      <%= link_to image_tag("logo.svg", { height: "100%", border: "0", alt: "Logo" }), root_path %>
     </div>
-    <nav class="menu">
+    <div id='cssmenu'>
       <ul>
         <li><%= link_to 'Dictionaries', dictionaries_path %></li>
-        <li><%= link_to 'Search', search_mapping_index_path %></li>
-        <li><%= link_to 'API', search_mapping_index_path %></li>
-        <li><%= link_to 'Help', search_mapping_index_path %></li>
+        <li><%= link_to 'Labels', labels_path %></li>
+        <li><%= link_to 'IDs', identifiers_path %></li>
+        <li class='has-sub'>Tools <i class="fa fa-caret-down"></i>
+          <ul>
+            <li><%= link_to 'Find IDs', find_ids_path %></li>
+            <li class='last'><%= link_to 'Text annotation', text_annotation_path %></li>
+          </ul>
+        </li>
+        <li class='last'><%= link_to 'Help', search_mapping_index_path %></li>
       </ul>
-    </nav>
+    </div>
     <div class="account">
       <% if user_signed_in? %>
         <%= link_to current_user.email, edit_user_registration_path %> | 
@@ -29,14 +35,13 @@
       <% else %>
         <%= link_to "Sign up", new_user_registration_path %> |
         <%= link_to "Login", new_user_session_path %>
-      <% end %>    
+      <% end %>
     </div>
+    <% if notice %><p class='notice'><%= flash[:notice] %></p><% end %>
+    <% if alert %><p class='alert'><%= alert %></p><% end %>
   </div>
 
   <div class="main">
-    <% if notice %><p><%= flash[:notice] %></p><% end %>
-    <% if alert %><p><%= alert %></p><% end %>
-
     <%= yield %>
   </div>
 

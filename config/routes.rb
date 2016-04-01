@@ -1,10 +1,16 @@
 PubDictionaries::Application.routes.draw do
 
+  get  "find_ids", to: "mapping#find_ids"
+  post "find_ids", to: "mapping#find_ids"
+  get  "find_labels", to: "mapping#find_labels"
+  post "find_labels", to: "mapping#find_labels"
+  get  "text_annotation", to: "mapping#text_annotation"
+  post "text_annotation", to: "mapping#text_annotation"
+
   resources :mapping do
     collection do
       get  "term_to_id"
       post "term_to_id", to: "mapping#term_to_id_post"
-      # get "term_to_id", to: "mapping#term_to_id_post"
 
       get  "id_to_label"
       post "id_to_label", to: "mapping#id_to_label_post"
@@ -22,6 +28,9 @@ PubDictionaries::Application.routes.draw do
       get :autocomplete_expression_name 
     end
   end
+
+  resources :labels
+  resources :identifiers
 
   # devise_for :users
   devise_for :users
@@ -71,8 +80,10 @@ PubDictionaries::Application.routes.draw do
     member do
       post 'disable_entries'
       post 'remove_entries'
-      get  'text_annotation', to: 'dictionaries#text_annotation_with_single_dic_readme'
-      post 'text_annotation', to: 'dictionaries#text_annotation_with_single_dic'
+      get  'find_ids', to: "dictionaries#find_ids"
+      post 'find_ids', to: "dictionaries#find_ids"
+      get  'text_annotation', to: 'dictionaries#text_annotation'
+      post 'text_annotation', to: 'dictionaries#text_annotation'
       get 'test'
     end
   end

@@ -17,16 +17,11 @@
 @import "font-awesome-sprockets";
 @import "font-awesome";
 
-nav.pagination{
-  margin: 1em 0;
-  a{
-    padding: 0.2em 0.4em;
-  }
-  .page{
-    margin: 0 0.2em;
-  }
-} 
-.desc,  .asc{
+.pagination li {
+  display:inline-block;
+}
+
+.desc, .asc{
   padding-right: 18px;
   text-decoration:none;
 }

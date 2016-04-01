@@ -1,0 +1,117 @@
+@import url(http://fonts.googleapis.com/css?family=Open+Sans:400,600,300);
+#cssmenu {
+  display: inline-block;
+  font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, Sans-Serif;
+  font-size: large;
+  text-align: left;
+}
+#cssmenu > ul {
+  width: auto;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+#cssmenu > ul li#responsive-tab {
+  display: none;
+  /* Hide for large screens */
+}
+#cssmenu > ul li {
+  display: inline-block;
+  *display: inline;
+  zoom: 1;
+}
+#cssmenu > ul li.right {
+  float: right;
+}
+#cssmenu > ul li.has-sub {
+  position: relative;
+}
+#cssmenu > ul li.has-sub:hover ul {
+  display: block;
+}
+#cssmenu > ul li.has-sub ul {
+  display: none;
+  width: 250px;
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+  background: #336699;
+}
+#cssmenu > ul li.has-sub ul li {
+  display: inline-block;
+}
+#cssmenu > ul li.has-sub > a {
+  background-image: url('caret.png');
+  background-repeat: no-repeat;
+  background-position: 90% -95%;
+}
+#cssmenu > ul li.has-sub > a.active,
+#cssmenu > ul li.has-sub > a:hover {
+  background: #225588 url('caret.png') no-repeat;
+  background-position: 90% 195%;
+}
+#cssmenu > ul li a {
+  display: block;
+  padding: 2px 15px;
+  text-decoration: none;
+}
+#cssmenu > ul li a.active,
+#cssmenu > ul li a:hover {
+  background: #225588;
+  color: #fff;
+  text-shadow: 0px 1px 0px #000;
+}
+@media (max-width: 600px) {
+  #cssmenu > ul {
+    width: 100%;
+  }
+  #cssmenu > ul li#responsive-tab {
+    display: block;
+  }
+  #cssmenu > ul li#responsive-tab a {
+    background: url('menu.png') no-repeat;
+    background-position: 95% -35%;
+  }
+  #cssmenu > ul li#responsive-tab a:hover {
+    background-color: #d80041;
+    background-position: 95% 135%;
+  }
+  #cssmenu > ul li {
+    display: none;
+  }
+  #cssmenu > ul li.right {
+    float: none;
+  }
+  #cssmenu > ul li.has-sub {
+    position: relative;
+  }
+  #cssmenu > ul li.has-sub ul {
+    display: block;
+    position: static;
+    width: 100%;
+    background: #ffffff;
+    border: 0 none;
+  }
+  #cssmenu > ul li.has-sub ul li {
+    display: block !important;
+  }
+  #cssmenu > ul li.has-sub ul li a span {
+    display: block;
+    padding-left: 24px;
+  }
+  #cssmenu > ul li.has-sub > a {
+    background-image: none;
+  }
+}
+/* Make sure they show even if hidden in mobile view by JS */
+@media (min-width: 600px) {
+  #cssmenu > ul > li.collapsed {
+    display: inline-block !important;
+    *display: inline;
+    zoom: 1;
+  }
+  #cssmenu > ul ul li.collapsed {
+    display: block !important;
+  }
+}

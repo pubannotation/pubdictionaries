@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20160327010724) do
+ActiveRecord::Schema.define(:version => 20160329134123) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -60,7 +60,7 @@ ActiveRecord::Schema.define(:version => 20160327010724) do
     t.datetime "created_at",                        :null => false
     t.datetime "updated_at",                        :null => false
     t.integer  "label_id"
-    t.integer  "uri_id"
+    t.integer  "identifier_id"
     t.integer  "dictionaries_count", :default => 0
   end
 
@@ -80,6 +80,13 @@ ActiveRecord::Schema.define(:version => 20160327010724) do
   end
 
   add_index "expressions_uris", ["expression_id", "uri_id", "dictionary_id"], :name => "index_exp_uri_dic", :unique => true
+
+  create_table "identifiers", :force => true do |t|
+    t.string   "value"
+    t.datetime "created_at",                   :null => false
+    t.datetime "updated_at",                   :null => false
+    t.integer  "entries_count", :default => 0
+  end
 
   create_table "jobs", :force => true do |t|
     t.string   "name"
@@ -128,13 +135,6 @@ ActiveRecord::Schema.define(:version => 20160327010724) do
 
   add_index "removed_entries", ["entry_id"], :name => "index_removed_entries_on_entry_id"
   add_index "removed_entries", ["user_dictionary_id"], :name => "index_removed_entries_on_user_dictionary_id"
-
-  create_table "uris", :force => true do |t|
-    t.string   "value"
-    t.datetime "created_at",                   :null => false
-    t.datetime "updated_at",                   :null => false
-    t.integer  "entries_count", :default => 0
-  end
 
   create_table "user_dictionaries", :force => true do |t|
     t.integer  "user_id"

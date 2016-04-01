@@ -9,6 +9,5 @@ class EmptyEntriesJob < Struct.new(:dictionary)
     rescue => e
 			@job.message = e.message
     end
-		# Doc.index_diff if Doc.diff_flag
 	end
 end

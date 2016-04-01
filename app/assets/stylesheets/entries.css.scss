@@ -1,3 +1,36 @@
 // Place all the styles related to the Entries controller here.
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
+
+nav.pagination{
+  margin: 1em 0;
+  a{
+    padding: 0.2em 0.4em;
+  }
+  .page{
+    margin: 0 0.2em;
+  }
+  .current{
+  	font-weight: bold;
+  }
+} 
+
+table.entries {
+	table-layout: fixed;
+	width: 100%;
+}
+
+table.entries th.label {
+	width: 60%;
+}
+
+.entries td {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.entries td:hover {
+	white-space: nowrap;
+	overflow: visible;
+}

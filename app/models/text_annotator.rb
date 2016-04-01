@@ -1,19 +1,8 @@
 #!/usr/bin/env ruby
-# encoding: UTF-8
-Encoding.default_external="UTF-8"
-Encoding.default_internal="UTF-8"
-
-#
-# Annotate a free text using a PubDictionaries's dictionary.
-#
-
-
 require 'json'
 require 'pathname'
 require 'erb'
 
-require File.join( File.dirname( __FILE__ ), 'retrieve_simstring_db' )
-require File.join( File.dirname( __FILE__ ), 'retrieve_postgresql_db' )
 require File.join( File.dirname( __FILE__ ), 'query_builder' )
 require File.join( File.dirname( __FILE__ ), 'post_processor' )
 require File.join( File.dirname( __FILE__ ), 'text_to_trie' )

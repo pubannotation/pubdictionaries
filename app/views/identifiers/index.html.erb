@@ -1,0 +1,9 @@
+<h1>Identifiers</h1>
+<%= grid(@identifiers_grid) do |g|
+  g.column do |identifier| 
+    identifier.value
+  end
+  g.column do |identifier|
+    identifier.entries_count
+  end
+end -%>

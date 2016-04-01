@@ -1,14 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: UTF-8
-Encoding.default_external="UTF-8"
-Encoding.default_internal="UTF-8"
-
-
-# Modified at 2013.10.03 
-
-
 require 'set'
-
 
 module Strsim
   # Obtain a set of letter n-grams in a string. 
@@ -71,7 +62,6 @@ module Strsim
   end
 
 end
-
 
 
 if __FILE__ == $0

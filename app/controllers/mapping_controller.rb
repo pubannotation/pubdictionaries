@@ -1,3 +1,5 @@
+require 'pp'
+
 class MappingController < ApplicationController
 	include MappingHelper
 	include ExpressionsHelper
@@ -8,6 +10,70 @@ class MappingController < ApplicationController
   ], :if => Proc.new { |c| c.request.format == 'application/json' }
 
   autocomplete :expression, :words
+
+  def find_ids
+    @dictionaries = Dictionary.active.accessible(current_user)
+    @selected = params[:dictionaries].present? ?
+      params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_title(d.strip).id} : []
+
+    if params[:labels]
+      rich = true if params[:rich] == 'true'
+      threshold = params[:threshold].to_f if params[:threshold].present?
+      labels = params[:labels].strip.split(/[\n\t\r]+/)
+      @result = Dictionary.find_ids(labels, @selected, threshold, rich)
+    end
+
+    respond_to do |format|
+      format.html
+      format.json {head :no_content}
+    end
+  end
+
+  def text_annotation
+    @dictionaries = Dictionary.active.accessible(current_user)
+    @selected = params[:dictionaries].present? ?
+      params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_title(d.strip).id} : []
+
+    if params[:labels]
+      rich = true if params[:rich] == 'true'
+      threshold = params[:threshold].to_f if params[:threshold].present?
+      labels = params[:labels].strip.split(/[\n\t\r]+/)
+      @result = Dictionary.find_ids(labels, @selected, threshold, rich)
+    end
+
+    respond_to do |format|
+      format.html
+      format.json {head :no_content}
+    end
+  end
+
+
+  def call_ws
+    rest_url = params[:rest_url]
+    delimiter = params[:delimiter]
+    labels = params[:labels]
+    method = 1
+
+    response = begin
+      if method == 0
+        RestClient.get rest_url, {:params => call_params, :accept => :json}
+      else
+        RestClient.post rest_url, labels.split(delimiter).to_json, :content_type => :json, :accept => :json
+      end
+    rescue => e
+      raise IOError, "Invalid connection"
+    end
+
+    raise IOError, "Bad gateway" unless response.code == 200
+
+    begin
+      result = JSON.parse response, :symbolize_names => true
+    rescue => e
+      raise IOError, "Received a non-JSON object: [#{response}]"
+    end
+
+    render :find_ids
+  end
 
   def autocomplete_expression_name
     labels = Label.suggest({query: params[:term], operator: 'and'}).records.records.to_a.collect{|label| label.value}
@@ -70,6 +136,7 @@ class MappingController < ApplicationController
     if params[:dictionaries].present?
       # when filtered by dictionaries
       @search_target_dictionaries = Dictionary.where(['title IN (?)', params[:dictionaries]])
+      @search_target_dictionaries = Dictionary.where(title: 'icd10')
       if @search_target_dictionaries.present?
         dictionary_ids = @search_target_dictionaries.collect{|dictionary| dictionary.id }
         expressions = Expression.search_fuzzy({query: params[:terms], fuzziness: params[:fuzziness]}).records.dictionaries(dictionary_ids).includes(:uris)
@@ -308,7 +375,7 @@ class MappingController < ApplicationController
     end
   end
 
-  def text_annotation
+  def text_annotation_bak
     @annotator_uri = ""
 
     if params[:commit] == "Add selected dictionaries"

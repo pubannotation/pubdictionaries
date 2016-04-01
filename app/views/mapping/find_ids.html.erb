@@ -1,4 +1,4 @@
-<h1>Text annotation</h1>
+<h1>Find IDs</h1>
 
 <%= form_tag multipart: true do -%>
 
@@ -19,7 +19,7 @@
 <%= text_area_tag :rest_url, '', rows: 4, cols: 80 %>
 
 <h2>Demo</h2>
-<h3>Text</h3>
+<h3>Labels</h3>
 <%= text_area_tag :labels, params[:labels], rows: 4, cols: 80, required: true %><br/>
 
 <%= submit_tag 'Find', class: :button %>
@@ -62,8 +62,9 @@
 		if (param1 != '') {params.push(param1)};
 		if (param2 != '') {params.push(param2)};
 
-		var url = '<%= root_url %>text_annotation' + '?'  + param_dics;
+		var url = '<%= root_url %>find_ids' + '?'  + param_dics;
 		if (params.length > 0) {url += '&' + params.join('&')}
 	  $('#rest_url').text(url);
 	}
+
 </script>

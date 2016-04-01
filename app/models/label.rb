@@ -7,25 +7,25 @@ class Label < ActiveRecord::Base
   settings index: {
     analysis: {
       filter: {
-        snowball_en: {
+        snowball_en: {  # do not use for now
           type: :snowball,
           language: "English"
         },
-        asciifolding_preserve: {
+        asciifolding_preserve: { # do not use for now
           type: :asciifolding,
           preserve_original: true
         }
       },
       analyzer: {
-        standard_english: {
+        standard_normalization: {
           tokenizer: :standard,
-          filter: [:standard, :lowercase, :asciifolding_preserve, :snowball_en]
+          filter: [:standard, :lowercase, :asciifolding, :snowball]
         }
       }
     }
   } do
     mappings do
-      indexes :value, analyzer: :standard_english
+      indexes :value, analyzer: :standard_normalization
       indexes :labels_dictionaries do
         indexes :id, type: :long
       end
@@ -92,7 +92,7 @@ class Label < ActiveRecord::Base
     ).page(page)
   end
 
-  def self.search_as_term(keywords, dictionary = nil)
+  def self.search_as_term(keywords, dictionaries = [])
     self.__elasticsearch__.search(
       min_score: 0.8,
       query: {
@@ -108,7 +108,7 @@ class Label < ActiveRecord::Base
           },
           filter: {
             terms: {
-              "dictionaries.id" => [dictionary.id]
+              "dictionaries.id" => dictionaries
             }
           }
         }

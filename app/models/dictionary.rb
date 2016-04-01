@@ -15,7 +15,7 @@ class Dictionary < ActiveRecord::Base
     :after_remove => :entry_dictionaries_count_down
 
   has_many :labels, :through => :entries
-  has_many :uris, :through => :entries
+  has_many :identifiers, :through => :entries
   has_many :jobs, :dependent => :destroy
 
   # validates :creator, :description, :title, :presence => true
@@ -68,6 +68,33 @@ class Dictionary < ActiveRecord::Base
   def empty_entries
     entries.delete_all
     update_attribute(:entries_count, 0)
+  end
+
+  def self.find_ids(labels, dictionaries = [], threshold = 0.7, rich = false)
+    dic = {}
+    labels.each do |label|
+      mlabels = Label.search_as_term(label, dictionaries).records
+      ids = mlabels.inject([]){|s, mlabel| s + mlabel.entries.collect{|e| {label:e.label.value, identifier:e.identifier.value}}}.uniq
+      ids = ids.collect{|id| score = Strsim.cosine(id[:label], label); (score >= threshold) ? id.merge(score:score) : nil}.compact
+      ids = ids.collect{|id| id[:identifier]}.uniq unless rich
+      dic[label] = ids
+    end
+    dic
+  end
+
+  def self.find_labels(ids, dictionaries = [])
+  end
+
+  def self.find_ids(labels, dictionaries = [], threshold = 0.7, rich = false)
+    dic = {}
+    labels.each do |label|
+      mlabels = Label.search_as_term(label, dictionaries).records
+      ids = mlabels.inject([]){|s, mlabel| s + mlabel.entries.collect{|e| {label:e.label.value, identifier:e.identifier.value}}}.uniq
+      ids = ids.collect{|id| score = Strsim.cosine(id[:label], label); (score >= threshold) ? id.merge(score:score) : nil}.compact
+      ids = ids.collect{|id| id[:identifier]}.uniq unless rich
+      dic[label] = ids
+    end
+    dic
   end
 
   # Return a list of dictionaries.

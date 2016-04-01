@@ -1,6 +1,7 @@
 require 'set'
 require 'pathname'
 require 'fileutils'
+require 'pp'
 
 require File.join( File.dirname( __FILE__ ), 'text_annotator/text_annotator' )
 
@@ -8,7 +9,8 @@ require File.join( File.dirname( __FILE__ ), 'text_annotator/text_annotator' )
 class DictionariesController < ApplicationController
   # Require authentication for all actions except :index, :show, and some others.
   before_filter :authenticate_user!, except: [ 
-    :index, :show, 
+    :index, :show,
+    :find_ids, :text_annotation,
     :text_annotation_with_single_dic_readme, :text_annotation_with_single_dic, 
     :text_annotation_with_multiple_dic_readme, :select_dictionaries_for_text_annotation, :text_annotation_with_multiple_dic, 
     :id_mapping_with_multiple_dic_readme, :select_dictionaries_for_id_mapping, :id_mapping,
@@ -40,7 +42,6 @@ class DictionariesController < ApplicationController
     end
   end
 
-
   def show
     begin
       @dictionary = Dictionary.active.accessible(current_user).find_by_title(params[:id])
@@ -50,8 +51,8 @@ class DictionariesController < ApplicationController
         @labels = Label.search_as_text(params[:label_search], @dictionary, params[:page]).records
         @entries = @labels.inject([]){|s, label| s + label.entries}
       elsif params[:id_search]
-        uri = @dictionary.uris.find_by_value(params[:id_search])
-        @entries = uri.entries.page(params[:page])
+        identifier = @dictionary.identifiers.find_by_value(params[:id_search])
+        @entries = identifier.entries.page(params[:page])
       else
         @entries = @dictionary.entries.page(params[:page]) if @dictionary.present?
       end
@@ -114,7 +115,6 @@ class DictionariesController < ApplicationController
     redirect_to dictionaries_path(dictionary_type: 'my_dic')
   end
 
-
   def destroy
     begin
       dictionary = Dictionary.editable(current_user).find_by_title(params[:id])
@@ -137,64 +137,14 @@ class DictionariesController < ApplicationController
     end
   end
 
-
-  # Disable (or enable) multiple selected entries (from the base dictionary).
-  def disable_entries
-    dic = Dictionary.find_showable_by_title  params[:id], current_user
-
-    if dic
-      user_dic = UserDictionary.get_or_create_user_dictionary  dic, current_user
-
-      if params["commit"] == "Disable selected entries" and 
-         params.has_key? :basedic_remained_entries and 
-         params[:basedic_remained_entries].has_key? :selected
-
-        # Register selected entries as disabled.
-        params[:basedic_remained_entries][:selected].each do |eid|
-          if not user_dic.removed_entries.exists?  entry_id: eid
-            user_dic.removed_entries.create  entry_id: eid
-          end
-        end
-      end
-   
-      if params["commit"] == "Enable selected entries" and
-         params.has_key? :basedic_disabled_entries and
-         params[:basedic_disabled_entries].has_key? :selected
-
-        params[:basedic_disabled_entries][:selected].each do |eid|
-          if user_dic.removed_entries.exists?  entry_id: eid
-            user_dic.removed_entries.find_by_entry_id(eid).destroy
-          end
-        end
-      end
-    end
-
-    respond_to do |format|
-      format.html { redirect_to :back }
-    end
+  def find_ids
+    redirect_to find_ids_path(dictionaries: params[:id])
   end
 
-  # Remove multiple selected entries (from the user dictionary).
-  def remove_entries
-    dic = Dictionary.find_showable_by_title  params[:id], current_user
-
-    if dic
-      user_dic = UserDictionary.get_or_create_user_dictionary  dic, current_user
-
-      if not params[:userdic_new_entries][:selected].nil?
-        params[:userdic_new_entries][:selected].each do |id|
-          entry = user_dic.new_entries.find  id
-          if not entry.nil?
-            entry.destroy
-          end
-        end
-      end
-    end
-
-    respond_to do |format|
-      format.html { redirect_to :back }
-    end
+  def text_annotation
+    redirect_to text_annotation_path(dictionaries: params[:id])
   end
+
 
   # Multiple dictionary annotator URL generator.
   def text_annotation_with_multiple_dic_readme
@@ -380,7 +330,7 @@ class DictionariesController < ApplicationController
       entries.sort! { |x, y| y[:sim] <=> x[:sim] }
 
       # 2.2. Remove duplicate entries of the same ID.
-      results[term] = entries.uniq { |elem| elem[:uri] }     # Assume it removes the later element.
+      results[term] = entries.uniq { |elem| elem[:identifier] }     # Assume it removes the later element.
 
       # 2.3. Keep top-n results.
       if opts["top_n"] < 0 and entries.size >= opts["top_n"]
@@ -390,11 +340,11 @@ class DictionariesController < ApplicationController
       # 2.4. Format the output.
       if opts["output_format"] == nil or opts["output_format"] == "simple"
         results[term].collect! do |entry| 
-          entry[:uri]
+          entry[:identifier]
         end
       else
         results[term].collect! do |entry| 
-          { uri: entry[:uri], score: entry[:sim], dictionary_name: entry[:dictionary_name] }
+          { identifier: entry[:identifier], score: entry[:sim], dictionary_name: entry[:dictionary_name] }
         end
       end
     end
@@ -506,19 +456,19 @@ class DictionariesController < ApplicationController
 
     if export_type == "ori"
       # Export: all entries of an original dictionary.
-      export_entries = @base_dic.entries.select("view_title, label, uri")
+      export_entries = @base_dic.entries.select("view_title, label, identifier")
 
     elsif export_type == "del"
       # Export: all deleted entries from an original dictionary.
       if not @user_dic.nil?
         removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dic.id).pluck(:entry_id).uniq
-        export_entries = @base_dic.entries.select("view_title, label, uri").find(removed_entry_ids)
+        export_entries = @base_dic.entries.select("view_title, label, identifier").find(removed_entry_ids)
       end    
 
     elsif export_type == "new"
       # Export: all new entries.
       if not @user_dic.nil?
-        export_entries = @user_dic.new_entries.select("view_title, label, uri")
+        export_entries = @user_dic.new_entries.select("view_title, label, identifier")
       end
 
     elsif export_type == "ori_del"
@@ -527,7 +477,7 @@ class DictionariesController < ApplicationController
         export_entries = @base_dic.entries
       else
         removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dic.id).pluck(:entry_id).uniq
-        export_entries = @base_dic.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri")
+        export_entries = @base_dic.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, identifier")
       end
 
     elsif export_type == "ori_del_new"
@@ -538,7 +488,7 @@ class DictionariesController < ApplicationController
         removed_entry_ids = RemovedEntry.where(user_dictionary_id: @user_dic.id).pluck(:entry_id).uniq
         new_entries       = @user_dic.new_entries  
 
-        export_entries = @base_dic.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, uri") + new_entries
+        export_entries = @base_dic.entries.where("id NOT IN (?)", removed_entry_ids).select("view_title, label, identifier") + new_entries
       end
     end
 
@@ -547,7 +497,7 @@ class DictionariesController < ApplicationController
 
   # Convert a collection of entries in tsv format
   def tsv_data(entries)
-    entries.collect{ |e| "#{e.view_title}\t#{e.label}\t#{e.uri}\n" }.join
+    entries.collect{ |e| "#{e.view_title}\t#{e.label}\t#{e.identifier}\n" }.join
   end
 
 

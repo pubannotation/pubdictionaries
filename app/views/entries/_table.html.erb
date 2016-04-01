@@ -9,7 +9,7 @@
     	  <% end -%>
         <%= link_to('Show all', dictionary_path(@dictionary), class: 'button') if params[:label_search] || params[:id_search] -%>
       </th>
-      <th class="uri">
+      <th class="identifier">
         Id
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
         	<%= text_field_tag :id_search, params[:id_search], required: true -%>

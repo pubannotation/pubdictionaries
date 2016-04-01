@@ -8,6 +8,6 @@ var toggleDictionary = function(e){
   }else{
     $(e).children('i').addClass('fa-times-circle');
     $(e).children('i').removeClass('fa-plus-circle');
-    $('#search_target_dictionaries').append(e);
+    $('#search_dictionaries').append(e);
   }
 };

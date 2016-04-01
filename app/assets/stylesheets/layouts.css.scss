@@ -1,16 +1,18 @@
 .header {
   position:relative;
-  background: #34689b;     /* NCBI's GENE page top section color */
-  color: #ffffff;
-  padding: 0.5em;
-  vertical-align: bottom;
+  height: 50px;
+  // background: #336699;
+  background: linear-gradient(to bottom, #336699 50%, #ffffff 50%);
+  color: #cccccc;
+  padding: 4px;
+  vertical-align: middle;
 
   a {
-    color: #dddddd;
+    color: #cccccc;
   }
 
   a:visited {
-    color: #dddddd;
+    color: #cccccc;
   }
 
   a:hover {
@@ -18,44 +20,35 @@
     background-color: #34689b;
   }
 
-  .logo {
+  #logo {
     display: inline-block;
-    vertical-align: bottom;
-    font-size: 2em;
-    font-variant: small-caps;
+    height: 18px;
+    vertical-align: middle;
   }
 
-  nav {
-    display: inline-block;
+  #cssmenu {
     vertical-align: bottom;
-    margin: 0 10px;
-
-    ul {
-      margin: 0;
-      padding: 0;
-
-      li {
-        display: inline-block;
-        margin: 0;
-        padding: 0 5px;
-      }
-    }
+    margin-left: 20px;
+    z-index: 1;
   }
 
   .account {
     position: absolute;
     right: 5px;
-    top: 9px;
+    vertical-align: middle;
     display: inline-block;
     vertical-align: middle;
   }
+
+  .notice, .alert {
+    position: absolute;
+    bottom: 0;
+  }
 }
 
-
-// 2) Main body area
 .main {
   position:relative;
-  padding: 5px;
+  padding: 5px 10px;
   
   .control {
     position: absolute;

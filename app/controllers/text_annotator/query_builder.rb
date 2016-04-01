@@ -11,7 +11,6 @@ Encoding.default_internal="UTF-8"
 require 'triez'
 
 require File.join( File.dirname( __FILE__ ), 'text_to_trie' )
-require File.join( File.dirname( __FILE__ ), 'strsim' )
 
 
 class QUERY_BUILDER

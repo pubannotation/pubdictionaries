@@ -1,0 +1,57 @@
+<table class="dictionary_selection">
+	<tr>
+		<th class="pane">Selected</th>
+		<th></th>
+		<th class="pane">Unselected</th>
+	</tr>
+	<tr>
+		<td class="pane" id='selected_dictionaries'>
+			<%= render partial: 'selected_dictionary', collection: @dictionaries -%>
+			<textarea id="dictionaries" name="dictionaries" required="required" style="display:none"></textarea>
+		</td>
+		<td style="text-align: center"><%= content_tag :i, '', class:"fa fa-exchange" %></td>
+		<td class="pane" id='unselected_dictionaries'>
+			<%= render partial: 'unselected_dictionary', collection: @dictionaries -%>
+		</td>
+	</tr>
+</table>
+
+<script>
+  $(function() {
+  	dictionarySelectionReset();
+    $("#selected_dictionaries > .dictionary > i").on("click", deselectDictionary);
+    $("#unselected_dictionaries > .dictionary > i").on("click", selectDictionary);
+  });
+
+  function dictionarySelectionReset() {
+    $("#selected_dictionaries > .dictionary").hide();
+    $("#unselected_dictionaries > .dictionary").show();
+    $.each(<%= @selected %>, function(i,v){selectDictionaryById(v)});
+  }
+
+	function selectDictionaryById(id) {
+		$('#unselected_dictionaries > #dictionary_' + id).hide();
+		$('#selected_dictionaries > #dictionary_' + id).show();
+		setParamDics();
+	}
+
+	function selectDictionary(d) {
+		var id = $(this).parent().attr("id");
+		$(this).parent().hide();
+		$('#selected_dictionaries > #' + id).show();
+		setParamDics();
+	}
+
+	function deselectDictionary(d) {
+		var id = $(this).parent().attr("id");
+		$(this).parent().hide();
+		$('#unselected_dictionaries > #' + id).show();
+		setParamDics();
+	}
+
+	function setParamDics() {
+		var dics = $('#selected_dictionaries > .dictionary:visible').map(function(i, v){return $(v).find(".name").text()}).toArray();
+		$('#dictionaries').text(dics.join(','));
+		set_url();
+	}
+</script>

@@ -1,0 +1,9 @@
+<h1>Labels</h1>
+<%= grid(@labels_grid) do |g|
+  g.column do |label| 
+    label.value
+  end
+  g.column do |label|
+    label.entries_count
+  end
+end -%>

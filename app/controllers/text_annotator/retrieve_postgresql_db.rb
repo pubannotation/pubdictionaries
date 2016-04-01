@@ -6,7 +6,6 @@ require 'pathname'
 require 'fileutils'
 require 'set'
 require 'sequel'
-require File.join(File.dirname( __FILE__ ), "strsim")
 
 class POSTGRESQL_RETRIEVER
 	include Strsim
