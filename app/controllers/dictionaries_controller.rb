@@ -3,9 +3,6 @@ require 'pathname'
 require 'fileutils'
 require 'pp'
 
-require File.join( File.dirname( __FILE__ ), 'text_annotator/text_annotator' )
-
-
 class DictionariesController < ApplicationController
   # Require authentication for all actions except :index, :show, and some others.
   before_filter :authenticate_user!, except: [ 

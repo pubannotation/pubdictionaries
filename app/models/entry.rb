@@ -1,5 +1,3 @@
-require 'elasticsearch/model'
-
 class Entry < ActiveRecord::Base
   belongs_to :label
   belongs_to :identifier
@@ -36,23 +34,18 @@ class Entry < ActiveRecord::Base
     end
   end
 
-  def self.load_from_file(filename, dictionary)
-    # Note: "textmode: true" option automatically converts all newline variants to \n
-    # fp = File.open(file, textmode: true)
-
-    begin
-      ActiveRecord::Base.transaction do
-        File.foreach(filename) do |line|
-          label, identifier = read_entry_line(line)
-          dictionary.entries << Entry.get_by_value(label, identifier) unless label.nil?
+  def self.store(entry_lines)
+    ActiveRecord::Base.transaction do
+      count = 0
+      entry_lines.each_line(entry_lines) do |line|
+        label, id = Entry.read_entry_line(line)
+        unless label.nil?
+          dictionary.entries << Entry.get_by_value(label, id)
+          count += 1
         end
-        update_attribute(:entries_count)
       end
+      dictionary.increment!(:entries_count, count)
     end
-
-    # File.delete(file)
-    # Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Label', scope: "diff"))
-    # Delayed::Job.enqueue(DelayedRake.new("elasticsearch:import:model", class: 'Identifier', scope: "diff"))
   end
 
   def self.read_entry_line(line)

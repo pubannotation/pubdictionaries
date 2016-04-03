@@ -18,10 +18,6 @@ pre {
  word-wrap: break-word;       /* Internet Explorer 5.5+ */
 }
 
-table {
-  border-color: gray;
-}
-
 thead {
   background-color: #ebebeb;
 }
@@ -30,6 +26,22 @@ thead {
   text-align: center;
   background-color: #ebebeb;
 }
+
+table {
+  border-collapse: collapse;
+  border: 1px solid gray;
+  tr {
+    border: 1px solid gray;
+    th, td {
+      border: 1px solid gray;
+      padding: 2px;
+    }
+    th {
+      background-color: #ccccff;
+    }
+  }
+}
+
 
 .title {
   margin: 5px;

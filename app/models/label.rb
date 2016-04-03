@@ -1,21 +1,9 @@
-require 'elasticsearch/model'
-
 class Label < ActiveRecord::Base
   include Elasticsearch::Model
   include Elasticsearch::Model::Callbacks
 
   settings index: {
     analysis: {
-      filter: {
-        snowball_en: {  # do not use for now
-          type: :snowball,
-          language: "English"
-        },
-        asciifolding_preserve: { # do not use for now
-          type: :asciifolding,
-          preserve_original: true
-        }
-      },
       analyzer: {
         standard_normalization: {
           tokenizer: :standard,
@@ -25,7 +13,7 @@ class Label < ActiveRecord::Base
     }
   } do
     mappings do
-      indexes :value, analyzer: :standard_normalization
+      indexes :value, type: :string, analyzer: :standard_normalization, index_options: :docs
       indexes :labels_dictionaries do
         indexes :id, type: :long
       end
@@ -45,7 +33,6 @@ class Label < ActiveRecord::Base
     if label.nil?
       label = self.new({value: value})
       label.save
-      # label.__elasticsearch__.index_document
     end
     label
   end
@@ -56,10 +43,7 @@ class Label < ActiveRecord::Base
 
   def entries_count_down
     decrement!(:entries_count)
-    if entries_count == 0
-      # __elasticsearch__.delete_document
-      destroy
-    end
+    destroy if entries_count == 0
   end
 
   def as_indexed_json(options={})

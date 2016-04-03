@@ -1,7 +1,6 @@
 .header {
   position:relative;
-  height: 50px;
-  // background: #336699;
+  height: 58px;
   background: linear-gradient(to bottom, #336699 50%, #ffffff 50%);
   color: #cccccc;
   padding: 4px;
@@ -22,7 +21,7 @@
 
   #logo {
     display: inline-block;
-    height: 18px;
+    height: 20px;
     vertical-align: middle;
   }
 
@@ -43,6 +42,14 @@
   .notice, .alert {
     position: absolute;
     bottom: 0;
+  }
+
+  .notice {
+    color: #00aa00;
+  }
+
+  .alert {
+    color: #aa0000;
   }
 }
 

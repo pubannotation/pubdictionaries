@@ -1,5 +1,3 @@
-require 'elasticsearch/model'
-
 class Identifier < ActiveRecord::Base
   has_many :entries
   has_many :dictionaries, :through => :entries

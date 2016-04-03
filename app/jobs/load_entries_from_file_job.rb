@@ -14,10 +14,9 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
         end
         dictionary.increment!(:entries_count, count)
       end
-      # begun_at = @job.begun_at
-      # Label.__elasticsearch__.import query: -> {where('created_at > ?', begun_at)}
     rescue => e
 			@job.message = e.message
     end
 	end
+  File.delete(filename)
 end

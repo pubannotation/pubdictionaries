@@ -1,27 +1,17 @@
 development:
   adapter: postgresql
   encoding: utf8
-  database: pubdictionaries_new
+  database: pubdictionaries
   pool: 5
-  port: 5433
-  username: your_username
-  password: your_password
 
 test:
   adapter: postgresql
   encoding: utf8
-  database: pubdictionaries_new_test
+  database: pubdictionaries_test
   pool: 5
-  port: 5433
-  username: your_username
-  password: your_password
 
 production:
   adapter: postgresql
   encoding: utf8
   database: pubdictionaries
   pool: 5
-  port: 5433
-  username: your_username
-  password: your_password
-

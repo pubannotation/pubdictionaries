@@ -7,12 +7,25 @@
   <%= stylesheet_link_tag "application", :media => "all" %>
   <%= javascript_include_tag "application" %>
   <%= csrf_meta_tags %>
+<!-- 
+  <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/themes/smoothness/jquery-ui.css" />
+ -->
+  <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
+  <link rel="stylesheet" href="http://textae.pubannotation.org/lib/css/textae.min.css" />
+<!-- 
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/jquery-ui.min.js"></script>
+ -->
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+  <script src="http://textae.pubannotation.org/vender/jquery.jsPlumb-1.5.2-min.js"></script>
+  <script src="http://textae.pubannotation.org/lib/textae.min.js"></script>
 </head>
 
 <body>
   <div class="header">
     <div id="logo">
-      <%= link_to image_tag("logo.svg", { height: "100%", border: "0", alt: "Logo" }), root_path %>
+      <%= link_to image_tag("logo.png", { height: "100%", border: "0", alt: "Logo" }), root_path %>
     </div>
     <div id='cssmenu'>
       <ul>

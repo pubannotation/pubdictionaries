@@ -29,11 +29,9 @@ class Dictionary < ActiveRecord::Base
 
   def entry_dictionaries_count_up(entry)
     entry.dictionaries_count_up
-    entry.label.__elasticsearch__.update_document
   end
 
   def entry_dictionaries_count_down(entry)
-    entry.label.__elasticsearch__.update_document
     entry.dictionaries_count_down
   end
 
@@ -83,18 +81,6 @@ class Dictionary < ActiveRecord::Base
   end
 
   def self.find_labels(ids, dictionaries = [])
-  end
-
-  def self.find_ids(labels, dictionaries = [], threshold = 0.7, rich = false)
-    dic = {}
-    labels.each do |label|
-      mlabels = Label.search_as_term(label, dictionaries).records
-      ids = mlabels.inject([]){|s, mlabel| s + mlabel.entries.collect{|e| {label:e.label.value, identifier:e.identifier.value}}}.uniq
-      ids = ids.collect{|id| score = Strsim.cosine(id[:label], label); (score >= threshold) ? id.merge(score:score) : nil}.compact
-      ids = ids.collect{|id| id[:identifier]}.uniq unless rich
-      dic[label] = ids
-    end
-    dic
   end
 
   # Return a list of dictionaries.

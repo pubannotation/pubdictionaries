@@ -1,16 +1,4 @@
-require 'pp'
-
 class MappingController < ApplicationController
-	include MappingHelper
-	include ExpressionsHelper
-
-  # Disable CSRF check for REST-API actions.
-  skip_before_filter :verify_authenticity_token, :only => [
-    :term_to_id_post
-  ], :if => Proc.new { |c| c.request.format == 'application/json' }
-
-  autocomplete :expression, :words
-
   def find_ids
     @dictionaries = Dictionary.active.accessible(current_user)
     @selected = params[:dictionaries].present? ?
@@ -34,11 +22,14 @@ class MappingController < ApplicationController
     @selected = params[:dictionaries].present? ?
       params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_title(d.strip).id} : []
 
-    if params[:labels]
+    if params[:text]
       rich = true if params[:rich] == 'true'
+      tokens_len_min = params[:tokens_len_min].to_i if params[:tokens_len_min].present?
+      tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
       threshold = params[:threshold].to_f if params[:threshold].present?
-      labels = params[:labels].strip.split(/[\n\t\r]+/)
-      @result = Dictionary.find_ids(labels, @selected, threshold, rich)
+      text = params[:text].strip
+      annotator = TextAnnotator.new(@selected, tokens_len_min, tokens_len_max, threshold)
+      @result = annotator.annotate(text)
     end
 
     respond_to do |format|

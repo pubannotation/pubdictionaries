@@ -28,7 +28,7 @@
 
 <% if @result %>
 <h3>Result</h3>
-<pre><%= pp @result %></pre>
+<pre><%= JSON.pretty_generate @result %></pre>
 <% end %>
 
 <script type="text/javascript">
