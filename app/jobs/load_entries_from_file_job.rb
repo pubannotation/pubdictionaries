@@ -17,6 +17,6 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
     rescue => e
 			@job.message = e.message
     end
+    File.delete(filename)
 	end
-  File.delete(filename)
 end
