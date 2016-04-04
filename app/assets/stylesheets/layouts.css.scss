@@ -19,7 +19,7 @@
 
 .header {
   position:relative;
-  height: 32px;
+  height: 26px;
 
   #logo {
     display: inline-block;
@@ -69,21 +69,21 @@
 
 .footer {
   position: relative;
-  height: 45px;
+  height: 35px;
 
   .alert {
-    color: #ff5555;
+    color: #ff7777;
 
     a {
-      color: #ff8888;
+      color: #ffaaaa;
     }
 
     a:visited {
-      color: #ff8888;
+      color: #ffaaaa;
     }
 
     a:hover {
-      color: #ffeeee;
+      color: #ffcccc;
     }
   }
 
