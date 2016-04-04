@@ -68,12 +68,15 @@ class Dictionary < ActiveRecord::Base
     update_attribute(:entries_count, 0)
   end
 
-  def self.find_ids(labels, dictionaries = [], threshold = 0.7, rich = false)
+  def self.find_ids(labels, dictionaries = [], threshold = 0.6, rich = false)
+    threshold ||= 0.6
+    rich ||= false
     dic = {}
     labels.each do |label|
       mlabels = Label.search_as_term(label, dictionaries).records
       ids = mlabels.inject([]){|s, mlabel| s + mlabel.entries.collect{|e| {label:e.label.value, identifier:e.identifier.value}}}.uniq
-      ids = ids.collect{|id| score = Strsim.cosine(id[:label], label); (score >= threshold) ? id.merge(score:score) : nil}.compact
+      ids = ids.collect{|id| id.merge(score: Strsim.cosine(id[:label].downcase, label.downcase))}
+      ids.delete_if{|id| id[:score] < threshold}
       ids = ids.collect{|id| id[:identifier]}.uniq unless rich
       dic[label] = ids
     end

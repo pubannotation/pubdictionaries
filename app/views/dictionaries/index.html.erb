@@ -3,7 +3,7 @@
   <%= 
     dump_filter_parameters_as_hidden_fields(@dictionaries_grid)
 
-    grid(@dictionaries_grid, html: {class: "my-grid"}, header_tr_html: {class: "my-header"}, hide_submit_button: true, hide_reset_button: true ) do |g|
+    grid(@dictionaries_grid, html: {class: "my-grid"}, hide_submit_button: true, hide_reset_button: true ) do |g|
       g.blank_slate do
         "No dictionary." 
       end

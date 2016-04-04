@@ -1,5 +1,3 @@
-require 'stemmify'
-
 class ApplicationController < ActionController::Base
   protect_from_forgery
   after_filter :store_location

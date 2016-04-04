@@ -7,11 +7,15 @@ class TextAnnotator
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
-  def initialize(dictionaries, tokens_len_min = 1, tokens_len_max = 6, threshold = 0.7)
+  def initialize(dictionaries, tokens_len_min = 1, tokens_len_max = 6, threshold = 0.6)
     @dictionaries = dictionaries
     @tokens_len_min = tokens_len_min
     @tokens_len_max = tokens_len_max
     @threshold = threshold
+
+    @tokens_len_min ||= 1
+    @tokens_len_max ||= 6
+    @threshold ||= 0.6
   end
 
   # Annotate an input text.
@@ -19,10 +23,6 @@ class TextAnnotator
   # * (string) text  - Input text.
   #
   def annotate(text)
-    es_annotation(text)
-  end
-
-  def es_annotation(text)
     # tokens are produced in the order of their position
     tokens = tokenize(text)
 
@@ -47,9 +47,8 @@ class TextAnnotator
       span_index: span_index,
       mapping: mapping
     }
-    # annotated_spans = mapping.keys.inject([]){|c, s| c += span_index[s][:positions].map{|p| {span:s, position:p, tags:mapping[s]}}}
 
-    # To filter sub-optimal tags
+    # To collect spans per tag
     tags = {}
     mapping.each do |s, ts|
       ts.each do |t|
@@ -64,6 +63,13 @@ class TextAnnotator
       end
     end
 
+    # sort{|a, b|
+    #   span_index[a][:start_offset] == span_index[b][:start_offset] ?
+    #   span_index[b][:end_offset] <=> span_index[a][:end_offset] :
+    #   span_index[a][:start_offset] <=> span_index[b][:start_offset]    
+    # }
+
+    # To choose the best span per tag
     tags.each do |t, v|
       full_anns = v[:anns]
       best_anns = []
@@ -92,43 +98,14 @@ class TextAnnotator
       text: text,
       denotations: denotations
     }
-
-    # tags = mapping.keys.inject({}){|h, k| mapping[k]  }
-
-    # cache = {}
-    # prev = {position: {start_offset:0, :end_offset:0}}
-    # annotated_spans.each do |s|
-    #   cache.clear
-    # end
-
-    # sort{|a, b|
-    #   span_index[a][:start_offset] == span_index[b][:start_offset] ?
-    #   span_index[b][:end_offset] <=> span_index[a][:end_offset] :
-    #   span_index[a][:start_offset] <=> span_index[b][:start_offset]    
-    # }
-
-    # annotated.collect{|s| {span: s, start_offset:span_index[s][:start_offset], end_offset:span_index[s][:end_offset], }}
-
-    # span_index.each_key do |span|
-    #   span_index[span][:es_annotation] = Label.search_as_term(span, @dictionaries)
-    # end
-    # span_index
   end
 
+  # Tokenize an input text using an analyzer of ElasticSearch.
+  #
+  # * (string) text  - Input text.
+  #
   def tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
     (JSON.parse RestClient.post('http://localhost:9200/labels/_analyze?analyzer=standard_normalization', text), symbolize_names: true)[:tokens]
-  end
-
-  # Reformat the results.
-  def format_results(results)
-    results_array = results.collect do |item|
-      {
-        span: {begin: item[:offset].begin, end: item[:offset].end},
-        obj: item[:uri],
-      }
-    end
-
-    results_array.uniq
   end
 end

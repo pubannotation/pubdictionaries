@@ -6,14 +6,16 @@ table.dictionary_selection {
 	width: 100%;
 	border-collapse: collapse;
 
+	th, td {
+		border-top-style: hidden;
+		border-bottom-style: hidden;
+		background-color: #ffffff;
+	}
+
 	th.pane, td.pane {
 		width: 48%;
 		border: 1px solid black;
 		padding: 5px;
-	}
-
-	th {
-		background-color: #ffffff;
 	}
 
 	th.pane {
@@ -29,4 +31,8 @@ table.dictionary_selection {
   border-radius: 3px;
   background-color: #fafafa;
   box-shadow: 1px 1px 1px #555555;
+}
+
+textarea {
+	width: 100%;
 }

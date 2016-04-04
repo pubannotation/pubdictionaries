@@ -1,10 +1,7 @@
-.header {
-  position:relative;
-  height: 58px;
-  background: linear-gradient(to bottom, #336699 50%, #ffffff 50%);
+.header, .footer {
+  background: #336699;
   color: #cccccc;
   padding: 4px;
-  vertical-align: middle;
 
   a {
     color: #cccccc;
@@ -18,43 +15,45 @@
     color: #ffffff;
     background-color: #34689b;
   }
+}
+
+.header {
+  position:relative;
+  height: 32px;
 
   #logo {
     display: inline-block;
-    height: 20px;
+    width: 180px;
     vertical-align: middle;
   }
 
   #cssmenu {
     vertical-align: bottom;
     margin-left: 20px;
-    z-index: 1;
   }
 
   .account {
     position: absolute;
-    right: 5px;
-    vertical-align: middle;
+    right: 4px;
+    bottom: 4px;
     display: inline-block;
-    vertical-align: middle;
   }
 
-  .notice, .alert {
-    position: absolute;
-    bottom: 0;
-  }
+  .message {
+    padding: 4px;
 
-  .notice {
-    color: #00aa00;
-  }
+    .notice {
+      color: #00aa00;
+    }
 
-  .alert {
-    color: #aa0000;
+    .alert {
+      color: #aa0000;
+    }
   }
 }
 
 .main {
-  position:relative;
+  position: relative;
   padding: 5px 10px;
   
   .control {
@@ -67,3 +66,25 @@
     height: 2.4em;    // To avoid large background.
   }
 }
+
+.footer {
+  position: relative;
+  height: 45px;
+
+  .alert {
+    color: #ff5555;
+  }
+
+  .credit {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+  }
+
+  .contact {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;    
+  }
+}
+

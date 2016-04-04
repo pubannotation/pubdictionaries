@@ -25,20 +25,16 @@
 <body>
   <div class="header">
     <div id="logo">
-      <%= link_to image_tag("logo.png", { height: "100%", border: "0", alt: "Logo" }), root_path %>
+      <%= link_to image_tag("logo.png", { width: "100%", border: "0", alt: "Logo" }), root_path %>
     </div>
     <div id='cssmenu'>
       <ul>
         <li><%= link_to 'Dictionaries', dictionaries_path %></li>
-        <li><%= link_to 'Labels', labels_path %></li>
-        <li><%= link_to 'IDs', identifiers_path %></li>
-        <li class='has-sub'>Tools <i class="fa fa-caret-down"></i>
-          <ul>
-            <li><%= link_to 'Find IDs', find_ids_path %></li>
-            <li class='last'><%= link_to 'Text annotation', text_annotation_path %></li>
-          </ul>
-        </li>
+        <li><%= link_to 'Find IDs', find_ids_path %></li>
+        <li class='last'><%= link_to 'Text Annotation', text_annotation_path %></li>
+<!-- 
         <li class='last'><%= link_to 'Help', search_mapping_index_path %></li>
+ -->
       </ul>
     </div>
     <div class="account">
@@ -50,47 +46,19 @@
         <%= link_to "Login", new_user_session_path %>
       <% end %>
     </div>
-    <% if notice %><p class='notice'><%= flash[:notice] %></p><% end %>
-    <% if alert %><p class='alert'><%= alert %></p><% end %>
   </div>
+  <% if notice %><div class='message'><span class='notice'><%= flash[:notice] %></span></div><% end %>
+  <% if alert %><div class='message'><span class='alert'><%= alert %></span></div><% end %>
 
   <div class="main">
     <%= yield %>
   </div>
 
-<!-- 
-  <div class="columns">
-    <div class="menu_wrap">
-      <div id='cssmenu'>
-        <ul>
-          <li class='active'><%= link_to "<span>About</span>".html_safe, about_index_path %></li>
-          <li class='has-sub'><a href='#'><span>Dictionaries</span></a>
-            <ul>
-              <li><%= link_to '<span>List</span>'.html_safe, dictionaries_path %></li>
-              <li><%= link_to '<span>Search</span>'.html_safe, search_mapping_index_path %></li>
-            </ul>
-          </li>
-          <li class='has-sub'><a href='#'><span>API</span></a>
-            <ul>
-              <li><%= link_to '<span>To get Ids</span>'.html_safe, expression_to_id_mapping_index_path %></li>
-              <li><%= link_to '<span>To get labels</span>'.html_safe, id_to_expression_mapping_index_path %></li>
-              <li><%= link_to '<span>To annotate text</span>'.html_safe, text_annotation_mapping_index_path %></li>
-            </ul>
-          <li class='has-sub'><a href='#'><span>Guides</span></a>
-            <ul>
-              <li class='odd'><%= link_to '<span>Sharing Dictionaries</span>'.html_safe, manual_basic_path %></li>
-              <li class='even'><%= link_to '<span>Curating Dictionaries</span>'.html_safe, manual_advanced_path %></li>
-              <li class='odd'><%= link_to '<span>Annotating with PubAnnotation</span>'.html_safe, manual_pubann_path %></li>
-              <li class='even'><%= link_to '<span>Annotating with REST-APIs</span>'.html_safe, web_services_index_path %></li>
-            </ul>
-          </li>
-          <li class='last'><a href='mailto:pubdictionaries@gmail.com'><span>Contact</span></a></li>
-        </ul>
-      </div>
-    </div>
-
+  <div class="footer">
+    <div class="alert">IT IS NOW A TEST SERVICE</div>
+    <div class="credit">Presented by <%= link_to 'DBCLS', 'http://dbcls.rois.ac.jp' %></div>
+    <div class="contact">We appreciate your any comment to <%= mail_to 'admin@pubdictionaries.org' %></div>
   </div>
- -->
   <%= yield :bottom_js -%>
 </body>
 </html>

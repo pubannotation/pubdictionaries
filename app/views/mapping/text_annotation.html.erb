@@ -2,7 +2,7 @@
 
 <%= form_tag multipart: true do -%>
 
-<h2>Dictionary selection</h2>
+<h2>Dictionaries to be searched</h2>
 <%= render partial: 'dictionary_selection' %>
 
 <h2>Options</h2>
@@ -18,7 +18,7 @@
 </tr>
 <tr>
 <th><%= label_tag :threshold %></th>
-<td><%= text_field_tag :threshold, 0.7, type: :number, min:0.5, max:1, step:0.1 %></td>
+<td><%= text_field_tag :threshold, 0.6, type: :number, min:0.5, max:1, step:0.1 %></td>
 </tr>
 <tr>
 <th><%= label_tag :rich, "Verbose output" %></th>
@@ -29,24 +29,27 @@
 <%= text_field_tag :param1, '', hidden:true %>
 <%= text_field_tag :param2, '', hidden:true %>
 
-<h2>URL of REST service</h2>
-<%= text_area_tag :rest_url, '', rows: 4, cols: 80 %>
+<h2>REST service URL</h2>
+<%= text_area_tag :rest_url, '', readonly: true %>
+
+<h2>Example cURL command</h2>
+<%= text_area_tag :curl_command, '', readonly: true %>
 
 <h2>Demo</h2>
-<h3>Text</h3>
-<%= text_area_tag :text, params[:text], rows: 4, cols: 80, required: true %><br/>
+<%= text_area_tag :text, params[:text], required: true, placeholder: 'text' %><br/>
 
 <%= submit_tag 'Annotate', class: :button %>
 <%= button_tag 'Reset', type: :reset, id: :reset, class: :button %>
 <% end %>
 
-<% if @result %>
+<% unless @result.nil? || @result.empty? %>
 <h3>Result</h3>
+
 <h4><%= link_to 'TextAE', 'http://textae.pubannotation.org' %></h4>
 <%= render :partial => 'textae_css_js'-%>
 <div class="textae-editor"><%= @result.to_json %></div>
 
-<h4>JSON</h4>
+<h4><%= link_to 'JSON', 'http://www.pubannotation.org/docs/annotation-format/' %></h4>
 <pre><%= JSON.pretty_generate @result %></pre>
 <% end %>
 
@@ -81,8 +84,11 @@
 		if (param1 != '') {params.push(param1)};
 		if (param2 != '') {params.push(param2)};
 
-		var url = '<%= root_url %>text_annotation' + '?'  + param_dics;
+		var url = '<%= root_url %>text_annotation.json' + '?'  + param_dics;
 		if (params.length > 0) {url += '&' + params.join('&')}
-	  $('#rest_url').text(url);
+		$('#rest_url').text(url);
+
+		var command = 'curl -F text="example text" "' + url + '"'
+		$('#curl_command').text(command);
 	}
 </script>

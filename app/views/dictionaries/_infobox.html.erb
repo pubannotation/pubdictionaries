@@ -1,15 +1,16 @@
 <div class="infobox">
 <table>
-
 <tr>
-<th>Creator</th>
+<th>creator</th>
 <td><%= @dictionary.user.email %></td>
 </tr>
-
 <tr>
-<th>Description</th>
-<td><%= h(@dictionary.description).gsub(/\n/, '<br/>').html_safe %></td>
+<th>created at</th>
+<td><%= @dictionary.created_at %></td>
 </tr>
-
+<tr>
+<th>updated at</th>
+<td><%= @dictionary.updated_at %></td>
+</tr>
 </table>
 </div>
