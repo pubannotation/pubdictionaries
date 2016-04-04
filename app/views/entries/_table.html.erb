@@ -22,9 +22,9 @@
 </table>
 
 <div class="table-control">
-<% if @labels %>
+<% if @labels.present? %>
   <%= paginate @labels %>
-<% else %>
+<% elsif @entries.present? %>
   <%= paginate @entries %>
 <% end %>
 </div>

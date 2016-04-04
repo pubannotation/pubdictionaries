@@ -49,7 +49,7 @@ class DictionariesController < ApplicationController
         @entries = @labels.inject([]){|s, label| s + label.entries}
       elsif params[:id_search]
         identifier = @dictionary.identifiers.find_by_value(params[:id_search])
-        @entries = identifier.entries.page(params[:page])
+        @entries = identifier.nil? ? [] : identifier.entries.page(params[:page])
       else
         @entries = @dictionary.entries.page(params[:page]) if @dictionary.present?
       end
@@ -62,11 +62,11 @@ class DictionariesController < ApplicationController
           type:     "text/tsv" 
         }
       end
-    rescue => e
-      respond_to do |format|
-        format.html {redirect_to dictionaries_url, notice: e.message}
-        format.tsv {}
-      end
+    # rescue => e
+    #   respond_to do |format|
+    #     format.html {redirect_to dictionaries_url, notice: e.message}
+    #     format.tsv {}
+    #   end
     end
   end
 

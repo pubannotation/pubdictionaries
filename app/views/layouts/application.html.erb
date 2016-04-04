@@ -5,21 +5,10 @@
   <title>PubDictionaries</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <%= stylesheet_link_tag "application", :media => "all" %>
+  <%= yield :css -%>
   <%= javascript_include_tag "application" %>
+  <%= yield :javascript -%>
   <%= csrf_meta_tags %>
-<!-- 
-  <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/themes/smoothness/jquery-ui.css" />
- -->
-  <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
-  <link rel="stylesheet" href="http://textae.pubannotation.org/lib/css/textae.min.css" />
-<!-- 
-  <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-  <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/jquery-ui.min.js"></script>
- -->
-  <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
-  <script src="http://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
-  <script src="http://textae.pubannotation.org/vender/jquery.jsPlumb-1.5.2-min.js"></script>
-  <script src="http://textae.pubannotation.org/lib/textae.min.js"></script>
 </head>
 
 <body>
@@ -55,7 +44,7 @@
   </div>
 
   <div class="footer">
-    <div class="alert">IT IS NOW A TEST SERVICE</div>
+    <div class="alert">It is now in a test phase. After a few weeks of test until the end of April, it will replace the <%= link_to 'current service', 'http://pubdictionaries.org' %>.</div>
     <div class="credit">Presented by <%= link_to 'DBCLS', 'http://dbcls.rois.ac.jp' %></div>
     <div class="contact">We appreciate your any comment to <%= mail_to 'admin@pubdictionaries.org' %></div>
   </div>

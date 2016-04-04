@@ -27,7 +27,7 @@ class EntriesController < ApplicationController
       FileUtils.cp source_filepath, target_filepath
 
       delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dictionary), queue: :general
-      Job.create({name:"Load entries from file", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+      Job.create({name:"Upload dictionary entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
 
       respond_to do |format|
         format.html {redirect_to :back}

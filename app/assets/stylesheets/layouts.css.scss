@@ -73,6 +73,18 @@
 
   .alert {
     color: #ff5555;
+
+    a {
+      color: #ff8888;
+    }
+
+    a:visited {
+      color: #ff8888;
+    }
+
+    a:hover {
+      color: #ffeeee;
+    }
   }
 
   .credit {
