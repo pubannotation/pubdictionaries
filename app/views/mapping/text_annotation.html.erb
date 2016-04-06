@@ -18,12 +18,14 @@
 </tr>
 <tr>
 <th><%= label_tag :threshold %></th>
-<td><%= text_field_tag :threshold, 0.6, type: :number, min:0.5, max:1, step:0.1 %></td>
+<td><%= text_field_tag :threshold, 0.65, type: :number, min:0.5, max:1, step:0.05 %></td>
 </tr>
+<!-- 
 <tr>
 <th><%= label_tag :rich, "Verbose output" %></th>
 <td><%= check_box_tag :rich %></td>
 </tr>
+ -->
 </table>
 
 <%= text_field_tag :param1, '', hidden:true %>

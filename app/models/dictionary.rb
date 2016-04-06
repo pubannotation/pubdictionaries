@@ -68,8 +68,8 @@ class Dictionary < ActiveRecord::Base
     update_attribute(:entries_count, 0)
   end
 
-  def self.find_ids(labels, dictionaries = [], threshold = 0.6, rich = false)
-    threshold ||= 0.6
+  def self.find_ids(labels, dictionaries = [], threshold = 0.65, rich = false)
+    threshold ||= 0.65
     rich ||= false
     dic = {}
     labels.each do |label|
