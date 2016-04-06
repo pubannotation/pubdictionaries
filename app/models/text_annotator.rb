@@ -7,15 +7,17 @@ class TextAnnotator
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
-  def initialize(dictionaries, tokens_len_min = 1, tokens_len_max = 6, threshold = 0.6)
+  def initialize(dictionaries, tokens_len_min = 1, tokens_len_max = 6, threshold = 0.65, rich=false)
     @dictionaries = dictionaries
     @tokens_len_min = tokens_len_min
     @tokens_len_max = tokens_len_max
     @threshold = threshold
+    @rich = rich
 
     @tokens_len_min ||= 1
     @tokens_len_max ||= 6
-    @threshold ||= 0.6
+    @threshold ||= 0.65
+    @rich ||= false
   end
 
   # Annotate an input text.
@@ -43,10 +45,6 @@ class TextAnnotator
     end
 
     mapping = Dictionary.find_ids(span_index.keys, @dictionaries, @threshold, true).delete_if{|k, v| v.empty?}
-    {
-      span_index: span_index,
-      mapping: mapping
-    }
 
     # To collect spans per tag
     tags = {}
@@ -90,7 +88,9 @@ class TextAnnotator
     denotations = []
     tags.each do |t, v|
       v[:anns].each do |a|
-        denotations << {span:{begin:a[:position][:start_offset], end:a[:position][:end_offset]}, obj:t}
+        d = {span:{begin:a[:position][:start_offset], end:a[:position][:end_offset]}, obj:t}
+        d[:score] = a[:score] if @rich
+        denotations << d
       end
     end
 

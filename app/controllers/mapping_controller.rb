@@ -34,7 +34,7 @@ class MappingController < ApplicationController
       tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
       threshold = params[:threshold].to_f if params[:threshold].present?
       text = params[:text].strip
-      annotator = TextAnnotator.new(@selected, tokens_len_min, tokens_len_max, threshold)
+      annotator = TextAnnotator.new(@selected, tokens_len_min, tokens_len_max, threshold, rich)
       @result = annotator.annotate(text)
     end
 

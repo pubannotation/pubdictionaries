@@ -9,7 +9,7 @@ module Strsim
   #
   #   - this algorithm is adopted from SimString.
   #
-  def Strsim.ngrams (str, n = 3, be = true)
+  def Strsim.ngrams (str, n = 4, be = true)
     mark = "\x01"
 
     # Prepares a source string for n-gram generation.
