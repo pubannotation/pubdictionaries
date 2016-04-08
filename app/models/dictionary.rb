@@ -68,96 +68,34 @@ class Dictionary < ActiveRecord::Base
     update_attribute(:entries_count, 0)
   end
 
-  def self.find_ids(labels, dictionaries = [], threshold = 0.65, rich = false)
-    threshold ||= 0.65
-    rich ||= false
-    dic = {}
-    labels.each do |label|
-      mlabels = Label.search_as_term(label, dictionaries).records
-      ids = mlabels.inject([]){|s, mlabel| s + mlabel.entries.collect{|e| {label:e.label.value, identifier:e.identifier.value}}}.uniq
-      ids = ids.collect{|id| id.merge(score: Strsim.cosine(id[:label].downcase, label.downcase))}
+  def self.find_labels_ids(labels, dictionaries = [], threshold = 0.8, rich = false)
+    labels.inject({}) do |dic, label|
+      dic[label] = find_label_ids(label, dictionaries, threshold, rich)[:ids]
+      dic
+    end
+  end
+
+  def self.find_label_ids(label, dictionaries = [], threshold = 0.8, rich = false)
+    es_results = Label.search_as_term(label, dictionaries).results
+    ids = []
+    if es_results.total > 0
+      ids = get_ids_from_es_results(es_results, dictionaries)
+      ids = ids.collect{|id| id.merge(score: Label.cosine_sim(id[:label], label))}
       ids.delete_if{|id| id[:score] < threshold}
       ids = ids.collect{|id| id[:identifier]}.uniq unless rich
-      dic[label] = ids
     end
-    dic
+    {es_results: es_results.total, ids: ids}
+  end
+
+  def self.get_ids_from_es_results(es_results, dictionaries)
+    ids = es_results.inject([]){|s, r| s + self.get_ids(r.id, dictionaries).uniq.collect{|i| {label:r.value, identifier:i}}}
+  end
+
+  def self.get_ids(label_id, dictionaries = [])
+    Identifier.joins(:entries).where("entries.label_id" => label_id).joins(:dictionaries).where("dictionaries.id" => dictionaries).pluck(:value)
   end
 
   def self.find_labels(ids, dictionaries = [])
-  end
-
-  # Return a list of dictionaries.
-  def self.get_showables(user = nil, dic_type = nil)
-    if user == nil
-      # Get a list of publicly available dictionaries.
-      lst = where('public = ? AND active = ?', true, true)
-      order = 'created_at'
-      order_direction = 'desc'
-
-    else
-      # Get a list of all dictionaries.
-      lst = where('(user_id != ? AND public = ? AND active = ?) OR (user_id = ?)',
-              user.id, true, true, user.id)
-    end
-
-    return lst, order, order_direction
-  end
-
-
-  # Find a dictionary by its title.
-  # @return
-  #   dictionary instance - a dictionary foundnil - 'title' dictionary does not 
-  #   exist or not showable. nil if it does not exist or showable dictionary by its title.
-  def self.find_showable_by_title(title, user = nil)
-    if user.nil?
-      where(:title => title).where('public = ?', true).where(:active => true).first
-    else
-      where(:title => title).where('public = ? OR user_id = ?', true, user.id).where(:active => true).first
-    end
-  end
-
-
-  # Return a list of latest showable dictionaries.
-  def self.get_latest_dictionaries(n=10)
-    where('public = ? AND active = ?', true, true).order('created_at desc').limit(n)
-  end
-
-  # Get a list of unfinished work.
-  def self.get_unfinished_dictionaries(user)
-    where(user_id: user.id).where(active: false)
-  end
-
-  def unfinished?
-    active == false
-  end
-
-
-  # true if the given base dictionary is destroyable; otherwise, false.
-  def is_destroyable?(current_user)
-    if self.user_id != current_user.id
-      return false, "Current user is not the owner of the dictionary."
-    elsif used_by_other_users?(current_user)
-      return false, "The dictionary is used by other users."
-    else
-      return true, "The dictionary is successfully deleted."
-    end
-  end
-
-
-  #######
-  private
-  #######
-
-  # true if other users are using this base dictionary (new entries or disabled entries exist).
-  def used_by_other_users?(current_user)
-    self.user_dictionaries.each do |user_dic|
-      if user_dic.user_id != current_user.id 
-        if not user_dic.new_entries.empty? or not user_dic.removed_entries.empty?
-          return true
-        end
-      end
-    end
-    return false
   end
 
 end

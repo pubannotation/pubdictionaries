@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 require 'json'
+require 'pp'
 
 # Provide functionalities for text annotation.
 # 
@@ -7,7 +8,7 @@ class TextAnnotator
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
-  def initialize(dictionaries, tokens_len_min = 1, tokens_len_max = 6, threshold = 0.65, rich=false)
+  def initialize(dictionaries, tokens_len_min = 1, tokens_len_max = 6, threshold = 0.8, rich=false)
     @dictionaries = dictionaries
     @tokens_len_min = tokens_len_min
     @tokens_len_max = tokens_len_max
@@ -16,7 +17,7 @@ class TextAnnotator
 
     @tokens_len_min ||= 1
     @tokens_len_max ||= 6
-    @threshold ||= 0.65
+    @threshold ||= 0.8
     @rich ||= false
   end
 
@@ -26,14 +27,16 @@ class TextAnnotator
   #
   def annotate(text)
     # tokens are produced in the order of their position
-    tokens = tokenize(text)
+    tokens = Label.tokenize(text)
 
     span_index = {}
     (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
       (@tokens_len_min .. @tokens_len_max).each do |tlen|
-        next if tbegin + tlen > tokens.length
+        break if tbegin + tlen > tokens.length
+        break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) > @tokens_len_max - 1
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
+
         position = {start_offset: tokens[tbegin][:start_offset], end_offset: tokens[tbegin+tlen-1][:end_offset]}
 
         if span_index.has_key?(span)
@@ -44,7 +47,22 @@ class TextAnnotator
       end
     end
 
-    mapping = Dictionary.find_ids(span_index.keys, @dictionaries, @threshold, true).delete_if{|k, v| v.empty?}
+    mapping = {}
+    bad_key = nil
+    span_index.keys.each do |k|
+      unless bad_key.nil?
+        next if k.start_with?(bad_key)
+        bad_key = nil
+      end
+      r = Dictionary.find_label_ids(k, @dictionaries, @threshold, true)
+      if r[:es_results] > 0
+        mapping[k] = r[:ids]
+      else
+        bad_key = k
+      end
+    end
+
+    # mapping = Dictionary.find_ids(span_index.keys, @dictionaries, @threshold, true).delete_if{|k, v| v.empty?}
 
     # To collect spans per tag
     tags = {}
@@ -98,14 +116,5 @@ class TextAnnotator
       text: text,
       denotations: denotations
     }
-  end
-
-  # Tokenize an input text using an analyzer of ElasticSearch.
-  #
-  # * (string) text  - Input text.
-  #
-  def tokenize(text)
-    raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/labels/_analyze?analyzer=standard_normalization', text), symbolize_names: true)[:tokens]
   end
 end

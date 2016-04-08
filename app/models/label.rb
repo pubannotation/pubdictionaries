@@ -7,7 +7,7 @@ class Label < ActiveRecord::Base
       analyzer: {
         standard_normalization: {
           tokenizer: :standard,
-          filter: [:standard, :lowercase, :asciifolding, :snowball]
+          filter: [:standard, :lowercase, :stop, :asciifolding, :snowball]
         }
       }
     }
@@ -125,4 +125,25 @@ class Label < ActiveRecord::Base
       }
     )
   end
+
+  # Compute similarity of two strings
+  #
+  # * (string) string1
+  # * (string) string2
+  #
+  def self.cosine_sim(string1, string2)
+    tokens1 = tokenize(string1).collect{|t| t[:token]}
+    tokens2 = tokenize(string2).collect{|t| t[:token]}
+    return (tokens1 & tokens2).size.to_f / Math.sqrt(tokens1.size * tokens2.size)
+  end
+
+  # Tokenize an input text using an analyzer of ElasticSearch.
+  #
+  # * (string) text  - Input text.
+  #
+  def self.tokenize(text)
+    raise ArgumentError, "Empty text" if text.empty?
+    (JSON.parse RestClient.post('http://localhost:9200/labels/_analyze?analyzer=standard_normalization', text), symbolize_names: true)[:tokens]
+  end
+
 end

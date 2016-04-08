@@ -12,7 +12,7 @@ class MappingController < ApplicationController
       rich = true if params[:rich] == 'true' || params[:rich] == '1'
       threshold = params[:threshold].to_f if params[:threshold].present?
       labels = params[:labels].strip.split(/[\n\t\r|]+/)
-      @result = Dictionary.find_ids(labels, @selected, threshold, rich)
+      @result = Dictionary.find_labels_ids(labels, @selected, threshold, rich)
     end
 
     respond_to do |format|
