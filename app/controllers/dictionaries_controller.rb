@@ -83,20 +83,23 @@ class DictionariesController < ApplicationController
 
     respond_to do |format|
       if dictionary.save
-        format.html {redirect_to dictionaries_url, notice: 'Empty dictionary created.'}
+        format.html {redirect_to dictionaries_path, notice: 'Empty dictionary created.'}
       else
-        format.html {redirect_to dictionaries_url, notice: 'Creation of a dictionary failed.'}
+        format.html {redirect_to dictionaries_path, notice: 'Dictionary creation failed.'}
       end
     end
   end
 
   def edit
-    @dictionary = Dictionary.find_showable_by_title( params[:id], current_user )
+    @dictionary = Dictionary.editable(current_user).find_by_title(params[:id])
+    raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
     @submit_text = 'Update'
   end
   
   def update
-    @dictionary = Dictionary.find_showable_by_title( params[:id], current_user )
+    @dictionary = Dictionary.editable(current_user).find_by_title(params[:id])
+    raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
+
     @dictionary.update_attributes(params[:dictionary])
     if params[:dictionary][:file].present?
       flash[:notice] = 'Creating a dictionary in the background...' 
@@ -104,7 +107,7 @@ class DictionariesController < ApplicationController
       run_create_as_a_delayed_job(@dictionary, params)        
     end
 
-    redirect_to dictionaries_path(dictionary_type: 'my_dic')
+    redirect_to dictionary_path(@dictionary)
   end
 
   def destroy
