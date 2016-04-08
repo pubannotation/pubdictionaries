@@ -7,7 +7,13 @@ class Label < ActiveRecord::Base
       analyzer: {
         standard_normalization: {
           tokenizer: :standard,
-          filter: [:standard, :lowercase, :stop, :asciifolding, :snowball]
+          filter: [:standard, :lowercase, :extended_stop, :asciifolding, :snowball]
+        }
+      },
+      filter: {
+        extended_stop: {
+          type: :stop,
+          stopwords: ["_english_", "unspecified"]
         }
       }
     }
@@ -126,6 +132,13 @@ class Label < ActiveRecord::Base
     )
   end
 
+  def self.find_similar_labels(string, dictionaries, threshold, rich)
+    es_results = Label.search_as_term(string, dictionaries).results
+    labels = es_results.collect{|r| {label: r.value, id:r.id, score: cosine_sim(string, r.value)}}.delete_if{|label| label[:score] < threshold}
+    labels = labels.collect{|label| label[:label]} unless rich
+    {es_results: es_results.total, labels: labels}
+  end
+
   # Compute similarity of two strings
   #
   # * (string) string1
@@ -134,6 +147,10 @@ class Label < ActiveRecord::Base
   def self.cosine_sim(string1, string2)
     tokens1 = tokenize(string1).collect{|t| t[:token]}
     tokens2 = tokenize(string2).collect{|t| t[:token]}
+    # extraploate tokens with bigrams
+    # bigrams = []; tokens1.each_cons(2){|a| bigrams << a}; tokens1 += bigrams
+    # bigrams = []; tokens2.each_cons(2){|a| bigrams << a}; tokens2 += bigrams
+
     return (tokens1 & tokens2).size.to_f / Math.sqrt(tokens1.size * tokens2.size)
   end
 

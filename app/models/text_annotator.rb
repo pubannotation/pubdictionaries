@@ -49,33 +49,27 @@ class TextAnnotator
 
     mapping = {}
     bad_key = nil
-    span_index.keys.each do |k|
+    span_index.keys.each do |span|
       unless bad_key.nil?
-        next if k.start_with?(bad_key)
+        next if span.start_with?(bad_key)
         bad_key = nil
       end
-      r = Dictionary.find_label_ids(k, @dictionaries, @threshold, true)
+
+      r = Label.find_similar_labels(span, @dictionaries, @threshold, true)
+
       if r[:es_results] > 0
-        mapping[k] = r[:ids]
+        mapping[span] = r[:labels]
       else
-        bad_key = k
+        bad_key = span
       end
     end
 
-    # mapping = Dictionary.find_ids(span_index.keys, @dictionaries, @threshold, true).delete_if{|k, v| v.empty?}
-
     # To collect spans per tag
     tags = {}
-    mapping.each do |s, ts|
-      ts.each do |t|
-        if tags.has_key? t[:identifier]
-          tags[t[:identifier]][:anns] += span_index[s][:positions].collect{|p| {span:s, position:p, score:t[:score]}}
-        else
-          tags[t[:identifier]] = {
-            label: t[:label],
-            anns: span_index[s][:positions].collect{|p| {span:s, position:p, score:t[:score]}}
-          }
-        end
+    mapping.each do |span, labels|
+      labels.each do |label|
+        tags[label[:id]] = [] unless tags.has_key? label[:id]
+        tags[label[:id]] += span_index[span][:positions].collect{|p| {span:span, position:p, score:label[:score]}}
       end
     end
 
@@ -86,8 +80,8 @@ class TextAnnotator
     # }
 
     # To choose the best span per tag
-    tags.each do |t, v|
-      full_anns = v[:anns]
+    tags.each do |label, anns|
+      full_anns = anns
       best_anns = []
       full_anns.each do |ann|
         last_ann = best_anns.pop
@@ -99,15 +93,16 @@ class TextAnnotator
           best_anns.push(last_ann, ann)
         end
       end
-      v[:anns] = best_anns
+      anns = best_anns
     end    
 
     # tags_to_annotation
     denotations = []
-    tags.each do |t, v|
-      v[:anns].each do |a|
-        d = {span:{begin:a[:position][:start_offset], end:a[:position][:end_offset]}, obj:t}
-        d[:score] = a[:score] if @rich
+    tags.each do |label, anns|
+      id = Dictionary.get_ids(label, @dictionaries).first
+      anns.each do |ann|
+        d = {span:{begin:ann[:position][:start_offset], end:ann[:position][:end_offset]}, obj:id}
+        d[:score] = ann[:score] if @rich
         denotations << d
       end
     end
