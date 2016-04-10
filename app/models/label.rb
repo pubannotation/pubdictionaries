@@ -19,7 +19,7 @@ class Label < ActiveRecord::Base
     }
   } do
     mappings do
-      indexes :value, type: :string, analyzer: :standard_normalization, index_options: :docs
+      indexes :value, type: :string, analyzer: :standard_normalization, index_options: :docs, term_vector: :yes
       indexes :labels_dictionaries do
         indexes :id, type: :long
       end
@@ -132,9 +132,10 @@ class Label < ActiveRecord::Base
     )
   end
 
-  def self.find_similar_labels(string, dictionaries, threshold, rich)
+  def self.find_similar_labels(string, string_tokens, dictionaries, threshold, rich)
     es_results = Label.search_as_term(string, dictionaries).results
-    labels = es_results.collect{|r| {label: r.value, id:r.id, score: cosine_sim(string, r.value)}}.delete_if{|label| label[:score] < threshold}
+    labels = es_results.inject([]){|s, r| r.value.split(' ').length > string_tokens.length + 1 ? s : s << {label: r.value, id: r.id}}
+    labels = labels.collect{|label| label_tokens = get_term_vector(label[:id]); label.merge(score: cosine_sim(string_tokens, label_tokens))}.delete_if{|label| label[:score] < threshold}
     labels = labels.collect{|label| label[:label]} unless rich
     {es_results: es_results.total, labels: labels}
   end
@@ -144,14 +145,11 @@ class Label < ActiveRecord::Base
   # * (string) string1
   # * (string) string2
   #
-  def self.cosine_sim(string1, string2)
-    tokens1 = tokenize(string1).collect{|t| t[:token]}
-    tokens2 = tokenize(string2).collect{|t| t[:token]}
+  def self.cosine_sim(string_tokens, label_tokens)
     # extraploate tokens with bigrams
     # bigrams = []; tokens1.each_cons(2){|a| bigrams << a}; tokens1 += bigrams
     # bigrams = []; tokens2.each_cons(2){|a| bigrams << a}; tokens2 += bigrams
-
-    return (tokens1 & tokens2).size.to_f / Math.sqrt(tokens1.size * tokens2.size)
+    return (string_tokens & label_tokens).size.to_f / Math.sqrt(string_tokens.size * label_tokens.size)
   end
 
   # Tokenize an input text using an analyzer of ElasticSearch.
@@ -163,4 +161,7 @@ class Label < ActiveRecord::Base
     (JSON.parse RestClient.post('http://localhost:9200/labels/_analyze?analyzer=standard_normalization', text), symbolize_names: true)[:tokens]
   end
 
+  def self.get_term_vector(label_id)
+    (JSON.parse RestClient.get("http://localhost:9200/labels/label/#{label_id}/_termvector"))["term_vectors"]["value"]["terms"].keys
+  end
 end

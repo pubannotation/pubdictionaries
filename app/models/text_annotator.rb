@@ -28,7 +28,6 @@ class TextAnnotator
   def annotate(text)
     # tokens are produced in the order of their position
     tokens = Label.tokenize(text)
-
     span_index = {}
     (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
       (@tokens_len_min .. @tokens_len_max).each do |tlen|
@@ -42,7 +41,7 @@ class TextAnnotator
         if span_index.has_key?(span)
           span_index[span][:positions] << position
         else
-          span_index[span] = {positions:[position]}
+          span_index[span] = {tokens: tokens[tbegin, tlen].collect{|t| t[:token]}, positions:[position]}
         end
       end
     end
@@ -55,7 +54,7 @@ class TextAnnotator
         bad_key = nil
       end
 
-      r = Label.find_similar_labels(span, @dictionaries, @threshold, true)
+      r = Label.find_similar_labels(span, span_index[span][:tokens], @dictionaries, @threshold, true)
 
       if r[:es_results] > 0
         mapping[span] = r[:labels]
