@@ -134,7 +134,7 @@ class Label < ActiveRecord::Base
 
   def self.find_similar_labels(string, string_tokens, dictionaries, threshold, rich)
     es_results = Label.search_as_term(string, dictionaries).results
-    labels = es_results.inject([]){|s, r| r.value.split(' ').length > string_tokens.length + 1 ? s : s << {label: r.value, id: r.id}}
+    labels = es_results.inject([]){|s, r| r.value.split(' ').length > string_tokens.length  ? s : s << {label: r.value, id: r.id}}
     labels = labels.collect{|label| label_tokens = get_term_vector(label[:id]); label.merge(score: cosine_sim(string_tokens, label_tokens))}.delete_if{|label| label[:score] < threshold}
     labels = labels.collect{|label| label[:label]} unless rich
     {es_results: es_results.total, labels: labels}
