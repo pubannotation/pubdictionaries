@@ -98,17 +98,19 @@ class TextAnnotator
     # tags_to_annotation
     denotations = []
     tags.each do |label, anns|
-      id = Dictionary.get_ids(label, @dictionaries).first
+      ids = Dictionary.get_ids(label, @dictionaries)
       anns.each do |ann|
-        d = {span:{begin:ann[:position][:start_offset], end:ann[:position][:end_offset]}, obj:id}
-        d[:score] = ann[:score] if @rich
-        denotations << d
+        ids.each do |id|
+          d = {span:{begin:ann[:position][:start_offset], end:ann[:position][:end_offset]}, obj:id}
+          d[:score] = ann[:score] if @rich
+          denotations << d
+        end
       end
     end
 
     annotation = {
       text: text,
-      denotations: denotations
+      denotations: denotations.uniq
     }
   end
 end
