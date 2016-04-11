@@ -57,7 +57,7 @@ class Entry < ActiveRecord::Base
     items = line.split(/\t/)
     return nil if items.size < 2
 
-    items.each{|item| return nil if item.length < 2 && item.length > 32}
+    items.each{|item| return nil if item.length < 2 || item.length > 32}
 
     [items[0], items[1]]
   end
