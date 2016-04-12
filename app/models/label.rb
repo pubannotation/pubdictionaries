@@ -19,7 +19,9 @@ class Label < ActiveRecord::Base
     }
   } do
     mappings do
-      indexes :value, type: :string, analyzer: :standard_normalization, index_options: :docs, term_vector: :yes
+      indexes :value, type: :string, analyzer: :standard_normalization, index_options: :docs
+      indexes :terms, type: :string, index: :not_analyzed
+      indexes :terms_length, type: :integer
       indexes :labels_dictionaries do
         indexes :id, type: :long
       end
@@ -29,7 +31,7 @@ class Label < ActiveRecord::Base
   has_many :entries
   has_many :dictionaries, :through => :entries
 
-  attr_accessible :value
+  attr_accessible :value, :terms, :terms_length
 
   scope :diff, where(['created_at > ?', 2.hour.ago])
   scope :added_after, -> (time) {where('created_at > ?', time)}
@@ -37,7 +39,8 @@ class Label < ActiveRecord::Base
   def self.get_by_value(value)
     label = self.find_by_value(value)
     if label.nil?
-      label = self.new({value: value})
+      terms = tokenize(value).collect{|t| t[:token]}
+      label = self.new({value: value, terms: terms.join("\t"), terms_length: terms.length})
       label.save
     end
     label
@@ -54,7 +57,7 @@ class Label < ActiveRecord::Base
 
   def as_indexed_json(options={})
     as_json(
-      only: [:id, :value],
+      only: [:id, :value, :terms, :terms_length],
       include: {dictionaries: {only: :id}}
     )
   end
@@ -82,25 +85,24 @@ class Label < ActiveRecord::Base
     ).page(page)
   end
 
-  def self.search_as_term(keywords, dictionaries = [])
+  def self.search_as_term(label, terms, dictionaries = [])
     self.__elasticsearch__.search(
       min_score: 0.8,
       query: {
-        filtered: {
-          query: {
+        bool: {
+          must: {
             match: {
               value: {
-                query: keywords,
+                query: label,
                 operator: "and",
                 fuzziness: "AUTO"
               }
             }
           },
-          filter: {
-            terms: {
-              "dictionaries.id" => dictionaries
-            }
-          }
+          filter: [
+            {range: {terms_length: {"lte" => terms.length + 1}}},
+            {terms: {"dictionaries.id" => dictionaries}}
+          ]
         }
       }
     )
@@ -133,9 +135,9 @@ class Label < ActiveRecord::Base
   end
 
   def self.find_similar_labels(string, string_tokens, dictionaries, threshold, rich)
-    es_results = Label.search_as_term(string, dictionaries).results
-    labels = es_results.inject([]){|s, r| r.value.split(' ').length > string_tokens.length  ? s : s << {label: r.value, id: r.id}}
-    labels = labels.collect{|label| label_tokens = get_term_vector(label[:id]); label.merge(score: cosine_sim(string_tokens, label_tokens))}.delete_if{|label| label[:score] < threshold}
+    es_results = Label.search_as_term(string, string_tokens, dictionaries).results
+    labels = es_results.collect{|r| {label: r.value, id: r.id, terms: r.terms.split(/\t/)}}
+    labels = labels.collect{|label| label.merge(score: cosine_sim(string_tokens, label[:terms]))}.delete_if{|label| label[:score] < threshold}
     labels = labels.collect{|label| label[:label]} unless rich
     {es_results: es_results.total, labels: labels}
   end

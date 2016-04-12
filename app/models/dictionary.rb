@@ -76,15 +76,13 @@ class Dictionary < ActiveRecord::Base
   end
 
   def self.find_label_ids(label, dictionaries = [], threshold = 0.8, rich = false)
-    es_results = Label.search_as_term(label, dictionaries).results
-    ids = []
-    if es_results.total > 0
-      ids = get_ids_from_es_results(es_results, dictionaries)
-      ids = ids.collect{|id| id.merge(score: Label.cosine_sim(id[:label], label))}
-      ids.delete_if{|id| id[:score] < threshold}
-      ids = ids.collect{|id| id[:identifier]}.uniq unless rich
+    r = Label.find_similar_labels(label, Label.tokenize(label).collect{|t| t[:token]}, dictionaries, threshold, true)
+    ids = r[:labels].inject([]) do |s, l|
+      ids = get_ids(l[:id], dictionaries)
+      s + ids.collect{|id| l.merge(id:id)}
     end
-    {es_results: es_results.total, ids: ids}
+    ids.collect!{|id| id[:id]} unless rich
+    {es_results: r[:es_results], ids: ids}
   end
 
   def self.get_ids_from_es_results(es_results, dictionaries)

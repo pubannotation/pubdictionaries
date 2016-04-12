@@ -87,12 +87,12 @@ class TextAnnotator
         if last_ann.nil?
           best_anns.push(ann)
         elsif ann[:position][:start_offset] < last_ann[:position][:end_offset] #span_overlap?
-          best_anns.push(ann[:score] > last_ann[:score] ? ann : last_ann)
+          best_anns.push(ann[:score] >= last_ann[:score] ? ann : last_ann)
         else
           best_anns.push(last_ann, ann)
         end
       end
-      anns = best_anns
+      tags[label] = best_anns
     end    
 
     # tags_to_annotation
