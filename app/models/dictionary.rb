@@ -90,7 +90,8 @@ class Dictionary < ActiveRecord::Base
   end
 
   def self.get_ids(label_id, dictionaries = [])
-    Identifier.joins(:entries).where("entries.label_id" => label_id).joins(:dictionaries).where("dictionaries.id" => dictionaries).pluck(:value)
+    identifier_id = Entry.where(label_id: label_id).joins(:dictionaries).where("dictionaries.id" => dictionaries).pluck(:identifier_id)
+    Identifier.where(id: identifier_id).pluck(:value)
   end
 
   def self.find_labels(ids, dictionaries = [])
