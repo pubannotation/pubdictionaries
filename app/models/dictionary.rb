@@ -68,14 +68,14 @@ class Dictionary < ActiveRecord::Base
     update_attribute(:entries_count, 0)
   end
 
-  def self.find_labels_ids(labels, dictionaries = [], threshold = 0.8, rich = false)
+  def self.find_labels_ids(labels, dictionaries = [], threshold = 0.85, rich = false)
     labels.inject({}) do |dic, label|
       dic[label] = find_label_ids(label, dictionaries, threshold, rich)[:ids]
       dic
     end
   end
 
-  def self.find_label_ids(label, dictionaries = [], threshold = 0.8, rich = false)
+  def self.find_label_ids(label, dictionaries = [], threshold = 0.85, rich = false)
     r = Label.find_similar_labels(label, Label.tokenize(label).collect{|t| t[:token]}, dictionaries, threshold, true)
     ids = r[:labels].inject([]) do |s, l|
       ids = get_ids(l[:id], dictionaries)

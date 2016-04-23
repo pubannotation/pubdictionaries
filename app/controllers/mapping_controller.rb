@@ -28,7 +28,7 @@ class MappingController < ApplicationController
       params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_title(d.strip).id} : []
 
     @result = {}
-    if params[:text]
+    if params[:text].present?
       rich = true if params[:rich] == 'true' || params[:rich] == '1'
       tokens_len_min = params[:tokens_len_min].to_i if params[:tokens_len_min].present?
       tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?

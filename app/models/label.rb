@@ -7,7 +7,7 @@ class Label < ActiveRecord::Base
       analyzer: {
         standard_normalization: {
           tokenizer: :standard,
-          filter: [:standard, :lowercase, :extended_stop, :asciifolding, :snowball]
+          filter: [:standard, :extended_stop, :asciifolding, :kstem]
         }
       },
       filter: {
@@ -39,7 +39,7 @@ class Label < ActiveRecord::Base
   def self.get_by_value(value)
     label = self.find_by_value(value)
     if label.nil?
-      terms = tokenize(value).collect{|t| t[:token]}
+      terms = tokenize(Label.uncapitalize(value)).collect{|t| t[:token]}
       label = self.new({value: value, terms: terms.join("\t"), terms_length: terms.length})
       label.save
     end
@@ -152,6 +152,10 @@ class Label < ActiveRecord::Base
     # bigrams = []; tokens1.each_cons(2){|a| bigrams << a}; tokens1 += bigrams
     # bigrams = []; tokens2.each_cons(2){|a| bigrams << a}; tokens2 += bigrams
     return (string_tokens & label_tokens).size.to_f / Math.sqrt(string_tokens.size * label_tokens.size)
+  end
+
+  def self.uncapitalize(text)
+    text.gsub(/(^| )[A-Z][a-z ]/, &:downcase)
   end
 
   # Tokenize an input text using an analyzer of ElasticSearch.

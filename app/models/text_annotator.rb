@@ -27,7 +27,7 @@ class TextAnnotator
   #
   def annotate(text)
     # tokens are produced in the order of their position
-    tokens = Label.tokenize(text)
+    tokens = Label.tokenize(Label.uncapitalize(text))
     span_index = {}
     (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
       (@tokens_len_min .. @tokens_len_max).each do |tlen|
