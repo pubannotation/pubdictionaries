@@ -43,8 +43,8 @@ class DictionariesController < ApplicationController
         @labels = Label.search_as_text(params[:label_search], @dictionary, params[:page]).records
         @entries = @labels.inject([]){|s, label| s + label.entries}
       elsif params[:id_search]
-        identifier = @dictionary.identifiers.find_by_value(params[:id_search])
-        @entries = identifier.nil? ? [] : identifier.entries.page(params[:page])
+        @identifier = @dictionary.identifiers.find_by_value(params[:id_search])
+        @entries = @identifier.entries.inject([]){|s, e| e.dictionaries.include?(@dictionary) ? s << e : s}
       else
         @entries = @dictionary.entries.page(params[:page]) if @dictionary.present?
       end
