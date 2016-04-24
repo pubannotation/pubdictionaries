@@ -39,6 +39,23 @@ class EntriesController < ApplicationController
     end
   end
 
+  def destroy
+    begin
+      dictionary = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])
+      raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+
+      entry = Entry.find(params[:id])
+      raise ArgumentError, "Cannot find the entry" if entry.nil?
+
+      dictionary.destroy_entry(entry)
+      message = "1 entry deleted from the dictionary."
+    end
+
+    respond_to do |format|
+      format.html{ redirect_to :back, notice: message }
+    end
+  end
+
   def empty
     begin
       dictionary = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])

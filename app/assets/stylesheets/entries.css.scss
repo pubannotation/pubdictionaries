@@ -18,10 +18,13 @@ nav.pagination{
 table.entries {
 	table-layout: fixed;
 	width: 100%;
-}
 
-table.entries th.label {
-	width: 60%;
+  th.label {
+    width: 60%;
+  }
+  th.button_column {
+    width: 15px;
+  }
 }
 
 .entries td {

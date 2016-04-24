@@ -63,8 +63,13 @@ class Dictionary < ActiveRecord::Base
     user && user_id == user.id
   end
 
+  def destroy_entry(e)
+    entries.destroy(e)
+    decrement!(:entries_count)
+  end
+
   def empty_entries
-    entries.delete_all
+    entries.destroy_all
     update_attribute(:entries_count, 0)
   end
 

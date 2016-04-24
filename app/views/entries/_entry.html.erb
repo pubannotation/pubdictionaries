@@ -5,4 +5,9 @@
   <td>
     <%= entry.identifier.value -%>
   </td>
+	<% if @dictionary.editable?(current_user) %>
+	  <td style="text-align:center">
+			<%= link_to '<i class="fa fa-minus-square" aria-hidden="true"></i>'.html_safe, dictionary_entry_path(@dictionary, entry), :confirm => 'Are you sure?', :method => :delete, title: 'delete' %>
+	  </td>
+  <% end %>
 </tr>

@@ -4,9 +4,7 @@ class DestroyDictionaryJob < Struct.new(:dictionary)
 	def perform
     begin
       ActiveRecord::Base.transaction do
-        dictionary.entries.delete_all
-        dictionary.jobs.delete
-        dictionary.delete
+        dictionary.destroy
       end
     rescue => e
 			@job.message = e.message

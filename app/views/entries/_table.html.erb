@@ -16,6 +16,9 @@
         	<%= submit_tag 'Search', class: 'button' -%>
     	  <% end -%>
       </th>
+      <% if @dictionary.editable?(current_user) %>
+        <th class="button_column"></th>
+      <% end %>
     </tr>
   </thead>
   <%= render partial: "entries/entry", collection: @entries -%>
