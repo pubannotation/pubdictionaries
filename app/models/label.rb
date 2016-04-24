@@ -37,9 +37,10 @@ class Label < ActiveRecord::Base
   scope :added_after, -> (time) {where('created_at > ?', time)}
 
   def self.get_by_value(value)
+    value = Label.uncapitalize(value)
     label = self.find_by_value(value)
     if label.nil?
-      terms = tokenize(Label.uncapitalize(value)).collect{|t| t[:token]}
+      terms = tokenize(value).collect{|t| t[:token]}
       label = self.new({value: value, terms: terms.join("\t"), terms_length: terms.length})
       label.save
     end
