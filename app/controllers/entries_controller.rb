@@ -20,14 +20,18 @@ class EntriesController < ApplicationController
     begin
       dictionary = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])
       raise ArgumentError, "There is no such a dictionary in your management." if dictionary.nil?
-      raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 
-      source_filepath = params[:file].tempfile.path
-      target_filepath = File.join('tmp', "upload-#{dictionary.title}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
-      FileUtils.cp source_filepath, target_filepath
+      if params[:label].present? && params[:identifier].present?
+        dictionary.add_entry(params[:label].strip, params[:identifier].strip)
+      elsif params[:file].present?
+        raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
+        source_filepath = params[:file].tempfile.path
+        target_filepath = File.join('tmp', "upload-#{dictionary.title}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
+        FileUtils.cp source_filepath, target_filepath
 
-      delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dictionary), queue: :general
-      Job.create({name:"Upload dictionary entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+        delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dictionary), queue: :general
+        Job.create({name:"Upload dictionary entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+      end
 
       respond_to do |format|
         format.html {redirect_to :back}

@@ -22,11 +22,28 @@
     </tr>
   </thead>
   <%= render partial: "entries/entry", collection: @entries -%>
+
+  <% if @dictionary.editable?(current_user) %>
+    <%= form_tag(dictionary_entries_path(@dictionary), method: :post, id: "add_entry_form") do %>
+      <tr>
+        <td>
+          <%= text_field_tag :label, nil, required: true, style: "width:90%" -%>
+        </td>
+        <td>
+          <%= text_field_tag :identifier, nil, required: true, style: "width:90%" -%>
+        </td>
+        <td style="text-align:center">
+          <a title="add" href="javascript:{}" onclick="document.getElementById('add_entry_form').submit(); return false;"><i class="fa fa-plus-square" aria-hidden="true"></i></a>
+        </td>
+      </tr>
+    <% end %>
+  <% end %>  
 </table>
 
 <div class="table-control">
 <% if @labels.present? %>
   <%= paginate @labels %>
+<% elsif @identifier.present? %>
 <% elsif @entries.present? %>
   <%= paginate @entries %>
 <% end %>

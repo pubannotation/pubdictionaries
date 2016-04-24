@@ -12,8 +12,4 @@
 
 <%= render partial: 'dashboard' %>
 <br/>
-<% if @dictionary.entries_count > 0 %>
-	<%= render partial: 'entries/table' -%>
-<% else %>
-	<p>The dictionary is currently empty.</p>
-<% end %>
+<%= render partial: 'entries/table' -%>

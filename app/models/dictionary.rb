@@ -63,6 +63,14 @@ class Dictionary < ActiveRecord::Base
     user && user_id == user.id
   end
 
+  def add_entry(label, id)
+    e = Entry.get_by_value(label, id)
+    unless self.entries.include?(e)
+      self.entries << e
+      self.increment!(:entries_count)
+    end
+  end
+
   def destroy_entry(e)
     entries.destroy(e)
     decrement!(:entries_count)
