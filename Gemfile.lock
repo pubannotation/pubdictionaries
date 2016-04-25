@@ -76,7 +76,6 @@ GEM
       activesupport (> 3)
       elasticsearch (> 0.4)
       hashie
-    elasticsearch-rails (0.1.8)
     elasticsearch-transport (1.0.17)
       faraday
       multi_json
@@ -279,7 +278,6 @@ DEPENDENCIES
   delayed_job_active_record
   devise (= 3.0.3)
   elasticsearch-model
-  elasticsearch-rails
   factory_girl_rails
   faker
   font-awesome-sass
