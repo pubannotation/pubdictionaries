@@ -63,23 +63,23 @@ class TextAnnotator
       end
     end
 
-    # To collect spans per tag
-    tags = {}
+    # To collect spans per label tag
+    ltags = Hash.new([])
     mapping.each do |span, labels|
       labels.each do |label|
-        tags[label[:id]] = [] unless tags.has_key? label[:id]
-        tags[label[:id]] += span_index[span][:positions].collect{|p| {span:span, position:p, score:label[:score]}}
+        ltags[label[:id]] += span_index[span][:positions].collect{|p| {span:span, position:p, label:label[:label], score:label[:score]}}
       end
     end
 
+    # To sort the spans. unnecessary at the moment, because already sorted.
     # sort{|a, b|
     #   span_index[a][:start_offset] == span_index[b][:start_offset] ?
     #   span_index[b][:end_offset] <=> span_index[a][:end_offset] :
     #   span_index[a][:start_offset] <=> span_index[b][:start_offset]    
     # }
 
-    # To choose the best span per tag
-    tags.each do |label, anns|
+    # To choose the best span per label tag
+    ltags.each do |label, anns|
       full_anns = anns
       best_anns = []
       full_anns.each do |ann|
@@ -87,24 +87,52 @@ class TextAnnotator
         if last_ann.nil?
           best_anns.push(ann)
         elsif ann[:position][:start_offset] < last_ann[:position][:end_offset] #span_overlap?
-          best_anns.push(ann[:score] >= last_ann[:score] ? ann : last_ann)
+          best_anns.push(ann[:score] > last_ann[:score] ? ann : last_ann) # prefer shorter span
         else
           best_anns.push(last_ann, ann)
         end
       end
-      tags[label] = best_anns
-    end    
+      ltags[label] = best_anns
+    end
+
+    labels = mapping.values.flatten.uniq
+    id_idx = labels.inject({}){|s, label| s[label[:id]] = Dictionary.get_ids(label[:id], @dictionaries); s}
+
+    tags = Hash.new([])
+    ltags.each do |label, anns|
+      ids = id_idx[label]
+      ids.each do |id|
+        tags[id] += anns
+      end
+    end
+
+    # To choose the best span per tag
+    tags.each do |id, anns|
+      full_anns = anns
+      best_anns = []
+      full_anns.each do |ann|
+        last_ann = best_anns.pop
+        if last_ann.nil?
+          best_anns.push(ann)
+        elsif ann[:position][:start_offset] < last_ann[:position][:end_offset] #span_overlap?
+          best_anns.push(ann[:score] >= last_ann[:score] ? ann : last_ann) # prefer longer span
+        else
+          best_anns.push(last_ann, ann)
+        end
+      end
+      tags[id] = best_anns
+    end
 
     # tags_to_annotation
     denotations = []
-    tags.each do |label, anns|
-      ids = Dictionary.get_ids(label, @dictionaries)
+    tags.each do |id, anns|
       anns.each do |ann|
-        ids.each do |id|
-          d = {span:{begin:ann[:position][:start_offset], end:ann[:position][:end_offset]}, obj:id}
-          d[:score] = ann[:score] if @rich
-          denotations << d
+        d = {span:{begin:ann[:position][:start_offset], end:ann[:position][:end_offset]}, obj:id}
+        if @rich
+          d[:score] = ann[:score]
+          d[:label] = ann[:label]
         end
+        denotations << d
       end
     end
 
