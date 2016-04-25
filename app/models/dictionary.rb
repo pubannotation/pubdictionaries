@@ -68,6 +68,11 @@ class Dictionary < ActiveRecord::Base
     unless self.entries.include?(e)
       self.entries << e
       self.increment!(:entries_count)
+      if e.label.created_at > Time.now - 10
+        e.label.__elasticsearch__.index_document
+      elsif e.label.updated_at > Time.now - 10
+        e.label.__elasticsearch__.update_document
+      end
     end
   end
 
