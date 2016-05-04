@@ -57,6 +57,7 @@ class Entry < ActiveRecord::Base
     items = line.split(/\t/)
     return nil if items.size < 2
     return nil if items[0].length < 2 || items[0].length > 64
+    return nil if items[0].empty? || items[1].empty?
 
     [items[0], items[1]]
   end
