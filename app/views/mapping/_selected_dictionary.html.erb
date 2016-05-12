@@ -1,4 +1,4 @@
 <%= div_for(selected_dictionary, style:"display:none") do -%>
-	<span class="name"><%= selected_dictionary.title -%></span>
-	<%= content_tag :i, '', class:"fa fa-minus-circle" %>
+	<%= link_to selected_dictionary.title, dictionary_path(selected_dictionary.title), class: 'name' %>
+	<%= content_tag :i, '', class:"fa fa-minus-circle", title: "unselect" %>
 <% end -%>

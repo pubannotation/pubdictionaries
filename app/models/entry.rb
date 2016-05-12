@@ -6,6 +6,25 @@ class Entry < ActiveRecord::Base
   attr_accessible :label, :identifier
   attr_accessible :label_id, :identifier_id
 
+  def as_json(options={})
+    options||={}
+    {
+      label: label.value,
+      id: identifier.value
+    }
+  end
+
+  def self.as_tsv
+    column_names = %w{label.valuesourcedb sourceid divid body created_at}
+
+    CSV.generate(col_sep: "\t") do |tsv|
+      tsv << [:label, :id]
+      all.each do |entry|
+        tsv << [entry.label.value, entry.identifier.value]
+      end
+    end
+  end
+
   def self.get_by_value(label_value, identifier_value)
     label = Label.get_by_value(label_value)
     identifier = Identifier.get_by_value(identifier_value)

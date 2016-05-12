@@ -20,10 +20,8 @@
       <ul>
         <li><%= link_to 'Dictionaries', dictionaries_path %></li>
         <li><%= link_to 'Find IDs', find_ids_path %></li>
-        <li class='last'><%= link_to 'Text Annotation', text_annotation_path %></li>
-<!-- 
-        <li class='last'><%= link_to 'Help', search_mapping_index_path %></li>
- -->
+        <li><%= link_to 'Text Annotation', text_annotation_path %></li>
+        <li class='last'><%= link_to 'About', about_path %></li>
       </ul>
     </div>
     <div class="account">
@@ -44,7 +42,7 @@
   </div>
 
   <div class="footer">
-    <div class="alert">It is now in a test phase. After a few weeks of test until the end of April, it will replace the <%= link_to 'current service', 'http://pubdictionaries.org' %>.</div>
+    <div class="alert">It is now in a test service. You can find the current official service at <%= link_to 'http://pubdictionaries.org', 'http://pubdictionaries.org' %>.</div>
     <div class="credit">Presented by <%= link_to 'DBCLS', 'http://dbcls.rois.ac.jp' %></div>
     <div class="contact">We appreciate your any comment to <%= mail_to 'admin@pubdictionaries.org' %></div>
   </div>

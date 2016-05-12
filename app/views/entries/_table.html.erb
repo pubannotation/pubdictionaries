@@ -1,3 +1,7 @@
+<div class="tab-bar">
+<%= link_to 'TSV',  params.merge(controller: :dictionaries, action: :show, format: :tsv),  :class => 'tab' -%>
+<%= link_to 'JSON', params.merge(controller: :dictionaries, action: :show, format: :json), :class => 'tab' -%>
+</div>
 <table class="entries">
   <thead>
     <tr>

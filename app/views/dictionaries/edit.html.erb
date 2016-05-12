@@ -8,6 +8,8 @@
 
 <% if @dictionary.jobs.count == 0 %>
 	<%= render partial: 'commands' -%>
+	<%= render partial: 'upload' -%>
+	<%= render partial: 'clone' -%>
 <% else %>
 	<%= render partial: 'last_task' -%>
 <% end %>

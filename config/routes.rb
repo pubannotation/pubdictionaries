@@ -35,9 +35,8 @@ PubDictionaries::Application.routes.draw do
   # devise_for :users
   devise_for :users
   
-  get "welcome/index"
-
-  get "about/index"
+  get "home/index"
+  get "home/about", as: "about"
 
   get "manual/basic"
   get "manual/advanced"
@@ -57,6 +56,7 @@ PubDictionaries::Application.routes.draw do
   resources :dictionaries do
     post 'entries', to: 'entries#create'
     put 'entries/empty', to: 'entries#empty'
+    post 'clone'
 
     resources :entries
 
@@ -154,9 +154,8 @@ PubDictionaries::Application.routes.draw do
 
   # You can have the root of your site routed with "root"
   # just remember to delete public/index.html.
-  # root :to => 'welcome#index'
   # root :to => 'dictionaries#index', as: 'dictionaries'  --> it causes "/dictionaries#create" triggers "/create"
-  root :to => 'welcome#index'
+  root :to => 'home#index'
 
   # See how all your routes lay out with "rake routes"
 

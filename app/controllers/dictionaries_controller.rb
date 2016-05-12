@@ -51,16 +51,14 @@ class DictionariesController < ApplicationController
 
       respond_to do |format|
         format.html
-        format.tsv { 
-          send_data tsv_data(@entries), 
-          filename: "#{@dictionary.title}.#{params[:query]}.tsv", 
-          type:     "text/tsv" 
-        }
+        format.json { send_data @dictionary.entries.to_json, filename: "#{@dictionary.title}.json", type: :json }
+        format.tsv  { send_data @dictionary.entries.as_tsv,  filename: "#{@dictionary.title}.tsv",  type: :tsv  }
       end
     rescue => e
       respond_to do |format|
-        format.html {redirect_to dictionaries_url, notice: e.message}
-        format.tsv {}
+        format.html { redirect_to dictionaries_url, notice: e.message}
+        format.json { head :unprocessable_entity }
+        format.tsv  { head :unprocessable_entity }
       end
     end
   end
@@ -108,6 +106,29 @@ class DictionariesController < ApplicationController
     end
 
     redirect_to dictionary_path(@dictionary)
+  end
+
+  def clone
+    begin
+      dictionary = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])
+      raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}, in your management." if dictionary.nil?
+
+      raise ArgumentError, "A source dictionary should be specified." if params[:source_dictionary].nil?
+      source_dictionary = Dictionary.active.accessible(current_user).find_by_title(params[:source_dictionary])
+      raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}." if source_dictionary.nil?
+      raise ArgumentError, "You cannot clone from itself." if source_dictionary == dictionary
+
+      delayed_job = Delayed::Job.enqueue CloneDictionaryJob.new(source_dictionary, dictionary), queue: :general
+      Job.create({name:"Clone dictionary", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+
+      respond_to do |format|
+        format.html {redirect_to :back}
+      end
+    rescue => e
+      respond_to do |format|
+        format.html {redirect_to :back, notice: e.message}
+      end
+    end
   end
 
   def destroy

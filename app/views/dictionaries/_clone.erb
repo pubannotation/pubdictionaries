@@ -1,0 +1,13 @@
+<fieldset class="dialog">
+  <legend>Clone</legend>
+  <%= form_tag dictionary_clone_path(@dictionary), method: :post, multipart: true do -%>
+    <p>You can clone a dictionary into this dictionary.</p>
+    <% if @dictionary.entries.empty? %>
+      <%= text_field_tag :source_dictionary, nil, required: true -%><br/>
+      <%= submit_tag 'Clone', class: "button" %>
+    <% else %>
+      <i>Current implementation requires a dictionary to be emptied before cloning.</i>
+    <% end %>
+  <% end %>
+</fieldset>
+
