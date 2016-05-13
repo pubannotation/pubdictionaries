@@ -4,6 +4,8 @@ require 'fileutils'
 require 'pp'
 
 class DictionariesController < ApplicationController
+  caches_page :show, if: Proc.new {|c| c.request.format.tsv? || c.request.format.json?}
+  
   # Require authentication for all actions except :index, :show, and some others.
   before_filter :authenticate_user!, except: [ 
     :index, :show,
