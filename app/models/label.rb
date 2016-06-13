@@ -88,7 +88,7 @@ class Label < ActiveRecord::Base
 
   def self.search_as_term(label, terms, dictionaries = [])
     self.__elasticsearch__.search(
-      min_score: 0.8,
+      min_score: 0.2,
       query: {
         bool: {
           must: {
@@ -101,7 +101,7 @@ class Label < ActiveRecord::Base
             }
           },
           filter: [
-            {range: {terms_length: {"lte" => terms.length + 1}}},
+            # {range: {terms_length: {"lte" => terms.length + 1}}},
             {terms: {"dictionaries.id" => dictionaries}}
           ]
         }
