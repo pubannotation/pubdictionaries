@@ -1,14 +1,4 @@
-<%= render 'title' %>
-
-<% if @dictionary.editable?(current_user) %>
-	<div class="control">
-		<%= link_to(
-			'<i class="fa fa-cog fa-lg"></i>'.html_safe,
-			edit_dictionary_path(@dictionary.title),
-			title: 'settings'
-		) %>
-	</div>
-<% end %>
-
+<%= render partial: 'title' %>
+<%= render partial: 'control' %>
 <%= render partial: 'dashboard' %>
 <%= render partial: 'entries/table' -%>

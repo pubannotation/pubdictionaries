@@ -1,10 +1,7 @@
 class Dictionary < ActiveRecord::Base
   include StringManipulator
 
-  attr_accessor :file, :separator, :sort
-  attr_accessible :title, :creator, :description, :lowercased, :stemmed, :hyphen_replaced,
-    :user_id, :public, :file, :separator, :sort, :language
-
+  attr_accessible :name, :description, :user_id, :public, :language
   attr_accessible :active
   attr_accessible :issues
 
@@ -18,12 +15,12 @@ class Dictionary < ActiveRecord::Base
   has_many :identifiers, :through => :entries
   has_many :jobs, :dependent => :destroy
 
-  # validates :creator, :description, :title, :presence => true
+  validates :description, :name, :presence => true
   # validates :file, presence: true,  on: :create 
   validates :user_id, presence: true 
-  validates :title, uniqueness: true
+  validates :name, uniqueness: true
   validates_inclusion_of :public, :in => [true, false]     # :presence fails when the value is false.
-  validates_format_of :title,                              # because of to_param overriding.
+  validates_format_of :name,                              # because of to_param overriding.
                       :with => /^[^\.]*$/,
                       :message => "should not contain dot!"
 
@@ -36,9 +33,9 @@ class Dictionary < ActiveRecord::Base
   end
 
   def to_param
-    # Override the original to_param so that it returns title, not ID, for constructing URLs. 
-    # Use Model#find_by_title() instead of Model.find() in controllers.
-    title
+    # Override the original to_param so that it returns name, not ID, for constructing URLs.
+    # Use Model#find_by_name() instead of Model.find() in controllers.
+    name
   end
 
   scope :active, where(active: true)

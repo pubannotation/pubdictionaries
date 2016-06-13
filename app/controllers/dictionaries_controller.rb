@@ -36,7 +36,7 @@ class DictionariesController < ApplicationController
 
   def show
     begin
-      @dictionary = Dictionary.active.accessible(current_user).find_by_title(params[:id])
+      @dictionary = Dictionary.active.accessible(current_user).find_by_name(params[:id])
       raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
 
       if params[:label_search]
@@ -51,12 +51,12 @@ class DictionariesController < ApplicationController
 
       respond_to do |format|
         format.html
-        format.json { send_data @dictionary.entries.to_json, filename: "#{@dictionary.title}.json", type: :json }
-        format.tsv  { send_data @dictionary.entries.as_tsv,  filename: "#{@dictionary.title}.tsv",  type: :tsv  }
+        format.json { send_data @dictionary.entries.to_json, filename: "#{@dictionary.name}.json", type: :json }
+        format.tsv  { send_data @dictionary.entries.as_tsv,  filename: "#{@dictionary.name}.tsv",  type: :tsv  }
       end
     rescue => e
       respond_to do |format|
-        format.html { redirect_to dictionaries_url, notice: e.message}
+        format.html { redirect_to dictionaries_url, notice: e.message }
         format.json { head :unprocessable_entity }
         format.tsv  { head :unprocessable_entity }
       end
@@ -75,27 +75,27 @@ class DictionariesController < ApplicationController
   end
 
   def create
-    dictionary = current_user.dictionaries.new(params[:dictionary])
-    dictionary.title.strip!
-    dictionary.user = current_user
+    @dictionary = current_user.dictionaries.new(params[:dictionary])
+    @dictionary.name.strip!
+    @dictionary.user = current_user
 
     respond_to do |format|
-      if dictionary.save
-        format.html {redirect_to dictionaries_path, notice: 'Empty dictionary created.'}
+      if @dictionary.save
+        format.html { redirect_to dictionaries_path, notice: 'Empty dictionary created.'}
       else
-        format.html {redirect_to dictionaries_path, notice: 'Dictionary creation failed.'}
+        format.html { render action: "new" }
       end
     end
   end
 
   def edit
-    @dictionary = Dictionary.editable(current_user).find_by_title(params[:id])
+    @dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
     raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
     @submit_text = 'Update'
   end
   
   def update
-    @dictionary = Dictionary.editable(current_user).find_by_title(params[:id])
+    @dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
     raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
 
     @dictionary.update_attributes(params[:dictionary])
@@ -110,11 +110,11 @@ class DictionariesController < ApplicationController
 
   def clone
     begin
-      dictionary = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])
+      dictionary = Dictionary.active.editable(current_user).find_by_name(params[:dictionary_id])
       raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}, in your management." if dictionary.nil?
 
       raise ArgumentError, "A source dictionary should be specified." if params[:source_dictionary].nil?
-      source_dictionary = Dictionary.active.accessible(current_user).find_by_title(params[:source_dictionary])
+      source_dictionary = Dictionary.active.accessible(current_user).find_by_name(params[:source_dictionary])
       raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}." if source_dictionary.nil?
       raise ArgumentError, "You cannot clone from itself." if source_dictionary == dictionary
 
@@ -133,7 +133,7 @@ class DictionariesController < ApplicationController
 
   def destroy
     begin
-      dictionary = Dictionary.editable(current_user).find_by_title(params[:id])
+      dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
       raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 
@@ -142,7 +142,7 @@ class DictionariesController < ApplicationController
       Job.create({name:"Destroy dictionary", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
 
       respond_to do |format|
-        format.html {redirect_to dictionaries_path, notice: "The dictionary, #{dictionary.title}, is deleted."}
+        format.html {redirect_to dictionaries_path, notice: "The dictionary, #{dictionary.name}, is deleted."}
         format.json {head :no_content}
       end
     rescue => e

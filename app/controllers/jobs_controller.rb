@@ -3,17 +3,17 @@ class JobsController < ApplicationController
   # GET /jobs.json
   def index
     begin
-      @dic = Dictionary.accessible(current_user).find_by_title(params[:dictionary_id])
+      @dic = Dictionary.accessible(current_user).find_by_name(params[:dictionary_id])
       raise "There is no such dictionary." unless @dic.present?
       @jobs = @dic.jobs.order(:created_at)
 
       respond_to do |format|
-        format.html { redirect_to dictionary_path(@dic.title) if @jobs.length == 0}
+        format.html { redirect_to dictionary_path(@dic.name) if @jobs.length == 0}
         format.json { render json: @jobs }
       end
     rescue
       respond_to do |format|
-        format.html { redirect_to dictionary_path(@dic.title) }
+        format.html { redirect_to dictionary_path(@dic.name) }
         format.json { render status: :no_content }
       end
     end

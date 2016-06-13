@@ -5,7 +5,7 @@ class MappingController < ApplicationController
 
     @dictionaries = Dictionary.active.accessible(current_user)
     @selected = params[:dictionaries].present? ?
-      params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_title(d.strip).id} : []
+      params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_name(d.strip).id} : []
 
     @result = {}
     if params[:labels]
@@ -25,7 +25,7 @@ class MappingController < ApplicationController
     params[:dictionaries] = params[:dictionary] if params.has_key?(:dictionary) && !params.has_key?(:dictionaries)
     @dictionaries = Dictionary.active.accessible(current_user)
     @selected = params[:dictionaries].present? ?
-      params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_title(d.strip).id} : []
+      params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_name(d.strip).id} : []
 
     @result = {}
     if params[:text].present?

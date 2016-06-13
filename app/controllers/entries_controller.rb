@@ -8,7 +8,7 @@ class EntriesController < ApplicationController
     # Use the dictionary name as the page title.
     @page_title = params[:dictionary_id]
 
-    @dictionary = Dictionary.find_by_title(params[:dictionary_id])
+    @dictionary = Dictionary.find_by_name(params[:dictionary_id])
     @user_dictionary = get_user_dictionary( current_user.id, @dictionary.id )
     @new_entry = @user_dictionary.new_entries.new
 
@@ -18,7 +18,7 @@ class EntriesController < ApplicationController
 
   def create
     begin
-      dictionary = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])
+      dictionary = Dictionary.active.editable(current_user).find_by_name(params[:dictionary_id])
       raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}, in your management." if dictionary.nil?
 
       if params[:label].present? && params[:identifier].present?
@@ -26,7 +26,7 @@ class EntriesController < ApplicationController
       elsif params[:file].present?
         raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
         source_filepath = params[:file].tempfile.path
-        target_filepath = File.join('tmp', "upload-#{dictionary.title}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
+        target_filepath = File.join('tmp', "upload-#{dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
         FileUtils.cp source_filepath, target_filepath
 
         delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dictionary), queue: :general
@@ -45,7 +45,7 @@ class EntriesController < ApplicationController
 
   def destroy
     begin
-      dictionary = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])
+      dictionary = Dictionary.active.editable(current_user).find_by_name(params[:dictionary_id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
       entry = Entry.find(params[:id])
@@ -62,7 +62,7 @@ class EntriesController < ApplicationController
 
   def empty
     begin
-      dictionary = Dictionary.active.editable(current_user).find_by_title(params[:dictionary_id])
+      dictionary = Dictionary.active.editable(current_user).find_by_name(params[:dictionary_id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
       raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 

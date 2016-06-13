@@ -2,7 +2,6 @@ class Entry < ActiveRecord::Base
   belongs_to :label
   belongs_to :identifier
   has_and_belongs_to_many :dictionaries
-  attr_accessible :title, :view_title, :search_title
   attr_accessible :label, :identifier
   attr_accessible :label_id, :identifier_id
 

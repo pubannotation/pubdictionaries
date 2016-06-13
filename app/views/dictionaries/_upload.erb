@@ -20,12 +20,8 @@
       <li>If a line has more than two values, only the first two will be read, and the remaining will be ignored.</li>
       <li>If a line has a label shorter than 2 or longer than 32, the line will be skipped.</li>
     </ul>
-    <% if @dictionary.entries.empty? %>
-      <%= file_field_tag :file, required: true %><br/>
-      <%= submit_tag 'Upload', class: "button" %>
-    <% else %>
-      <i>Current implementation requires a dictionary to be emptied before a new upload.</i>
-    <% end %>
+    <%= file_field_tag :file, required: true %><br/>
+    <%= submit_tag 'Upload', class: "button" %>
   <% end %>
 </fieldset>
 

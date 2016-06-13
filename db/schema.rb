@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20160412073710) do
+ActiveRecord::Schema.define(:version => 20160512064651) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -30,24 +30,20 @@ ActiveRecord::Schema.define(:version => 20160412073710) do
   add_index "delayed_jobs", ["priority", "run_at"], :name => "delayed_jobs_priority"
 
   create_table "dictionaries", :force => true do |t|
-    t.string   "title"
+    t.string   "name"
     t.string   "creator"
     t.text     "description"
-    t.datetime "created_at",                        :null => false
-    t.datetime "updated_at",                        :null => false
-    t.boolean  "lowercased"
-    t.boolean  "stemmed"
-    t.boolean  "hyphen_replaced"
+    t.datetime "created_at",                      :null => false
+    t.datetime "updated_at",                      :null => false
     t.integer  "user_id"
-    t.boolean  "public",          :default => true
-    t.text     "issues",          :default => ""
+    t.boolean  "public",        :default => true
     t.string   "language"
-    t.boolean  "active",          :default => true
-    t.integer  "entries_count",   :default => 0
+    t.boolean  "active",        :default => true
+    t.integer  "entries_count", :default => 0
   end
 
   add_index "dictionaries", ["creator"], :name => "index_dictionaries_on_creator"
-  add_index "dictionaries", ["title"], :name => "index_dictionaries_on_title"
+  add_index "dictionaries", ["name"], :name => "index_dictionaries_on_title"
 
   create_table "dictionaries_entries", :id => false, :force => true do |t|
     t.integer "dictionary_id"
