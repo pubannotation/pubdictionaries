@@ -153,7 +153,7 @@ class Entry < ActiveRecord::Base
   #
   def self.tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/labels/_analyze?analyzer=standard_normalization', text), symbolize_names: true)[:tokens]
+    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=standard_normalization', text), symbolize_names: true)[:tokens]
   end
 
 end
