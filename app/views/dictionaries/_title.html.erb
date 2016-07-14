@@ -1,4 +1,4 @@
 <div class='title'>
 <%= link_to_unless_current @dictionary.name, @dictionary %>
-<span style="font-size:medium">(<%= number_with_delimiter(@dictionary.entries_count, :delimiter => ',') %>)</span>
+<span style="font-size:medium">(<%= number_with_delimiter(@dictionary.entries_num, :delimiter => ',') %>)</span>
 </div>

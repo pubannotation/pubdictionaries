@@ -58,7 +58,7 @@ class Label < ActiveRecord::Base
 
   def as_indexed_json(options={})
     as_json(
-      only: [:id, :value, :terms, :terms_length],
+      only: [:id, :label, :terms, :terms_length],
       include: {dictionaries: {only: :id}}
     )
   end
@@ -101,7 +101,7 @@ class Label < ActiveRecord::Base
             }
           },
           filter: [
-            # {range: {terms_length: {"lte" => terms.length + 1}}},
+            {range: {terms_length: {"lte" => terms.length + 1}}},
             {terms: {"dictionaries.id" => dictionaries}}
           ]
         }

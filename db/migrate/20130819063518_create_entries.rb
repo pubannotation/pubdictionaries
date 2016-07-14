@@ -1,15 +1,16 @@
 class CreateEntries < ActiveRecord::Migration
-  def self.up
+  def change
     create_table :entries do |t|
-      t.string :title
-      t.text :description
-      t.integer :dictionary_id
-
+      t.string :label
+      t.string :terms
+      t.integer :terms_length
+      t.string :identifier
+      t.boolean :flag, default: false
       t.timestamps
     end
-  end
 
-	def self.down
-	  drop_table :entries
-	end
+		add_index :entries, :flag
+    add_index :entries, :label
+    add_index :entries, :identifier
+  end
 end

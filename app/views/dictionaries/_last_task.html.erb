@@ -8,6 +8,11 @@
   <ul>
 	  <% unless job.begun_at.nil? %>
 		  <li>started at <%= job.begun_at %></li>
+		  <% unless job.num_items.nil? %>
+			  <ul>
+			  	<li><%= number_with_delimiter(job.num_dones, :delimiter => ',') %> / <%= number_with_delimiter(job.num_items, :delimiter => ',') %></li>
+			  </ul>
+			<% end %>
 		  <% unless job.ended_at.nil? %>
 			  <% if job.message.nil? %>
 			    <li>finished at <%= job.ended_at %></li>

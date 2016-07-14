@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20160512064651) do
+ActiveRecord::Schema.define(:version => 20160707114132) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -31,58 +31,29 @@ ActiveRecord::Schema.define(:version => 20160512064651) do
 
   create_table "dictionaries", :force => true do |t|
     t.string   "name"
-    t.string   "creator"
     t.text     "description"
-    t.datetime "created_at",                      :null => false
-    t.datetime "updated_at",                      :null => false
     t.integer  "user_id"
-    t.boolean  "public",        :default => true
     t.string   "language"
-    t.boolean  "active",        :default => true
-    t.integer  "entries_count", :default => 0
+    t.boolean  "active",      :default => true
+    t.datetime "created_at",                    :null => false
+    t.datetime "updated_at",                    :null => false
+    t.integer  "entries_num", :default => 0
   end
-
-  add_index "dictionaries", ["creator"], :name => "index_dictionaries_on_creator"
-  add_index "dictionaries", ["name"], :name => "index_dictionaries_on_title"
-
-  create_table "dictionaries_entries", :id => false, :force => true do |t|
-    t.integer "dictionary_id"
-    t.integer "entry_id"
-  end
-
-  add_index "dictionaries_entries", ["dictionary_id", "entry_id"], :name => "index_dictionaries_entries_on_dictionary_id_and_entry_id"
 
   create_table "entries", :force => true do |t|
-    t.datetime "created_at",                        :null => false
-    t.datetime "updated_at",                        :null => false
-    t.integer  "label_id"
-    t.integer  "identifier_id"
-    t.integer  "dictionaries_count", :default => 0
+    t.string   "label"
+    t.string   "terms"
+    t.integer  "terms_length"
+    t.string   "identifier"
+    t.boolean  "flag",             :default => false
+    t.datetime "created_at",                          :null => false
+    t.datetime "updated_at",                          :null => false
+    t.integer  "dictionaries_num", :default => 0
   end
 
-  create_table "expressions", :force => true do |t|
-    t.string   "words"
-    t.datetime "created_at",                        :null => false
-    t.datetime "updated_at",                        :null => false
-    t.integer  "dictionaries_count", :default => 0
-  end
-
-  create_table "expressions_uris", :force => true do |t|
-    t.integer  "expression_id"
-    t.integer  "uri_id"
-    t.integer  "dictionary_id"
-    t.datetime "created_at",    :null => false
-    t.datetime "updated_at",    :null => false
-  end
-
-  add_index "expressions_uris", ["expression_id", "uri_id", "dictionary_id"], :name => "index_exp_uri_dic", :unique => true
-
-  create_table "identifiers", :force => true do |t|
-    t.string   "value"
-    t.datetime "created_at",                   :null => false
-    t.datetime "updated_at",                   :null => false
-    t.integer  "entries_count", :default => 0
-  end
+  add_index "entries", ["flag"], :name => "index_entries_on_flag"
+  add_index "entries", ["identifier"], :name => "index_entries_on_identifier"
+  add_index "entries", ["label"], :name => "index_entries_on_label"
 
   create_table "jobs", :force => true do |t|
     t.string   "name"
@@ -99,50 +70,15 @@ ActiveRecord::Schema.define(:version => 20160512064651) do
   add_index "jobs", ["delayed_job_id"], :name => "index_jobs_on_delayed_job_id"
   add_index "jobs", ["dictionary_id"], :name => "index_jobs_on_dictionary_id"
 
-  create_table "labels", :force => true do |t|
-    t.string   "value"
-    t.datetime "created_at",                   :null => false
-    t.datetime "updated_at",                   :null => false
-    t.integer  "entries_count", :default => 0
-    t.string   "terms"
-    t.integer  "terms_length"
-  end
-
-  create_table "new_entries", :force => true do |t|
-    t.string   "view_title"
-    t.string   "label"
-    t.string   "uri"
-    t.integer  "user_dictionary_id"
-    t.datetime "created_at",         :null => false
-    t.datetime "updated_at",         :null => false
-    t.string   "search_title"
-  end
-
-  add_index "new_entries", ["label"], :name => "index_new_entries_on_label"
-  add_index "new_entries", ["search_title"], :name => "index_new_entries_on_search_title"
-  add_index "new_entries", ["uri"], :name => "index_new_entries_on_uri"
-  add_index "new_entries", ["user_dictionary_id"], :name => "index_new_entries_on_user_dictionary_id"
-  add_index "new_entries", ["view_title"], :name => "index_new_entries_on_view_title"
-
-  create_table "removed_entries", :force => true do |t|
-    t.integer  "user_dictionary_id"
-    t.integer  "entry_id"
-    t.datetime "created_at",         :null => false
-    t.datetime "updated_at",         :null => false
-  end
-
-  add_index "removed_entries", ["entry_id"], :name => "index_removed_entries_on_entry_id"
-  add_index "removed_entries", ["user_dictionary_id"], :name => "index_removed_entries_on_user_dictionary_id"
-
-  create_table "user_dictionaries", :force => true do |t|
-    t.integer  "user_id"
+  create_table "memberships", :force => true do |t|
     t.integer  "dictionary_id"
+    t.integer  "entry_id"
     t.datetime "created_at",    :null => false
     t.datetime "updated_at",    :null => false
   end
 
-  add_index "user_dictionaries", ["dictionary_id"], :name => "index_user_dictionaries_on_dictionary_id"
-  add_index "user_dictionaries", ["user_id"], :name => "index_user_dictionaries_on_user_id"
+  add_index "memberships", ["dictionary_id"], :name => "index_memberships_on_dictionary_id"
+  add_index "memberships", ["entry_id"], :name => "index_memberships_on_entry_id"
 
   create_table "users", :force => true do |t|
     t.string   "email",                  :default => "", :null => false
@@ -157,10 +93,8 @@ ActiveRecord::Schema.define(:version => 20160512064651) do
     t.string   "last_sign_in_ip"
     t.datetime "created_at",                             :null => false
     t.datetime "updated_at",                             :null => false
-    t.string   "authentication_token"
   end
 
-  add_index "users", ["authentication_token"], :name => "index_users_on_authentication_token", :unique => true
   add_index "users", ["email"], :name => "index_users_on_email", :unique => true
   add_index "users", ["reset_password_token"], :name => "index_users_on_reset_password_token", :unique => true
 

@@ -27,7 +27,9 @@ class TextAnnotator
   #
   def annotate(text)
     # tokens are produced in the order of their position
-    tokens = Label.tokenize(Label.uncapitalize(text))
+    tokens = Entry.tokenize(Entry.uncapitalize(text))
+
+    # index spans with their tokens and positions (array)
     span_index = {}
     (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
       (@tokens_len_min .. @tokens_len_max).each do |tlen|
@@ -46,28 +48,22 @@ class TextAnnotator
       end
     end
 
-    mapping = {}
+    # To search mapping entries per span
+    span_entries = {}
     bad_key = nil
     span_index.keys.each do |span|
-      unless bad_key.nil?
-        next if span.start_with?(bad_key)
-        bad_key = nil
-      end
+      r = Entry.search_by_label(span, span_index[span][:tokens], @dictionaries, @threshold)
 
-      r = Label.find_similar_labels(span, span_index[span][:tokens], @dictionaries, @threshold, true)
-
-      if r[:es_results] > 0
-        mapping[span] = r[:labels]
-      else
-        bad_key = span
+      if r[:entries].present?
+        span_entries[span] = r[:entries]
       end
     end
 
-    # To collect spans per label tag
-    ltags = Hash.new([])
-    mapping.each do |span, labels|
-      labels.each do |label|
-        ltags[label[:id]] += span_index[span][:positions].collect{|p| {span:span, position:p, label:label[:label], score:label[:score]}}
+    # To collect annotated (anchored) spans per entry
+    entry_anns = Hash.new([])
+    span_entries.each do |span, entries|
+      entries.each do |entry|
+        entry_anns[entry[:id]] += span_index[span][:positions].collect{|p| {span:span, position:p, label:entry[:label], identifier:entry[:identifier], score:entry[:score]}}
       end
     end
 
@@ -78,8 +74,8 @@ class TextAnnotator
     #   span_index[a][:start_offset] <=> span_index[b][:start_offset]    
     # }
 
-    # To choose the best span per label tag
-    ltags.each do |label, anns|
+    # To choose the best annotated span per entry
+    entry_anns.each do |eid, anns|
       full_anns = anns
       best_anns = []
       full_anns.each do |ann|
@@ -92,42 +88,14 @@ class TextAnnotator
           best_anns.push(last_ann, ann)
         end
       end
-      ltags[label] = best_anns
+      entry_anns[eid] = best_anns
     end
 
-    labels = mapping.values.flatten.uniq
-    id_idx = labels.inject({}){|s, label| s[label[:id]] = Dictionary.get_ids(label[:id], @dictionaries); s}
-
-    tags = Hash.new([])
-    ltags.each do |label, anns|
-      ids = id_idx[label]
-      ids.each do |id|
-        tags[id] += anns
-      end
-    end
-
-    # To choose the best span per tag
-    tags.each do |id, anns|
-      full_anns = anns
-      best_anns = []
-      full_anns.each do |ann|
-        last_ann = best_anns.pop
-        if last_ann.nil?
-          best_anns.push(ann)
-        elsif ann[:position][:start_offset] < last_ann[:position][:end_offset] #span_overlap?
-          best_anns.push(ann[:score] >= last_ann[:score] ? ann : last_ann) # prefer longer span
-        else
-          best_anns.push(last_ann, ann)
-        end
-      end
-      tags[id] = best_anns
-    end
-
-    # tags_to_annotation
+    # rewrite to denotations
     denotations = []
-    tags.each do |id, anns|
+    entry_anns.each do |eid, anns|
       anns.each do |ann|
-        d = {span:{begin:ann[:position][:start_offset], end:ann[:position][:end_offset]}, obj:id}
+        d = {span:{begin:ann[:position][:start_offset], end:ann[:position][:end_offset]}, obj:ann[:identifier]}
         if @rich
           d[:score] = ann[:score]
           d[:label] = ann[:label]

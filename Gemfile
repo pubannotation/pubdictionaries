@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'rails', '3.2.16'
+gem 'rails', '3.2.22.1'
 gem 'activerecord-import', '~> 0.3.1'
 gem 'libv8'
 
@@ -63,7 +63,7 @@ group :assets do
 end
 
 # To use ActiveModel has_secure_password
-# gem 'bcrypt-ruby', '~> 3.0.0'
+# gem 'bcrypt'
 
 # To use Jbuilder templates for JSON
 # gem 'jbuilder'

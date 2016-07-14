@@ -1,52 +1,31 @@
 class Dictionary < ActiveRecord::Base
   include StringManipulator
 
-  attr_accessible :name, :description, :user_id, :public, :language
+  attr_accessible :name, :description, :user_id, :language
   attr_accessible :active
-  attr_accessible :issues
+  attr_accessible :entries_num
 
   belongs_to :user
 
-  has_and_belongs_to_many :entries,
-    :after_add => :entry_dictionaries_count_up,
-    :after_remove => :entry_dictionaries_count_down
+  has_many :membership
+  has_many :entries, :through => :membership
 
-  has_many :labels, :through => :entries
-  has_many :identifiers, :through => :entries
   has_many :jobs, :dependent => :destroy
 
-  validates :description, :name, :presence => true
-  # validates :file, presence: true,  on: :create 
+  validates :name, presence:true, uniqueness: true
   validates :user_id, presence: true 
-  validates :name, uniqueness: true
-  validates_inclusion_of :public, :in => [true, false]     # :presence fails when the value is false.
+  validates :description, presence: true
   validates_format_of :name,                              # because of to_param overriding.
                       :with => /^[^\.]*$/,
                       :message => "should not contain dot!"
 
-  def entry_dictionaries_count_up(entry)
-    entry.dictionaries_count_up
-  end
-
-  def entry_dictionaries_count_down(entry)
-    entry.dictionaries_count_down
-  end
-
+  # Override the original to_param so that it returns name, not ID, for constructing URLs.
+  # Use Model#find_by_name() instead of Model.find() in controllers.
   def to_param
-    # Override the original to_param so that it returns name, not ID, for constructing URLs.
-    # Use Model#find_by_name() instead of Model.find() in controllers.
     name
   end
 
   scope :active, where(active: true)
-
-  scope :accessible, -> (user) {
-    if user.nil?
-      where('public = ?', true)
-    else
-      where('public = ? OR user_id = ?', true, user.id)
-    end
-  }
 
   scope :editable, -> (user) {
     if user.nil?
@@ -60,57 +39,90 @@ class Dictionary < ActiveRecord::Base
     user && user_id == user.id
   end
 
+  def get_entry(label, id)
+    entries.find_by(label:label, identifier: id)
+  end
+
   def add_entry(label, id)
+    label = Entry.uncapitalize(label)
+
     e = Entry.get_by_value(label, id)
-    unless self.entries.include?(e)
-      self.entries << e
-      self.increment!(:entries_count)
-      if e.label.created_at > Time.now - 10
-        e.label.__elasticsearch__.index_document
-      elsif e.label.updated_at > Time.now - 10
-        e.label.__elasticsearch__.update_document
-      end
+    if e.nil?
+      terms = Entry.tokenize(label).collect{|t| t[:token]}
+      e = Entry.create(label:label, identifier:id, terms: terms.join("\t"), terms_length: terms.length)
+    end
+
+    unless entries.include?(e)
+      entries << e
+      increment!(:entries_num)
+      e.increment!(:dictionaries_num)
+      e.__elasticsearch__.index_document
     end
   end
 
   def destroy_entry(e)
-    entries.destroy(e)
-    decrement!(:entries_count)
+    if entries.include?(e)
+      entries.destroy(e)
+      decrement!(:entries_num)
+      e.decrement!(:dictionaries_num)
+
+      if e.dictionaries_num == 0
+        e.destroy
+        e.__elasticsearch__.delete_document
+      else
+        e.__elasticsearch__.index_document
+      end
+    end
+  end
+
+  def add_new_entries(pairs)
+    # ActiveRecord::Base.transaction do
+      new_entries = pairs.map do |label, id|
+        label = Entry.uncapitalize(label)
+        terms = Entry.tokenize(label).collect{|t| t[:token]}
+        Entry.new(label:label, identifier:id, terms: terms.join("\t"), terms_length: terms.length, dictionaries_num:1, flag:true)
+      end
+      r = Entry.import new_entries, validate: false
+      raise "Import error" unless r.failed_instances.empty?
+
+      self.entries += Entry.where(flag: true)
+      Entry.__elasticsearch__.import query: -> {where(flag:true)}
+      Entry.where(flag: true).update_all(flag: false)
+
+      increment!(:entries_num, new_entries.length)
+    # end
+  end
+
+  def add_entries(entries)
+    # ActiveRecord::Base.transaction do
+      self.entries += entries
+      entries.update_all('dictionaries_num = dictionaries_num + 1')
+
+      entries.update_all(flag:true)
+      Entry.__elasticsearch__.import query: -> {where(flag:true)}
+      entries.update_all(flag:false)
+
+      increment!(:entries_num, entries.length)
+    # end
   end
 
   def empty_entries
-    entries.destroy_all
-    update_attribute(:entries_count, 0)
+    entries.update_all('dictionaries_num = dictionaries_num - 1')
+    Entry.delete(Entry.joins(:membership).where("memberships.dictionary_id" => self.id, dictionaries_num: 0).pluck(:id))
+
+    entries.update_all(flag:true)
+    entries.delete_all
+    Entry.__elasticsearch__.import query: -> {where(flag:true)}
+    Entry.where(flag:true).update_all(flag:false)
+
+    update_attribute(:entries_num, 0)
   end
 
   def self.find_labels_ids(labels, dictionaries = [], threshold = 0.85, rich = false)
     labels.inject({}) do |dic, label|
-      dic[label] = find_label_ids(label, dictionaries, threshold, rich)[:ids]
+      dic[label] = Entry.search_by_label(label, Label.tokenize(label).collect{|t| t[:token]}, dictionaries, threshold)[:entries]
+      dic[label].map!{|entry| entry[:identifier]} unless rich
       dic
     end
   end
-
-  def self.find_label_ids(label, dictionaries = [], threshold = 0.85, rich = false)
-    r = Label.find_similar_labels(label, Label.tokenize(label).collect{|t| t[:token]}, dictionaries, threshold, true)
-    ids = r[:labels].inject([]) do |s, l|
-      ids = get_ids(l[:id], dictionaries)
-      s + ids.collect{|id| l.merge(id:id)}
-    end
-    ids.collect!{|id| id[:id]} unless rich
-    {es_results: r[:es_results], ids: ids}
-  end
-
-  def self.get_ids_from_es_results(es_results, dictionaries)
-    ids = es_results.inject([]){|s, r| s + self.get_ids(r.id, dictionaries).uniq.collect{|i| {label:r.value, identifier:i}}}
-  end
-
-  def self.get_ids(label_id, dictionaries = [])
-    identifier_id = Entry.where(label_id: label_id).joins(:dictionaries).where("dictionaries.id" => dictionaries).pluck(:identifier_id)
-    Identifier.where(id: identifier_id).pluck(:value)
-  end
-
-  def self.find_labels(ids, dictionaries = [])
-  end
-
 end
-

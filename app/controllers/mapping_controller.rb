@@ -3,9 +3,9 @@ class MappingController < ApplicationController
     params[:dictionaries] = params[:dictionary] if params.has_key?(:dictionary) && !params.has_key?(:dictionaries)
     params[:labels] = params[:label] if params.has_key?(:label) && !params.has_key?(:labels)
 
-    @dictionaries = Dictionary.active.accessible(current_user)
+    @dictionaries = Dictionary.active
     @selected = params[:dictionaries].present? ?
-      params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_name(d.strip).id} : []
+      params[:dictionaries].split(',').collect{|d| Dictionary.active.find_by_name(d.strip).id} : []
 
     @result = {}
     if params[:labels]
@@ -23,9 +23,9 @@ class MappingController < ApplicationController
 
   def text_annotation
     params[:dictionaries] = params[:dictionary] if params.has_key?(:dictionary) && !params.has_key?(:dictionaries)
-    @dictionaries = Dictionary.active.accessible(current_user)
+    @dictionaries = Dictionary.active
     @selected = params[:dictionaries].present? ?
-      params[:dictionaries].split(',').collect{|d| Dictionary.active.accessible(current_user).find_by_name(d.strip).id} : []
+      params[:dictionaries].split(',').collect{|d| Dictionary.active.find_by_name(d.strip).id} : []
 
     @result = {}
     if params[:text].present?

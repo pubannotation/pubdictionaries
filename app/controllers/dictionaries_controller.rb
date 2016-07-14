@@ -22,7 +22,7 @@ class DictionariesController < ApplicationController
   ###########################
 
   def index
-    @dictionaries_grid = initialize_grid(Dictionary.active.accessible(current_user),
+    @dictionaries_grid = initialize_grid(Dictionary.active,
       :order => 'created_at',
       :order_direction => 'desc',
       :per_page => 10
@@ -36,14 +36,14 @@ class DictionariesController < ApplicationController
 
   def show
     begin
-      @dictionary = Dictionary.active.accessible(current_user).find_by_name(params[:id])
+      @dictionary = Dictionary.active.find_by_name(params[:id])
       raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
 
       if params[:label_search]
-        @labels = Label.search_as_text(params[:label_search], @dictionary, params[:page]).records
-        @entries = @labels.inject([]){|s, label| s + label.entries}
+        @entries = Entry.search_as_text(params[:label_search], @dictionary, params[:page]).records
       elsif params[:id_search]
-        @identifier = @dictionary.identifiers.find_by_value(params[:id_search])
+        @entries = @dictionary.find_by_identifier(params[:id_search])
+        raise ArgumentError, "Cannot find the identifier, #{params[:id_search]}."
         @entries = @identifier.entries.inject([]){|s, e| e.dictionaries.include?(@dictionary) ? s << e : s}
       else
         @entries = @dictionary.entries.page(params[:page]) if @dictionary.present?
@@ -51,7 +51,7 @@ class DictionariesController < ApplicationController
 
       respond_to do |format|
         format.html
-        format.json { send_data @dictionary.entries.to_json, filename: "#{@dictionary.name}.json", type: :json }
+        format.json { send_data @dictionary.entries.to_json(only:[:label,:identifier]), filename: "#{@dictionary.name}.json", type: :json }
         format.tsv  { send_data @dictionary.entries.as_tsv,  filename: "#{@dictionary.name}.tsv",  type: :tsv  }
       end
     rescue => e
@@ -65,7 +65,7 @@ class DictionariesController < ApplicationController
 
   def new
     @dictionary = Dictionary.new
-    @dictionary.creator = current_user.email     # set the creator with the user name (email)
+    @dictionary.user = current_user    # set the creator with the user name
     @submit_text = 'Create'
 
     respond_to do |format|
@@ -114,7 +114,7 @@ class DictionariesController < ApplicationController
       raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}, in your management." if dictionary.nil?
 
       raise ArgumentError, "A source dictionary should be specified." if params[:source_dictionary].nil?
-      source_dictionary = Dictionary.active.accessible(current_user).find_by_name(params[:source_dictionary])
+      source_dictionary = Dictionary.active.find_by_name(params[:source_dictionary])
       raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}." if source_dictionary.nil?
       raise ArgumentError, "You cannot clone from itself." if source_dictionary == dictionary
 

@@ -2,23 +2,45 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
 	include StateManagement
 
 	def perform
+    ActiveRecord::Base.connection.execute('vacuum analyze entries')
     begin
-      ActiveRecord::Base.transaction do
-      	count = 0
-        File.foreach(filename) do |line|
-          label, id = Entry.read_entry_line(line)
-          unless label.nil?
-            e = Entry.get_by_value(label, id)
+      transaction_size = 10000
+      num_entries = File.read(filename).each_line.count
+      @job.update_attribute(:num_items, num_entries)
+      @job.update_attribute(:num_dones, 0)
+
+      new_entries = []
+      add_entries = []
+      File.foreach(filename).with_index do |line, i|
+        label, id = Entry.read_entry_line(line)
+        if label.nil?
+          # invalid entry line detected.
+          # output an error message or just ignore it.
+        else
+          e = Entry.get_by_value(label, id)
+          if e.nil?
+            new_entries << [label, id]
+            if new_entries.length >= transaction_size
+              dictionary.add_new_entries(new_entries)
+              new_entries.clear
+              @job.update_attribute(:num_dones, i + 1)
+            end
+          else
             unless dictionary.entries.include?(e)
-              dictionary.entries << e
-              e.label.__elasticsearch__.update_document
-              count += 1
+              add_entries << e
+              if add_entries.length >= transaction_size
+                dictionary.add_entries(add_entries)
+                add_entries.clear
+                @job.update_attribute(:num_dones, i + 1)
+              end
             end
           end
         end
-        dictionary.increment!(:entries_count, count)
       end
-
+      dictionary.add_entries(add_entries) unless add_entries.empty?
+      dictionary.add_new_entries(new_entries) unless new_entries.empty?
+      @job.update_attribute(:num_dones, num_entries)
+  
     rescue => e
 			@job.message = e.message
     end

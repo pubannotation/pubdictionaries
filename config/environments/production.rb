@@ -15,6 +15,8 @@ PubDictionaries::Application.configure do
     enable_starttls_auto: true,
   }
   
+  config.eager_load = true
+
   # Code is not reloaded between requests
   config.cache_classes = true
 
