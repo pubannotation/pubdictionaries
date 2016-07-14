@@ -115,7 +115,7 @@ class DictionariesController < ApplicationController
 
       raise ArgumentError, "A source dictionary should be specified." if params[:source_dictionary].nil?
       source_dictionary = Dictionary.active.find_by_name(params[:source_dictionary])
-      raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}." if source_dictionary.nil?
+      raise ArgumentError, "Cannot find the dictionary, #{params[:source_dictionary]}." if source_dictionary.nil?
       raise ArgumentError, "You cannot clone from itself." if source_dictionary == dictionary
 
       delayed_job = Delayed::Job.enqueue CloneDictionaryJob.new(source_dictionary, dictionary), queue: :general
@@ -147,7 +147,7 @@ class DictionariesController < ApplicationController
       end
     rescue => e
       respond_to do |format|
-        format.html {redirect_to :back, notice: e.message}
+        format.html {redirect_to dictionaris_path, notice: e.message}
         format.json {head :no_content}
       end
     end

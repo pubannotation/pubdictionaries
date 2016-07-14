@@ -53,14 +53,14 @@
     padding-right: 18px;
     text-decoration:none;
   }
-
+/*
   .desc {
     background: transparent image-url("icons/grid/arrow_down.gif") right no-repeat
   }
   .asc  {
     background: transparent image-url("icons/grid/arrow_up.gif")   right no-repeat
   }
-
+*/
   .submit.clickable{
     background: transparent image-url("icons/grid/table_refresh.png") no-repeat;
     @include icon-dimensions;

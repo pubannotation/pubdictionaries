@@ -29,13 +29,17 @@ PubDictionaries::Application.routes.draw do
     end
   end
 
-  resources :labels
-  resources :identifiers
-
   # devise_for :users
   devise_for :users
+
+  resource :users do
+    get '/' => 'users#index'
+    get :autocomplete_username, :on => :collection
+  end
+
+  match '/users/:name' => 'users#show', :as => 'show_user'
   
-  get "home/index"
+  get "home/index", as: "home"
   get "home/about", as: "about"
 
   get "manual/basic"
@@ -50,7 +54,6 @@ PubDictionaries::Application.routes.draw do
 
   resources :users do
     resources :dictionaries
-    resources :user_dictionaries
   end
 
   resources :dictionaries do
@@ -95,16 +98,7 @@ PubDictionaries::Application.routes.draw do
       end
     end
   end
-
-  resources :user_dictionaries do
-    resources :new_entries
-    resources :removed_entries
-
-    collection do
-      get 'index_for_owner'
-    end
-  end
-  
+ 
   # The priority is based upon order of creation:
   # first created -> highest priority.
 

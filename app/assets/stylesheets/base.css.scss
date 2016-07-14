@@ -30,6 +30,7 @@ thead {
 table {
   border-collapse: collapse;
   border: 1px solid gray;
+
   tr {
     border: 1px solid gray;
     th, td {
@@ -38,6 +39,7 @@ table {
     }
     th {
       background-color: #ccccff;
+      text-align: center;
     }
   }
 }

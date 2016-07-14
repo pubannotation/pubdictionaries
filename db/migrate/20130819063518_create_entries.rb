@@ -2,8 +2,8 @@ class CreateEntries < ActiveRecord::Migration
   def change
     create_table :entries do |t|
       t.string :label
-      t.string :terms
-      t.integer :terms_length
+      t.string :norm
+      t.integer :norm_length
       t.string :identifier
       t.boolean :flag, default: false
       t.timestamps

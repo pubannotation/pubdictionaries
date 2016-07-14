@@ -20,8 +20,8 @@ class Entry < ActiveRecord::Base
   } do
     mappings do
       indexes :label, type: :string, analyzer: :standard_normalization, index_options: :docs
-      indexes :terms, type: :string, index: :not_analyzed
-      indexes :terms_length, type: :integer
+      indexes :norm, type: :string, index: :not_analyzed
+      indexes :norm_length, type: :integer
       indexes :identifier, type: :string, index: :not_analyzed
       indexes :entries_dictionaries do
         indexes :id, type: :long
@@ -30,7 +30,7 @@ class Entry < ActiveRecord::Base
   end
 
   attr_accessible :label, :identifier, :dictionaries_num, :flag
-  attr_accessible :terms, :terms_length
+  attr_accessible :norm, :norm_length
 
   has_many :membership
   has_many :dictionaries, :through => :membership
@@ -73,7 +73,7 @@ class Entry < ActiveRecord::Base
 
   def as_indexed_json(options={})
     as_json(
-      only: [:id, :label, :terms, :terms_length, :identifier],
+      only: [:id, :label, :norm, :norm_length, :identifier],
       include: {dictionaries: {only: :id}}
     )
   end
@@ -84,7 +84,7 @@ class Entry < ActiveRecord::Base
         filtered: {
           query: {
             match: {
-              label: {
+              norm: {
                 query: keywords,
                 operator: "and",
                 fuzziness: "AUTO"
@@ -101,22 +101,22 @@ class Entry < ActiveRecord::Base
     ).page(page)
   end
 
-  def self.search_as_term(label, terms, dictionaries = [])
+  def self.es_search_as_term(term, tokens, dictionaries = [])
     self.__elasticsearch__.search(
       min_score: 0.2,
       query: {
         bool: {
           must: {
             match: {
-              label: {
-                query: label,
+              norm: {
+                query: term,
                 operator: "and",
                 fuzziness: "AUTO"
               }
             }
           },
           filter: [
-            {range: {terms_length: {"lte" => terms.length + 1}}},
+            {range: {norm_length: {"lte" => tokens.length + 1}}},
             {terms: {"dictionaries.id" => dictionaries}}
           ]
         }
@@ -124,11 +124,11 @@ class Entry < ActiveRecord::Base
     )
   end
 
-  def self.search_by_label(string, string_tokens, dictionaries, threshold)
-    es_results = Entry.search_as_term(string, string_tokens, dictionaries).results
-    entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, terms: r.terms.split(/\t/)}}
-    entries = entries.collect{|label| label.merge(score: cosine_sim(string_tokens, label[:terms]))}.delete_if{|label| label[:score] < threshold}
-    {es_results_count: es_results.total, entries: entries}
+  def self.search_by_term(term, term_tokens, dictionaries, threshold)
+    es_results = Entry.es_search_as_term(term, term_tokens, dictionaries).results
+    entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, tokens: r.norm.split(/\t/)}}
+    entries.collect!{|entry| entry.merge(score: cosine_sim(term_tokens, entry[:tokens]))}.delete_if{|entry| entry[:score] < threshold}
+    entries
   end
 
   # Compute similarity of two strings
@@ -143,7 +143,7 @@ class Entry < ActiveRecord::Base
     return (string_tokens & label_tokens).size.to_f / Math.sqrt(string_tokens.size * label_tokens.size)
   end
 
-  def self.uncapitalize(text)
+  def self.decapitalize(text)
     text.gsub(/(^| )[A-Z][a-z ]/, &:downcase)
   end
 
@@ -156,7 +156,4 @@ class Entry < ActiveRecord::Base
     (JSON.parse RestClient.post('http://localhost:9200/labels/_analyze?analyzer=standard_normalization', text), symbolize_names: true)[:tokens]
   end
 
-  def self.get_term_vector(label_id)
-    (JSON.parse RestClient.get("http://localhost:9200/labels/label/#{label_id}/_termvector"))["term_vectors"]["label"]["terms"].keys
-  end
 end

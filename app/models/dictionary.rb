@@ -27,6 +27,14 @@ class Dictionary < ActiveRecord::Base
 
   scope :active, where(active: true)
 
+  scope :mine, -> (user) {
+    if user.nil?
+      none
+    else
+      where('user_id = ?', user.id)
+    end
+  }
+
   scope :editable, -> (user) {
     if user.nil?
       none
@@ -44,12 +52,10 @@ class Dictionary < ActiveRecord::Base
   end
 
   def add_entry(label, id)
-    label = Entry.uncapitalize(label)
-
     e = Entry.get_by_value(label, id)
     if e.nil?
-      terms = Entry.tokenize(label).collect{|t| t[:token]}
-      e = Entry.create(label:label, identifier:id, terms: terms.join("\t"), terms_length: terms.length)
+      tokens = Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}
+      e = Entry.create(label:label, identifier:id, norm: tokens.join("\t"), norm_length: tokens.length)
     end
 
     unless entries.include?(e)
@@ -76,11 +82,10 @@ class Dictionary < ActiveRecord::Base
   end
 
   def add_new_entries(pairs)
-    # ActiveRecord::Base.transaction do
+    ActiveRecord::Base.transaction do
       new_entries = pairs.map do |label, id|
-        label = Entry.uncapitalize(label)
-        terms = Entry.tokenize(label).collect{|t| t[:token]}
-        Entry.new(label:label, identifier:id, terms: terms.join("\t"), terms_length: terms.length, dictionaries_num:1, flag:true)
+        tokens = Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}
+        Entry.new(label:label, identifier:id, norm: tokens.join("\t"), norm_length: tokens.length, dictionaries_num:1, flag:true)
       end
       r = Entry.import new_entries, validate: false
       raise "Import error" unless r.failed_instances.empty?
@@ -90,11 +95,11 @@ class Dictionary < ActiveRecord::Base
       Entry.where(flag: true).update_all(flag: false)
 
       increment!(:entries_num, new_entries.length)
-    # end
+    end
   end
 
   def add_entries(entries)
-    # ActiveRecord::Base.transaction do
+    ActiveRecord::Base.transaction do
       self.entries += entries
       entries.update_all('dictionaries_num = dictionaries_num + 1')
 
@@ -103,26 +108,33 @@ class Dictionary < ActiveRecord::Base
       entries.update_all(flag:false)
 
       increment!(:entries_num, entries.length)
-    # end
+    end
   end
 
   def empty_entries
-    entries.update_all('dictionaries_num = dictionaries_num - 1')
-    Entry.delete(Entry.joins(:membership).where("memberships.dictionary_id" => self.id, dictionaries_num: 0).pluck(:id))
+    ActiveRecord::Base.transaction do
+      entries.update_all('dictionaries_num = dictionaries_num - 1')
+      Entry.delete(Entry.joins(:membership).where("memberships.dictionary_id" => self.id, dictionaries_num: 0).pluck(:id))
 
-    entries.update_all(flag:true)
-    entries.delete_all
-    Entry.__elasticsearch__.import query: -> {where(flag:true)}
-    Entry.where(flag:true).update_all(flag:false)
+      entries.update_all(flag:true)
+      entries.delete_all
+      Entry.__elasticsearch__.import query: -> {where(flag:true)}
+      Entry.where(flag:true).update_all(flag:false)
 
-    update_attribute(:entries_num, 0)
+      update_attribute(:entries_num, 0)
+    end
   end
 
   def self.find_labels_ids(labels, dictionaries = [], threshold = 0.85, rich = false)
     labels.inject({}) do |dic, label|
-      dic[label] = Entry.search_by_label(label, Label.tokenize(label).collect{|t| t[:token]}, dictionaries, threshold)[:entries]
+      dic[label] = Entry.search_by_term(label, Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}, dictionaries, threshold)
       dic[label].map!{|entry| entry[:identifier]} unless rich
       dic
     end
+  end
+
+  def destroy
+    empty_entries
+    self.delete
   end
 end

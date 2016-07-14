@@ -3,12 +3,7 @@ class CloneDictionaryJob < Struct.new(:source_dictionary, :dictionary)
 
 	def perform
     begin
-      ActiveRecord::Base.transaction do
-        source_dictionary.entries.each do |e|
-          dictionary.entries << e
-        end
-        dictionary.update_attribute(:entries_count, dictionary.entries.count)
-      end
+      dictionary.add_entries(source_dictionary.entries)
     rescue => e
 			@job.message = e.message
     end

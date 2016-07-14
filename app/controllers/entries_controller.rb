@@ -25,10 +25,10 @@ class EntriesController < ApplicationController
       respond_to do |format|
         format.html {redirect_to :back}
       end
-    # rescue => e
-    #   respond_to do |format|
-    #     format.html {redirect_to :back, notice: e.message}
-    #   end
+    rescue => e
+      respond_to do |format|
+        format.html {redirect_to :back, notice: e.message}
+      end
     end
   end
 

@@ -27,7 +27,7 @@ class TextAnnotator
   #
   def annotate(text)
     # tokens are produced in the order of their position
-    tokens = Entry.tokenize(Entry.uncapitalize(text))
+    tokens = Entry.tokenize(Entry.decapitalize(text))
 
     # index spans with their tokens and positions (array)
     span_index = {}
@@ -52,10 +52,10 @@ class TextAnnotator
     span_entries = {}
     bad_key = nil
     span_index.keys.each do |span|
-      r = Entry.search_by_label(span, span_index[span][:tokens], @dictionaries, @threshold)
+      entries = Entry.search_by_term(span, span_index[span][:tokens], @dictionaries, @threshold)
 
-      if r[:entries].present?
-        span_entries[span] = r[:entries]
+      if entries.present?
+        span_entries[span] = entries
       end
     end
 

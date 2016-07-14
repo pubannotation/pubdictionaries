@@ -42,8 +42,8 @@ ActiveRecord::Schema.define(:version => 20160707114132) do
 
   create_table "entries", :force => true do |t|
     t.string   "label"
-    t.string   "terms"
-    t.integer  "terms_length"
+    t.string   "norm"
+    t.integer  "norm_length"
     t.string   "identifier"
     t.boolean  "flag",             :default => false
     t.datetime "created_at",                          :null => false
@@ -81,6 +81,7 @@ ActiveRecord::Schema.define(:version => 20160707114132) do
   add_index "memberships", ["entry_id"], :name => "index_memberships_on_entry_id"
 
   create_table "users", :force => true do |t|
+    t.text     "username",               :default => "", :null => false
     t.string   "email",                  :default => "", :null => false
     t.string   "encrypted_password",     :default => "", :null => false
     t.string   "reset_password_token"
@@ -97,5 +98,6 @@ ActiveRecord::Schema.define(:version => 20160707114132) do
 
   add_index "users", ["email"], :name => "index_users_on_email", :unique => true
   add_index "users", ["reset_password_token"], :name => "index_users_on_reset_password_token", :unique => true
+  add_index "users", ["username"], :name => "index_users_on_username", :unique => true
 
 end

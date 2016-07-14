@@ -3,12 +3,9 @@ class DestroyDictionaryJob < Struct.new(:dictionary)
 
 	def perform
     begin
-      ActiveRecord::Base.transaction do
-        dictionary.destroy
-      end
+      dictionary.destroy
     rescue => e
 			@job.message = e.message
     end
-		# Doc.index_diff if Doc.diff_flag
 	end
 end

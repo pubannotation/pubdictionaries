@@ -3,9 +3,7 @@ class EmptyEntriesJob < Struct.new(:dictionary)
 
 	def perform
     begin
-      ActiveRecord::Base.transaction do
-        dictionary.empty_entries
-      end
+      dictionary.empty_entries
     rescue => e
 			@job.message = e.message
     end
