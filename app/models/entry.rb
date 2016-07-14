@@ -19,8 +19,8 @@ class Entry < ActiveRecord::Base
     }
   } do
     mappings do
-      indexes :label, type: :string, analyzer: :standard_normalization, index_options: :docs
-      indexes :norm, type: :string, index: :not_analyzed
+      indexes :label, type: :string, index: :not_analyzed
+      indexes :norm, type: :string, analyzer: :standard_normalization, index_options: :docs
       indexes :norm_length, type: :integer
       indexes :identifier, type: :string, index: :not_analyzed
       indexes :entries_dictionaries do
