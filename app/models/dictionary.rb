@@ -54,7 +54,7 @@ class Dictionary < ActiveRecord::Base
   def add_entry(label, id)
     e = Entry.get_by_value(label, id)
     if e.nil?
-      tokens = Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}
+      tokens = Entry.tokenize(Entry.decapitalize(label.gsub('{', '\{').sub(/^-/, '\-'))).collect{|t| t[:token]}
       e = Entry.create(label:label, identifier:id, norm: tokens.join("\t"), norm_length: tokens.length)
     end
 
@@ -85,8 +85,8 @@ class Dictionary < ActiveRecord::Base
     ActiveRecord::Base.transaction do
       new_entries = pairs.map do |label, id|
         begin
-          # opening brace characters needs to be escaped
-          tokens = Entry.tokenize(Entry.decapitalize(label.gsub('{', '\{'))).collect{|t| t[:token]}
+          # escaping special characters
+          tokens = Entry.tokenize(Entry.decapitalize(label.gsub('{', '\{').sub(/^-/, '\-'))).collect{|t| t[:token]}
           Entry.new(label:label, identifier:id, norm: tokens.join("\t"), norm_length: tokens.length, dictionaries_num:1, flag:true)
         rescue => e
           raise ArgumentError, "The entry, [#{label}, #{id}], is rejected due to an unexpected reason."
