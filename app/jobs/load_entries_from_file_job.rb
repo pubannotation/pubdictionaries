@@ -3,6 +3,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
 
 	def perform
     ActiveRecord::Base.connection.execute('vacuum analyze entries')
+    ActiveRecord::Base.connection.execute('vacuum analyze memberships')
     begin
       transaction_size = 10000
       num_entries = File.read(filename).each_line.count
@@ -24,6 +25,9 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
               dictionary.add_new_entries(new_entries)
               new_entries.clear
               @job.update_attribute(:num_dones, i + 1)
+              GC.start
+              ActiveRecord::Base.connection.execute('vacuum analyze entries')
+              ActiveRecord::Base.connection.execute('vacuum analyze memberships')
             end
           else
             unless dictionary.entries.include?(e)
@@ -32,6 +36,9 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
                 dictionary.add_entries(add_entries)
                 add_entries.clear
                 @job.update_attribute(:num_dones, i + 1)
+                GC.start
+                ActiveRecord::Base.connection.execute('vacuum analyze entries')
+                ActiveRecord::Base.connection.execute('vacuum analyze memberships')
               end
             end
           end

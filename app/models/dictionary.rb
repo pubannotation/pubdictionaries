@@ -89,9 +89,9 @@ class Dictionary < ActiveRecord::Base
           tokens = Entry.tokenize(Entry.decapitalize(label.gsub('{', '\{').sub(/^-/, '\-'))).collect{|t| t[:token]}
           Entry.new(label:label, identifier:id, norm: tokens.join("\t"), norm_length: tokens.length, dictionaries_num:1, flag:true)
         rescue => e
-          raise ArgumentError, "The entry, [#{label}, #{id}], is rejected due to an unexpected reason."
+          raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e}."
         end
-      end.compact
+      end
 
       r = Entry.import new_entries, validate: false
       raise "Import error" unless r.failed_instances.empty?
