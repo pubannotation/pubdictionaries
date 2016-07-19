@@ -8,10 +8,15 @@ class MappingController < ApplicationController
       params[:dictionaries].split(',').collect{|d| Dictionary.active.find_by_name(d.strip).id} : []
 
     @result = {}
-    if params[:labels]
+    labels = if params[:labels]
+      params[:labels].strip.split(/[\n\t\r|]+/)
+    elsif params[:_json]
+      params[:_json]
+    end
+
+    if labels.present?
       rich = true if params[:rich] == 'true' || params[:rich] == '1'
-      threshold = params[:threshold].to_f if params[:threshold].present?
-      labels = params[:labels].strip.split(/[\n\t\r|]+/)
+      threshold = params[:threshold].present? ? params[:threshold].to_f : 0.85
       @result = Dictionary.find_labels_ids(labels, @selected, threshold, rich)
     end
 
