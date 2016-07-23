@@ -66,6 +66,8 @@ class Entry < ActiveRecord::Base
     return nil if items[0].length < 2 || items[0].length > 64
     return nil if items[0].empty? || items[1].empty?
 
+    return nil if items[1].length > 255
+
     [items[0], items[1]]
   end
 
