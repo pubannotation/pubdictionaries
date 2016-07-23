@@ -5,7 +5,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
     ActiveRecord::Base.connection.execute('vacuum analyze entries')
     ActiveRecord::Base.connection.execute('vacuum analyze memberships')
     begin
-      transaction_size = 10000
+      transaction_size = 1000
       num_entries = File.read(filename).each_line.count
       @job.update_attribute(:num_items, num_entries)
       @job.update_attribute(:num_dones, 0)
@@ -25,7 +25,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
               dictionary.add_new_entries(new_entries)
               new_entries.clear
               @job.update_attribute(:num_dones, i + 1)
-              GC.start
+              # GC.start
               ActiveRecord::Base.connection.execute('vacuum analyze entries')
               ActiveRecord::Base.connection.execute('vacuum analyze memberships')
             end
@@ -36,7 +36,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
                 dictionary.add_entries(add_entries)
                 add_entries.clear
                 @job.update_attribute(:num_dones, i + 1)
-                GC.start
+                # GC.start
                 ActiveRecord::Base.connection.execute('vacuum analyze entries')
                 ActiveRecord::Base.connection.execute('vacuum analyze memberships')
               end

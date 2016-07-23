@@ -54,12 +54,14 @@ class Dictionary < ActiveRecord::Base
   def add_entry(label, id)
     e = Entry.get_by_value(label, id)
     if e.nil?
-      tokens = Entry.tokenize(Entry.decapitalize(label.gsub('{', '\{').sub(/^-/, '\-'))).collect{|t| t[:token]}
+      tokens = Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}
       e = Entry.create(label:label, identifier:id, norm: tokens.join("\t"), norm_length: tokens.length)
     end
 
     unless entries.include?(e)
-      entries << e
+      # entries << e
+      ActiveRecord::Base.connection.execute(%{INSERT INTO "memberships" ("created_at", "dictionary_id", "entry_id", "updated_at") VALUES (now(), #{self.id}, #{e.id}, now()) returning "id"})
+
       increment!(:entries_num)
       e.increment!(:dictionaries_num)
       e.__elasticsearch__.index_document
@@ -86,7 +88,7 @@ class Dictionary < ActiveRecord::Base
       new_entries = pairs.map do |label, id|
         begin
           # escaping special characters
-          tokens = Entry.tokenize(Entry.decapitalize(label.gsub('{', '\{').sub(/^-/, '\-'))).collect{|t| t[:token]}
+          tokens = Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}
           Entry.new(label:label, identifier:id, norm: tokens.join("\t"), norm_length: tokens.length, dictionaries_num:1, flag:true)
         rescue => e
           raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e}."
@@ -96,7 +98,11 @@ class Dictionary < ActiveRecord::Base
       r = Entry.import new_entries, validate: false
       raise "Import error" unless r.failed_instances.empty?
 
-      self.entries += Entry.where(flag: true)
+      # self.entries += Entry.where(flag: true)
+      new_eids = Entry.where(flag: true).pluck(:id)
+      new_records = new_eids.map{|eid| "(now(), #{self.id}, #{eid}, now())"}
+      ActiveRecord::Base.connection.execute(%{INSERT INTO "memberships" ("created_at", "dictionary_id", "entry_id", "updated_at") VALUES } + new_records.join(", "))
+
       Entry.__elasticsearch__.import query: -> {where(flag:true)}
       Entry.where(flag: true).update_all(flag: false)
 
@@ -106,12 +112,15 @@ class Dictionary < ActiveRecord::Base
 
   def add_entries(entries)
     ActiveRecord::Base.transaction do
-      self.entries += entries
-      entries.update_all('dictionaries_num = dictionaries_num + 1')
+      # self.entries += entries
+      add_records = entries.map{|e| "(now(), #{self.id}, #{e.id}, now())"}
+      ActiveRecord::Base.connection.execute(%{INSERT INTO "memberships" ("created_at", "dictionary_id", "entry_id", "updated_at") VALUES } + add_records.join(", "))
 
-      entries.update_all(flag:true)
-      Entry.__elasticsearch__.import query: -> {where(flag:true)}
-      entries.update_all(flag:false)
+      # entries.update_all('dictionaries_num = dictionaries_num + 1')
+      entries.each{|e| e.increment!(:dictionaries_num)}
+
+      # Entry.__elasticsearch__.import query: -> {where(flag:true)}
+      Entry.__elasticsearch__.import :scope => :updated
 
       increment!(:entries_num, entries.length)
     end

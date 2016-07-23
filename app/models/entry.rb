@@ -49,6 +49,8 @@ class Entry < ActiveRecord::Base
     end
   end
 
+  scope :updated, where("updated_at > ?", 1.seconds.ago)
+
   def self.get_by_value(label, identifier)
     self.find_by_label_and_identifier(label, identifier)
   end
@@ -153,7 +155,7 @@ class Entry < ActiveRecord::Base
   #
   def self.tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=standard_normalization', text), symbolize_names: true)[:tokens]
+    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=standard_normalization', text.gsub('{', '\{').sub(/^-/, '\-')), symbolize_names: true)[:tokens]
   end
 
 end
