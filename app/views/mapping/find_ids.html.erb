@@ -25,6 +25,8 @@
 
 <h2>Example cURL command</h2>
 <%= text_area_tag :curl_command, '', readonly: true %>
+or
+<%= text_area_tag :curl_json_command, '', readonly: true %>
 
 <h2>Demo</h2>
 <%= text_area_tag :labels, params[:labels], required: true, placeholder: "List of labels (Tab-, newline-, or vertical bar('|')-delimited)" %><br/>
@@ -73,8 +75,11 @@
 		if (params.length > 0) {url += '&' + params.join('&')}
 		$('#rest_url').text(url);
 
-		var command = 'curl -F labels="label1|label2|..." "' + url + '"'
+		var command = 'curl -F labels="label1|label2|..." "' + url + '"';
 		$('#curl_command').text(command);
+
+		var json_command = 'curl -H "content-type:application/json" -d \'["label1", "label2"]\' "' + url + '"';
+		$('#curl_json_command').text(json_command);
 	}
 
 </script>
