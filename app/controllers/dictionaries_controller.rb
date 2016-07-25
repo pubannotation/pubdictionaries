@@ -42,9 +42,7 @@ class DictionariesController < ApplicationController
       if params[:label_search]
         @entries = Entry.search_as_text(params[:label_search], @dictionary, params[:page]).records
       elsif params[:id_search]
-        @entries = @dictionary.find_by_identifier(params[:id_search])
-        raise ArgumentError, "Cannot find the identifier, #{params[:id_search]}."
-        @entries = @identifier.entries.inject([]){|s, e| e.dictionaries.include?(@dictionary) ? s << e : s}
+        @entries = Entry.find_by_identifier(params[:id_search], @dictionary).page(params[:page])
       else
         @entries = @dictionary.entries.page(params[:page]) if @dictionary.present?
       end

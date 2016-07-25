@@ -55,6 +55,10 @@ class Entry < ActiveRecord::Base
     self.find_by_label_and_identifier(label, identifier)
   end
 
+  def self.find_by_identifier(identifier, dictionary)
+    dictionary.nil? ? dictionary.entries.where(identifier:identifier) : self.where(identifier:identifier)
+  end
+
   def self.read_entry_line(line)
     line.strip!
 
