@@ -13,38 +13,47 @@
 
 <body>
   <div class="header">
-    <div id="logo">
-      <%= link_to image_tag("logo.png", { width: "100%", border: "0", alt: "Logo" }), root_path %>
-    </div>
-    <div id='cssmenu'>
-      <ul>
-        <li><%= link_to 'Dictionaries', dictionaries_path %></li>
-        <li><%= link_to 'Find IDs', find_ids_path %></li>
-        <li><%= link_to 'Text Annotation', text_annotation_path %></li>
-        <li class='last'><%= link_to 'About', about_path %></li>
-      </ul>
-    </div>
-    <div class="account">
-      <% if user_signed_in? %>
-        <%= link_to current_user.username, show_user_path(current_user.username) %> |
-        <%= link_to "Logout", destroy_user_session_path, method: :delete %>
-      <% else %>
-        <%= link_to "Sign up", new_user_registration_path %> |
-        <%= link_to "Login", new_user_session_path %>
-      <% end %>
+    <div class="inner">
+      <div class="logo">
+        <%= link_to image_tag("logo.png", { alt: "Logo" }), root_path %>
+      </div>
+      <div class="menu">
+        <ul>
+          <li><%= link_to 'Dictionaries', dictionaries_path %></li>
+          <li><%= link_to 'Find IDs', find_ids_path %></li>
+          <li><%= link_to 'Text Annotation', text_annotation_path %></li>
+          <li><%= link_to 'About', about_path %></li>
+        </ul>
+      </div>
+      <div class="account menu">
+        <% if user_signed_in? %>
+          <ul>
+            <li><%= link_to current_user.username, show_user_path(current_user.username) %></li>
+            <li><%= link_to "Logout", destroy_user_session_path, method: :delete %></li>
+          </ul>
+        <% else %>
+          <ul>
+            <li><%= link_to "Sign up", new_user_registration_path %></li>
+            <li><%= link_to "Login", new_user_session_path %></li>
+          </ul>
+        <% end %>
+      </div>
     </div>
   </div>
-  <% if notice %><div class='message'><span class='notice'><%= flash[:notice] %></span></div><% end %>
-  <% if alert %><div class='message'><span class='alert'><%= alert %></span></div><% end %>
-
   <div class="main">
-    <%= yield %>
+    <div class="inner">
+      <% if notice %><div class='message'><span class='notice'><%= flash[:notice] %></span></div><% end %>
+      <% if alert %><div class='message'><span class='alert'><%= alert %></span></div><% end %>
+      <%= yield %>
+    </div>
   </div>
 
   <div class="footer">
-    <div class="alert">It is now in a test service. You can find the current official service at <%= link_to 'http://pubdictionaries.org', 'http://pubdictionaries.org' %>.</div>
-    <div class="credit">Presented by <%= link_to 'DBCLS', 'http://dbcls.rois.ac.jp' %></div>
-    <div class="contact">We appreciate your any comment to <%= mail_to 'admin@pubdictionaries.org' %></div>
+    <div class="inner">
+      <div class="alert">It is now in a test service. You can find the current official service at <%= link_to 'http://pubdictionaries.org', 'http://pubdictionaries.org' %>.</div>
+      <div class="credit">Presented by <%= link_to 'DBCLS', 'http://dbcls.rois.ac.jp' %></div>
+      <div class="contact">We appreciate your any comment to <%= mail_to 'admin@pubdictionaries.org' %></div>
+    </div>
   </div>
   <%= yield :bottom_js -%>
 </body>
