@@ -1,6 +1,8 @@
 <div class="tab-bar">
 <%= link_to 'TSV',  params.merge(controller: :dictionaries, action: :show, format: :tsv),  :class => 'tab' -%>
 <%= link_to 'JSON', params.merge(controller: :dictionaries, action: :show, format: :json), :class => 'tab' -%>
+&nbsp;
+<%= link_to('Show all', dictionary_path(@dictionary), class: 'button') if params[:label_search] || params[:id_search] -%>
 </div>
 <table class="entries">
   <thead>
@@ -11,7 +13,6 @@
   	      <%= text_field_tag :label_search, params[:label_search], required: true -%>
     	    <%= submit_tag 'Search', class: 'button' -%>
     	  <% end -%>
-        <%= link_to('Show all', dictionary_path(@dictionary), class: 'button') if params[:label_search] || params[:id_search] -%>
       </th>
       <th class="identifier">
         Id
