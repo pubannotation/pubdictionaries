@@ -12,15 +12,15 @@
       end
 
       g.column name: "Language", attribute: "language" do |dic| 
-        dic.language
+        dic.language.empty? ? '-' : dic.language
       end
 
       g.column name: "Size", attribute: "entries_num", filter: false do |dic| 
-        dic.entries_num
+        number_with_delimiter(dic.entries_num, :delimiter => ',')
       end
 
       g.column name: "Created By", attribute: "user_id", filter: false do |dic| 
-        dic.user.email
+        dic.user.username
       end
 
       g.column name: "Created At", attribute: "created_at", filter: false do |dic| 
