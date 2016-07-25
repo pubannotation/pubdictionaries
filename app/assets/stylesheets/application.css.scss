@@ -12,22 +12,3 @@
  *= require jquery-ui
  *= require_tree .
  */
-
-@import "font-awesome-sprockets";
-@import "font-awesome";
-
-.pagination li {
-  display:inline-block;
-}
-
-.desc, .asc{
-  padding-right: 18px;
-  text-decoration:none;
-}
-
-.pointer{
-  cursor: pointer;
-}
-#form_validate_message{
-  color: #f00;
-}

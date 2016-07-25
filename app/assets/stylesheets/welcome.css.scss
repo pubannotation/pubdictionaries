@@ -2,3 +2,19 @@
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
+.illustrate {
+	max-width: 600px;
+	margin: 0 auto 15px auto;
+
+	.slogan {
+		margin: 5px auto;
+	  font-size: large;
+	  font-style: italic;
+	  text-align: center;
+	  text-decoration: underline;
+	}
+
+	img {
+		width: 100%;
+	}
+}

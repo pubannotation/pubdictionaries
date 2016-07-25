@@ -1,7 +1,23 @@
+body {
+  margin: 0;
+  background-color: #fafafa;
+  color: #666;
+  font-family: verdana, arial, helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.inner {
+  position:relative;
+  max-width:800px;
+  margin:0 auto;
+  padding: 4px;
+}
+
 .header, .footer {
   background: #336699;
-  color: #cccccc;
-  padding: 4px;
+  color: #cfcfcf;
 
   a {
     color: #cccccc;
@@ -18,24 +34,28 @@
 }
 
 .header {
-  position:relative;
-  height: 32px;
-
-  #logo {
+  .logo {
     display: inline-block;
-    width: 180px;
-    vertical-align: middle;
   }
 
-  #cssmenu {
-    vertical-align: bottom;
-    margin-left: 20px;
+  .menu {
+    display: inline-block;
+    margin: 0 8px;
+
+    ul {
+      margin: 0;
+      padding: 0;
+      li {
+        display:inline-block;
+        margin: 0 5px;
+      }
+    }
   }
 
   .account {
     position: absolute;
     right: 4px;
-    bottom: 4px;
+    top: 2px;
     display: inline-block;
   }
 
