@@ -1,21 +1,27 @@
-<div class="title">H O M E</div>
-<hr/>
-<p><b>PubDictionaries</b> is a public repository of dictionaries for language processing.</p>
-<p>Here, a dictionary means a collection of <i>labels</i> and their corresponding <i>identifiers</i>, e.g.,</p>
-<ul style="list-style-type: none">
-  <li>label_1, identifier_a</li>
-  <li>label_2, identifier_a</li>
-  <li>label_2, identifier_b</li>
-  <li>...</li>
+<div class="illustrate">
+<%= image_tag("illustrate.svg", { alt: "Illustration" }) %>
+</div>
+
+<div style="border:2px solid #111111">
+<ul>
+  <li><b>PubDictionaries</b> is a public repository of dictionaries.</li>
+  <li>A <b>dictionary</b> is a collection of <i>labels</i> and their corresponding <i>identifiers</i>, e.g.,</li>
+  <ul style="list-style-type: none; font-style:italic">
+    <li>Human → NCBITaxon_9606</li>
+    <li>Alzheimerdisease → HP_0002511</li>
+    <li>...</li>
+  </ul>
+  <li>An <b>identifier</b> may be a <i>URI (uniform resource identifier)</i>, or one  for a database entry.</li>
+  <li>A <b>label</b> is a natural language term which refers to the the object identified by the corresponding identifier.</li>
+  <li>Identifiers are unambiguous, and are basis of any information system.</p>
+  <li>Terms are human-friendly, and are basis for human-facing interfaces.</p>
+  <li>A <b>dictionary</b> thus plays a crucial role for connecting human-oriented user interface and machine-oriented.</li>
+  <li>PubDictionaries is developed to share dictionaries.</li>
+  <li>Anyone can upload his/her dictionaries in <b>TSV (tab-separeted values)</b>.</li>
+  <li>Once, a dictionary is stored in PubAnnitation, it becomes ready for action, e.g., to annotate text, through <b>REST API</b>.</li>
 </ul>
-<p><b>Identifiers</b> may be <i>URIs (uniform resource identifier)</i>, or those for database entries.
-They are unambiguous, and are basis of any information system.</p>
-<p><b>Labels</b> are natural language terms which refer to the the objects identified by the corresponding identifiers.
-They are human-friendly, and are basis for human-facing interfaces.</p>
-<p>A <b>dictionary</b> thus plays a crucial role for connecting human-oriented user interface and machine-oriented processes.</p>
-<p>PubDictionaries is developed to share dictionaries.</p>
-<p>Anyone can upload his/her dictionaries in <b>TSV (tab-separeted values)</b>.</p>
-<p>Onece, a dictionary is stored in PubAnnitation, it becomes ready for action, e.g., to annotate text, through <b>REST API</b>.</p>
+</div>
+
 <!-- 
 <div class="history">
   <fieldset>
