@@ -135,6 +135,13 @@ class Entry < ActiveRecord::Base
   def self.search_by_term(term, term_tokens, dictionaries, threshold)
     es_results = Entry.es_search_as_term(term, term_tokens, dictionaries).results
     entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, tokens: r.norm.split(/\t/)}}
+    entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, entry[:label]))}.delete_if{|entry| entry[:score] < threshold}
+    entries
+  end
+
+  def self.search_by_nterm(term, term_tokens, dictionaries, threshold)
+    es_results = Entry.es_search_as_term(term, term_tokens, dictionaries).results
+    entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, tokens: r.norm.split(/\t/)}}
     entries.collect!{|entry| entry.merge(score: cosine_sim(term_tokens, entry[:tokens]))}.delete_if{|entry| entry[:score] < threshold}
     entries
   end
@@ -144,11 +151,19 @@ class Entry < ActiveRecord::Base
   # * (string) string1
   # * (string) string2
   #
-  def self.cosine_sim(string_tokens, label_tokens)
-    # extraploate tokens with bigrams
-    # bigrams = []; tokens1.each_cons(2){|a| bigrams << a}; tokens1 += bigrams
-    # bigrams = []; tokens2.each_cons(2){|a| bigrams << a}; tokens2 += bigrams
-    return (string_tokens & label_tokens).size.to_f / Math.sqrt(string_tokens.size * label_tokens.size)
+  def self.str_cosine_sim(str1, str2)
+    bigrams1 = []; str1.gsub(/\W/,'').downcase.split('').each_cons(2){|a| bigrams1 << a};
+    bigrams2 = []; str2.gsub(/\W/,'').downcase.split('').each_cons(2){|a| bigrams2 << a};
+    cosine_sim(bigrams1, bigrams2)
+  end
+
+  # Compute similarity of two strings
+  #
+  # * (array) items1
+  # * (array) items2
+  #
+  def self.cosine_sim(items1, items2)
+    return (items1 & items2).size.to_f / Math.sqrt(items1.size * items2.size)
   end
 
   def self.decapitalize(text)

@@ -140,7 +140,7 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
-  def self.find_labels_ids(labels, dictionaries = [], threshold = 0.85, rich = false)
+  def self.find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
     labels.inject({}) do |dic, label|
       dic[label] = Entry.search_by_term(label, Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}, dictionaries, threshold)
       dic[label].map!{|entry| entry[:identifier]} unless rich
