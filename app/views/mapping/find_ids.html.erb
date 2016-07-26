@@ -64,7 +64,7 @@ or
 	});
 
 	function set_url() {
-		var param_dics = $('#dictionaries').text().split(',').map(function(v, i){return 'dictionary=' + v}).join('&');
+		var dics = $('#dictionaries').text();
 		var param1 = $('#param1').val();
 		var param2 = $('#param2').val();
 
@@ -72,8 +72,13 @@ or
 		if (param1 != '') {params.push(param1)};
 		if (param2 != '') {params.push(param2)};
 
-		var url = '<%= root_url %>find_ids.json' + '?'  + param_dics;
-		if (params.length > 0) {url += '&' + params.join('&')}
+		var url = '<%= root_url %>find_ids.json';
+		if (dics) {url += '?dictionary=' + dics}
+		if (params.length > 0) {
+			if (dics) {url += '&'}
+			else {url += '?'}
+			url += params.join('&');
+		}
 		$('#rest_url').text(url);
 
 		var command = 'curl -F labels="label1|label2|..." "' + url + '"';
