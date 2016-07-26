@@ -29,7 +29,8 @@ or
 <%= text_area_tag :curl_json_command, '', readonly: true %>
 
 <h2>Demo</h2>
-<%= text_area_tag :labels, params[:labels], required: true, placeholder: "List of labels (Tab-, newline-, or vertical bar('|')-delimited)" %><br/>
+<%= text_area_tag :labels, params[:labels], required: true, placeholder: "List of labels (Tab-, newline-, or vertical bar('|')-delimited)" %>
+<br/><br/>
 
 <%= submit_tag 'Find', class: :button %>
 <%= button_tag 'Reset', type: :reset, id: :reset, class: :button %>

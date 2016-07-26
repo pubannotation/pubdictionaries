@@ -69,18 +69,16 @@ a {
 }
 
 h1 {
-  font-size: 1.6em;
   margin: 0 0 10px 0;
-}
-
-h1:before {
-  content: '>';
+  border-left: 15px solid;
+  padding: 0 0 0 5px;
+  font-size: 1.6em;
 }
 
 h2 {
+  margin: 15px 0 5px 0;
   font-size: 1.2em;
 }
-
 
 /* This button was generated using CSSButtonGenerator.com */
 .button {

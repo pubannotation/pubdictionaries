@@ -36,7 +36,8 @@
 <%= text_area_tag :curl_command, '', readonly: true %>
 
 <h2>Demo</h2>
-<%= text_area_tag :text, params[:text], required: true, placeholder: 'text' %><br/>
+<%= text_area_tag :text, params[:text], required: true, placeholder: 'text' %>
+<br/><br/>
 
 <%= submit_tag 'Annotate', class: :button %>
 <%= button_tag 'Reset', type: :reset, id: :reset, class: :button %>
