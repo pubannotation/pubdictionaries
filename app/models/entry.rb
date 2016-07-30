@@ -5,22 +5,41 @@ class Entry < ActiveRecord::Base
   settings index: {
     analysis: {
       analyzer: {
-        standard_normalization: {
+        normalization: {
           tokenizer: :standard,
-          filter: [:standard, :extended_stop, :asciifolding, :kstem]
+          filter: [:standard, :asciifolding, :lowercase, :extended_stop, :snowball_en]
+        },
+        ngrams: {
+          tokenizer: :trigram,
+          filter: [:standard, :asciifolding]
+        },
+        tokenization: {
+          tokenizer: :standard,
+          filter: [:standard, :asciifolding]
         }
       },
       filter: {
+        snowball_en: {
+          type: :snowball,
+          language: :english
+        },
         extended_stop: {
           type: :stop,
           stopwords: ["_english_", "unspecified"]
+        }
+      },
+      tokenizer: {
+        trigram: {
+          type: :ngram,
+          min_gram: 3,
+          max_gram: 3
         }
       }
     }
   } do
     mappings do
-      indexes :label, type: :string, index: :not_analyzed
-      indexes :norm, type: :string, analyzer: :standard_normalization, index_options: :docs
+      indexes :label, type: :string, analyzer: :ngrams, index_options: :docs
+      indexes :norm, type: :string, analyzer: :ngrams, index_options: :docs
       indexes :norm_length, type: :integer
       indexes :identifier, type: :string, index: :not_analyzed
       indexes :entries_dictionaries do
@@ -32,7 +51,7 @@ class Entry < ActiveRecord::Base
   attr_accessible :label, :identifier, :dictionaries_num, :flag
   attr_accessible :norm, :norm_length
 
-  has_many :membership
+  has_many :membership, :dependent => :destroy
   has_many :dictionaries, :through => :membership
 
   validates :label, presence: true
@@ -86,19 +105,28 @@ class Entry < ActiveRecord::Base
     )
   end
 
-  def self.search_as_text(keywords, dictionary = nil, page)
+  def self.search_as_text(text, dictionary = nil, page)
+    norm = Entry.normalize(text)
     self.__elasticsearch__.search(
       query: {
-        filtered: {
-          query: {
-            match: {
-              norm: {
-                query: keywords,
-                operator: "and",
-                fuzziness: "AUTO"
+        bool: {
+          must: [
+            {
+              match: {
+                label: {
+                  query: text
+                }
+              }
+            },
+            {
+              match: {
+                norm: {
+                  query: norm,
+                  boost: 2
+                }
               }
             }
-          },
+          ],
           filter: {
             terms: {
               "dictionaries.id" => [dictionary.id]
@@ -109,22 +137,31 @@ class Entry < ActiveRecord::Base
     ).page(page)
   end
 
-  def self.es_search_as_term(term, tokens, dictionaries = [])
+  def self.es_search_as_term(term, norm, dictionaries = [])
     self.__elasticsearch__.search(
-      min_score: 0.2,
+      size: 20,
+      min_score: 0.3,
       query: {
         bool: {
-          must: {
-            match: {
-              norm: {
-                query: term,
-                operator: "and",
-                fuzziness: "AUTO"
+          must: [
+            {
+              match: {
+                label: {
+                  query: term
+                }
+              }
+            },
+            {
+              match: {
+                norm: {
+                  query: norm,
+                  boost: 2
+                }
               }
             }
-          },
+          ],
           filter: [
-            {range: {norm_length: {"lte" => tokens.length + 1}}},
+            {range: {norm_length: {"lte" => norm.length + 2}}},
             {terms: {"dictionaries.id" => dictionaries}}
           ]
         }
@@ -132,10 +169,11 @@ class Entry < ActiveRecord::Base
     )
   end
 
-  def self.search_by_term(term, term_tokens, dictionaries, threshold)
-    es_results = Entry.es_search_as_term(term, term_tokens, dictionaries).results
-    entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, tokens: r.norm.split(/\t/)}}
-    entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, entry[:label]))}.delete_if{|entry| entry[:score] < threshold}
+  def self.search_by_term(term, dictionaries, threshold)
+    norm = Entry.normalize(term)
+    es_results = Entry.es_search_as_term(term, norm, dictionaries).results
+    entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, norm: r.norm}}
+    entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, norm, entry[:label], entry[:norm]))}.delete_if{|entry| entry[:score] < threshold}
     entries
   end
 
@@ -151,10 +189,12 @@ class Entry < ActiveRecord::Base
   # * (string) string1
   # * (string) string2
   #
-  def self.str_cosine_sim(str1, str2)
-    bigrams1 = []; str1.gsub(/\W/,'').downcase.split('').each_cons(2){|a| bigrams1 << a};
-    bigrams2 = []; str2.gsub(/\W/,'').downcase.split('').each_cons(2){|a| bigrams2 << a};
-    cosine_sim(bigrams1, bigrams2)
+  def self.str_cosine_sim(str1, norm1, str2, norm2)
+    str1_trigrams = []; str1.split('').each_cons(2){|a| str1_trigrams << a};
+    str2_trigrams = []; str2.split('').each_cons(2){|a| str2_trigrams << a};
+    norm1_trigrams = []; norm1.split('').each_cons(2){|a| norm1_trigrams << a};
+    norm2_trigrams = []; norm2.split('').each_cons(2){|a| norm2_trigrams << a};
+    (cosine_sim(str1_trigrams, str2_trigrams) + cosine_sim(norm1_trigrams, norm2_trigrams)) / 2
   end
 
   # Compute similarity of two strings
@@ -170,13 +210,35 @@ class Entry < ActiveRecord::Base
     text.gsub(/(^| )[A-Z][a-z ]/, &:downcase)
   end
 
+  # Get the ngrams of an input text using an analyzer of ElasticSearch.
+  #
+  # * (string) text  - Input text.
+  #
+  def self.get_ngrams(text)
+    raise ArgumentError, "Empty text" if text.empty?
+    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=ngrams', text.gsub('{', '\{').sub(/^-/, '\-')), symbolize_names: true)[:tokens].map{|t| t[:token]}
+  end
+
+  # Get the ngrams of an input text using an analyzer of ElasticSearch.
+  #
+  # * (string) text  - Input text.
+  #
+  def self.normalize(text)
+    raise ArgumentError, "Empty text" if text.empty?
+    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+  end
+
   # Tokenize an input text using an analyzer of ElasticSearch.
   #
   # * (string) text  - Input text.
   #
   def self.tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=standard_normalization', text.gsub('{', '\{').sub(/^-/, '\-')), symbolize_names: true)[:tokens]
+    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=tokenization', text.gsub('{', '\{').sub(/^-/, '\-')), symbolize_names: true)[:tokens]
   end
 
+  def destroy
+    self.__elasticsearch__.delete_document
+    super
+  end
 end

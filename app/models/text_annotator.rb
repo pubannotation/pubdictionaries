@@ -52,7 +52,7 @@ class TextAnnotator
     span_entries = {}
     bad_key = nil
     span_index.keys.each do |span|
-      entries = Entry.search_by_term(span, span_index[span][:tokens], @dictionaries, @threshold)
+      entries = Entry.search_by_term(span, @dictionaries, @threshold)
 
       if entries.present?
         span_entries[span] = entries

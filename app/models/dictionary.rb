@@ -7,7 +7,7 @@ class Dictionary < ActiveRecord::Base
 
   belongs_to :user
 
-  has_many :membership
+  has_many :membership, :dependent => :destroy
   has_many :entries, :through => :membership
 
   has_many :jobs, :dependent => :destroy
@@ -54,8 +54,8 @@ class Dictionary < ActiveRecord::Base
   def add_entry(label, id)
     e = Entry.get_by_value(label, id)
     if e.nil?
-      tokens = Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}
-      e = Entry.create(label:label, identifier:id, norm: tokens.join("\t"), norm_length: tokens.length)
+      norm = Entry.normalize(label)
+      e = Entry.create(label:label, identifier:id, norm: norm, norm_length: norm.length)
     end
 
     unless entries.include?(e)
@@ -76,7 +76,6 @@ class Dictionary < ActiveRecord::Base
 
       if e.dictionaries_num == 0
         e.destroy
-        e.__elasticsearch__.delete_document
       else
         e.__elasticsearch__.index_document
       end
@@ -87,9 +86,8 @@ class Dictionary < ActiveRecord::Base
     ActiveRecord::Base.transaction do
       new_entries = pairs.map do |label, id|
         begin
-          # escaping special characters
-          tokens = Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}
-          Entry.new(label:label, identifier:id, norm: tokens.join("\t"), norm_length: tokens.length, dictionaries_num:1, flag:true)
+          norm = Entry.normalize(label)
+          Entry.new(label:label, identifier:id, norm: norm, norm_length: norm.length, dictionaries_num:1, flag:true)
         rescue => e
           raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e}."
         end
@@ -129,7 +127,7 @@ class Dictionary < ActiveRecord::Base
   def empty_entries
     ActiveRecord::Base.transaction do
       entries.update_all('dictionaries_num = dictionaries_num - 1')
-      Entry.delete(Entry.joins(:membership).where("memberships.dictionary_id" => self.id, dictionaries_num: 0).pluck(:id))
+      Entry.destroy(Entry.joins(:membership).where("memberships.dictionary_id" => self.id, dictionaries_num: 0).pluck(:id))
 
       entries.update_all(flag:true)
       entries.delete_all
@@ -142,7 +140,7 @@ class Dictionary < ActiveRecord::Base
 
   def self.find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
     labels.inject({}) do |dic, label|
-      dic[label] = Entry.search_by_term(label, Entry.tokenize(Entry.decapitalize(label)).collect{|t| t[:token]}, dictionaries, threshold)
+      dic[label] = Entry.search_by_term(label, dictionaries, threshold)
       dic[label].map!{|entry| entry[:identifier]} unless rich
       dic
     end
@@ -150,6 +148,6 @@ class Dictionary < ActiveRecord::Base
 
   def destroy
     empty_entries
-    self.delete
+    self.destroy
   end
 end
