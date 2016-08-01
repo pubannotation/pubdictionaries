@@ -122,7 +122,7 @@ class Entry < ActiveRecord::Base
               match: {
                 norm: {
                   query: norm,
-                  boost: 2
+                  boost: 5
                 }
               }
             }
@@ -139,7 +139,7 @@ class Entry < ActiveRecord::Base
 
   def self.es_search_as_term(term, norm, dictionaries = [])
     self.__elasticsearch__.search(
-      size: 20,
+      size: 50,
       min_score: 0.3,
       query: {
         bool: {
@@ -174,7 +174,7 @@ class Entry < ActiveRecord::Base
     es_results = Entry.es_search_as_term(term, norm, dictionaries).results
     entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, norm: r.norm}}
     entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, norm, entry[:label], entry[:norm]))}.delete_if{|entry| entry[:score] < threshold}
-    entries
+    entries.sort_by{|e| e[:score]}.reverse
   end
 
   def self.search_by_nterm(term, term_tokens, dictionaries, threshold)
@@ -194,7 +194,7 @@ class Entry < ActiveRecord::Base
     str2_trigrams = []; str2.split('').each_cons(2){|a| str2_trigrams << a};
     norm1_trigrams = []; norm1.split('').each_cons(2){|a| norm1_trigrams << a};
     norm2_trigrams = []; norm2.split('').each_cons(2){|a| norm2_trigrams << a};
-    (cosine_sim(str1_trigrams, str2_trigrams) + cosine_sim(norm1_trigrams, norm2_trigrams)) / 2
+    (cosine_sim(str1_trigrams, str2_trigrams) + 2 * cosine_sim(norm1_trigrams, norm2_trigrams)) / 3
   end
 
   # Compute similarity of two strings
