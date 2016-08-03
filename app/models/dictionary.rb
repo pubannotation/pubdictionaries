@@ -55,7 +55,7 @@ class Dictionary < ActiveRecord::Base
     e = Entry.get_by_value(label, id)
     if e.nil?
       norm = Entry.normalize(label)
-      e = Entry.create(label:label, identifier:id, norm: norm, norm_length: norm.length)
+      e = Entry.create(label:label, identifier:id, norm: norm, norm_length: norm.length, length_factor: label.length + 10 * norm.length)
     end
 
     unless entries.include?(e)
@@ -87,7 +87,7 @@ class Dictionary < ActiveRecord::Base
       new_entries = pairs.map do |label, id|
         begin
           norm = Entry.normalize(label)
-          Entry.new(label:label, identifier:id, norm: norm, norm_length: norm.length, dictionaries_num:1, flag:true)
+          Entry.new(label:label, identifier:id, norm: norm, norm_length: norm.length, length_factor: label.length + 10 * norm.length, dictionaries_num:1, flag:true)
         rescue => e
           raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e}."
         end

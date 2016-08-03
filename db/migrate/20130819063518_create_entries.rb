@@ -4,6 +4,7 @@ class CreateEntries < ActiveRecord::Migration
       t.string :label
       t.string :norm
       t.integer :norm_length
+      t.integer :length_factor
       t.string :identifier
       t.boolean :flag, default: false
       t.timestamps

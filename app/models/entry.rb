@@ -41,6 +41,7 @@ class Entry < ActiveRecord::Base
       indexes :label, type: :string, analyzer: :ngrams, index_options: :docs
       indexes :norm, type: :string, analyzer: :ngrams, index_options: :docs
       indexes :norm_length, type: :integer
+      indexes :length_factor, type: :integer
       indexes :identifier, type: :string, index: :not_analyzed
       indexes :entries_dictionaries do
         indexes :id, type: :long
@@ -49,7 +50,7 @@ class Entry < ActiveRecord::Base
   end
 
   attr_accessible :label, :identifier, :dictionaries_num, :flag
-  attr_accessible :norm, :norm_length
+  attr_accessible :norm, :norm_length, :length_factor
 
   has_many :membership, :dependent => :destroy
   has_many :dictionaries, :through => :membership
@@ -100,7 +101,7 @@ class Entry < ActiveRecord::Base
 
   def as_indexed_json(options={})
     as_json(
-      only: [:id, :label, :norm, :norm_length, :identifier],
+      only: [:id, :label, :norm, :norm_length, :length_factor, :identifier],
       include: {dictionaries: {only: :id}}
     )
   end
@@ -109,28 +110,36 @@ class Entry < ActiveRecord::Base
     norm = Entry.normalize(text)
     self.__elasticsearch__.search(
       query: {
-        bool: {
-          must: [
-            {
-              match: {
-                label: {
-                  query: text
+        function_score: {
+          query: {
+            bool: {
+              must: [
+                {
+                  match: {
+                    label: {
+                      query: text
+                    }
+                  }
+                },
+                {
+                  match: {
+                    norm: {
+                      query: norm,
+                      boost: 50
+                    }
+                  }
                 }
-              }
-            },
-            {
-              match: {
-                norm: {
-                  query: norm,
-                  boost: 5
+              ],
+              filter: {
+                terms: {
+                  "dictionaries.id" => [dictionary.id]
                 }
               }
             }
-          ],
-          filter: {
-            terms: {
-              "dictionaries.id" => [dictionary.id]
-            }
+          },
+          field_value_factor: {
+            field: :length_factor,
+            modifier: :reciprocal
           }
         }
       }
@@ -139,31 +148,38 @@ class Entry < ActiveRecord::Base
 
   def self.es_search_as_term(term, norm, dictionaries = [])
     self.__elasticsearch__.search(
-      size: 50,
-      min_score: 0.3,
+      min_score: 0.015,
       query: {
-        bool: {
-          must: [
-            {
-              match: {
-                label: {
-                  query: term
+        function_score: {
+          query: {
+            bool: {
+              must: [
+                {
+                  match: {
+                    label: {
+                      query: term
+                    }
+                  }
+                },
+                {
+                  match: {
+                    norm: {
+                      query: norm,
+                      boost: 50
+                    }
+                  }
                 }
-              }
-            },
-            {
-              match: {
-                norm: {
-                  query: norm,
-                  boost: 2
-                }
-              }
+              ],
+              filter: [
+                {range: {norm_length: {"lte" => norm.length + 2}}},
+                {terms: {"dictionaries.id" => dictionaries}}
+              ]
             }
-          ],
-          filter: [
-            {range: {norm_length: {"lte" => norm.length + 2}}},
-            {terms: {"dictionaries.id" => dictionaries}}
-          ]
+          },
+          field_value_factor: {
+            field: :length_factor,
+            modifier: :reciprocal
+          }
         }
       }
     )
