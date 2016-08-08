@@ -148,7 +148,7 @@ class Entry < ActiveRecord::Base
 
   def self.es_search_as_term(term, norm, dictionaries = [])
     self.__elasticsearch__.search(
-      min_score: 0.015,
+      min_score: 0.01,
       query: {
         function_score: {
           query: {
@@ -190,7 +190,7 @@ class Entry < ActiveRecord::Base
     es_results = Entry.es_search_as_term(term, norm, dictionaries).results
     entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, norm: r.norm}}
     entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, norm, entry[:label], entry[:norm]))}.delete_if{|entry| entry[:score] < threshold}
-    entries.sort_by{|e| e[:score]}.reverse
+    {es_results_total:es_results.total, entries:entries.sort_by{|e| e[:score]}.reverse}
   end
 
   def self.search_by_nterm(term, term_tokens, dictionaries, threshold)
