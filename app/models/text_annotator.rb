@@ -6,16 +6,31 @@ require 'pp'
 # 
 class TextAnnotator
 
-  EDGEWORDS = [
+  NOTERMWORDS = [ # terms will never include these words
     "is", "are", "am", "be", "was", "were", "does", "do",
     "what", "which", "when", "where", "who", "how",
-    "a", "the", "this", "that", "these", "those", "it", "we", "they", "their", "them", "there", "then", "I", "he", "she", "my", "me", "his", "him", "her",
+    "a", "the", "this", "that", "these", "those", "it", "its", "we", "our", "us", "they", "their", "them", "there", "then", "I", "he", "she", "my", "me", "his", "him", "her",
     "will", "shall", "may", "can", "would", "should", "might", "could", "ought",
     "each", "every", "many", "much", "very",
-    "more", "most", "than", "such", "several", "some", "both",
-    "and", "or",
+    "more", "most", "than", "such", "several", "some", "both", "even",
+    "and", "or", "but", "neither", "nor",
     "not", "never",
     "e.g"
+  ]
+
+  NOEDGEWORDS = [ # terms will never begin with these words, mostly prepositions
+    "about", "above", "across", "after", "against", "along",
+    "amid", "among", "around", "as", "at", "before", "behind", "below",
+    "beneath", "beside", "besides", "between", "beyond",
+    "by", "concerning", "considering", "despite", "except",
+    "excepting", "excluding",
+    "for", "from", "in", "inside", "into", "like", 
+    "of", "off", "on", "onto",
+    "regarding", "since", 
+    "through", "to", "toward", "towards",
+    "under", "underneath", "unlike", "until", "upon",
+    "versus", "via", "with", "within", "without",
+    "dure" # during
   ]
 
   # Initialize the text annotator instance.
@@ -45,13 +60,15 @@ class TextAnnotator
     # index spans with their tokens and positions (array)
     span_index = {}
     (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
-      next if EDGEWORDS.include?(tokens[tbegin][:token])
+      next if NOTERMWORDS.include?(tokens[tbegin][:token])
+      next if NOEDGEWORDS.include?(tokens[tbegin][:token])
       # next unless Entry.search_as_prefix(tokens[tbegin][:token], @dictionaries) > 0
 
       (1 .. @tokens_len_max).each do |tlen|
         break if tbegin + tlen > tokens.length
         break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
-        break if EDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
+        break if text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\. [A-Z]/ # sentence boundary
+        break if NOTERMWORDS.include?(tokens[tbegin + tlen - 1][:token])
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
 
