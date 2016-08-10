@@ -36,7 +36,7 @@ class TextAnnotator
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
-  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, rich=false)
+  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.90, rich=false)
     @dictionaries = dictionaries
     @tokens_len_max = tokens_len_max
     @threshold = threshold
@@ -44,7 +44,7 @@ class TextAnnotator
 
     @tokens_len_min ||= 1
     @tokens_len_max ||= 4
-    @threshold ||= 0.85
+    @threshold ||= 0.90
     @rich ||= false
   end
 
