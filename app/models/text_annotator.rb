@@ -7,22 +7,22 @@ require 'pp'
 class TextAnnotator
 
   EDGEWORDS = [
-    "is", "are", "am", "be", "was", "were",
+    "is", "are", "am", "be", "was", "were", "does", "do",
     "what", "which", "when", "where", "who", "how",
-    "a", "the", "this", "that", "these", "those", "it", "we", "they", "their", "them", "there", "then", "he", "she", "his", "him", "her",
+    "a", "the", "this", "that", "these", "those", "it", "we", "they", "their", "them", "there", "then", "I", "he", "she", "my", "me", "his", "him", "her",
     "will", "shall", "may", "can", "would", "should", "might", "could", "ought",
     "each", "every", "many", "much", "very",
     "more", "most", "than", "such", "several", "some", "both",
     "and", "or",
+    "not", "never",
     "e.g"
   ]
 
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
-  def initialize(dictionaries, tokens_len_min = 1, tokens_len_max = 6, threshold = 0.85, rich=false)
+  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, rich=false)
     @dictionaries = dictionaries
-    @tokens_len_min = tokens_len_min
     @tokens_len_max = tokens_len_max
     @threshold = threshold
     @rich = rich
@@ -38,7 +38,8 @@ class TextAnnotator
   # * (string) text  - Input text.
   #
   def annotate(text)
-    # tokens are produced in the order of their position
+    # tokens are produced in the order of their position.
+    # tokens are normalzed, but stopwords are preserved.
     tokens = Entry.tokenize(Entry.decapitalize(text))
 
     # index spans with their tokens and positions (array)
@@ -47,10 +48,10 @@ class TextAnnotator
       next if EDGEWORDS.include?(tokens[tbegin][:token])
       # next unless Entry.search_as_prefix(tokens[tbegin][:token], @dictionaries) > 0
 
-      (@tokens_len_min .. @tokens_len_max).each do |tlen|
+      (1 .. @tokens_len_max).each do |tlen|
         break if tbegin + tlen > tokens.length
+        break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
         break if EDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
-        break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) > @tokens_len_max - 1
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
 
@@ -59,7 +60,7 @@ class TextAnnotator
         if span_index.has_key?(span)
           span_index[span][:positions] << position
         else
-          span_index[span] = {tokens: tokens[tbegin, tlen].collect{|t| t[:token]}, positions:[position]}
+          span_index[span] = {positions:[position]}
         end
       end
     end

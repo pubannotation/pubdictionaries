@@ -5,16 +5,16 @@ class Entry < ActiveRecord::Base
   settings index: {
     analysis: {
       analyzer: {
+        tokenization: {
+          tokenizer: :standard,
+          filter: [:standard, :asciifolding, :lowercase, :snowball_en]
+        },
         normalization: {
           tokenizer: :standard,
-          filter: [:standard, :asciifolding, :lowercase, :extended_stop, :snowball_en]
+          filter: [:standard, :asciifolding, :lowercase, :snowball_en, :extended_stop]
         },
         ngrams: {
           tokenizer: :trigram,
-          filter: [:standard, :asciifolding]
-        },
-        tokenization: {
-          tokenizer: :standard,
           filter: [:standard, :asciifolding]
         }
       },
@@ -87,7 +87,7 @@ class Entry < ActiveRecord::Base
 
     items = line.split(/\t/)
     return nil if items.size < 2
-    return nil if items[0].length < 2 || items[0].length > 32
+    return nil if items[0].length < 2 || items[0].length > 64
     return nil if items[0].empty? || items[1].empty?
 
     return nil if items[1].length > 255
@@ -273,7 +273,7 @@ class Entry < ActiveRecord::Base
   #
   def self.tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens]
+    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=tokenization', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens]
   end
 
   def destroy
