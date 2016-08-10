@@ -148,7 +148,7 @@ class Entry < ActiveRecord::Base
 
   def self.es_search_as_term(term, norm, dictionaries = [])
     self.__elasticsearch__.search(
-      min_score: 0.01,
+      min_score: 0.002,
       query: {
         function_score: {
           query: {
@@ -191,6 +191,29 @@ class Entry < ActiveRecord::Base
     entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, norm: r.norm}}
     entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, norm, entry[:label], entry[:norm]))}.delete_if{|entry| entry[:score] < threshold}
     {es_results_total:es_results.total, entries:entries.sort_by{|e| e[:score]}.reverse}
+  end
+
+  def self.search_as_prefix(norm, dictionaries = [])
+    self.__elasticsearch__.search(
+      size: 0,
+      terminate_after: 1,
+      query: {
+        bool: {
+          must: [
+            {
+              prefix: {
+                norm: {
+                  value: norm
+                }
+              }
+            }
+          ],
+          filter: [
+            {terms: {"dictionaries.id" => dictionaries}}
+          ]
+        }
+      }
+    ).results.total
   end
 
   def self.search_by_nterm(term, term_tokens, dictionaries, threshold)
@@ -250,7 +273,7 @@ class Entry < ActiveRecord::Base
   #
   def self.tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=tokenization', text.gsub('{', '\{').sub(/^-/, '\-')), symbolize_names: true)[:tokens]
+    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens]
   end
 
   def destroy

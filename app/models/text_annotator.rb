@@ -5,6 +5,18 @@ require 'pp'
 # Provide functionalities for text annotation.
 # 
 class TextAnnotator
+
+  EDGEWORDS = [
+    "is", "are", "am", "be", "was", "were",
+    "what", "which", "when", "where", "who", "how",
+    "a", "the", "this", "that", "these", "those", "it", "we", "they", "their", "them", "there", "then", "he", "she", "his", "him", "her",
+    "will", "shall", "may", "can", "would", "should", "might", "could", "ought",
+    "each", "every", "many", "much", "very",
+    "more", "most", "than", "such", "several", "some", "both",
+    "and", "or",
+    "e.g"
+  ]
+
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
@@ -16,7 +28,7 @@ class TextAnnotator
     @rich = rich
 
     @tokens_len_min ||= 1
-    @tokens_len_max ||= 6
+    @tokens_len_max ||= 4
     @threshold ||= 0.85
     @rich ||= false
   end
@@ -32,8 +44,12 @@ class TextAnnotator
     # index spans with their tokens and positions (array)
     span_index = {}
     (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
+      next if EDGEWORDS.include?(tokens[tbegin][:token])
+      # next unless Entry.search_as_prefix(tokens[tbegin][:token], @dictionaries) > 0
+
       (@tokens_len_min .. @tokens_len_max).each do |tlen|
         break if tbegin + tlen > tokens.length
+        break if EDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
         break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) > @tokens_len_max - 1
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
@@ -52,15 +68,12 @@ class TextAnnotator
     span_entries = {}
     bad_key = nil
     span_index.keys.each do |span|
-      puts "[#{span}]---"
       unless bad_key.nil?
         next if span.start_with?(bad_key)
         bad_key = nil
       end
 
       r = Entry.search_by_term(span, @dictionaries, @threshold)
-      p r
-      puts "====="
 
       if r[:entries].present?
         span_entries[span] = r[:entries]
