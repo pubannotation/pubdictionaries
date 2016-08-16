@@ -333,7 +333,7 @@ class Entry < ActiveRecord::Base
   # * (string) text  - Input text.
   #
   def self.get_ngrams(text)
-    raise ArgumentError, "Empty text" if text.empty?
+    return [] if text.empty?
     (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=ngrams', text.gsub('{', '\{').sub(/^-/, '\-')), symbolize_names: true)[:tokens].map{|t| t[:token]}
   end
 
