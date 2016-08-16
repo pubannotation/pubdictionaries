@@ -5,11 +5,15 @@ class Entry < ActiveRecord::Base
   settings index: {
     analysis: {
       analyzer: {
-        tokenization: {
+        tokenization: { # typographic normalization _ morphosyntactic normalization 
           tokenizer: :standard,
           filter: [:standard, :asciifolding, :lowercase, :snowball_en]
         },
-        normalization: {
+        normalization1: { # typographic normalization
+          tokenizer: :standard,
+          filter: [:standard, :asciifolding, :lowercase]
+        },
+        normalization2: { # typographic normalization _ morphosyntactic normalization + stopword removal
           tokenizer: :standard,
           filter: [:standard, :asciifolding, :lowercase, :snowball_en, :extended_stop]
         },
@@ -38,10 +42,12 @@ class Entry < ActiveRecord::Base
     }
   } do
     mappings do
-      indexes :label, type: :string, analyzer: :ngrams, index_options: :docs
-      indexes :norm, type: :string, analyzer: :ngrams, index_options: :docs
-      indexes :norm_length, type: :integer
-      indexes :length_factor, type: :integer
+      indexes :label, type: :string, analyzer: :ngrams, index_options: :docs, norms: {enabled: false}
+      indexes :norm1, type: :string, analyzer: :ngrams, index_options: :docs, norms: {enabled: false}
+      indexes :norm2, type: :string, analyzer: :ngrams, index_options: :docs, norms: {enabled: false}
+      indexes :label_length, type: :integer
+      indexes :norm1_length, type: :integer
+      indexes :norm2_length, type: :integer
       indexes :identifier, type: :string, index: :not_analyzed
       indexes :entries_dictionaries do
         indexes :id, type: :long
@@ -50,7 +56,8 @@ class Entry < ActiveRecord::Base
   end
 
   attr_accessible :label, :identifier, :dictionaries_num, :flag
-  attr_accessible :norm, :norm_length, :length_factor
+  attr_accessible :norm1, :norm2
+  attr_accessible :label_length, :norm1_length, :norm2_length
 
   has_many :membership, :dependent => :destroy
   has_many :dictionaries, :through => :membership
@@ -101,99 +108,166 @@ class Entry < ActiveRecord::Base
 
   def as_indexed_json(options={})
     as_json(
-      only: [:id, :label, :norm, :norm_length, :length_factor, :identifier],
+      only: [:id, :label, :norm1, :norm2, :label_length, :norm1_length, :norm2_length, :identifier],
       include: {dictionaries: {only: :id}}
     )
   end
 
-  def self.search_as_text(text, dictionary = nil, page)
-    norm = Entry.normalize(text)
+  def self.search_as_text(label, dictionary = nil, page)
+    norm1 = Entry.normalize1(label)
+    norm2 = Entry.normalize2(label)
+    lquery  = get_ngrams(label).map{|n| {constant_score: {query: {term: {label: {value: n}}}}} }
+    n1query = get_ngrams(norm1).map{|n| {constant_score: {query: {term: {norm1: {value: n}}}}} }
+    n2query = get_ngrams(norm2).map{|n| {constant_score: {query: {term: {norm2: {value: n}}}}} }
     self.__elasticsearch__.search(
       query: {
-        function_score: {
-          query: {
-            bool: {
-              must: [
-                {
-                  match: {
-                    label: {
-                      query: text
-                    }
+        bool: {
+          should: [
+            {
+              function_score: {
+                query: {
+                  bool: {
+                    should: lquery
                   }
                 },
-                {
-                  match: {
-                    norm: {
-                      query: norm,
-                      boost: 50
-                    }
-                  }
-                }
-              ],
-              filter: {
-                terms: {
-                  "dictionaries.id" => [dictionary.id]
+                field_value_factor: {
+                  field: :label_length,
+                  modifier: :reciprocal
                 }
               }
+            },
+            {
+              function_score: {
+                query: {
+                  bool: {
+                    should: n1query
+                  }
+                },
+                field_value_factor: {
+                  field: :norm1_length,
+                  modifier: :reciprocal
+                }
+              }
+            },
+            {
+              function_score: {
+                query: {
+                  bool: {
+                    should: n2query
+                  }
+                },
+                field_value_factor: {
+                  field: :norm2_length,
+                  modifier: :reciprocal
+                },
+                boost: 5
+              }
             }
-          },
-          field_value_factor: {
-            field: :length_factor,
-            modifier: :reciprocal
-          }
+          ],
+          filter: {terms: {"dictionaries.id" => [dictionary.id]}}
         }
       }
     ).page(page)
   end
 
-  def self.es_search_as_term(term, norm, dictionaries = [])
+  def self.search_as_term(label, norm1, norm2, dictionaries = [])
+    return [] if norm2.empty?
+    lquery  = get_ngrams(label).map{|n| {constant_score: {query: {term: {label: {value: n}}}}} }
+    n1query = get_ngrams(norm1).map{|n| {constant_score: {query: {term: {norm1: {value: n}}}}} }
+    n2query = get_ngrams(norm2).map{|n| {constant_score: {query: {term: {norm2: {value: n}}}}} }
     self.__elasticsearch__.search(
-      min_score: 0.002,
       query: {
-        function_score: {
-          query: {
-            bool: {
-              must: [
-                {
-                  match: {
-                    label: {
-                      query: term
-                    }
+        bool: {
+          should: [
+            {
+              function_score: {
+                query: {
+                  bool: {
+                    should: lquery
                   }
                 },
-                {
-                  match: {
-                    norm: {
-                      query: norm,
-                      boost: 50
-                    }
+                field_value_factor: {
+                  field: :label_length,
+                  modifier: :reciprocal
+                }
+              }
+            },
+            {
+              function_score: {
+                query: {
+                  bool: {
+                    should: n1query
+                  }
+                },
+                field_value_factor: {
+                  field: :norm1_length,
+                  modifier: :reciprocal
+                }
+              }
+            },
+            {
+              function_score: {
+                query: {
+                  bool: {
+                    should: n2query
+                  }
+                },
+                field_value_factor: {
+                  field: :norm2_length,
+                  modifier: :reciprocal
+                },
+                boost: 5
+              }
+            }
+          ],
+          filter: [
+            {range: {norm2_length: {"lte" => norm2.length + 10}}},
+            {terms: {"dictionaries.id" => dictionaries}}
+          ]
+        }
+      }
+    ).results
+  end
+
+  def self.search_by_term(term, dictionaries, threshold)
+    norm1 = Entry.normalize1(term)
+    norm2 = Entry.normalize2(term)
+    entries = Entry.search_as_term(term, norm1, norm2, dictionaries)
+    entries = entries.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, norm1: r.norm1, norm2: r.norm2}}
+    entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, norm1, norm2, entry[:label], entry[:norm1], entry[:norm2]))}.delete_if{|entry| entry[:score] < threshold}
+    entries.sort_by{|e| e[:score]}.reverse
+  end
+
+  def self.search_as_prefix(label, dictionaries = [])
+    norm2 = Entry.normalize2(label)
+    n2query = get_ngrams(norm2).map{|n| {constant_score: {query: {term: {norm2: {value: n}}}}} }
+    self.__elasticsearch__.search(
+      min_score: 1.5,
+      size: 0,
+      terminate_after: 1,
+      query: {
+        bool: {
+          should: [
+            {
+              function_score: {
+                query: {
+                  bool: {
+                    should: n2query
                   }
                 }
-              ],
-              filter: [
-                {range: {norm_length: {"lte" => norm.length + 2}}},
-                {terms: {"dictionaries.id" => dictionaries}}
-              ]
+              }
             }
-          },
-          field_value_factor: {
-            field: :length_factor,
-            modifier: :reciprocal
-          }
+          ],
+          filter: [
+            {terms: {"dictionaries.id" => dictionaries}}
+          ]
         }
       }
     )
   end
 
-  def self.search_by_term(term, dictionaries, threshold)
-    norm = Entry.normalize(term)
-    es_results = Entry.es_search_as_term(term, norm, dictionaries).results
-    entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, norm: r.norm}}
-    entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, norm, entry[:label], entry[:norm]))}.delete_if{|entry| entry[:score] < threshold}
-    {es_results_total:es_results.total, entries:entries.sort_by{|e| e[:score]}.reverse}
-  end
 
-  def self.search_as_prefix(norm, dictionaries = [])
+  def self.search_as_prefix0(norm, dictionaries = [])
     self.__elasticsearch__.search(
       size: 0,
       terminate_after: 1,
@@ -201,9 +275,9 @@ class Entry < ActiveRecord::Base
         bool: {
           must: [
             {
-              prefix: {
+              match: {
                 norm: {
-                  value: norm
+                  query: norm,
                 }
               }
             }
@@ -216,34 +290,39 @@ class Entry < ActiveRecord::Base
     ).results.total
   end
 
-  def self.search_by_nterm(term, term_tokens, dictionaries, threshold)
-    es_results = Entry.es_search_as_term(term, term_tokens, dictionaries).results
-    entries = es_results.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, tokens: r.norm.split(/\t/)}}
-    entries.collect!{|entry| entry.merge(score: cosine_sim(term_tokens, entry[:tokens]))}.delete_if{|entry| entry[:score] < threshold}
-    entries
-  end
-
   # Compute similarity of two strings
   #
   # * (string) string1
   # * (string) string2
   #
-  def self.str_cosine_sim(str1, norm1, str2, norm2)
+  def self.str_cosine_sim(str1, s1norm1, s1norm2, str2, s2norm1, s2norm2)
     str1_trigrams = []; str1.split('').each_cons(2){|a| str1_trigrams << a};
     str2_trigrams = []; str2.split('').each_cons(2){|a| str2_trigrams << a};
-    norm1_trigrams = []; norm1.split('').each_cons(2){|a| norm1_trigrams << a};
-    norm2_trigrams = []; norm2.split('').each_cons(2){|a| norm2_trigrams << a};
-    (cosine_sim(str1_trigrams, str2_trigrams) + 2 * cosine_sim(norm1_trigrams, norm2_trigrams)) / 3
+    s1norm1_trigrams = []; s1norm1.split('').each_cons(2){|a| s1norm1_trigrams << a};
+    s1norm2_trigrams = []; s1norm2.split('').each_cons(2){|a| s1norm2_trigrams << a};
+    s2norm1_trigrams = []; s2norm1.split('').each_cons(2){|a| s2norm1_trigrams << a};
+    s2norm2_trigrams = []; s2norm2.split('').each_cons(2){|a| s2norm2_trigrams << a};
+    (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams) + 5 * jaccard_sim(s1norm2_trigrams, s2norm2_trigrams)) / 7
   end
 
-  # Compute similarity of two strings
+  # Compute cosine similarity of two vectors
   #
   # * (array) items1
   # * (array) items2
   #
   def self.cosine_sim(items1, items2)
-    return (items1 & items2).size.to_f / Math.sqrt(items1.size * items2.size)
+    (items1 & items2).size.to_f / Math.sqrt(items1.size * items2.size)
   end
+
+  # Compute jaccard similarity of two sets
+  #
+  # * (array) items1
+  # * (array) items2
+  #
+  def self.jaccard_sim(items1, items2)
+    (items1 & items2).size.to_f / (items1 | items2).size
+  end
+
 
   def self.decapitalize(text)
     text.gsub(/(^| )[A-Z][a-z ]/, &:downcase)
@@ -258,14 +337,24 @@ class Entry < ActiveRecord::Base
     (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=ngrams', text.gsub('{', '\{').sub(/^-/, '\-')), symbolize_names: true)[:tokens].map{|t| t[:token]}
   end
 
-  # Get the ngrams of an input text using an analyzer of ElasticSearch.
+  # Get typographic normalization of an input text using an analyzer of ElasticSearch.
   #
   # * (string) text  - Input text.
   #
-  def self.normalize(text)
+  def self.normalize1(text)
     raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization1', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
+
+  # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
+  #
+  # * (string) text  - Input text.
+  #
+  def self.normalize2(text)
+    raise ArgumentError, "Empty text" if text.empty?
+    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization2', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+  end
+
 
   # Tokenize an input text using an analyzer of ElasticSearch.
   #

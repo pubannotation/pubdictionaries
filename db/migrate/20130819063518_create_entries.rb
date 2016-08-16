@@ -2,9 +2,11 @@ class CreateEntries < ActiveRecord::Migration
   def change
     create_table :entries do |t|
       t.string :label
-      t.string :norm
-      t.integer :norm_length
-      t.integer :length_factor
+      t.string :norm1
+      t.string :norm2
+      t.integer :label_length
+      t.integer :norm1_length
+      t.integer :norm2_length
       t.string :identifier
       t.boolean :flag, default: false
       t.timestamps

@@ -7,20 +7,22 @@ require 'pp'
 class TextAnnotator
 
   NOTERMWORDS = [ # terms will never include these words
-    "is", "are", "am", "be", "was", "were", "does", "do",
+    "is", "are", "am", "be", "was", "were", "do", "did",
+    "doe", # does
     "what", "which", "when", "where", "who", "how",
-    "a", "the", "this", "that", "these", "those", "it", "its", "we", "our", "us", "they", "their", "them", "there", "then", "I", "he", "she", "my", "me", "his", "him", "her",
-    "will", "shall", "may", "can", "would", "should", "might", "could", "ought",
+    "a", "an", "the", "this", "that", "these", "those", "it", "its", "we", "our", "us", "they", "their", "them", "there", "then", "I", "he", "she", "my", "me", "his", "him", "her",
+    "will", "shall", "may", "can", "cannot", "would", "should", "might", "could", "ought",
     "each", "every", "many", "much", "very",
     "more", "most", "than", "such", "several", "some", "both", "even",
     "and", "or", "but", "neither", "nor",
-    "not", "never",
+    "not", "never", "also", "much", "as", "well",
+    "mani", # many
     "e.g"
   ]
 
   NOEDGEWORDS = [ # terms will never begin with these words, mostly prepositions
     "about", "above", "across", "after", "against", "along",
-    "amid", "among", "around", "as", "at", "before", "behind", "below",
+    "amid", "among", "around", "at", "before", "behind", "below",
     "beneath", "beside", "besides", "between", "beyond",
     "by", "concerning", "considering", "despite", "except",
     "excepting", "excluding",
@@ -36,7 +38,7 @@ class TextAnnotator
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
-  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.90, rich=false)
+  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, rich=false)
     @dictionaries = dictionaries
     @tokens_len_max = tokens_len_max
     @threshold = threshold
@@ -44,7 +46,7 @@ class TextAnnotator
 
     @tokens_len_min ||= 1
     @tokens_len_max ||= 4
-    @threshold ||= 0.90
+    @threshold ||= 0.85
     @rich ||= false
   end
 
@@ -62,13 +64,14 @@ class TextAnnotator
     (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
       next if NOTERMWORDS.include?(tokens[tbegin][:token])
       next if NOEDGEWORDS.include?(tokens[tbegin][:token])
-      # next unless Entry.search_as_prefix(tokens[tbegin][:token], @dictionaries) > 0
+      next unless Entry.search_as_prefix(tokens[tbegin][:token], @dictionaries).results.total > 0
 
       (1 .. @tokens_len_max).each do |tlen|
         break if tbegin + tlen > tokens.length
         break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
-        break if text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\. [A-Z]/ # sentence boundary
+        break if text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\.\s+[A-Z]/ # sentence boundary
         break if NOTERMWORDS.include?(tokens[tbegin + tlen - 1][:token])
+        next if NOEDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
 
@@ -86,19 +89,10 @@ class TextAnnotator
     span_entries = {}
     bad_key = nil
     span_index.keys.each do |span|
-      unless bad_key.nil?
-        next if span.start_with?(bad_key)
-        bad_key = nil
-      end
+      entries = Entry.search_by_term(span, @dictionaries, @threshold)
 
-      r = Entry.search_by_term(span, @dictionaries, @threshold)
-
-      if r[:entries].present?
-        span_entries[span] = r[:entries]
-      end
-
-      unless r[:es_results_total] > 0
-        bad_key = span
+      if entries.present?
+        span_entries[span] = entries
       end
     end
 

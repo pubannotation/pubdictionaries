@@ -54,8 +54,9 @@ class Dictionary < ActiveRecord::Base
   def add_entry(label, id)
     e = Entry.get_by_value(label, id)
     if e.nil?
-      norm = Entry.normalize(label)
-      e = Entry.create(label:label, identifier:id, norm: norm, norm_length: norm.length, length_factor: label.length + 10 * norm.length)
+      norm1 = Entry.normalize1(label)
+      norm2 = Entry.normalize2(label)
+      e = Entry.create(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length: label.length, norm1_length: norm1.length, norm2_length: norm2.length)
     end
 
     unless entries.include?(e)
@@ -86,8 +87,9 @@ class Dictionary < ActiveRecord::Base
     ActiveRecord::Base.transaction do
       new_entries = pairs.map do |label, id|
         begin
-          norm = Entry.normalize(label)
-          Entry.new(label:label, identifier:id, norm: norm, norm_length: norm.length, length_factor: label.length + 10 * norm.length, dictionaries_num:1, flag:true)
+          norm1 = Entry.normalize1(label)
+          norm2 = Entry.normalize2(label)
+          Entry.new(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length: label.length, norm1_length: norm1.length, norm2_length: norm2.length, dictionaries_num:1, flag:true)
         rescue => e
           raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e}."
         end
@@ -140,7 +142,7 @@ class Dictionary < ActiveRecord::Base
 
   def self.find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
     labels.inject({}) do |dic, label|
-      dic[label] = Entry.search_by_term(label, dictionaries, threshold)[:entries]
+      dic[label] = Entry.search_by_term(label, dictionaries, threshold)
       dic[label].map!{|entry| entry[:identifier]} unless rich
       dic
     end
