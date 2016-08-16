@@ -69,7 +69,7 @@ class TextAnnotator
       (1 .. @tokens_len_max).each do |tlen|
         break if tbegin + tlen > tokens.length
         break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
-        break if text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\.\s+[A-Z]/ # sentence boundary
+        break if text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\.\s+[A-Z][a-z ]/ # sentence boundary
         break if NOTERMWORDS.include?(tokens[tbegin + tlen - 1][:token])
         next if NOEDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
 
