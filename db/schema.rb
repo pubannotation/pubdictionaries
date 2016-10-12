@@ -42,8 +42,11 @@ ActiveRecord::Schema.define(:version => 20160707114132) do
 
   create_table "entries", :force => true do |t|
     t.string   "label"
-    t.string   "norm"
-    t.integer  "norm_length"
+    t.string   "norm1"
+    t.string   "norm2"
+    t.integer  "label_length"
+    t.integer  "norm1_length"
+    t.integer  "norm2_length"
     t.string   "identifier"
     t.boolean  "flag",             :default => false
     t.datetime "created_at",                          :null => false

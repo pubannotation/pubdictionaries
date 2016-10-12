@@ -76,6 +76,14 @@ class Entry < ActiveRecord::Base
     end
   end
 
+  def as_json(options={})
+    options||={}
+    {
+      label: self.label,
+      id: self.identifier,
+    }
+  end
+
   scope :updated, where("updated_at > ?", 1.seconds.ago)
 
   def self.get_by_value(label, identifier)
@@ -113,7 +121,15 @@ class Entry < ActiveRecord::Base
     )
   end
 
-  def self.search_as_text(label, dictionary = nil, page)
+  def self.prefix_complete(prefix, dictionary = nil)
+    self.where("norm1 LIKE ?", "#{prefix.downcase}%").limit(10)
+  end
+
+  def self.substr_complete(prefix, dictionary = nil)
+    self.where("norm1 LIKE ?", "%#{prefix.downcase}%").limit(10)
+  end
+
+  def self.search_as_text(label, dictionary = nil, page = 0)
     norm1 = Entry.normalize1(label)
     norm2 = Entry.normalize2(label)
     lquery  = get_ngrams(label).map{|n| {constant_score: {query: {term: {label: {value: n}}}}} }

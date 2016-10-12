@@ -48,6 +48,45 @@ class MappingController < ApplicationController
     end
   end
 
+  def prefix_completion
+    begin
+      @dictionary = Dictionary.active.find_by_name(params[:id])
+      raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
+
+      @entries = if params[:term]
+        Entry.prefix_complete(params[:term], @dictionary)
+      end
+
+      respond_to do |format|
+        format.any {render json:@entries}
+      end
+    rescue => e
+      respond_to do |format|
+        format.any {render json: {notice:e.message}, status: :unprocessable_entity}
+      end
+    end
+  end
+
+  def substring_completion
+    begin
+      @dictionary = Dictionary.active.find_by_name(params[:id])
+      raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
+
+      @entries = if params[:term]
+        Entry.substr_complete(params[:term], @dictionary)
+      end
+
+      respond_to do |format|
+        format.any {render json:@entries}
+      end
+    rescue => e
+      respond_to do |format|
+        format.any {render json: {notice:e.message}, status: :unprocessable_entity}
+      end
+    end
+  end
+
+
   def call_ws
     rest_url = params[:rest_url]
     delimiter = params[:delimiter]

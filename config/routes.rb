@@ -6,6 +6,8 @@ PubDictionaries::Application.routes.draw do
   post "find_labels", to: "mapping#find_labels"
   get  "text_annotation", to: "mapping#text_annotation"
   post "text_annotation", to: "mapping#text_annotation"
+  get  "prefix_completion", to: "mapping#prefix_completion"
+  get  "substring_completion", to: "mapping#substring_completion"
 
   resources :mapping do
     collection do
@@ -87,6 +89,8 @@ PubDictionaries::Application.routes.draw do
       post 'find_ids', to: "dictionaries#find_ids"
       get  'text_annotation', to: 'dictionaries#text_annotation'
       post 'text_annotation', to: 'dictionaries#text_annotation'
+      get  'prefix_completion', to: 'mapping#prefix_completion'
+      get  'substring_completion', to: 'mapping#substring_completion'
       get 'test'
     end
   end
