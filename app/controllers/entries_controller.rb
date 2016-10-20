@@ -55,19 +55,19 @@ class EntriesController < ApplicationController
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
       raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 
-      # job = EmptyEntriesJob.new(dictionary)
-      # job.perform
+      job = EmptyEntriesJob.new(dictionary)
+      job.perform
 
-      delayed_job = Delayed::Job.enqueue EmptyEntriesJob.new(dictionary), queue: :general
-      Job.create({name:"Empty entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+      # delayed_job = Delayed::Job.enqueue EmptyEntriesJob.new(dictionary), queue: :general
+      # Job.create({name:"Empty entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
 
       respond_to do |format|
         format.html{ redirect_to :back }
       end
-    rescue => e
-      respond_to do |format|
-        format.html{ redirect_to :back, notice: e.message }
-      end
+    # rescue => e
+    #   respond_to do |format|
+    #     format.html{ redirect_to :back, notice: e.message }
+    #   end
     end
   end
 end

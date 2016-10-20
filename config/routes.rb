@@ -92,6 +92,7 @@ PubDictionaries::Application.routes.draw do
       get  'prefix_completion', to: 'mapping#prefix_completion'
       get  'substring_completion', to: 'mapping#substring_completion'
       get 'test'
+      get 'compile'
     end
   end
 

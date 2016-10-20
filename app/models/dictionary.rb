@@ -1,3 +1,5 @@
+require 'simstring'
+
 class Dictionary < ActiveRecord::Base
   include StringManipulator
 
@@ -18,6 +20,8 @@ class Dictionary < ActiveRecord::Base
   validates_format_of :name,                              # because of to_param overriding.
                       :with => /^[^\.]*$/,
                       :message => "should not contain dot!"
+
+  SSDB_DIR = "db/simstring/"
 
   # Override the original to_param so that it returns name, not ID, for constructing URLs.
   # Use Model#find_by_name() instead of Model.find() in controllers.
@@ -141,11 +145,45 @@ class Dictionary < ActiveRecord::Base
   end
 
   def self.find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
+    dicids = dictionaries.map{|d| d.id}
     labels.inject({}) do |dic, label|
-      dic[label] = Entry.search_by_term(label, dictionaries, threshold)
+      dic[label] = Entry.es_search_term(label, dicids, threshold)
       dic[label].map!{|entry| entry[:identifier]} unless rich
       dic
     end
+  end
+
+  def ssdb_exist?
+    File.exists? ssdb_path
+  end
+
+  def ssdb_dir
+    Dictionary::SSDB_DIR + self.name
+  end
+
+  def ssdb_path
+    Rails.root.join(ssdb_dir, "simstring.db").to_s
+  end
+
+  def compile
+    FileUtils.mkdir_p(ssdb_dir) unless Dir.exist?(ssdb_dir)
+    # Simstring::Writer.new(db_filename, n-gram, begin/end marker, unicode)
+    db = Simstring::Writer.new  ssdb_path, 3, false, true
+
+    # dictionary.entries.each do |entry|     # This is too slow.
+    # Entry.where(dictionary_id: dictionary.id).pluck(:norm2).uniq.each do |search_title|
+    self.entries.pluck(:norm2).uniq.each {|norm2| db.insert norm2}
+    # Entry.where(dictionary_id: self.id).pluck(:norm2).uniq.each {|norm2| db.insert norm2}
+
+    db.close
+  end
+
+  def compiled_at
+    File.mtime(ssdb_path).utc if ssdb_exist?
+  end
+
+  def compilable?
+    (entries_num > 0) && ssdb_exist? && (compiled_at - updated_at < 0)
   end
 
   def destroy

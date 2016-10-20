@@ -12,7 +12,7 @@ vendor/bundle
 
 # Database.
 db/*.sqlite3
-public/simstring_dbs/*
+db/simstring/*
 
 # All logfiles and tempfiles.
 *.pid

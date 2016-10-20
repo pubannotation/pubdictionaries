@@ -47,7 +47,8 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
       dictionary.add_entries(add_entries) unless add_entries.empty?
       dictionary.add_new_entries(new_entries) unless new_entries.empty?
       @job.update_attribute(:num_dones, num_entries)
-  
+
+      dictionary.compile
     rescue => e
 			@job.message = e.message
     end

@@ -111,6 +111,10 @@ h2 {
   text-decoration: none;
 }
 
+.disabled:hover {
+  background: gray;
+}
+
 .disabled {
   background: gray;
 }

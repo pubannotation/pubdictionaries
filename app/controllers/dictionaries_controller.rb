@@ -40,7 +40,7 @@ class DictionariesController < ApplicationController
       raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
 
       if params[:label_search]
-        @entries = Entry.search_as_text(params[:label_search], @dictionary, params[:page]).records
+        @entries = Entry.es_search_term_broad(params[:label_search], @dictionary, params[:page]).records
       elsif params[:id_search]
         @entries = Entry.find_by_identifier(params[:id_search], @dictionary).page(params[:page])
       else
@@ -97,11 +97,6 @@ class DictionariesController < ApplicationController
     raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
 
     @dictionary.update_attributes(params[:dictionary])
-    if params[:dictionary][:file].present?
-      flash[:notice] = 'Creating a dictionary in the background...' 
-      @dictionary.cleanup
-      run_create_as_a_delayed_job(@dictionary, params)        
-    end
 
     redirect_to dictionary_path(@dictionary)
   end
@@ -157,5 +152,24 @@ class DictionariesController < ApplicationController
 
   def text_annotation
     redirect_to text_annotation_path(dictionaries: params[:id])
+  end
+
+  def compile
+    begin
+      dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
+      raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+
+      dictionary.compile
+
+      respond_to do |format|
+        format.html {redirect_to dictionary_path(dictionary), notice: "The dictionary, #{dictionary.name}, is compiled."}
+        format.json {head :no_content}
+      end
+    rescue => e
+      respond_to do |format|
+        format.html {redirect_to dictionary_path(dictionary), notice: e.message}
+        format.json {head :no_content}
+      end
+    end
   end
 end

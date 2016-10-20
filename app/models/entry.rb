@@ -1,3 +1,5 @@
+require 'simstring'
+
 class Entry < ActiveRecord::Base
   include Elasticsearch::Model
   # include Elasticsearch::Model::Callbacks
@@ -55,6 +57,7 @@ class Entry < ActiveRecord::Base
     end
   end
 
+  attr_accessible :id
   attr_accessible :label, :identifier, :dictionaries_num, :flag
   attr_accessible :norm1, :norm2
   attr_accessible :label_length, :norm1_length, :norm2_length
@@ -110,9 +113,9 @@ class Entry < ActiveRecord::Base
     [items[0], items[1]]
   end
 
-  def self.none
-    where(:id => nil).where("id IS NOT ?", nil)
-  end
+  # def self.none
+  #   where(:id => nil).where("id IS NOT ?", nil)
+  # end
 
   def as_indexed_json(options={})
     as_json(
@@ -122,14 +125,18 @@ class Entry < ActiveRecord::Base
   end
 
   def self.prefix_complete(prefix, dictionary = nil)
-    self.where("norm1 LIKE ?", "#{prefix.downcase}%").limit(10)
+    dictionary.nil? ?
+      self.where("norm1 LIKE ?", "#{prefix.downcase}%").limit(10) :
+      dictionary.where("norm1 LIKE ?", "#{prefix.downcase}%").limit(10)
   end
 
-  def self.substr_complete(prefix, dictionary = nil)
-    self.where("norm1 LIKE ?", "%#{prefix.downcase}%").limit(10)
+  def self.substr_complete(substr, dictionary = nil)
+    dictionary.nil? ?
+      self.where("norm1 LIKE ?", "%#{substr.downcase}%").limit(10) :
+      dictionary.where("norm1 LIKE ?", "%#{substr.downcase}%").limit(10)
   end
 
-  def self.search_as_text(label, dictionary = nil, page = 0)
+  def self.es_search_term_broad(label, dictionary = nil, page = 0)
     norm1 = Entry.normalize1(label)
     norm2 = Entry.normalize2(label)
     lquery  = get_ngrams(label).map{|n| {constant_score: {query: {term: {label: {value: n}}}}} }
@@ -186,7 +193,17 @@ class Entry < ActiveRecord::Base
     ).page(page)
   end
 
-  def self.search_as_term(label, norm1, norm2, dictionaries = [])
+  def self.es_search_term(term, dictionaries, threshold)
+    norm1 = Entry.normalize1(term)
+    norm2 = Entry.normalize2(term)
+    entries = Entry._es_search_term(term, norm1, norm2, dictionaries)
+    entries = entries.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, norm1: r.norm1, norm2: r.norm2}}
+    entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, norm1, norm2, entry[:label], entry[:norm1], entry[:norm2]))}.delete_if{|entry| entry[:score] < threshold}
+    entries.sort_by{|e| e[:score]}.reverse
+  end
+
+
+  def self._es_search_term(label, norm1, norm2, dicids = [])
     return [] if norm2.empty?
     lquery  = get_ngrams(label).map{|n| {constant_score: {query: {term: {label: {value: n}}}}} }
     n1query = get_ngrams(norm1).map{|n| {constant_score: {query: {term: {norm1: {value: n}}}}} }
@@ -238,23 +255,30 @@ class Entry < ActiveRecord::Base
           ],
           filter: [
             {range: {norm2_length: {"lte" => norm2.length + 10}}},
-            {terms: {"dictionaries.id" => dictionaries}}
+            {terms: {"dictionaries.id" => dicids}}
           ]
         }
       }
     ).results
   end
 
-  def self.search_by_term(term, dictionaries, threshold)
+
+  def self.ss_search_term(term, dictionaries, ssdbs, threshold)
+    return [] if term.empty?
     norm1 = Entry.normalize1(term)
     norm2 = Entry.normalize2(term)
-    entries = Entry.search_as_term(term, norm1, norm2, dictionaries)
-    entries = entries.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, norm1: r.norm1, norm2: r.norm2}}
-    entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, norm1, norm2, entry[:label], entry[:norm1], entry[:norm2]))}.delete_if{|entry| entry[:score] < threshold}
+
+    entries = dictionaries.inject([]) do |a1, dic|
+      norm2s = ssdbs[dic.name].retrieve(norm2)
+      a1 + norm2s.inject([]){|a2, norm2| a2 + dic.entries.where(norm2: norm2)}
+    end
+
+    entries.map!{|e| {id: e.id, label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}
+    entries.map!{|e| e.merge(score: str_cosine_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}.delete_if{|e| e[:score] < threshold}
     entries.sort_by{|e| e[:score]}.reverse
   end
 
-  def self.search_as_prefix(label, dictionaries = [])
+  def self.es_search_prefix(label, dictionaries = [])
     norm2 = Entry.normalize2(label)
     n2query = get_ngrams(norm2).map{|n| {constant_score: {query: {term: {norm2: {value: n}}}}} }
     self.__elasticsearch__.search(
@@ -280,30 +304,6 @@ class Entry < ActiveRecord::Base
         }
       }
     )
-  end
-
-
-  def self.search_as_prefix0(norm, dictionaries = [])
-    self.__elasticsearch__.search(
-      size: 0,
-      terminate_after: 1,
-      query: {
-        bool: {
-          must: [
-            {
-              match: {
-                norm: {
-                  query: norm,
-                }
-              }
-            }
-          ],
-          filter: [
-            {terms: {"dictionaries.id" => dictionaries}}
-          ]
-        }
-      }
-    ).results.total
   end
 
   # Compute similarity of two strings

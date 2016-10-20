@@ -26,7 +26,7 @@
   function dictionarySelectionReset() {
     $("#selected_dictionaries > .dictionary").hide();
     $("#unselected_dictionaries > .dictionary").show();
-    $.each(<%= @selected %>, function(i,v){selectDictionaryById(v)});
+    $.each(<%= @dictionaries_selected.map{|d| d.id} %>, function(i,v){selectDictionaryById(v)});
   }
 
 	function selectDictionaryById(id) {

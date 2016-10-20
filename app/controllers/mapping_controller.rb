@@ -4,8 +4,8 @@ class MappingController < ApplicationController
     params[:labels] = params[:label] if params.has_key?(:label) && !params.has_key?(:labels)
 
     @dictionaries = Dictionary.active
-    @selected = params[:dictionaries].present? ?
-      params[:dictionaries].split(',').collect{|d| Dictionary.active.find_by_name(d.strip).id} : []
+    @dictionaries_selected = params[:dictionaries].present? ?
+      params[:dictionaries].split(',').collect{|d| Dictionary.active.find_by_name(d.strip)} : []
 
     @result = {}
     labels = if params[:labels]
@@ -17,7 +17,7 @@ class MappingController < ApplicationController
     if labels.present?
       rich = true if params[:rich] == 'true' || params[:rich] == '1'
       threshold = params[:threshold].present? ? params[:threshold].to_f : 0.85
-      @result = Dictionary.find_ids_by_labels(labels, @selected, threshold, rich)
+      @result = Dictionary.find_ids_by_labels(labels, @dictionaries_selected, threshold, rich)
     end
 
     respond_to do |format|
@@ -28,9 +28,10 @@ class MappingController < ApplicationController
 
   def text_annotation
     params[:dictionaries] = params[:dictionary] if params.has_key?(:dictionary) && !params.has_key?(:dictionaries)
+
     @dictionaries = Dictionary.active
-    @selected = params[:dictionaries].present? ?
-      params[:dictionaries].split(',').collect{|d| Dictionary.active.find_by_name(d.strip).id} : []
+    @dictionaries_selected = params[:dictionaries].present? ?
+      params[:dictionaries].split(',').collect{|d| Dictionary.active.find_by_name(d.strip)} : []
 
     @result = {}
     if params[:text].present?
@@ -38,8 +39,10 @@ class MappingController < ApplicationController
       tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
       threshold = params[:threshold].to_f if params[:threshold].present?
       text = params[:text].strip
-      annotator = TextAnnotator.new(@selected, tokens_len_max, threshold, rich)
-      @result = annotator.annotate(text)
+      annotator = TextAnnotator.new(@dictionaries_selected, tokens_len_max, threshold, rich)
+      @result = annotator.annotate_ss(text)
+      # annotator = TextAnnotator.new(@dicids_selected, tokens_len_max, threshold, rich)
+      # @result = annotator.annotate(text)
     end
 
     respond_to do |format|
