@@ -1,8 +1,20 @@
 <div class="tab-bar">
-<%= link_to 'TSV',  params.merge(controller: :dictionaries, action: :show, format: :tsv),  :class => 'tab' -%>
-&nbsp;
-<%= link_to('Show all', dictionary_path(@dictionary), class: 'button') if params[:label_search] || params[:id_search] -%>
+<!--%= link_to 'TSV',  params.merge(controller: :dictionaries, action: :show, format: :tsv),  :class => 'tab' -%-->
 </div>
+
+<% if @addition_num > 0 || @deletion_num > 0 %>
+  <table>
+    <tr>
+      <% if @addition_num > 0 %>
+        <th style="background-color:#ffaaaa">#Added</th><td><%= @addition_num %></td>
+      <% end %>
+      <% if @deletion_num > 0 %>
+        <th style="background-color:#aaffaa">#Deleted</th><td><%= @deletion_num %></td>
+      <% end %>
+      <td style="font-style:italic; color:red"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> You need to compile the dictionary for the performance of Text Annotation or Find IDs.</td>
+    </tr>
+  </table>
+<% end %>
 <table class="entries">
   <thead>
     <tr>
@@ -10,6 +22,7 @@
         Label
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
   	      <%= text_field_tag :label_search, params[:label_search], required: true -%>
+          <%= link_to('<i class="fa fa-times" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary), class: 'button', title: 'Cancel') if params[:label_search] -%>
     	    <%= submit_tag 'Search', class: 'button' -%>
     	  <% end -%>
       </th>
@@ -17,6 +30,7 @@
         Id
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
         	<%= text_field_tag :id_search, params[:id_search], required: true -%>
+          <%= link_to('<i class="fa fa-times" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary), class: 'button', title: 'Cancel') if params[:id_search] -%>
         	<%= submit_tag 'Search', class: 'button' -%>
     	  <% end -%>
       </th>

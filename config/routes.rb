@@ -59,11 +59,8 @@ PubDictionaries::Application.routes.draw do
   end
 
   resources :dictionaries do
-    post 'entries', to: 'entries#create'
-    put 'entries/empty', to: 'entries#empty'
+    # post 'entries', to: 'entries#create'
     post 'clone'
-
-    resources :entries
 
     # Add routes for a collection route, /dictionaries/...
     collection do
@@ -83,16 +80,25 @@ PubDictionaries::Application.routes.draw do
 
     # Add routes as a member, /dictionary/:id/...
     member do
-      post 'disable_entries'
-      post 'remove_entries'
-      get  'find_ids', to: "dictionaries#find_ids"
-      post 'find_ids', to: "dictionaries#find_ids"
-      get  'text_annotation', to: 'dictionaries#text_annotation'
-      post 'text_annotation', to: 'dictionaries#text_annotation'
+      # post 'remove_entries'
+      get  'find_ids', to: "mapping#find_ids"
+      post 'find_ids', to: "mapping#find_ids"
+      get  'text_annotation', to: 'mapping#text_annotation'
+      post 'text_annotation', to: 'mapping#text_annotation'
       get  'prefix_completion', to: 'mapping#prefix_completion'
       get  'substring_completion', to: 'mapping#substring_completion'
       get 'test'
       get 'compile'
+    end
+
+    resources :entries do
+      collection do
+        put 'empty', to: 'dictionaries#empty'
+      end
+
+      member do
+        put 'undo', to: "entries#undo"
+      end
     end
   end
 

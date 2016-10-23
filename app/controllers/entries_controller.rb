@@ -4,11 +4,11 @@ class EntriesController < ApplicationController
  
   def create
     begin
-      dictionary = Dictionary.active.editable(current_user).find_by_name(params[:dictionary_id])
-      raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}, in your management." if dictionary.nil?
+      dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
+      raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}." if dictionary.nil?
 
       if params[:label].present? && params[:identifier].present?
-        dictionary.add_entry(params[:label].strip, params[:identifier].strip)
+        dictionary.create_addition(params[:label].strip, params[:identifier].strip)
       elsif params[:file].present?
         raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
         source_filepath = params[:file].tempfile.path
@@ -20,54 +20,51 @@ class EntriesController < ApplicationController
 
         delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dictionary), queue: :general
         Job.create({name:"Upload dictionary entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+        message = ''
       end
 
-      respond_to do |format|
-        format.html {redirect_to :back}
-      end
     rescue => e
-      respond_to do |format|
-        format.html {redirect_to :back, notice: e.message}
-      end
+      message = e.message
+    end
+
+    respond_to do |format|
+      format.html {redirect_to :back, notice: message}
     end
   end
 
   def destroy
     begin
-      dictionary = Dictionary.active.editable(current_user).find_by_name(params[:dictionary_id])
+      dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
       entry = Entry.find(params[:id])
       raise ArgumentError, "Cannot find the entry" if entry.nil?
 
-      dictionary.destroy_entry(entry)
-      message = "1 entry deleted from the dictionary."
+      dictionary.create_deletion(entry)
+    rescue => e
+      message = e.message
     end
 
     respond_to do |format|
-      format.html{ redirect_to :back, notice: message }
+      format.html{ redirect_to :back, notice: message}
     end
   end
 
-  def empty
+  def undo
     begin
-      dictionary = Dictionary.active.editable(current_user).find_by_name(params[:dictionary_id])
+      dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
-      raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 
-      # job = EmptyEntriesJob.new(dictionary)
-      # job.perform
+      entry = Entry.find(params[:id])
+      raise ArgumentError, "Cannot find the entry" if entry.nil?
 
-      delayed_job = Delayed::Job.enqueue EmptyEntriesJob.new(dictionary), queue: :general
-      Job.create({name:"Empty entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
-
-      respond_to do |format|
-        format.html{ redirect_to :back }
-      end
+      dictionary.undo_entry(entry)
     rescue => e
-      respond_to do |format|
-        format.html{ redirect_to :back, notice: e.message }
-      end
+      message = e.message
+    end
+
+    respond_to do |format|
+      format.html{ redirect_to :back, notice: message}
     end
   end
 end

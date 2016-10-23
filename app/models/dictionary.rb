@@ -3,16 +3,12 @@ require 'simstring'
 class Dictionary < ActiveRecord::Base
   include StringManipulator
 
-  attr_accessible :name, :description, :user_id, :language
-  attr_accessible :active
-  attr_accessible :entries_num
-
   belongs_to :user
-
-  has_many :membership, :dependent => :destroy
-  has_many :entries, :through => :membership
-
+  has_many :entries, :dependent => :destroy
   has_many :jobs, :dependent => :destroy
+
+  attr_accessible :name, :description, :user_id
+  attr_accessible :entries_num
 
   validates :name, presence:true, uniqueness: true
   validates :user_id, presence: true 
@@ -28,8 +24,6 @@ class Dictionary < ActiveRecord::Base
   def to_param
     name
   end
-
-  scope :active, where(active: true)
 
   scope :mine, -> (user) {
     if user.nil?
@@ -55,21 +49,37 @@ class Dictionary < ActiveRecord::Base
     entries.find_by(label:label, identifier: id)
   end
 
-  def add_entry(label, id)
-    e = Entry.get_by_value(label, id)
+  def create_addition(label, id)
+    e = entries.find_by_label_and_identifier(label, id)
     if e.nil?
       norm1 = Entry.normalize1(label)
       norm2 = Entry.normalize2(label)
-      e = Entry.create(label:label, identifier:id, norm1:norm1, norm2:norm2, label_length:label.length, dictionaries_num:1)
-    end
-
-    unless entries.include?(e)
-      # entries << e
-      ActiveRecord::Base.connection.execute(%{INSERT INTO "memberships" ("created_at", "dictionary_id", "entry_id", "updated_at") VALUES (now(), #{self.id}, #{e.id}, now()) returning "id"})
-
+      entries.create(label:label, identifier:id, norm1:norm1, norm2:norm2, label_length:label.length, mode:Entry::MODE_ADDITION)
       increment!(:entries_num)
-      e.increment!(:dictionaries_num)
     end
+  end
+
+  def create_deletion(entry)
+    entry.update_attribute(:mode, Entry::MODE_DELETION)
+    decrement!(:entries_num)
+  end
+
+  def undo_entry(entry)
+    if entry.mode == Entry::MODE_ADDITION
+      entry.delete
+      decrement!(:entries_num)
+    elsif entry.mode == Entry::MODE_DELETION
+      entry.update_attribute(:mode, Entry::MODE_NORMAL)
+      increment!(:entries_num)
+    end
+  end
+
+  def num_addition
+    entries.where(mode:Entry::MODE_ADDITION).count
+  end
+
+  def num_deletion
+    entries.where(mode:Entry::MODE_DELETION).count
   end
 
   def destroy_entry(e)
@@ -81,13 +91,13 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
-  def add_new_entries(pairs)
+  def add_entries(pairs)
     ActiveRecord::Base.transaction do
       new_entries = pairs.map do |label, id|
         begin
           norm1 = Entry.normalize1(label)
           norm2 = Entry.normalize2(label)
-          Entry.new(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length:label.length, dictionaries_num:1, flag:true)
+          Entry.new(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length:label.length, dictionary_id: self.id)
         rescue => e
           raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e}."
         end
@@ -96,37 +106,13 @@ class Dictionary < ActiveRecord::Base
       r = Entry.import new_entries, validate: false
       raise "Import error" unless r.failed_instances.empty?
 
-      new_eids = Entry.where(flag: true).pluck(:id)
-      new_records = new_eids.map{|eid| "(now(), #{self.id}, #{eid}, now())"}
-      ActiveRecord::Base.connection.execute(%{INSERT INTO "memberships" ("created_at", "dictionary_id", "entry_id", "updated_at") VALUES } + new_records.join(", "))
-      Entry.where(flag: true).update_all(flag: false)
-
       increment!(:entries_num, new_entries.length)
-    end
-  end
-
-  def add_entries(entries)
-    ActiveRecord::Base.transaction do
-      # self.entries += entries
-      add_records = entries.map{|e| "(now(), #{self.id}, #{e.id}, now())"}
-      ActiveRecord::Base.connection.execute(%{INSERT INTO "memberships" ("created_at", "dictionary_id", "entry_id", "updated_at") VALUES } + add_records.join(", "))
-
-      # entries.update_all('dictionaries_num = dictionaries_num + 1')
-      entries.each{|e| e.increment!(:dictionaries_num)}
-
-      increment!(:entries_num, entries.length)
     end
   end
 
   def empty_entries
     ActiveRecord::Base.transaction do
-      entries.update_all('dictionaries_num = dictionaries_num - 1')
-      Entry.delete(Entry.joins(:membership).where("memberships.dictionary_id" => self.id, dictionaries_num: 0).pluck(:id))
-
-      entries.update_all(flag:true)
-      entries.delete_all
-      Entry.where(flag:true).update_all(flag:false)
-
+      Entry.delete(Entry.where(dictionary_id: self.id).pluck(:id))
       update_attribute(:entries_num, 0)
     end
   end
@@ -161,12 +147,14 @@ class Dictionary < ActiveRecord::Base
   def compile
     FileUtils.mkdir_p(ssdb_dir) unless Dir.exist?(ssdb_dir)
     # Simstring::Writer.new(db_filename, n-gram, begin/end marker, unicode)
-    db = Simstring::Writer.new  ssdb_path, 3, false, true
+    db = Simstring::Writer.new ssdb_path, 3, false, true
 
     # dictionary.entries.each do |entry|     # This is too slow.
-    # Entry.where(dictionary_id: dictionary.id).pluck(:norm2).uniq.each do |search_title|
-    self.entries.pluck(:norm2).uniq.each {|norm2| db.insert norm2}
+    self.entries.where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
     # Entry.where(dictionary_id: self.id).pluck(:norm2).uniq.each {|norm2| db.insert norm2}
+
+    Entry.delete(Entry.where(dictionary_id: self.id, mode:Entry::MODE_DELETION).pluck(:id))
+    entries.where(mode:Entry::MODE_ADDITION).update_all(mode:Entry::MODE_NORMAL)
 
     db.close
   end
@@ -176,7 +164,7 @@ class Dictionary < ActiveRecord::Base
   end
 
   def compilable?
-    (entries_num > 0) && (!ssdb_exist? || (compiled_at - updated_at < 0))
+    num_addition > 0 || num_deletion > 0
   end
 
   def destroy

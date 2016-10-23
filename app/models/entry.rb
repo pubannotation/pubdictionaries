@@ -1,6 +1,10 @@
 require 'simstring'
 
 class Entry < ActiveRecord::Base
+  MODE_NORMAL   = 0
+  MODE_ADDITION = 1
+  MODE_DELETION = 2
+
   include Elasticsearch::Model
   # include Elasticsearch::Model::Callbacks
 
@@ -34,13 +38,14 @@ class Entry < ActiveRecord::Base
     }
   }
 
+  belongs_to :dictionary
+
   attr_accessible :id
-  attr_accessible :label, :identifier, :dictionaries_num, :flag
+  attr_accessible :label, :identifier
   attr_accessible :norm1, :norm2
   attr_accessible :label_length
-
-  has_many :membership, :dependent => :destroy
-  has_many :dictionaries, :through => :membership
+  attr_accessible :mode
+  attr_accessible :dictionary_id
 
   validates :label, presence: true
   validates :identifier, presence: true
@@ -121,7 +126,7 @@ class Entry < ActiveRecord::Base
 
     entries = dictionaries.inject([]) do |a1, dic|
       norm2s = ssdbs[dic.name].retrieve(norm2)
-      a1 + norm2s.inject([]){|a2, norm2| a2 + dic.entries.where(norm2: norm2)}
+      a1 + norm2s.inject([]){|a2, norm2| a2 + dic.entries.where(norm2:norm2, mode:Entry::MODE_NORMAL) + dic.entries.where(mode:Entry::MODE_ADDITION)}
     end
 
     entries.map!{|e| {id: e.id, label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}

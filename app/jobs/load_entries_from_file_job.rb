@@ -17,13 +17,13 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
         else
           new_entries << [label, id]
           if new_entries.length >= transaction_size
-            dictionary.add_new_entries(new_entries)
+            dictionary.add_entries(new_entries)
             new_entries.clear
             @job.update_attribute(:num_dones, i + 1)
           end
         end
       end
-      dictionary.add_new_entries(new_entries) unless new_entries.empty?
+      dictionary.add_entries(new_entries) unless new_entries.empty?
       @job.update_attribute(:num_dones, num_entries)
 
       dictionary.compile

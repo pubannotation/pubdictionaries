@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20161022113556) do
+ActiveRecord::Schema.define(:version => 20160326092448) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -31,31 +31,30 @@ ActiveRecord::Schema.define(:version => 20161022113556) do
 
   create_table "dictionaries", :force => true do |t|
     t.string   "name"
-    t.text     "description"
+    t.text     "description", :default => ""
     t.integer  "user_id"
-    t.string   "language"
-    t.boolean  "active",      :default => true
-    t.datetime "created_at",                    :null => false
-    t.datetime "updated_at",                    :null => false
     t.integer  "entries_num", :default => 0
+    t.datetime "created_at",                  :null => false
+    t.datetime "updated_at",                  :null => false
   end
 
   create_table "entries", :force => true do |t|
+    t.integer  "mode",          :default => 0
     t.string   "label"
     t.string   "norm1"
     t.string   "norm2"
     t.integer  "label_length"
     t.string   "identifier"
-    t.boolean  "flag",             :default => false
-    t.datetime "created_at",                          :null => false
-    t.datetime "updated_at",                          :null => false
-    t.integer  "dictionaries_num", :default => 0
+    t.integer  "dictionary_id"
+    t.datetime "created_at",                   :null => false
+    t.datetime "updated_at",                   :null => false
   end
 
-  add_index "entries", ["flag"], :name => "index_entries_on_flag"
   add_index "entries", ["identifier"], :name => "index_entries_on_identifier"
   add_index "entries", ["label"], :name => "index_entries_on_label"
   add_index "entries", ["label_length"], :name => "index_entries_on_label_length"
+  add_index "entries", ["mode"], :name => "index_entries_on_mode"
+  add_index "entries", ["norm1"], :name => "index_entries_on_norm1"
 
   create_table "jobs", :force => true do |t|
     t.string   "name"
@@ -71,16 +70,6 @@ ActiveRecord::Schema.define(:version => 20161022113556) do
 
   add_index "jobs", ["delayed_job_id"], :name => "index_jobs_on_delayed_job_id"
   add_index "jobs", ["dictionary_id"], :name => "index_jobs_on_dictionary_id"
-
-  create_table "memberships", :force => true do |t|
-    t.integer  "dictionary_id"
-    t.integer  "entry_id"
-    t.datetime "created_at",    :null => false
-    t.datetime "updated_at",    :null => false
-  end
-
-  add_index "memberships", ["dictionary_id"], :name => "index_memberships_on_dictionary_id"
-  add_index "memberships", ["entry_id"], :name => "index_memberships_on_entry_id"
 
   create_table "users", :force => true do |t|
     t.text     "username",               :default => "", :null => false

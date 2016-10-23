@@ -17,7 +17,8 @@ nav.pagination{
 
 table.entries {
 	table-layout: fixed;
-	width: 100%;
+  width: 100%;
+  margin-top: 2px;
 
   th.label {
     width: 60%;
@@ -36,4 +37,20 @@ table.entries {
 .entries td:hover {
 	white-space: nowrap;
 	overflow: visible;
+}
+
+tr.addition {
+  background-color: #bbffbb;
+}
+
+span.addition {
+  font-style: italic;
+}
+
+tr.deletion {
+  background-color: #ffbbbb;
+}
+
+span.deletion {
+  text-decoration: line-through;
 }

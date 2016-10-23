@@ -1,13 +1,7 @@
 <fieldset class="dialog">
   <legend>Compile</legend>
 
-  <p>You can compile the dictionary to make searching the dictionary fast.</p>
-  <ul>
-    <li>The dictionary was last modified at <%= @dictionary.updated_at %>.</li>
-    <% if @dictionary.ssdb_exist? %>
-      <li>The dictionary was last compiled at <%= @dictionary.compiled_at %>.</li>
-    <% end %>
-  </ul>
+  <p>When necessary, you can compile the dictionary to make searching the dictionary fast.</p>
   <% if @dictionary.compilable? %>
     <%= link_to(
       'Compile',

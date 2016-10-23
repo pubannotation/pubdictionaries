@@ -1,13 +1,38 @@
-<tr>
+<%
+  label_class = case entry.mode
+    when Entry::MODE_ADDITION then "label addition"
+    when Entry::MODE_DELETION then "label deletion"
+    else "label"
+  end
+
+  id_class = case entry.mode
+    when Entry::MODE_ADDITION then "id addition"
+    when Entry::MODE_DELETION then "id deletion"
+    else "id"
+  end
+
+  tr_class = case entry.mode
+    when Entry::MODE_ADDITION then "addition"
+    when Entry::MODE_DELETION then "deletion"
+  end
+%>
+
+<tr class="<%= tr_class%>">
   <td>
-    <%= entry.label -%>
+    <%= content_tag(:span, entry.label, class: label_class) -%>
   </td>
   <td>
-    <%= entry.identifier -%>
+    <%= content_tag(:span, entry.identifier, class: id_class) -%>
   </td>
 	<% if @dictionary.editable?(current_user) %>
 	  <td style="text-align:center">
-			<%= link_to '<i class="fa fa-minus-square" aria-hidden="true"></i>'.html_safe, dictionary_entry_path(@dictionary, entry), :confirm => 'Are you sure?', :method => :delete, title: 'delete' %>
+      <%=
+        if entry.mode == 0
+          link_to('<i class="fa fa-minus-square" aria-hidden="true"></i>'.html_safe, dictionary_entry_path(@dictionary, entry), method: :delete, title: 'Delete')
+        else
+          link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Undo')
+        end
+      %>
 	  </td>
   <% end %>
 </tr>

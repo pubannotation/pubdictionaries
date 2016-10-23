@@ -1,11 +1,13 @@
 class MappingController < ApplicationController
   def find_ids
     params[:dictionaries] = params[:dictionary] if params.has_key?(:dictionary) && !params.has_key?(:dictionaries)
+    params[:dictionaries] = params[:id] if params.has_key?(:id) && !params.has_key?(:dictionaries)
+
     params[:labels] = params[:label] if params.has_key?(:label) && !params.has_key?(:labels)
 
-    @dictionaries = Dictionary.active
+    @dictionaries = Dictionary.all
     @dictionaries_selected = params[:dictionaries].present? ?
-      params[:dictionaries].split(',').collect{|d| Dictionary.active.find_by_name(d.strip)} : []
+      params[:dictionaries].split(',').collect{|d| Dictionary.find_by_name(d.strip)} : []
 
     @result = {}
     labels = if params[:labels]
@@ -28,10 +30,11 @@ class MappingController < ApplicationController
 
   def text_annotation
     params[:dictionaries] = params[:dictionary] if params.has_key?(:dictionary) && !params.has_key?(:dictionaries)
+    params[:dictionaries] = params[:id] if params.has_key?(:id) && !params.has_key?(:dictionaries)
 
-    @dictionaries = Dictionary.active
+    @dictionaries = Dictionary.all
     @dictionaries_selected = params[:dictionaries].present? ?
-      params[:dictionaries].split(',').collect{|d| Dictionary.active.find_by_name(d.strip)} : []
+      params[:dictionaries].split(',').collect{|d| Dictionary.find_by_name(d.strip)} : []
 
     @result = {}
     if params[:text].present?
@@ -53,7 +56,7 @@ class MappingController < ApplicationController
 
   def prefix_completion
     begin
-      dictionary = Dictionary.active.find_by_name(params[:id])
+      dictionary = Dictionary.find_by_name(params[:id])
       raise ArgumentError, "Unknown dictionary" if dictionary.nil?
 
       entries = if params[:term]
@@ -72,7 +75,7 @@ class MappingController < ApplicationController
 
   def substring_completion
     begin
-      dictionary = Dictionary.active.find_by_name(params[:id])
+      dictionary = Dictionary.find_by_name(params[:id])
       raise ArgumentError, "Unknown dictionary" if dictionary.nil?
 
       entries = if params[:term]

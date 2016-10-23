@@ -2,10 +2,9 @@ class CreateDictionaries < ActiveRecord::Migration
   def change
     create_table :dictionaries do |t|
       t.string :name
-      t.text :description
+      t.text :description, default: ''
       t.references :user
-      t.string :language
-      t.boolean :active, default: true
+      t.integer :entries_num, default:0
       t.timestamps
     end
 
