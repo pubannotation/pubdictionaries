@@ -60,7 +60,7 @@ class Dictionary < ActiveRecord::Base
     if e.nil?
       norm1 = Entry.normalize1(label)
       norm2 = Entry.normalize2(label)
-      e = Entry.create(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length: label.length, norm1_length: norm1.length, norm2_length: norm2.length)
+      e = Entry.create(label:label, identifier:id, norm1:norm1, norm2:norm2, label_length:label.length, dictionaries_num:1)
     end
 
     unless entries.include?(e)
@@ -69,7 +69,6 @@ class Dictionary < ActiveRecord::Base
 
       increment!(:entries_num)
       e.increment!(:dictionaries_num)
-      e.__elasticsearch__.index_document
     end
   end
 
@@ -78,12 +77,7 @@ class Dictionary < ActiveRecord::Base
       entries.destroy(e)
       decrement!(:entries_num)
       e.decrement!(:dictionaries_num)
-
-      if e.dictionaries_num == 0
-        e.destroy
-      else
-        e.__elasticsearch__.index_document
-      end
+      e.destroy if e.dictionaries_num == 0
     end
   end
 
@@ -93,7 +87,7 @@ class Dictionary < ActiveRecord::Base
         begin
           norm1 = Entry.normalize1(label)
           norm2 = Entry.normalize2(label)
-          Entry.new(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length: label.length, norm1_length: norm1.length, norm2_length: norm2.length, dictionaries_num:1, flag:true)
+          Entry.new(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length:label.length, dictionaries_num:1, flag:true)
         rescue => e
           raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e}."
         end
@@ -102,12 +96,9 @@ class Dictionary < ActiveRecord::Base
       r = Entry.import new_entries, validate: false
       raise "Import error" unless r.failed_instances.empty?
 
-      # self.entries += Entry.where(flag: true)
       new_eids = Entry.where(flag: true).pluck(:id)
       new_records = new_eids.map{|eid| "(now(), #{self.id}, #{eid}, now())"}
       ActiveRecord::Base.connection.execute(%{INSERT INTO "memberships" ("created_at", "dictionary_id", "entry_id", "updated_at") VALUES } + new_records.join(", "))
-
-      Entry.__elasticsearch__.import query: -> {where(flag:true)}
       Entry.where(flag: true).update_all(flag: false)
 
       increment!(:entries_num, new_entries.length)
@@ -123,9 +114,6 @@ class Dictionary < ActiveRecord::Base
       # entries.update_all('dictionaries_num = dictionaries_num + 1')
       entries.each{|e| e.increment!(:dictionaries_num)}
 
-      # Entry.__elasticsearch__.import query: -> {where(flag:true)}
-      Entry.__elasticsearch__.import :scope => :updated
-
       increment!(:entries_num, entries.length)
     end
   end
@@ -133,11 +121,10 @@ class Dictionary < ActiveRecord::Base
   def empty_entries
     ActiveRecord::Base.transaction do
       entries.update_all('dictionaries_num = dictionaries_num - 1')
-      Entry.destroy(Entry.joins(:membership).where("memberships.dictionary_id" => self.id, dictionaries_num: 0).pluck(:id))
+      Entry.delete(Entry.joins(:membership).where("memberships.dictionary_id" => self.id, dictionaries_num: 0).pluck(:id))
 
       entries.update_all(flag:true)
       entries.delete_all
-      Entry.__elasticsearch__.import query: -> {where(flag:true)}
       Entry.where(flag:true).update_all(flag:false)
 
       update_attribute(:entries_num, 0)
@@ -145,11 +132,17 @@ class Dictionary < ActiveRecord::Base
   end
 
   def self.find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
-    dicids = dictionaries.map{|d| d.id}
-    labels.inject({}) do |dic, label|
-      dic[label] = Entry.es_search_term(label, dicids, threshold)
-      dic[label].map!{|entry| entry[:identifier]} unless rich
-      dic
+    ssdbs = dictionaries.inject({}) do |h, dic|
+      h[dic.name] = Simstring::Reader.new(dic.ssdb_path)
+      h[dic.name].measure = Simstring::Jaccard
+      h[dic.name].threshold = threshold
+      h
+    end
+
+    labels.inject({}) do |h, label|
+      h[label] = Entry.search_term(label, dictionaries, ssdbs, threshold)
+      h[label].map!{|entry| entry[:identifier]} unless rich
+      h
     end
   end
 
@@ -183,7 +176,7 @@ class Dictionary < ActiveRecord::Base
   end
 
   def compilable?
-    (entries_num > 0) && ssdb_exist? && (compiled_at - updated_at < 0)
+    (entries_num > 0) && (!ssdb_exist? || (compiled_at - updated_at < 0))
   end
 
   def destroy

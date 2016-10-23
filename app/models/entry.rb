@@ -9,7 +9,7 @@ class Entry < ActiveRecord::Base
       analyzer: {
         tokenization: { # typographic normalization _ morphosyntactic normalization 
           tokenizer: :standard,
-          filter: [:standard, :asciifolding, :lowercase, :snowball_en]
+          filter: [:standard, :asciifolding, :lowercase, :snowball]
         },
         normalization1: { # typographic normalization
           tokenizer: :standard,
@@ -17,21 +17,11 @@ class Entry < ActiveRecord::Base
         },
         normalization2: { # typographic normalization _ morphosyntactic normalization + stopword removal
           tokenizer: :standard,
-          filter: [:standard, :asciifolding, :lowercase, :snowball_en, :extended_stop]
+          filter: [:standard, :asciifolding, :lowercase, :snowball, :stop]
         },
         ngrams: {
           tokenizer: :trigram,
           filter: [:standard, :asciifolding]
-        }
-      },
-      filter: {
-        snowball_en: {
-          type: :snowball,
-          language: :english
-        },
-        extended_stop: {
-          type: :stop,
-          stopwords: ["_english_", "unspecified"]
         }
       },
       tokenizer: {
@@ -42,25 +32,12 @@ class Entry < ActiveRecord::Base
         }
       }
     }
-  } do
-    mappings do
-      indexes :label, type: :string, analyzer: :ngrams, index_options: :docs, norms: {enabled: false}
-      indexes :norm1, type: :string, analyzer: :ngrams, index_options: :docs, norms: {enabled: false}
-      indexes :norm2, type: :string, analyzer: :ngrams, index_options: :docs, norms: {enabled: false}
-      indexes :label_length, type: :integer
-      indexes :norm1_length, type: :integer
-      indexes :norm2_length, type: :integer
-      indexes :identifier, type: :string, index: :not_analyzed
-      indexes :entries_dictionaries do
-        indexes :id, type: :long
-      end
-    end
-  end
+  }
 
   attr_accessible :id
   attr_accessible :label, :identifier, :dictionaries_num, :flag
   attr_accessible :norm1, :norm2
-  attr_accessible :label_length, :norm1_length, :norm2_length
+  attr_accessible :label_length
 
   has_many :membership, :dependent => :destroy
   has_many :dictionaries, :through => :membership
@@ -79,12 +56,11 @@ class Entry < ActiveRecord::Base
     end
   end
 
-  def as_json(options={})
-    options||={}
-    {
-      label: self.label,
-      id: self.identifier,
-    }
+  def as_indexed_json(options={})
+    as_json(
+      only: [:id, :label, :norm1, :norm2, :label_length, :norm1_length, :norm2_length, :identifier],
+      include: {dictionaries: {only: :id}}
+    )
   end
 
   scope :updated, where("updated_at > ?", 1.seconds.ago)
@@ -117,153 +93,28 @@ class Entry < ActiveRecord::Base
   #   where(:id => nil).where("id IS NOT ?", nil)
   # end
 
-  def as_indexed_json(options={})
-    as_json(
-      only: [:id, :label, :norm1, :norm2, :label_length, :norm1_length, :norm2_length, :identifier],
-      include: {dictionaries: {only: :id}}
-    )
-  end
-
-  def self.prefix_complete(prefix, dictionary = nil)
+  def self.narrow_by_label_prefix(str, dictionary = nil, page = 0)
+    norm1 = Entry.normalize1(str)
     dictionary.nil? ?
-      self.where("norm1 LIKE ?", "#{prefix.downcase}%").limit(10) :
-      dictionary.where("norm1 LIKE ?", "#{prefix.downcase}%").limit(10)
+      self.where("norm1 LIKE ?", "#{norm1}%").page(page) :
+      dictionary.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
   end
 
-  def self.substr_complete(substr, dictionary = nil)
+  def self.narrow_by_label(str, dictionary = nil, page = 0)
+    norm1 = Entry.normalize1(str)
     dictionary.nil? ?
-      self.where("norm1 LIKE ?", "%#{substr.downcase}%").limit(10) :
-      dictionary.where("norm1 LIKE ?", "%#{substr.downcase}%").limit(10)
+      self.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page) :
+      dictionary.entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page)
   end
 
-  def self.es_search_term_broad(label, dictionary = nil, page = 0)
-    norm1 = Entry.normalize1(label)
-    norm2 = Entry.normalize2(label)
-    lquery  = get_ngrams(label).map{|n| {constant_score: {query: {term: {label: {value: n}}}}} }
-    n1query = get_ngrams(norm1).map{|n| {constant_score: {query: {term: {norm1: {value: n}}}}} }
-    n2query = get_ngrams(norm2).map{|n| {constant_score: {query: {term: {norm2: {value: n}}}}} }
-    self.__elasticsearch__.search(
-      query: {
-        bool: {
-          should: [
-            {
-              function_score: {
-                query: {
-                  bool: {
-                    should: lquery
-                  }
-                },
-                field_value_factor: {
-                  field: :label_length,
-                  modifier: :reciprocal
-                }
-              }
-            },
-            {
-              function_score: {
-                query: {
-                  bool: {
-                    should: n1query
-                  }
-                },
-                field_value_factor: {
-                  field: :norm1_length,
-                  modifier: :reciprocal
-                }
-              }
-            },
-            {
-              function_score: {
-                query: {
-                  bool: {
-                    should: n2query
-                  }
-                },
-                field_value_factor: {
-                  field: :norm2_length,
-                  modifier: :reciprocal
-                },
-                boost: 5
-              }
-            }
-          ],
-          filter: {terms: {"dictionaries.id" => [dictionary.id]}}
-        }
-      }
-    ).page(page)
+  def self.narrow_by_identifier(str, dictionary = nil, page = 0)
+    norm1 = Entry.normalize1(str)
+    dictionary.nil? ?
+      self.where("identifier LIKE ?", "%#{norm1}%").page(page) :
+      dictionary.entries.where("identifier LIKE ?", "%#{norm1}%").page(page)
   end
 
-  def self.es_search_term(term, dictionaries, threshold)
-    norm1 = Entry.normalize1(term)
-    norm2 = Entry.normalize2(term)
-    entries = Entry._es_search_term(term, norm1, norm2, dictionaries)
-    entries = entries.collect{|r| {id: r.id, label: r.label, identifier:r.identifier, norm1: r.norm1, norm2: r.norm2}}
-    entries.collect!{|entry| entry.merge(score: str_cosine_sim(term, norm1, norm2, entry[:label], entry[:norm1], entry[:norm2]))}.delete_if{|entry| entry[:score] < threshold}
-    entries.sort_by{|e| e[:score]}.reverse
-  end
-
-
-  def self._es_search_term(label, norm1, norm2, dicids = [])
-    return [] if norm2.empty?
-    lquery  = get_ngrams(label).map{|n| {constant_score: {query: {term: {label: {value: n}}}}} }
-    n1query = get_ngrams(norm1).map{|n| {constant_score: {query: {term: {norm1: {value: n}}}}} }
-    n2query = get_ngrams(norm2).map{|n| {constant_score: {query: {term: {norm2: {value: n}}}}} }
-    self.__elasticsearch__.search(
-      query: {
-        bool: {
-          should: [
-            {
-              function_score: {
-                query: {
-                  bool: {
-                    should: lquery
-                  }
-                },
-                field_value_factor: {
-                  field: :label_length,
-                  modifier: :reciprocal
-                }
-              }
-            },
-            {
-              function_score: {
-                query: {
-                  bool: {
-                    should: n1query
-                  }
-                },
-                field_value_factor: {
-                  field: :norm1_length,
-                  modifier: :reciprocal
-                }
-              }
-            },
-            {
-              function_score: {
-                query: {
-                  bool: {
-                    should: n2query
-                  }
-                },
-                field_value_factor: {
-                  field: :norm2_length,
-                  modifier: :reciprocal
-                },
-                boost: 5
-              }
-            }
-          ],
-          filter: [
-            {range: {norm2_length: {"lte" => norm2.length + 10}}},
-            {terms: {"dictionaries.id" => dicids}}
-          ]
-        }
-      }
-    ).results
-  end
-
-
-  def self.ss_search_term(term, dictionaries, ssdbs, threshold)
+  def self.search_term(term, dictionaries, ssdbs, threshold)
     return [] if term.empty?
     norm1 = Entry.normalize1(term)
     norm2 = Entry.normalize2(term)
@@ -276,34 +127,6 @@ class Entry < ActiveRecord::Base
     entries.map!{|e| {id: e.id, label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}
     entries.map!{|e| e.merge(score: str_cosine_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}.delete_if{|e| e[:score] < threshold}
     entries.sort_by{|e| e[:score]}.reverse
-  end
-
-  def self.es_search_prefix(label, dictionaries = [])
-    norm2 = Entry.normalize2(label)
-    n2query = get_ngrams(norm2).map{|n| {constant_score: {query: {term: {norm2: {value: n}}}}} }
-    self.__elasticsearch__.search(
-      min_score: 1.5,
-      size: 0,
-      terminate_after: 1,
-      query: {
-        bool: {
-          should: [
-            {
-              function_score: {
-                query: {
-                  bool: {
-                    should: n2query
-                  }
-                }
-              }
-            }
-          ],
-          filter: [
-            {terms: {"dictionaries.id" => dictionaries}}
-          ]
-        }
-      }
-    )
   end
 
   # Compute similarity of two strings
@@ -357,9 +180,10 @@ class Entry < ActiveRecord::Base
   #
   # * (string) text  - Input text.
   #
-  def self.normalize1(text)
-    raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization1', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+  def self.normalize1(str)
+    raise ArgumentError, "Empty string" if str.empty?
+    str.downcase.gsub(/[[:space:]]/, '').gsub(/[[:punct:]]/, '')
+    # (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization1', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
 
   # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
@@ -381,8 +205,4 @@ class Entry < ActiveRecord::Base
     (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=tokenization', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens]
   end
 
-  def destroy
-    self.__elasticsearch__.delete_document
-    super
-  end
 end

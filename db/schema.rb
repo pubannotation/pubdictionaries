@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20160707114132) do
+ActiveRecord::Schema.define(:version => 20161022113556) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -45,8 +45,6 @@ ActiveRecord::Schema.define(:version => 20160707114132) do
     t.string   "norm1"
     t.string   "norm2"
     t.integer  "label_length"
-    t.integer  "norm1_length"
-    t.integer  "norm2_length"
     t.string   "identifier"
     t.boolean  "flag",             :default => false
     t.datetime "created_at",                          :null => false
@@ -57,6 +55,7 @@ ActiveRecord::Schema.define(:version => 20160707114132) do
   add_index "entries", ["flag"], :name => "index_entries_on_flag"
   add_index "entries", ["identifier"], :name => "index_entries_on_identifier"
   add_index "entries", ["label"], :name => "index_entries_on_label"
+  add_index "entries", ["label_length"], :name => "index_entries_on_label_length"
 
   create_table "jobs", :force => true do |t|
     t.string   "name"

@@ -40,7 +40,7 @@ class DictionariesController < ApplicationController
       raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
 
       if params[:label_search]
-        @entries = Entry.es_search_term_broad(params[:label_search], @dictionary, params[:page]).records
+        @entries = Entry.narrow_by_label(params[:label_search], @dictionary, params[:page])
       elsif params[:id_search]
         @entries = Entry.find_by_identifier(params[:id_search], @dictionary).page(params[:page])
       else
@@ -49,7 +49,7 @@ class DictionariesController < ApplicationController
 
       respond_to do |format|
         format.html
-        format.json { send_data @dictionary.entries.to_json(only:[:label,:identifier]), filename: "#{@dictionary.name}.json", type: :json }
+        # format.json { send_data @dictionary.entries.to_json(only:[:label,:identifier]), filename: "#{@dictionary.name}.json", type: :json }
         format.tsv  { send_data @dictionary.entries.as_tsv,  filename: "#{@dictionary.name}.tsv",  type: :tsv  }
       end
     rescue => e
@@ -159,11 +159,11 @@ class DictionariesController < ApplicationController
       dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
-      dictionary.compile
+      delayed_job = Delayed::Job.enqueue CompileJob.new(dictionary), queue: :general
+      Job.create({name:"Compile entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
 
       respond_to do |format|
-        format.html {redirect_to dictionary_path(dictionary), notice: "The dictionary, #{dictionary.name}, is compiled."}
-        format.json {head :no_content}
+        format.html{ redirect_to :back }
       end
     rescue => e
       respond_to do |format|

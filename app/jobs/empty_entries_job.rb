@@ -4,8 +4,8 @@ class EmptyEntriesJob < Struct.new(:dictionary)
 	def perform
     begin
       dictionary.empty_entries
-   #  rescue => e
-			# @job.message = e.message
+    rescue => e
+			@job.message = e.message
     end
 	end
 end

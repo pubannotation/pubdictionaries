@@ -40,7 +40,7 @@ class MappingController < ApplicationController
       threshold = params[:threshold].to_f if params[:threshold].present?
       text = params[:text].strip
       annotator = TextAnnotator.new(@dictionaries_selected, tokens_len_max, threshold, rich)
-      @result = annotator.annotate_ss(text)
+      @result = annotator.annotate(text)
       # annotator = TextAnnotator.new(@dicids_selected, tokens_len_max, threshold, rich)
       # @result = annotator.annotate(text)
     end
@@ -53,15 +53,15 @@ class MappingController < ApplicationController
 
   def prefix_completion
     begin
-      @dictionary = Dictionary.active.find_by_name(params[:id])
-      raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
+      dictionary = Dictionary.active.find_by_name(params[:id])
+      raise ArgumentError, "Unknown dictionary" if dictionary.nil?
 
-      @entries = if params[:term]
-        Entry.prefix_complete(params[:term], @dictionary)
+      entries = if params[:term]
+        Entry.narrow_by_label_prefix(params[:term], dictionary)
       end
 
       respond_to do |format|
-        format.any {render json:@entries}
+        format.any {render json:entries}
       end
     rescue => e
       respond_to do |format|
@@ -72,15 +72,15 @@ class MappingController < ApplicationController
 
   def substring_completion
     begin
-      @dictionary = Dictionary.active.find_by_name(params[:id])
-      raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
+      dictionary = Dictionary.active.find_by_name(params[:id])
+      raise ArgumentError, "Unknown dictionary" if dictionary.nil?
 
-      @entries = if params[:term]
-        Entry.substr_complete(params[:term], @dictionary)
+      entries = if params[:term]
+        Entry.narrow_by_label(params[:term], dictionary)
       end
 
       respond_to do |format|
-        format.any {render json:@entries}
+        format.any {render json:entries}
       end
     rescue => e
       respond_to do |format|
