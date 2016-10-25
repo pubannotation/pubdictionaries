@@ -187,6 +187,7 @@ class DictionariesController < ApplicationController
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
       raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 
+      dictionary.empty_entries
       dictionary.destroy
 
       respond_to do |format|

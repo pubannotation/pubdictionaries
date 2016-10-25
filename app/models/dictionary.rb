@@ -166,9 +166,4 @@ class Dictionary < ActiveRecord::Base
   def compilable?
     num_addition > 0 || num_deletion > 0
   end
-
-  def destroy
-    empty_entries
-    self.destroy
-  end
 end

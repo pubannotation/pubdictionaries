@@ -5,8 +5,8 @@
   <ul>
     <li>An empty line or a line beginning with a pound sign ('#') will be skipped.</li>
     <li>A line with only one value will be skipped.</li>
-    <li>If a line has more than two values, only the first two will be read, and the remaining will be ignored.</li>
-    <li>If a line has a label shorter than 2 or longer than 32, the line will be skipped.</li>
+    <li>If a line has more than two values, only the first two will be read, and the remaining ones will be ignored.</li>
+    <li>If a line has a label shorter than 2 or longer than 127, the line will be skipped.</li>
   </ul>
 
   <% if @dictionary.compilable? %>

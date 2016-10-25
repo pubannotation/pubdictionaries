@@ -2,7 +2,7 @@
 <!--%= link_to 'TSV',  params.merge(controller: :dictionaries, action: :show, format: :tsv),  :class => 'tab' -%-->
 </div>
 
-<% if @addition_num > 0 || @deletion_num > 0 %>
+<% if @dictionary.editable?(current_user) && (@addition_num > 0 || @deletion_num > 0) %>
   <table>
     <tr>
       <% if @addition_num > 0 %>
@@ -15,6 +15,7 @@
     </tr>
   </table>
 <% end %>
+
 <table class="entries">
   <thead>
     <tr>
