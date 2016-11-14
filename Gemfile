@@ -12,6 +12,8 @@ gem 'jquery-rails', '>3.0.0' # Jquery.
 gem 'jquery-ui-rails'        # Jquery.
 gem 'devise', '3.0.3'
 gem 'rest-client'
+gem 'ruby-stemmer', '~> 0.9.6'
+gem 'stopwords-filter', '~> 0.3.1'
 gem 'delayed_job_active_record'
 gem 'daemons'
 gem 'kaminari'

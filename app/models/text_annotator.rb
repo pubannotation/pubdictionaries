@@ -47,7 +47,7 @@ class TextAnnotator
     @rich = rich
 
     @tokens_len_min ||= 1
-    @tokens_len_max ||= 4
+    @tokens_len_max ||= 6
     @threshold ||= 0.85
     @rich ||= false
 
@@ -64,6 +64,9 @@ class TextAnnotator
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
     tokens = Entry.tokenize(Entry.decapitalize(text))
+    spans  = tokens.map{|t| text[t[:start_offset] ... t[:end_offset]]}
+    norm1s = spans.map{|s| Entry.normalize1(s)}
+    norm2s = spans.map{|s| Entry.normalize2(s)}
 
     # index spans with their tokens and positions (array)
     span_index = {}
@@ -71,7 +74,7 @@ class TextAnnotator
       next if NOTERMWORDS.include?(tokens[tbegin][:token])
       next if NOEDGEWORDS.include?(tokens[tbegin][:token])
 
-      (1 .. @tokens_len_max).each do |tlen|
+      (@tokens_len_min .. @tokens_len_max).each do |tlen|
         break if tbegin + tlen > tokens.length
         break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
         break if text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\.\s+[A-Z][a-z ]/ # sentence boundary
@@ -80,21 +83,22 @@ class TextAnnotator
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
 
-        position = {start_offset: tokens[tbegin][:start_offset], end_offset: tokens[tbegin+tlen-1][:end_offset]}
-
-        if span_index.has_key?(span)
-          span_index[span][:positions] << position
-        else
-          span_index[span] = {positions:[position]}
+        unless span_index.has_key?(span)
+          norm1 = norm1s[tbegin, tlen].join
+          norm2 = norm2s[tbegin, tlen].join
+          span_index[span] = {norm1:norm1, norm2:norm2, positions:[]}
         end
+
+        position = {start_offset: tokens[tbegin][:start_offset], end_offset: tokens[tbegin+tlen-1][:end_offset]}
+        span_index[span][:positions] << position
       end
     end
 
     # To search mapping entries per span
     span_entries = {}
     bad_key = nil
-    span_index.keys.each do |span|
-      entries = Entry.search_term(span, @dictionaries, @ssdbs, @threshold)
+    span_index.each do |span, info|
+      entries = Entry.search_term(@dictionaries, @ssdbs, @threshold, span, info[:norm1], info[:norm2])
 
       if entries.present?
         span_entries[span] = entries

@@ -126,7 +126,7 @@ class Dictionary < ActiveRecord::Base
     end
 
     labels.inject({}) do |h, label|
-      h[label] = Entry.search_term(label, dictionaries, ssdbs, threshold)
+      h[label] = Entry.search_term(dictionaries, ssdbs, threshold, label)
       h[label].map!{|entry| entry[:identifier]} unless rich
       h
     end

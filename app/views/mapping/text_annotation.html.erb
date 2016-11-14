@@ -9,8 +9,8 @@
 
 <table>
 <tr>
-<th><%= label_tag :Max_token_length %></th>
-<td><%= text_field_tag :tokens_len_max, 4, type: :number, min:1, max:10, step:1 %></td>
+<th><%= label_tag :max_token_length %></th>
+<td><%= text_field_tag :tokens_len_max, 6, type: :number, min:1, max:10, step:1 %></td>
 </tr>
 <tr>
 <th><%= label_tag :threshold %></th>
@@ -24,6 +24,7 @@
 
 <%= text_field_tag :param1, '', hidden:true %>
 <%= text_field_tag :param2, '', hidden:true %>
+<%= text_field_tag :param3, '', hidden:true %>
 
 <h2>REST service URL</h2>
 <%= text_area_tag :rest_url, '', readonly: true %>
@@ -55,13 +56,18 @@
 		set_url();
 	});
 
+	$('#tokens_len_max').change(function() {
+		$('#param1').val('tokens_len_max=' + $(this).val());
+		set_url();
+	});
+
 	$('#threshold').change(function() {
-		$('#param1').val('threshold=' + $(this).val());
+		$('#param2').val('threshold=' + $(this).val());
 		set_url();
 	});
 
 	$("#rich").change(function() {
-		$('#param2').val('rich=' + $(this).is(':checked'));
+		$('#param3').val('rich=' + $(this).is(':checked'));
 		set_url();
 	});
 
@@ -69,6 +75,7 @@
 		dictionarySelectionReset();
 		$('#param1').val('');
 		$('#param2').val('');
+		$('#param3').val('');
 		set_url();
 	});
 
@@ -76,10 +83,12 @@
 		var param_dics = $('#dictionaries').text().split(',').map(function(v, i){return 'dictionary=' + v}).join('&');
 		var param1 = $('#param1').val();
 		var param2 = $('#param2').val();
+		var param3 = $('#param3').val();
 
 		var params = [];
 		if (param1 != '') {params.push(param1)};
 		if (param2 != '') {params.push(param2)};
+		if (param3 != '') {params.push(param3)};
 
 		var url = '<%= root_url %>text_annotation.json' + '?'  + param_dics;
 		if (params.length > 0) {url += '&' + params.join('&')}

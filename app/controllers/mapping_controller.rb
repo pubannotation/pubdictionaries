@@ -44,8 +44,6 @@ class MappingController < ApplicationController
       text = params[:text].strip
       annotator = TextAnnotator.new(@dictionaries_selected, tokens_len_max, threshold, rich)
       @result = annotator.annotate(text)
-      # annotator = TextAnnotator.new(@dicids_selected, tokens_len_max, threshold, rich)
-      # @result = annotator.annotate(text)
     end
 
     respond_to do |format|

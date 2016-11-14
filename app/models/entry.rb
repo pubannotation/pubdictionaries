@@ -119,17 +119,17 @@ class Entry < ActiveRecord::Base
       dictionary.entries.where("identifier LIKE ?", "%#{norm1}%").page(page)
   end
 
-  def self.search_term(term, dictionaries, ssdbs, threshold)
+  def self.search_term(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
     return [] if term.empty?
-    norm1 = Entry.normalize1(term)
-    norm2 = Entry.normalize2(term)
+    norm1 = Entry.normalize1(term) if norm1.nil?
+    norm2 = Entry.normalize2(term) if norm2.nil?
 
     entries = dictionaries.inject([]) do |a1, dic|
       norm2s = ssdbs[dic.name].retrieve(norm2)
       a1 + norm2s.inject([]){|a2, norm2| a2 + dic.entries.where(norm2:norm2, mode:Entry::MODE_NORMAL) + dic.entries.where(mode:Entry::MODE_ADDITION)}
     end
 
-    entries.map!{|e| {id: e.id, label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}
+    entries.map!{|e| {id: e.id, label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}.uniq!
     entries.map!{|e| e.merge(score: str_cosine_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}.delete_if{|e| e[:score] < threshold}
     entries.sort_by{|e| e[:score]}.reverse
   end
@@ -199,7 +199,6 @@ class Entry < ActiveRecord::Base
     raise ArgumentError, "Empty text" if text.empty?
     (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization2', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
-
 
   # Tokenize an input text using an analyzer of ElasticSearch.
   #
