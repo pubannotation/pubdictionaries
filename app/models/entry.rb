@@ -1,4 +1,5 @@
 require 'simstring'
+require 'pp'
 
 class Entry < ActiveRecord::Base
   MODE_NORMAL   = 0
@@ -130,7 +131,7 @@ class Entry < ActiveRecord::Base
     end
 
     entries.map!{|e| {id: e.id, label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}.uniq!
-    entries.map!{|e| e.merge(score: str_cosine_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}.delete_if{|e| e[:score] < threshold}
+    entries.map!{|e| e.merge(score: str_jaccard_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}.delete_if{|e| e[:score] < threshold}
     entries.sort_by{|e| e[:score]}.reverse
   end
 
@@ -139,14 +140,18 @@ class Entry < ActiveRecord::Base
   # * (string) string1
   # * (string) string2
   #
-  def self.str_cosine_sim(str1, s1norm1, s1norm2, str2, s2norm1, s2norm2)
+  def self.str_jaccard_sim(str1, s1norm1, s1norm2, str2, s2norm1, s2norm2)
     str1_trigrams = []; str1.split('').each_cons(2){|a| str1_trigrams << a};
     str2_trigrams = []; str2.split('').each_cons(2){|a| str2_trigrams << a};
     s1norm1_trigrams = []; s1norm1.split('').each_cons(2){|a| s1norm1_trigrams << a};
     s1norm2_trigrams = []; s1norm2.split('').each_cons(2){|a| s1norm2_trigrams << a};
     s2norm1_trigrams = []; s2norm1.split('').each_cons(2){|a| s2norm1_trigrams << a};
     s2norm2_trigrams = []; s2norm2.split('').each_cons(2){|a| s2norm2_trigrams << a};
-    (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams) + 5 * jaccard_sim(s1norm2_trigrams, s2norm2_trigrams)) / 7
+    if s1norm2.empty? && s2norm2.empty?
+      (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams)) / 2
+    else
+      (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams) + 5 * jaccard_sim(s1norm2_trigrams, s2norm2_trigrams)) / 7
+    end
   end
 
   # Compute cosine similarity of two vectors
@@ -164,6 +169,7 @@ class Entry < ActiveRecord::Base
   # * (array) items2
   #
   def self.jaccard_sim(items1, items2)
+    return 0.0 if items1.empty? || items2.empty?
     (items1 & items2).size.to_f / (items1 | items2).size
   end
 
