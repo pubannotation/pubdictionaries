@@ -40,3 +40,15 @@
     border-style: hidden;
   }
 }
+
+fieldset .message {
+  background-color: #ffeeee;
+  color: #ff0000;
+  font-style: italic;
+  text-decoration: blink;
+
+  &:before {
+    content: "* ";
+  }
+
+}

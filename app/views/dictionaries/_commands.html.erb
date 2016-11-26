@@ -1,5 +1,6 @@
 <div class="control">
-  <%= link_to(
+  <%=
+    link_to(
       '<i class="fa fa-trash-o fa-lg"></i>'.html_safe, 
       empty_dictionary_entries_path(@dictionary),
       title: 'Empty the dictionary (delete all the entries)',
@@ -8,7 +9,8 @@
     )
   %>
 
-  <%= link_to(
+  <%=
+    link_to(
       '<i class="fa fa-bomb fa-lg"></i>'.html_safe, 
       @dictionary, 
       title: 'Delete the dictionary',
