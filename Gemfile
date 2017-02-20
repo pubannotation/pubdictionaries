@@ -15,12 +15,14 @@ gem 'rest-client'
 gem 'ruby-stemmer', '~> 0.9.6'
 gem 'stopwords-filter', '~> 0.3.1'
 gem 'delayed_job_active_record'
+gem 'delayed_job_recurring'
 gem 'daemons'
 gem 'kaminari'
 gem 'elasticsearch-model'
 gem 'elasticsearch-rails'
 gem 'rails-jquery-autocomplete'
 gem 'rack-cors', :require => 'rack/cors'
+
 # gem 'jquery-rails', "<3.0.0"
 # gem 'will_paginate', '>= 3.0.pre'     # Not compatible with Wice_Grid
 
@@ -43,8 +45,6 @@ group :test do
 end
 
 group :production do
- gem 'thin'
- 
  # Use unicorn as the app server
  gem 'unicorn'
 end
