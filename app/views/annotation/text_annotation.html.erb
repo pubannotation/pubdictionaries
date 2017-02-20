@@ -1,43 +1,53 @@
-<h1>Find IDs</h1>
+<h1>Text annotation</h1>
 
 <%= form_tag multipart: true do -%>
 
 <h2>Dictionaries to be searched</h2>
-<%= render partial: 'dictionary_selection' %>
+<%= render partial: 'dictionaries/dictionary_selection' %>
 
 <h2>Options</h2>
+
 <table>
+<tr>
+<th><%= label_tag :max_token_length %></th>
+<td><%= text_field_tag :tokens_len_max, 6, type: :number, min:1, max:10, step:1 %></td>
+</tr>
 <tr>
 <th><%= label_tag :threshold %></th>
 <td><%= text_field_tag :threshold, 0.85, type: :number, min:0.5, max:1, step:0.01 %></td>
 </tr>
 <tr>
 <th><%= label_tag :rich, "Verbose output" %></th>
-<td><%= check_box_tag(:rich, true) %></td>
+<td><%= check_box_tag :rich, true %></td>
 </tr>
 </table>
 
 <%= text_field_tag :param1, '', hidden:true %>
 <%= text_field_tag :param2, '', hidden:true %>
+<%= text_field_tag :param3, '', hidden:true %>
 
 <h2>REST service URL</h2>
 <%= text_area_tag :rest_url, '', readonly: true %>
 
 <h2>Example cURL command</h2>
 <%= text_area_tag :curl_command, '', readonly: true %>
-or
-<%= text_area_tag :curl_json_command, '', readonly: true %>
 
 <h2>Demo</h2>
-<%= text_area_tag :labels, params[:labels], required: true, placeholder: "List of labels (Tab-, newline-, or vertical bar('|')-delimited)" %>
+<%= text_area_tag :text, params[:text], required: true, placeholder: 'text' %>
 <br/><br/>
 
-<%= submit_tag 'Find', class: :button %>
+<%= submit_tag 'Annotate', class: :button %>
 <%= button_tag 'Reset', type: :reset, id: :reset, class: :button %>
 <% end %>
 
 <% unless @result.nil? || @result.empty? %>
 <h3>Result</h3>
+
+<h4><%= link_to 'TextAE', 'http://textae.pubannotation.org' %></h4>
+<%= render :partial => 'textae_css_js'-%>
+<div class="textae-editor"><%= @result.to_json %></div>
+
+<h4><%= link_to 'JSON', 'http://www.pubannotation.org/docs/annotation-format/' %></h4>
 <pre><%= JSON.pretty_generate @result %></pre>
 <% end %>
 
@@ -46,13 +56,18 @@ or
 		set_url();
 	});
 
+	$('#tokens_len_max').change(function() {
+		$('#param1').val('tokens_len_max=' + $(this).val());
+		set_url();
+	});
+
 	$('#threshold').change(function() {
-		$('#param1').val('threshold=' + $(this).val());
+		$('#param2').val('threshold=' + $(this).val());
 		set_url();
 	});
 
 	$("#rich").change(function() {
-		$('#param2').val('rich=' + $(this).is(':checked'));
+		$('#param3').val('rich=' + $(this).is(':checked'));
 		set_url();
 	});
 
@@ -60,32 +75,26 @@ or
 		dictionarySelectionReset();
 		$('#param1').val('');
 		$('#param2').val('');
+		$('#param3').val('');
 		set_url();
 	});
 
 	function set_url() {
-		var dics = $('#dictionaries').text();
+		var param_dics = $('#dictionaries').text().split(',').map(function(v, i){return 'dictionary=' + v}).join('&');
 		var param1 = $('#param1').val();
 		var param2 = $('#param2').val();
+		var param3 = $('#param3').val();
 
 		var params = [];
 		if (param1 != '') {params.push(param1)};
 		if (param2 != '') {params.push(param2)};
+		if (param3 != '') {params.push(param3)};
 
-		var url = '<%= root_url %>find_ids.json';
-		if (dics) {url += '?dictionary=' + dics}
-		if (params.length > 0) {
-			if (dics) {url += '&'}
-			else {url += '?'}
-			url += params.join('&');
-		}
+		var url = '<%= root_url %>text_annotation.json' + '?'  + param_dics;
+		if (params.length > 0) {url += '&' + params.join('&')}
 		$('#rest_url').text(url);
 
-		var command = 'curl -F labels="label1|label2|..." "' + url + '"';
+		var command = 'curl -F text="example text" "' + url + '"'
 		$('#curl_command').text(command);
-
-		var json_command = 'curl -H "content-type:application/json" -d \'["label1", "label2"]\' "' + url + '"';
-		$('#curl_json_command').text(json_command);
 	}
-
 </script>

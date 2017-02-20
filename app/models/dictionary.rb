@@ -117,6 +117,22 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
+  def self.find_dictionaries_from_params(params)
+    dicnames = if params.has_key?(:dictionaries)
+      params[:dictionaries]
+    elsif params.has_key?(:dictionary)
+      params[:dictionary]
+    elsif params.has_key?(:id)
+      params[:id]
+    end
+    raise ArgumentError, "No dictionary is specified." unless dicnames.present?
+
+    dictionaries = dicnames.split(',').collect{|d| Dictionary.find_by_name(d.strip)}
+    raise ArgumentError, "wrong dictionary specification." if dictionaries.include? nil
+
+    dictionaries
+  end
+
   def self.find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
     ssdbs = dictionaries.inject({}) do |h, dic|
       h[dic.name] = Simstring::Reader.new(dic.ssdb_path)

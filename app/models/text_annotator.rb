@@ -6,6 +6,7 @@ require 'pp'
 # Provide functionalities for text annotation.
 # 
 class TextAnnotator
+  RESULTS_PATH = "public/results/"
 
   NOTERMWORDS = [ # terms will never include these words
     "is", "are", "am", "be", "was", "were", "do", "did",
@@ -60,7 +61,7 @@ class TextAnnotator
   end
 
 
-  def annotate(text)
+  def annotate(text, denotations = [])
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
     tokens = Entry.tokenize(Entry.decapitalize(text))

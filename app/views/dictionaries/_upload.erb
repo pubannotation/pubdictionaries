@@ -10,7 +10,7 @@
   </ul>
 
   <% if @dictionary.compilable? %>
-    <span style="font-style:italic; color:red">You need to compile the dictionary before uploading additional entries.</span>
+    <span class="message">You need to compile the dictionary before uploading additional entries.</span>
   <% else %>
     <%= form_tag dictionary_entries_path(@dictionary), multipart: true do -%>
       <% if @dictionary.errors.any? %>

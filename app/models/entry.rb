@@ -102,8 +102,8 @@ class Entry < ActiveRecord::Base
   def self.narrow_by_label_prefix(str, dictionary = nil, page = 0)
     norm1 = Entry.normalize1(str)
     dictionary.nil? ?
-      self.where("norm1 LIKE ?", "#{norm1}%").page(page) :
-      dictionary.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
+      self.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page) :
+      dictionary.entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
   end
 
   def self.narrow_by_label(str, dictionary = nil, page = 0)

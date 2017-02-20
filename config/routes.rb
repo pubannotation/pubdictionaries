@@ -1,63 +1,23 @@
 PubDictionaries::Application.routes.draw do
-
-  get  "find_ids", to: "mapping#find_ids"
-  post "find_ids", to: "mapping#find_ids"
-  get  "find_labels", to: "mapping#find_labels"
-  post "find_labels", to: "mapping#find_labels"
-  get  "text_annotation", to: "mapping#text_annotation"
-  post "text_annotation", to: "mapping#text_annotation"
-  get  "prefix_completion", to: "mapping#prefix_completion"
-  get  "substring_completion", to: "mapping#substring_completion"
-
-  resources :mapping do
-    collection do
-      get  "term_to_id"
-      post "term_to_id", to: "mapping#term_to_id_post"
-
-      get  "id_to_label"
-      post "id_to_label", to: "mapping#id_to_label_post"
-
-      get  "text_annotation"
-      post "text_annotation", to: "mapping#text_annotation_post"
-
-      get  'select_dictionaries', to: 'mapping#select_dictionaries'
-
-      get "search"
-      get "expression_to_id"
-      post "expression_to_id"
-      get "id_to_expression"
-      post "id_to_expression"
-      get :autocomplete_expression_name 
-    end
-  end
-
-  # devise_for :users
-  devise_for :users
-
-  resource :users do
-    get '/' => 'users#index'
-    get :autocomplete_username, :on => :collection
-  end
-
-  match '/users/:name' => 'users#show', :as => 'show_user'
-  
   get "home/index", as: "home"
   get "home/about", as: "about"
 
-  get "manual/basic"
-  get "manual/advanced"
-  get "manual/pubann"
+  get  "find_ids", to: "lookup#find_ids"
+  post "find_ids", to: "lookup#find_ids"
+  get  "find_labels", to: "lookup#find_labels"
+  post "find_labels", to: "lookup#find_labels"
+  get  "prefix_completion", to: "lookup#prefix_completion"
+  get  "substring_completion", to: "lookup#substring_completion"
+
+  get  "text_annotation", to: "annotation#text_annotation"
+  post "text_annotation", to: "annotation#text_annotation"
+  post "annotation_request", to: "annotation#annotation_request"
+  get  'annotation_result/:filename', to: 'mapping#annotation_result', as: 'annotation_result'
+
+  # devise_for :users
+  devise_for :users
+  match '/users/:name' => 'users#show', :as => 'show_user'
   
-  get "web_services/index"
-  get "web_services/annotation_with_single_dic"
-  get "web_services/annotation_with_multiple_dic"
-  get "web_services/ids_to_labels"
-  get "web_services/terms_to_idlists"
-
-  resources :users do
-    resources :dictionaries
-  end
-
   resources :dictionaries do
     # post 'entries', to: 'entries#create'
     post 'clone'
@@ -81,12 +41,12 @@ PubDictionaries::Application.routes.draw do
     # Add routes as a member, /dictionary/:id/...
     member do
       # post 'remove_entries'
-      get  'find_ids', to: "mapping#find_ids"
-      post 'find_ids', to: "mapping#find_ids"
-      get  'text_annotation', to: 'mapping#text_annotation'
-      post 'text_annotation', to: 'mapping#text_annotation'
-      get  'prefix_completion', to: 'mapping#prefix_completion'
-      get  'substring_completion', to: 'mapping#substring_completion'
+      get  'find_ids', to: "lookup#find_ids"
+      post 'find_ids', to: "lookup#find_ids"
+      get  'text_annotation', to: 'annotation#text_annotation'
+      post 'text_annotation', to: 'annotation#text_annotation'
+      get  'prefix_completion', to: 'lookup#prefix_completion'
+      get  'substring_completion', to: 'lookup#substring_completion'
       get 'test'
       get 'compile'
     end
