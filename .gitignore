@@ -25,6 +25,7 @@ tmp/
 public/tempfiles/
 public/assets/
 vendor/cache/
+public/results/
 
 
 # OS generated files #
