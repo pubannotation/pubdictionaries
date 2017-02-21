@@ -3,22 +3,27 @@ consumes:
 produces:
   - application/json
 paths:
-  /dictionaries/{id}/text_annotation:
+  /text_annotation:
     get:
       summary: Annotate a block of text, based on the specified dictionary
       parameters:
+        - name: dictionaries
+          in: url
+          type: string
+          description: dictionary names, delimited by comma (',')
+          required: true
         - name: text
-          in: URL
+          in: url
           type: string
           description: a block of text
           required: true
         - name: rich
-          in: URL
+          in: url
           type: boolean
           description: true for rich output
           required: false
         - name: threshold
-          in: URL
+          in: url
           type: float
           description: similarity threshold for cut-off  
           required: false
@@ -44,7 +49,7 @@ paths:
                 "message": "no text is supplied."
               }
     post:
-      summary: Same as above, but a piece (or pieces) of text can be given in JSON
+      summary: Same as above, but a block (or blocks) of text can be given in JSON
       parameters:
         - name: body
           in: body
@@ -54,12 +59,12 @@ paths:
           description: a JSON object with a block of text (and initial annotation), or an array of multiple JSON objects
           required: true
         - name: rich
-          in: URL
+          in: url
           type: boolean
           description: true for rich output
           required: false
         - name: threshold
-          in: URL
+          in: url
           type: float
           description: similarity threshold for cut-off  
           required: false
@@ -77,42 +82,6 @@ paths:
                   }
                 ]
               }
-        400:
-          description: Bad Request
-          examples:
-            application/json: >
-              {
-                "message": "no text is supplied."
-              }
-  /dictionaries/{id}/annotation_request:
-    post:
-      summary: Request annotation to a block of text or blocks of text
-      parameters:
-        - name: body
-          in: body
-          type: array
-          items:
-            type: object
-          description: a JSON object with a block of text (and initial annotation), or an array of multiple JSON objects
-          required: true
-        - name: rich
-          in: URL
-          type: boolean
-          description: true for rich output
-          required: false
-        - name: threshold
-          in: URL
-          type: float
-          description: similarity threshold for cut-off  
-          required: false
-      responses:
-        303:
-          description: The URL from which the result of annotation to be retrieved will be informed through the Location header
-          headers:
-            Location:
-              description: The URL from which the result of annotation to be retrieved
-              type: string
-              format: url
         400:
           description: Bad Request
           examples:
@@ -122,10 +91,10 @@ paths:
               }
   /annotation_request:
     post:
-      summary: Request annotation to a block of text or blocks of text
+      summary: Request to annotate a block of text (or blocks of text).
       parameters:
         - name: dictionaries
-          in: URL
+          in: url
           description: dictionaries, delimited by ','
           required: true
         - name: body
@@ -136,12 +105,12 @@ paths:
           description: a JSON object with a block of text (and initial annotation),<br> or an array of multiple JSON objects
           required: true
         - name: rich
-          in: URL
+          in: url
           type: boolean
           description: true for rich output
           required: false
         - name: threshold
-          in: URL
+          in: url
           type: float
           description: similarity threshold for cut-off  
           required: false

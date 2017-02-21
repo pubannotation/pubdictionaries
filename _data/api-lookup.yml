@@ -8,22 +8,22 @@ paths:
       summary: Find ids for given labels, from some specified dictionaries
       parameters:
         - name: dictionaries
-          in: URL
+          in: url
           type: string
           description: dictionary names, delimited by comma (',')
           required: true
         - name: labels
-          in: URL
+          in: url
           type: string
           description: labels, delimited by newline('\n'), tab('\t'), or pipe ('|')
           required: true
         - name: rich
-          in: URL
+          in: url
           type: boolean
           description: set it 'true' for rich output
           required: false
         - name: threshold
-          in: URL
+          in: url
           type: float
           description: similarity threshold for cut-off  
           required: false
@@ -48,7 +48,7 @@ paths:
       summary:  Same as above, but a set of labels can be given in JSON
       parameters:
         - name: dictionaries
-          in: URL
+          in: url
           description: dictionary names, delimited by comma (',')
           required: true
         - name: labels
@@ -59,18 +59,18 @@ paths:
             type: string
           required: true
         - name: rich
-          in: URL
+          in: url
           type: boolean
-          description: true for rich output
+          description: set it 'true' for rich output
           required: false
         - name: threshold
-          in: URL
+          in: url
           type: float
           description: similarity threshold for cut-off  
           required: false
       responses:
         200:
-          description: Product details
+          description: A hash of ids for labels
           examples:
             application/json: >
               {
@@ -90,7 +90,7 @@ paths:
       summary: Get prefix completions, based on the specified dictionary
       parameters:
         - name: term
-          in: URL
+          in: url
           description: prefix of a term
           type: string
           required: true
