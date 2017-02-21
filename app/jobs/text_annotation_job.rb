@@ -1,10 +1,8 @@
-class TextAnnotationJob < Struct.new(:targets, :annotator, :filename)
+class TextAnnotationJob < Struct.new(:texts, :filename, :dictionaries, :options)
 	def perform
     begin
-      results = []
-      targets.each_with_index do |target, i|
-        results << annotator.annotate(target)
-      end
+      annotator = TextAnnotator.new(dictionaries, options[:tokens_len_max], options[:threshold], options[:rich])
+      results = texts.inject([]){|r, text| r << annotator.annotate(text)}
 
       File.write(TextAnnotator::RESULTS_PATH + filename + '.json', JSON.generate(results))
       File.delete(TextAnnotator::RESULTS_PATH + filename)

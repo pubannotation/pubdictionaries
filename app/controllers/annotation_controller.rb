@@ -39,7 +39,7 @@ class AnnotationController < ApplicationController
     begin
       dictionaries = Dictionary.find_dictionaries_from_params(params)
 
-      texts = if params.has_key?(:_json)
+      targets = if params.has_key?(:_json)
         params[:_json]
       elsif params.has_key?(:text)
         {text: params[:text]}
@@ -47,24 +47,25 @@ class AnnotationController < ApplicationController
         {text: request.body.read}
       end
 
-      texts = [texts] if texts.class == Hash
-      raise ArgumentError, "No text is supplied." unless texts.present?
+      targets = [targets] if targets.class == Hash
+      raise ArgumentError, "No text is supplied." unless targets.present?
 
-      rich = true if params[:rich] == 'true' || params[:rich] == '1'
-      tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
-      threshold = params[:threshold].to_f if params[:threshold].present?
-      annotator = TextAnnotator.new(dictionaries, tokens_len_max, threshold, rich)
+      options = {}
+      options[:rich] = true if params[:rich] == 'true' || params[:rich] == '1'
+      options[:tokens_len_max] = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
+      options[:threshold] = params[:threshold].to_f if params[:threshold].present?
 
       filename = "annotation-results-#{SecureRandom.uuid}"
       FileUtils.touch(TextAnnotator::RESULTS_PATH + filename)
 
+      texts = targets.map{|target| target[:text]}
+
       # a = TextAnnotationJob.new(texts, annotator, filename)
       # a.perform()
-
-      Delayed::Job.enqueue TextAnnotationJob.new(texts, annotator, filename), queue: :general
+      Delayed::Job.enqueue TextAnnotationJob.new(texts, filename, dictionaries, options), queue: :general
 
       respond_to do |format|
-        format.any {head :see_other, location: annotation_result_path(filename)}
+        format.any {head :see_other, location: annotation_result_path(filename), retry_after: 10}
       end
     rescue ArgumentError => e
       respond_to do |format|
@@ -81,14 +82,14 @@ class AnnotationController < ApplicationController
   def annotation_result
     begin
       filename = params[:filename] + '.json'
-      filepath = TextAnnotator::RESULTS_PATH + params[:filename]
+      filepath = TextAnnotator::RESULTS_PATH + filename
 
-      if File.exist?(filepath + 'json')
+      if File.exist?(filepath)
         send_file filepath, filename: filename, type: :json
-      elsif File.exist?(filepath)
-        head :service_unavailable, retry_after: 10
+      elsif File.exist?(TextAnnotator::RESULTS_PATH + params[:filename])
+        head :not_found
       else
-        head :bad_request
+        head :gone
       end
     end
   end
