@@ -1,0 +1,101 @@
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /find_ids:
+    get:
+      summary: Find ids for given labels, from some specified dictionaries
+      parameters:
+        - name: dictionaries
+          in: URL
+          type: string
+          description: dictionary names, delimited by comma (',')
+          required: true
+        - name: labels
+          in: URL
+          type: string
+          description: labels, delimited by newline('\n'), tab('\t'), or pipe ('|')
+          required: true
+        - name: rich
+          in: URL
+          type: boolean
+          description: set it 'true' for rich output
+          required: false
+        - name: threshold
+          in: URL
+          type: float
+          description: similarity threshold for cut-off  
+          required: false
+      responses:
+        200:
+          description: A hash of ids for labels
+          examples:
+            application/json: >
+              {
+                "stomach": [
+                  "http://purl.obolibrary.org/obo/UBERON_0000945"
+                ]
+              }
+        400:
+          description: Bad Request
+          examples:
+            application/json: >
+              {
+                "message": "no label is supplied."
+              }
+    post:
+      summary:  Same as above, but a set of labels can be given in JSON
+      parameters:
+        - name: dictionaries
+          in: URL
+          description: dictionary names, delimited by comma (',')
+          required: true
+        - name: labels
+          in: body
+          description: labels
+          type: array
+          items:
+            type: string
+          required: true
+        - name: rich
+          in: URL
+          type: boolean
+          description: true for rich output
+          required: false
+        - name: threshold
+          in: URL
+          type: float
+          description: similarity threshold for cut-off  
+          required: false
+      responses:
+        200:
+          description: Product details
+          examples:
+            application/json: >
+              {
+                "stomach": [
+                  "http://purl.obolibrary.org/obo/UBERON_0000945"
+                ]
+              }
+        400:
+          description: Bad Request
+          examples:
+            application/json: >
+              {
+                "message": "no label is supplied."
+              }
+  /dictionaries/{name}/prefix_completion:
+    get:
+      summary: Get prefix completions, based on the specified dictionary
+      parameters:
+        - name: term
+          in: URL
+          description: prefix of a term
+          type: string
+          required: true
+      responses:
+        200:
+          description: An ordered list of pairs of (label, id) 
+        400:
+          description: No term

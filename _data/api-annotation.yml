@@ -1,0 +1,174 @@
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /dictionaries/{id}/text_annotation:
+    get:
+      summary: Annotate a block of text, based on the specified dictionary
+      parameters:
+        - name: text
+          in: URL
+          type: string
+          description: a block of text
+          required: true
+        - name: rich
+          in: URL
+          type: boolean
+          description: true for rich output
+          required: false
+        - name: threshold
+          in: URL
+          type: float
+          description: similarity threshold for cut-off  
+          required: false
+      responses:
+        200:
+          description: annotation result in PubAnnotation JSON Format
+          examples:
+            application/json: >
+              {
+                "text":"I have a stomach ache.",
+                "denotations":[
+                  {
+                    "span":{"begin":9,"end":16},
+                    "obj":"http://purl.obolibrary.org/obo/UBERON_0000945"
+                  }
+                ]
+              }
+        400:
+          description: Bad Request
+          examples:
+            application/json: >
+              {
+                "message": "no text is supplied."
+              }
+    post:
+      summary: Same as above, but a piece (or pieces) of text can be given in JSON
+      parameters:
+        - name: body
+          in: body
+          type: array
+          items:
+            type: object
+          description: a JSON object with a block of text (and initial annotation), or an array of multiple JSON objects
+          required: true
+        - name: rich
+          in: URL
+          type: boolean
+          description: true for rich output
+          required: false
+        - name: threshold
+          in: URL
+          type: float
+          description: similarity threshold for cut-off  
+          required: false
+      responses:
+        200:
+          description: annotation result in PubAnnotation JSON Format
+          examples:
+            application/json: >
+              {
+                "text":"I have a stomach ache.",
+                "denotations":[
+                  {
+                    "span":{"begin":9,"end":16},
+                    "obj":"http://purl.obolibrary.org/obo/UBERON_0000945"
+                  }
+                ]
+              }
+        400:
+          description: Bad Request
+          examples:
+            application/json: >
+              {
+                "message": "no text is supplied."
+              }
+  /dictionaries/{id}/annotation_request:
+    post:
+      summary: Request annotation to a block of text or blocks of text
+      parameters:
+        - name: body
+          in: body
+          type: array
+          items:
+            type: object
+          description: a JSON object with a block of text (and initial annotation), or an array of multiple JSON objects
+          required: true
+        - name: rich
+          in: URL
+          type: boolean
+          description: true for rich output
+          required: false
+        - name: threshold
+          in: URL
+          type: float
+          description: similarity threshold for cut-off  
+          required: false
+      responses:
+        303:
+          description: The URL from which the result of annotation to be retrieved will be informed through the Location header
+          headers:
+            Location:
+              description: The URL from which the result of annotation to be retrieved
+              type: string
+              format: url
+        400:
+          description: Bad Request
+          examples:
+            application/json: >
+              {
+                "message": "no text is supplied."
+              }
+  /annotation_request:
+    post:
+      summary: Request annotation to a block of text or blocks of text
+      parameters:
+        - name: dictionaries
+          in: URL
+          description: dictionaries, delimited by ','
+          required: true
+        - name: body
+          in: body
+          type: array
+          items:
+            type: object
+          description: a JSON object with a block of text (and initial annotation),<br> or an array of multiple JSON objects
+          required: true
+        - name: rich
+          in: URL
+          type: boolean
+          description: true for rich output
+          required: false
+        - name: threshold
+          in: URL
+          type: float
+          description: similarity threshold for cut-off  
+          required: false
+      responses:
+        303:
+          description: The URL from which the result of annotation to be retrieved will be informed through the Location header
+          headers:
+            Location:
+              description: The URL from which the result of annotation to be retrieved
+              type: string
+              format: url
+            Retry-after:
+              description: How long the client is advised to wait before accessing the location of result
+              type: string | integer
+              format: http-date | delta-seconds
+        400:
+          description: Bad Request
+          examples:
+            application/json: >
+              {
+                "message": "no text is supplied."
+              }
+  /annotation_result/{id}:
+    get:
+      summary: Retrieve the result of annotation
+      responses:
+        200:
+          description: The result of annotation in PubAnnotation JSON format.
+        404:
+          description: The result of annotation is not (yet) available.
