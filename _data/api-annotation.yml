@@ -97,13 +97,18 @@ paths:
           in: url
           description: dictionaries, delimited by ','
           required: true
+        - name: text
+          in: url
+          type: string
+          description: a block of text
+          required: false
         - name: body
           in: body
           type: array
           items:
             type: object
-          description: a JSON object with a block of text (and initial annotation),<br> or an array of multiple JSON objects
-          required: true
+          description: a JSON object with a block of text (and initial annotation optionally),<br> or an array of multiple JSON objects
+          required: false
         - name: rich
           in: url
           type: boolean
@@ -141,3 +146,5 @@ paths:
           description: The result of annotation in PubAnnotation JSON format.
         404:
           description: The result of annotation is not (yet) available.
+        410:
+          description: The result of annotation is (permanently) removed from the server.
