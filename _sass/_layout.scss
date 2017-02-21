@@ -10,11 +10,14 @@ body {
 }
 
 .frame {
-  padding: 10px;
-  border: solid 1px #CC8;
+  padding: 4px;
 
   background: #336699;
   color: #cfcfcf;
+
+  font-family: verdana, arial, helvetica, sans-serif;
+  font-size: 13px;
+  text-shadow: none;
 
   a {
     color: #cccccc;
@@ -49,11 +52,7 @@ body {
 
 .main-nav li a {
   border-radius: 5px;
-  font-weight: 800;
-  font-size: 14px;
   padding: 0.2em 0.6em;
-  text-shadow: none;
-  text-transform: uppercase;
   transition: all .25s;
   -moz-transition: all .25s;
   -webkit-transition: all .25s;
