@@ -12,7 +12,7 @@ PubDictionaries::Application.routes.draw do
   get  "text_annotation", to: "annotation#text_annotation"
   post "text_annotation", to: "annotation#text_annotation"
   post "annotation_request", to: "annotation#annotation_request"
-  get  'annotation_result/:filename', to: 'mapping#annotation_result', as: 'annotation_result'
+  get  'annotation_result/:filename', to: 'annotation#annotation_result', as: 'annotation_result'
 
   # devise_for :users
   devise_for :users
