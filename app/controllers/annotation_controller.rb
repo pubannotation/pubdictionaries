@@ -65,7 +65,7 @@ class AnnotationController < ApplicationController
       Delayed::Job.enqueue TextAnnotationJob.new(texts, filename, dictionaries, options), queue: :general
 
       respond_to do |format|
-        format.any {head :see_other, location: annotation_result_path(filename), retry_after: 10}
+        format.any {head :see_other, location: annotation_result_url(filename), retry_after: 10}
       end
     rescue ArgumentError => e
       respond_to do |format|
