@@ -19,7 +19,7 @@ class AnnotationController < ApplicationController
       respond_to do |format|
         format.html
         format.json {
-          raise ArgumentError, "no text is supplied." unless params[:text].present?
+          raise ArgumentError, "no text was supplied." unless params[:text].present?
           render json:@result
         }
       end
@@ -47,8 +47,7 @@ class AnnotationController < ApplicationController
         {text: request.body.read}
       end
 
-      targets = [targets] if targets.class == Hash
-      raise ArgumentError, "No text is supplied." unless targets.present?
+      raise ArgumentError, "No text was supplied." unless targets.present?
 
       options = {}
       options[:rich] = true if params[:rich] == 'true' || params[:rich] == '1'
@@ -58,7 +57,8 @@ class AnnotationController < ApplicationController
       filename = "annotation-results-#{SecureRandom.uuid}"
       FileUtils.touch(TextAnnotator::RESULTS_PATH + filename)
 
-      texts = targets.map{|target| target[:text]}
+      # texts may contain a text block or an array of text blocks
+      texts = targets.class == Hash ? targets[:text] : targets.map{|target| target[:text]}
 
       # a = TextAnnotationJob.new(texts, annotator, filename)
       # a.perform()

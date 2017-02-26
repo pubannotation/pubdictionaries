@@ -2,7 +2,7 @@ class TextAnnotationJob < Struct.new(:texts, :filename, :dictionaries, :options)
 	def perform
     begin
       annotator = TextAnnotator.new(dictionaries, options[:tokens_len_max], options[:threshold], options[:rich])
-      results = texts.inject([]){|r, text| r << annotator.annotate(text)}
+      results = (texts.class == Array) ? texts.inject([]){|r, text| r << annotator.annotate(text)} : annotator.annotate(texts)
 
       File.write(TextAnnotator::RESULTS_PATH + filename + '.json', JSON.generate(results))
       File.delete(TextAnnotator::RESULTS_PATH + filename)
