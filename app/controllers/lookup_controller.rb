@@ -24,7 +24,7 @@ class LookupController < ApplicationController
       respond_to do |format|
         format.html
         format.json {
-          raise ArgumentError, "no label is supplied." unless labels.present?
+          raise ArgumentError, "no label was supplied." unless labels.present?
           render json:@result
         }
       end
