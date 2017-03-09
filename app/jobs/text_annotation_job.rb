@@ -1,4 +1,6 @@
 class TextAnnotationJob < Struct.new(:texts, :filename, :dictionaries, :options)
+  include StateManagement
+
 	def perform
     begin
       annotator = TextAnnotator.new(dictionaries, options[:tokens_len_max], options[:threshold], options[:rich])
@@ -11,4 +13,9 @@ class TextAnnotationJob < Struct.new(:texts, :filename, :dictionaries, :options)
       File.delete(TextAnnotator::RESULTS_PATH + filename)
     end
 	end
+
+  def after
+    @job.update_attribute(:ended_at, Time.now)
+    @job.destroy
+  end
 end

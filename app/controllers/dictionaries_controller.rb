@@ -111,7 +111,7 @@ class DictionariesController < ApplicationController
       raise ArgumentError, "Cannot find the dictionary, #{params[:source_dictionary]}." if source_dictionary.nil?
       raise ArgumentError, "You cannot clone from itself." if source_dictionary == dictionary
 
-      delayed_job = Delayed::Job.enqueue CloneDictionaryJob.new(source_dictionary, dictionary), queue: :general
+      delayed_job = Delayed::Job.enqueue CloneDictionaryJob.new(source_dictionary, dictionary), queue: :upload
       Job.create({name:"Clone dictionary", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
 
       respond_to do |format|

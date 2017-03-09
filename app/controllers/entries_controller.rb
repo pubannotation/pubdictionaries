@@ -18,7 +18,7 @@ class EntriesController < ApplicationController
         # job = LoadEntriesFromFileJob.new(target_filepath, dictionary)
         # job.perform
 
-        delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dictionary), queue: :general
+        delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dictionary), queue: :upload
         Job.create({name:"Upload dictionary entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
         message = ''
       end

@@ -6,7 +6,7 @@ require 'pp'
 # Provide functionalities for text annotation.
 # 
 class TextAnnotator
-  RESULTS_PATH = "public/results/"
+  RESULTS_PATH = "tmp/annotations/"
 
   NOTERMWORDS = [ # terms will never include these words
     "is", "are", "am", "be", "was", "were", "do", "did",
@@ -155,6 +155,11 @@ class TextAnnotator
       text: text,
       denotations: denotations.uniq
     }
+  end
+
+  def self.time_estimation(texts)
+    length = (texts.class == String) ? texts.length : texts.inject(0){|sum, text| sum += text.length}
+    1 + length * 0.002
   end
 
 end

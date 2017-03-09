@@ -48,28 +48,36 @@ class AnnotationController < ApplicationController
       end
 
       raise ArgumentError, "No text was supplied." unless targets.present?
+      raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 10
 
       options = {}
       options[:rich] = true if params[:rich] == 'true' || params[:rich] == '1'
       options[:tokens_len_max] = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
       options[:threshold] = params[:threshold].to_f if params[:threshold].present?
 
-      filename = "annotation-results-#{SecureRandom.uuid}"
+      filename = "annotation-result-#{SecureRandom.uuid}"
       FileUtils.touch(TextAnnotator::RESULTS_PATH + filename)
 
       # texts may contain a text block or an array of text blocks
       texts = targets.class == Hash ? targets[:text] : targets.map{|target| target[:text]}
+      time_for_queue = Job.time_for_tasks_to_go(:annotation)
+      time_for_annotation = TextAnnotator.time_estimation(texts)
 
       # a = TextAnnotationJob.new(texts, annotator, filename)
       # a.perform()
-      Delayed::Job.enqueue TextAnnotationJob.new(texts, filename, dictionaries, options), queue: :general
+      delayed_job = Delayed::Job.enqueue TextAnnotationJob.new(texts, filename, dictionaries, options), queue: :annotation
+      Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: time_for_annotation})
 
       respond_to do |format|
-        format.any {head :see_other, location: annotation_result_url(filename), retry_after: 10}
+        format.any {head :see_other, location: annotation_result_url(filename), retry_after: time_for_queue + time_for_annotation}
       end
     rescue ArgumentError => e
       respond_to do |format|
         format.any {render json: {message:e.message}, status: :bad_request}
+      end
+    rescue RuntimeError => e
+      respond_to do |format|
+        format.any {render json: {message:e.message}, status: :service_unavailable}
       end
     rescue => e
       respond_to do |format|

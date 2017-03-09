@@ -3,6 +3,7 @@ class CleanFilesJob
   run_every 1.day
   run_at '1:00am'
   timezone 'Tokyo'
+  queue 'general'
   def perform
   	to_delete = []
     Dir.foreach(TextAnnotator::RESULTS_PATH) do |filename|
