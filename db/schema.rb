@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20160326092448) do
+ActiveRecord::Schema.define(:version => 20170309024842) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -66,6 +66,7 @@ ActiveRecord::Schema.define(:version => 20160326092448) do
     t.datetime "begun_at"
     t.datetime "ended_at"
     t.datetime "registered_at"
+    t.integer  "time"
   end
 
   add_index "jobs", ["delayed_job_id"], :name => "index_jobs_on_delayed_job_id"

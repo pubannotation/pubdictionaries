@@ -1,12 +1,20 @@
 class Job < ActiveRecord::Base
   belongs_to :dictionary
   belongs_to :delayed_job
-  attr_accessible :name, :num_dones, :num_items, :dictionary_id, :delayed_job_id, :message
+  attr_accessible :name, :num_dones, :num_items, :dictionary_id, :delayed_job_id, :time, :message
 
   scope :waiting, -> {where('begun_at IS NULL')}
   scope :running, -> {where('begun_at IS NOT NULL AND ended_at IS NULL')}
   scope :unfinished, -> {where('ended_at IS NULL')}
   scope :finished, -> {where('ended_at IS NOT NULL')}
+
+  def self.time_for_tasks_to_go(queue_name)
+    Job.joins("JOIN delayed_jobs on jobs.delayed_job_id = delayed_jobs.id").where('delayed_jobs.queue' => queue_name).sum(:time)
+  end
+
+  def self.number_of_tasks_to_go(queue_name)
+    Delayed::Job.where(queue: queue_name, attempts: 0).count
+  end
 
   def running?
     !begun_at.nil? && ended_at.nil?
