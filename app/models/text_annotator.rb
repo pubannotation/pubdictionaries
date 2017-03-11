@@ -159,7 +159,7 @@ class TextAnnotator
 
   def self.time_estimation(texts)
     length = (texts.class == String) ? texts.length : texts.inject(0){|sum, text| sum += text.length}
-    1 + length * 0.002
+    1 + length * 0.001
   end
 
 end
