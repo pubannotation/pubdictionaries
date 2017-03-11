@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20170309024842) do
+ActiveRecord::Schema.define(:version => 20170311055148) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -55,6 +55,7 @@ ActiveRecord::Schema.define(:version => 20170309024842) do
   add_index "entries", ["label_length"], :name => "index_entries_on_label_length"
   add_index "entries", ["mode"], :name => "index_entries_on_mode"
   add_index "entries", ["norm1"], :name => "index_entries_on_norm1"
+  add_index "entries", ["norm2"], :name => "index_entries_on_norm2"
 
   create_table "jobs", :force => true do |t|
     t.string   "name"
