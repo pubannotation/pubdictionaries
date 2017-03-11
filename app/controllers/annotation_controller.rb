@@ -60,7 +60,8 @@ class AnnotationController < ApplicationController
 
       # texts may contain a text block or an array of text blocks
       texts = targets.class == Hash ? targets[:text] : targets.map{|target| target[:text]}
-      time_for_queue = Job.time_for_tasks_to_go(:annotation)
+      number_of_annotation_workers = 2
+      time_for_queue = Job.time_for_tasks_to_go(:annotation) / number_of_annotation_workers
       time_for_annotation = TextAnnotator.time_estimation(texts)
 
       # a = TextAnnotationJob.new(texts, annotator, filename)

@@ -9,7 +9,7 @@ class Job < ActiveRecord::Base
   scope :finished, -> {where('ended_at IS NOT NULL')}
 
   def self.time_for_tasks_to_go(queue_name)
-    Job.joins("JOIN delayed_jobs on jobs.delayed_job_id = delayed_jobs.id").where('delayed_jobs.queue' => queue_name).sum(:time)
+    Job.joins("JOIN delayed_jobs on jobs.delayed_job_id = delayed_jobs.id").where('delayed_jobs.queue' => queue_name, begun_at: nil).sum(:time)
   end
 
   def self.number_of_tasks_to_go(queue_name)
