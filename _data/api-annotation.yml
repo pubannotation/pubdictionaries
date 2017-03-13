@@ -5,31 +5,31 @@ produces:
 paths:
   /text_annotation:
     get:
-      summary: Annotate a block of text, based on the specified dictionary
+      summary: Annotate a block of text, based on the specified dictionaries.
       parameters:
         - name: dictionaries
-          in: url
+          in: query
           type: string
           description: dictionary names, delimited by comma (',')
           required: true
         - name: text
-          in: url
+          in: query
           type: string
           description: a block of text
           required: true
         - name: rich
-          in: url
+          in: query
           type: boolean
-          description: true for rich output
+          description: set it to 'true' for rich output
           required: false
         - name: threshold
-          in: url
+          in: query
           type: float
           description: similarity threshold for cut-off  
           required: false
       responses:
         200:
-          description: annotation result in PubAnnotation JSON Format
+          description: annotation result in the PubAnnotation JSON Format
           examples:
             application/json: >
               {
@@ -42,7 +42,7 @@ paths:
                 ]
               }
         400:
-          description: Bad Request
+          description: Bad Request, e.g., a mandatory parameter setting is missing.
           examples:
             application/json: >
               {
@@ -56,15 +56,15 @@ paths:
           type: array
           items:
             type: object
-          description: a JSON object with a block of text (and initial annotation), or an array of multiple JSON objects
+          description: a JSON object with a block of text, or an array of multiple JSON objects
           required: true
         - name: rich
-          in: url
+          in: query
           type: boolean
-          description: true for rich output
+          description: set it to 'true' for rich output
           required: false
         - name: threshold
-          in: url
+          in: query
           type: float
           description: similarity threshold for cut-off  
           required: false
@@ -83,7 +83,7 @@ paths:
                 ]
               }
         400:
-          description: Bad Request
+          description: Bad Request, e.g., a mandatory parameter setting is missing.
           examples:
             application/json: >
               {
@@ -94,28 +94,23 @@ paths:
       summary: Request to annotate a block of text (or blocks of text).
       parameters:
         - name: dictionaries
-          in: url
-          description: dictionaries, delimited by ','
+          in: query
+          description: dictionaries, delimited by comma (',')
           required: true
-        - name: text
-          in: url
-          type: string
-          description: a block of text
-          required: false
         - name: body
           in: body
           type: array
           items:
             type: object
-          description: a JSON object with a block of text (and initial annotation optionally),<br> or an array of multiple JSON objects
-          required: false
+          description: a JSON object with a block of text, or an array of multiple JSON objects
+          required: true
         - name: rich
-          in: url
+          in: query
           type: boolean
-          description: true for rich output
+          description: set it to 'true' for rich output
           required: false
         - name: threshold
-          in: url
+          in: query
           type: float
           description: similarity threshold for cut-off  
           required: false
@@ -132,18 +127,37 @@ paths:
               type: string | integer
               format: http-date | delta-seconds
         400:
-          description: Bad Request
+          description: Bad Request, e.g., a mandatory parameter setting is missing.
           examples:
             application/json: >
               {
                 "message": "no text is supplied."
               }
+        503:
+          description: The request is valid, but the server is unavailable to fulfil it due to, e.g., server overload.
   /annotation_result/{id}:
     get:
       summary: Retrieve the result of annotation
+      parameters:
+        - name: id
+          in: path
+          type: string
+          description: the id of annotation result
+          required: true
       responses:
         200:
           description: The result of annotation in PubAnnotation JSON format.
+          examples:
+            application/json: >
+              {
+                "text":"I have a stomach ache.",
+                "denotations":[
+                  {
+                    "span":{"begin":9,"end":16},
+                    "obj":"http://purl.obolibrary.org/obo/UBERON_0000945"
+                  }
+                ]
+              }
         404:
           description: The result of annotation is not (yet) available.
         410:
