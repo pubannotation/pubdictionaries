@@ -64,7 +64,7 @@ class AnnotationController < ApplicationController
       time_for_queue = Job.time_for_tasks_to_go(:annotation) / number_of_annotation_workers
       time_for_annotation = TextAnnotator.time_estimation(texts)
 
-      # a = TextAnnotationJob.new(texts, annotator, filename)
+      # a = TextAnnotationJob.new(texts, filename, dictionaries, options)
       # a.perform()
       delayed_job = Delayed::Job.enqueue TextAnnotationJob.new(texts, filename, dictionaries, options), queue: :annotation
       Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: time_for_annotation})
