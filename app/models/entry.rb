@@ -178,15 +178,6 @@ class Entry < ActiveRecord::Base
     text.gsub(/(^| )[A-Z][a-z ]/, &:downcase)
   end
 
-  # Get the ngrams of an input text using an analyzer of ElasticSearch.
-  #
-  # * (string) text  - Input text.
-  #
-  def self.get_ngrams(text)
-    return [] if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=ngrams', text.gsub('{', '\{').sub(/^-/, '\-')), symbolize_names: true)[:tokens].map{|t| t[:token]}
-  end
-
   # Get typographic normalization of an input text using an analyzer of ElasticSearch.
   #
   # * (string) text  - Input text.
@@ -194,25 +185,23 @@ class Entry < ActiveRecord::Base
   def self.normalize1(str)
     raise ArgumentError, "Empty string" if str.empty?
     str.downcase.gsub(/[[:space:]]/, '').gsub(/[[:punct:]]/, '')
-    # (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization1', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
 
+  # TODO: to stop using elasticsearch
   # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
   #
   # * (string) text  - Input text.
   #
-  def self.normalize2(text)
+  def self.normalize2(text, connection = nil)
     raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=normalization2', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
-  end
-
-  # Tokenize an input text using an analyzer of ElasticSearch.
-  #
-  # * (string) text  - Input text.
-  #
-  def self.tokenize(text)
-    raise ArgumentError, "Empty text" if text.empty?
-    (JSON.parse RestClient.post('http://localhost:9200/entries/_analyze?analyzer=tokenization', text.sub(/^-/, '\-').gsub('{', '\{')), symbolize_names: true)[:tokens]
+    res = if connection.nil?
+      http = Net::HTTP.new('localhost', 9200)
+      http.request_post('/entries/_analyze?analyzer=normalization2', text.gsub('{', '\{').sub(/^-/, '\-'))
+    else
+      connection[:post].body = text.gsub('{', '\{').sub(/^-/, '\-')
+      connection[:http].request(connection[:uri], connection[:post])
+    end
+    (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
 
 end

@@ -8,6 +8,13 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
       @job.update_attribute(:num_items, num_entries)
       @job.update_attribute(:num_dones, 0)
 
+      uri = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization2')
+      connection = {
+        uri: uri,
+        http: Net::HTTP::Persistent.new,
+        post: Net::HTTP::Post.new(uri.request_uri)
+      }
+
       new_entries = []
       File.foreach(filename).with_index do |line, i|
         label, id = Entry.read_entry_line(line)
@@ -17,19 +24,21 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
         else
           new_entries << [label, id]
           if new_entries.length >= transaction_size
-            dictionary.add_entries(new_entries)
+            dictionary.add_entries(new_entries, connection)
             new_entries.clear
             @job.update_attribute(:num_dones, i + 1)
           end
         end
       end
-      dictionary.add_entries(new_entries) unless new_entries.empty?
+      dictionary.add_entries(new_entries, connection) unless new_entries.empty?
       @job.update_attribute(:num_dones, num_entries)
 
       dictionary.compile
     rescue => e
 			@job.message = e.message
     end
+
+    connection[:http].shutdown
     File.delete(filename)
 	end
 end
