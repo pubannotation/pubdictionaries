@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-require 'json'
 require 'simstring'
 require 'pp'
 
@@ -52,6 +51,14 @@ class TextAnnotator
     @threshold ||= 0.85
     @rich ||= false
 
+    @es_connection = Net::HTTP::Persistent.new
+
+    @uri_tokenizer = URI.parse('http://localhost:9200/entries/_analyze?analyzer=tokenization')
+    @uri_normalizer2 = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization2')
+
+    @post_tokenizer = Net::HTTP::Post.new @uri_tokenizer.request_uri
+    @post_normalizer2 = Net::HTTP::Post.new @uri_normalizer2.request_uri
+
     @ssdbs = @dictionaries.inject({}) do |h, dic|
       h[dic.name] = Simstring::Reader.new(dic.ssdb_path)
       h[dic.name].measure = Simstring::Jaccard
@@ -64,10 +71,11 @@ class TextAnnotator
   def annotate(text, denotations = [])
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
-    tokens = Entry.tokenize(Entry.decapitalize(text))
+    tokens = tokenize(Entry.decapitalize(text))
     spans  = tokens.map{|t| text[t[:start_offset] ... t[:end_offset]]}
+
     norm1s = spans.map{|s| Entry.normalize1(s)}
-    norm2s = spans.map{|s| Entry.normalize2(s)}
+    norm2s = spans.map{|s| normalize2(s)}
 
     # index spans with their tokens and positions (array)
     span_index = {}
@@ -157,9 +165,24 @@ class TextAnnotator
     }
   end
 
+  def tokenize(text)
+    raise ArgumentError, "Empty text" if text.empty?
+    @post_tokenizer.body = text.gsub('{', '\{').sub(/^-/, '\-')
+    res = @es_connection.request @uri_tokenizer, @post_tokenizer
+    (JSON.parse res.body, symbolize_names: true)[:tokens]
+  end
+
+  # TODO: this method is overlapped with the same method in the entry model.
+  def normalize2(text)
+    raise ArgumentError, "Empty text" if text.empty?
+    @post_normalizer2.body = text.gsub('{', '\{').sub(/^-/, '\-')
+    res = @es_connection.request @uri_normalizer2, @post_normalizer2
+    (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+  end
+
   def self.time_estimation(texts)
     length = (texts.class == String) ? texts.length : texts.inject(0){|sum, text| sum += text.length}
-    1 + length * 0.001
+    1 + length * 0.0002
   end
 
 end
