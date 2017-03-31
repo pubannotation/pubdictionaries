@@ -56,7 +56,7 @@ paths:
           type: array
           items:
             type: object
-          description: a JSON object with a block of text, or an array of multiple JSON objects
+          description: a JSON object with a block of text
           required: true
         - name: rich
           in: query
