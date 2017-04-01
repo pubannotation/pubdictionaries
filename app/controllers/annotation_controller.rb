@@ -1,6 +1,8 @@
 require 'fileutils'
 
 class AnnotationController < ApplicationController
+
+  # GET
   def text_annotation
     begin
       @dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
@@ -34,20 +36,20 @@ class AnnotationController < ApplicationController
     end
   end
 
-  # post
+  # POST
   def annotation_request
     begin
       dictionaries = Dictionary.find_dictionaries_from_params(params)
 
-      targets = if params.has_key?(:_json)
-        params[:_json]
+      target = if params.has_key?(:annotation)
+        params[:annotation].symbolize_keys
       elsif params.has_key?(:text)
         {text: params[:text]}
       else
         {text: request.body.read}
       end
 
-      raise ArgumentError, "No text was supplied." unless targets.present?
+      raise ArgumentError, "No text was supplied." unless target.present?
       raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 10
 
       options = {}
@@ -58,15 +60,16 @@ class AnnotationController < ApplicationController
       filename = "annotation-result-#{SecureRandom.uuid}"
       FileUtils.touch(TextAnnotator::RESULTS_PATH + filename)
 
-      # texts may contain a text block or an array of text blocks
-      texts = targets.class == Hash ? targets[:text] : targets.map{|target| target[:text]}
       number_of_annotation_workers = 2
       time_for_queue = Job.time_for_tasks_to_go(:annotation) / number_of_annotation_workers
+
+      # texts may contain a text block or an array of text blocks
+      texts = target.class == Hash ? target[:text] : target.map{|target| target[:text]}
       time_for_annotation = TextAnnotator.time_estimation(texts)
 
-      # a = TextAnnotationJob.new(texts, filename, dictionaries, options)
+      # a = TextAnnotationJob.new(target, filename, dictionaries, options)
       # a.perform()
-      delayed_job = Delayed::Job.enqueue TextAnnotationJob.new(texts, filename, dictionaries, options), queue: :annotation
+      delayed_job = Delayed::Job.enqueue TextAnnotationJob.new(target, filename, dictionaries, options), queue: :annotation
       Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: time_for_annotation})
 
       respond_to do |format|
