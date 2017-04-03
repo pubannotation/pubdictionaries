@@ -11,6 +11,7 @@ class TextAnnotationJob < Struct.new(:target, :filename, :dictionaries, :options
           t[:denotations] = r[:denotations] if r[:denotations].present?
           t[:relations] = r[:relations] if r[:relations].present?
           t[:modifications] = r[:modifications] if r[:modifications].present?
+          t
         end
       else
         r = annotator.annotate(target[:text])
