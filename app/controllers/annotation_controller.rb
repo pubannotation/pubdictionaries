@@ -16,7 +16,7 @@ class AnnotationController < ApplicationController
           body = request.body.read.force_encoding('UTF-8')
           if body.present?
             begin
-              r = JSON.parse body, symbolize_keys: true
+              r = JSON.parse body, symbolize_names: true
               r[:text]
             rescue
               body
@@ -57,12 +57,10 @@ class AnnotationController < ApplicationController
     begin
       dictionaries = Dictionary.find_dictionaries_from_params(params)
 
-      target = if params.has_key?(:annotation)
-        params[:annotation].symbolize_keys
-      elsif params.has_key?(:text)
-        {text: params[:text]}
-      else
-        {text: request.body.read}
+      body = request.body.read.force_encoding('UTF-8')
+
+      target = if body.present?
+        JSON.parse body, symbolize_names: true
       end
 
       raise ArgumentError, "No text was supplied." unless target.present?
@@ -80,7 +78,7 @@ class AnnotationController < ApplicationController
       time_for_queue = Job.time_for_tasks_to_go(:annotation) / number_of_annotation_workers
 
       # texts may contain a text block or an array of text blocks
-      texts = target.class == Hash ? target[:text] : target.map{|target| target[:text]}
+      texts = target.class == Hash ? target[:text] : target.map{|t| t[:text]}
       time_for_annotation = TextAnnotator.time_estimation(texts)
 
       # a = TextAnnotationJob.new(target, filename, dictionaries, options)
