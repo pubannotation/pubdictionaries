@@ -13,7 +13,7 @@ class AnnotationController < ApplicationController
         if params[:text].present?
           params[:text]
         else
-          body = request.body.read
+          body = request.body.read.force_encoding('UTF-8')
           if body.present?
             begin
               r = JSON.parse body, symbolize_keys: true
