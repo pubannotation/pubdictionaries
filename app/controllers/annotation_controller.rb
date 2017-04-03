@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'json'
 
 class AnnotationController < ApplicationController
 
@@ -8,12 +9,27 @@ class AnnotationController < ApplicationController
       @dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
       @dictionaries = Dictionary.all
 
-      @result = if params[:text].present?
+      text =
+        if params[:text].present?
+          params[:text]
+        else
+          body = request.body.read
+          if body.present?
+            begin
+              r = JSON.parse body, symbolize_keys: true
+              r[:text]
+            rescue
+              body
+            end
+          end
+        end
+
+      @result = if text.present?
         rich = true if params[:rich] == 'true' || params[:rich] == '1'
         tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
         threshold = params[:threshold].to_f if params[:threshold].present?
         annotator = TextAnnotator.new(@dictionaries_selected, tokens_len_max, threshold, rich)
-        annotator.annotate(params[:text])
+        annotator.annotate(text)
       else
         {}
       end
@@ -21,7 +37,7 @@ class AnnotationController < ApplicationController
       respond_to do |format|
         format.html
         format.json {
-          raise ArgumentError, "no text was supplied." unless params[:text].present?
+          raise ArgumentError, "no text was supplied." unless text.present?
           render json:@result
         }
       end
