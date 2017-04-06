@@ -1,6 +1,9 @@
 - title: Contents
   docs:
     - /
+    - /lookup/
     - /lookup-api/
+    - /annotation/
+    - /asyncronous-annotation/
     - /annotation-api/
     - /about/
