@@ -1,15 +1,15 @@
 ---
 layout: docs
-title: Asyncronous Annotation
-permalink: /asyncronous-annotation/
+title: Asynchronous Annotation
+permalink: /asynchronous-annotation/
 ---
 
-# Asyncronous Annotation
+# Asynchronous Annotation
 
 If you want to annotate a large amount of texts using a dictionary on PubDictionaries,
-you can use the API for asyncronous annotation.
+you can use the API for asynchronous annotation.
 
-For an asyncronous annotation, the path _/annotation_request can be called in _POST_ method,
+For an asynchronous annotation, the path _/annotation_request can be called in _POST_ method,
 with an array of texts in JSON in the body of the POST request.
 
 Suppose that a JSON file, _example.json_, has an array of JSON objects as follows:
