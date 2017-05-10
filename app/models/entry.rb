@@ -127,7 +127,7 @@ class Entry < ActiveRecord::Base
 
     entries = dictionaries.inject([]) do |a1, dic|
       norm2s = ssdbs[dic.name].retrieve(norm2)
-      a1 + norm2s.inject([]){|a2, norm2| a2 + dic.entries.where(norm2:norm2, mode:Entry::MODE_NORMAL) + dic.entries.where(mode:Entry::MODE_ADDITION)}
+      a1 + norm2s.inject([]){|a2, norm2| a2 + dic.entries.where(norm2:norm2, mode:Entry::MODE_NORMAL)} + dic.entries.where(mode:Entry::MODE_ADDITION)
     end
 
     entries.map!{|e| {id: e.id, label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}.uniq!
