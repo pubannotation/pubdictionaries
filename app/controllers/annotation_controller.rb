@@ -29,7 +29,9 @@ class AnnotationController < ApplicationController
         tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
         threshold = params[:threshold].to_f if params[:threshold].present?
         annotator = TextAnnotator.new(@dictionaries_selected, tokens_len_max, threshold, rich)
-        annotator.annotate(text)
+        r = annotator.annotate(text)
+        annotator.done
+        r
       else
         {}
       end

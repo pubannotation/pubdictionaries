@@ -141,11 +141,15 @@ class Dictionary < ActiveRecord::Base
       h
     end
 
-    labels.inject({}) do |h, label|
+    r = labels.inject({}) do |h, label|
       h[label] = Entry.search_term(dictionaries, ssdbs, threshold, label)
       h[label].map!{|entry| entry[:identifier]} unless rich
       h
     end
+
+    ssdbs.each{|name, db| db.close}
+
+    r
   end
 
   def ssdb_exist?

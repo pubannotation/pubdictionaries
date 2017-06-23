@@ -67,6 +67,9 @@ class TextAnnotator
     end
   end
 
+  def done
+    @ssdbs.each{|name, db| db.close}
+  end
 
   def annotate(text, denotations = [])
     # tokens are produced in the order of their position.
@@ -182,7 +185,7 @@ class TextAnnotator
 
   def self.time_estimation(texts)
     length = (texts.class == String) ? texts.length : texts.inject(0){|sum, text| sum += text.length}
-    1 + length * 0.0002
+    1 + length * 0.0001
   end
 
 end
