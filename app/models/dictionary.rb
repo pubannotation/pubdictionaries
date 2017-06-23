@@ -125,7 +125,7 @@ class Dictionary < ActiveRecord::Base
     elsif params.has_key?(:id)
       params[:id]
     end
-    raise ArgumentError, "No dictionary is specified." unless dicnames.present?
+    return [] unless dicnames.present?
 
     dictionaries = dicnames.split(',').collect{|d| Dictionary.find_by_name(d.strip)}
     raise ArgumentError, "wrong dictionary specification." if dictionaries.include? nil
