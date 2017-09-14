@@ -170,7 +170,7 @@ class TextAnnotator
 
   def tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
-    @post_tokenizer.body = text.gsub('{', '\{').sub(/^-/, '\-')
+    @post_tokenizer.body = text.sub(/^-/, '\-')
     res = @es_connection.request @uri_tokenizer, @post_tokenizer
     (JSON.parse res.body, symbolize_names: true)[:tokens]
   end
@@ -178,7 +178,7 @@ class TextAnnotator
   # TODO: this method is overlapped with the same method in the entry model.
   def normalize2(text)
     raise ArgumentError, "Empty text" if text.empty?
-    @post_normalizer2.body = text.gsub('{', '\{').sub(/^-/, '\-')
+    @post_normalizer2.body = text.sub(/^-/, '\-')
     res = @es_connection.request @uri_normalizer2, @post_normalizer2
     (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
