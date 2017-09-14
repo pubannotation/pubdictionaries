@@ -113,7 +113,7 @@ class AnnotationController < ApplicationController
       filepath = TextAnnotator::RESULTS_PATH + filename
 
       if File.exist?(filepath)
-        annotations = JSON.parse(File.read(@project.comparison_path), symbolize_names: true)
+        annotations = JSON.parse(File.read(filepath), symbolize_names: true)
 
         success = if annotations.class == Array
           annotations.first.has_key?(:text)
