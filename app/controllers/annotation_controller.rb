@@ -113,7 +113,19 @@ class AnnotationController < ApplicationController
       filepath = TextAnnotator::RESULTS_PATH + filename
 
       if File.exist?(filepath)
-        send_file filepath, filename: filename, type: :json
+        annotations = JSON.parse(File.read(@project.comparison_path), symbolize_names: true)
+
+        success = if annotations.class == Array
+          annotations.first.has_key?(:text)
+        else
+          annotations.has_key?(:text)
+        end
+
+        if success
+          send_file filepath, filename: filename, type: :json
+        else
+          send_file filepath, filename: filename, type: :json, status: :internal_server_error
+        end
       elsif File.exist?(TextAnnotator::RESULTS_PATH + params[:filename])
         head :not_found
       else
