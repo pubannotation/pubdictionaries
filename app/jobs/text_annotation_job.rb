@@ -1,4 +1,4 @@
-class TextAnnotationJob < Struct.new(:targets, :filename, :dictionaries, :options)
+class TextAnnotationJob < Struct.new(:target, :filename, :dictionaries, :options)
   include StateManagement
 
 	def perform
