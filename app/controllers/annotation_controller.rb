@@ -29,9 +29,10 @@ class AnnotationController < ApplicationController
         tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
         threshold = params[:threshold].to_f if params[:threshold].present?
         annotator = TextAnnotator.new(@dictionaries_selected, tokens_len_max, threshold, rich)
-        r = annotator.annotate(text)
+        r = annotator.annotate_batch([{text:text}])
         annotator.done
-        r
+        r.first
+        # r
       else
         {}
       end
@@ -66,7 +67,7 @@ class AnnotationController < ApplicationController
       end
 
       raise ArgumentError, "No text was supplied." unless target.present?
-      raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 10
+      raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 8
 
       options = {}
       options[:rich] = true if params[:rich] == 'true' || params[:rich] == '1'
@@ -76,7 +77,7 @@ class AnnotationController < ApplicationController
       filename = "annotation-result-#{SecureRandom.uuid}"
       FileUtils.touch(TextAnnotator::RESULTS_PATH + filename)
 
-      number_of_annotation_workers = 2
+      number_of_annotation_workers = 4
       time_for_queue = Job.time_for_tasks_to_go(:annotation) / number_of_annotation_workers
 
       # texts may contain a text block or an array of text blocks
@@ -84,6 +85,7 @@ class AnnotationController < ApplicationController
       time_for_annotation = TextAnnotator.time_estimation(texts)
 
       # a = TextAnnotationJob.new(target, filename, dictionaries, options)
+      # a = TextAnnotationOldJob.new(target, filename, dictionaries, options)
       # a.perform()
       delayed_job = Delayed::Job.enqueue TextAnnotationJob.new(target, filename, dictionaries, options), queue: :annotation
       Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: time_for_annotation})
@@ -113,7 +115,19 @@ class AnnotationController < ApplicationController
       filepath = TextAnnotator::RESULTS_PATH + filename
 
       if File.exist?(filepath)
-        send_file filepath, filename: filename, type: :json
+        annotations = JSON.parse(File.read(filepath), symbolize_names: true)
+
+        success = if annotations.class == Array
+          annotations.first.has_key?(:text)
+        else
+          annotations.has_key?(:text)
+        end
+
+        if success
+          send_file filepath, filename: filename, type: :json
+        else
+          send_file filepath, filename: filename, type: :json, status: :internal_server_error
+        end
       elsif File.exist?(TextAnnotator::RESULTS_PATH + params[:filename])
         head :not_found
       else

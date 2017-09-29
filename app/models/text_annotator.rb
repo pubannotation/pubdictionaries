@@ -65,11 +65,118 @@ class TextAnnotator
       h[dic.name].threshold = @threshold
       h
     end
+
+    @ssdbs_overlap = @dictionaries.inject({}) do |h, dic|
+      h[dic.name] = Simstring::Reader.new(dic.ssdb_path)
+      h[dic.name].measure = Simstring::Overlap
+      h[dic.name].threshold = @threshold
+      h
+    end
   end
 
   def done
     @ssdbs.each{|name, db| db.close}
+    @ssdbs_overlap.each{|name, db| db.close}
   end
+
+  def annotate_batch(anns_col)
+    # index spans with their positions and norms
+    span_index = anns_col.each_with_index.inject({}){|index, (anns, i)| index_spans(anns[:text], i, index)}
+
+    # To search mapping entries per span
+    span_entries = {}
+    span_index.each do |span, info|
+      entries = Entry.search_term(@dictionaries, @ssdbs, @threshold, span, info[:norm1], info[:norm2])
+      span_entries[span] = entries if entries.present?
+    end
+
+    # To collect annotated (anchored) spans per entry
+    entry_anns = Hash.new([])
+    span_entries.each do |span, entries|
+      entries.each do |entry|
+        entry_anns[entry[:id]] += span_index[span][:positions].collect{|p| {span:span, position:p, label:entry[:label], identifier:entry[:identifier], score:entry[:score]}}
+      end
+    end
+
+    # To choose the best annotated span per entry
+    # It is assumed that anns are sorted by their position
+    entry_anns.each do |eid, anns|
+      full_anns = anns
+      best_anns = []
+      full_anns.each do |ann|
+        last_ann = best_anns.pop
+        if last_ann.nil?
+          best_anns.push(ann)
+        elsif (ann[:position][:text_idx] == last_ann[:position][:text_idx]) && (ann[:position][:start_offset] < last_ann[:position][:end_offset]) #span_overlap?
+          best_anns.push(ann[:score] > last_ann[:score] ? ann : last_ann) # to prefer shorter span
+        else
+          best_anns.push(last_ann, ann)
+        end
+      end
+      entry_anns[eid] = best_anns
+    end
+
+    # rewrite to denotations
+    anns_col.each do |anns|
+      anns[:denotations] = []
+      anns.delete(:relations)
+      anns.delete(:modifications)
+    end
+
+    entry_anns.each do |eid, anns|
+      anns.each do |ann|
+        d = {span:{begin:ann[:position][:start_offset], end:ann[:position][:end_offset]}, obj:ann[:identifier]}
+        if @rich
+          d[:score] = ann[:score]
+          d[:label] = ann[:label]
+        end
+        anns_col[ann[:position][:text_idx]][:denotations] << d
+      end
+    end
+
+    anns_col.each{|anns| anns[:denotations].uniq!}
+    anns_col
+  end
+
+  def index_spans(text, text_idx, span_index)
+    # tokens are produced in the order of their position.
+    # tokens are normalzed, but stopwords are preserved.
+    tokens = tokenize(Entry.decapitalize(text))
+    spans  = tokens.map{|t| text[t[:start_offset] ... t[:end_offset]]}
+
+    norm1s = spans.map{|s| Entry.normalize1(s)}
+    norm2s = spans.map{|s| normalize2(s)}
+
+    (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
+      next if NOTERMWORDS.include?(tokens[tbegin][:token])
+      next if NOEDGEWORDS.include?(tokens[tbegin][:token])
+
+      (@tokens_len_min .. @tokens_len_max).each do |tlen|
+        break if tbegin + tlen > tokens.length
+        break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
+        # break if tlen > 1 && text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\.\s+[A-Z][a-z ]/ # sentence boundary
+        break if NOTERMWORDS.include?(tokens[tbegin + tlen - 1][:token])
+        next if NOEDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
+
+        norm2 = norm2s[tbegin, tlen].join
+        lookup = @dictionaries.inject([]){|col, dic| col += @ssdbs_overlap[dic.name].retrieve(norm2)}
+        break if lookup.empty?
+
+        span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
+
+        unless span_index.has_key?(span)
+          norm1 = norm1s[tbegin, tlen].join
+          span_index[span] = {norm1:norm1, norm2:norm2, positions:[]}
+        end
+
+        position = {text_idx: text_idx, start_offset: tokens[tbegin][:start_offset], end_offset: tokens[tbegin+tlen-1][:end_offset]}
+        span_index[span][:positions] << position
+      end
+    end
+
+    span_index
+  end
+
 
   def annotate(text, denotations = [])
     # tokens are produced in the order of their position.
@@ -89,15 +196,18 @@ class TextAnnotator
       (@tokens_len_min .. @tokens_len_max).each do |tlen|
         break if tbegin + tlen > tokens.length
         break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
-        break if text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\.\s+[A-Z][a-z ]/ # sentence boundary
+        # break if tlen > 1 && text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\.\s+[A-Z][a-z ]/ # sentence boundary
         break if NOTERMWORDS.include?(tokens[tbegin + tlen - 1][:token])
         next if NOEDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
+
+        norm2 = norm2s[tbegin, tlen].join
+        lookup = @dictionaries.inject([]){|col, dic| col += @ssdbs_overlap[dic.name].retrieve(norm2)}
+        break if lookup.empty?
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
 
         unless span_index.has_key?(span)
           norm1 = norm1s[tbegin, tlen].join
-          norm2 = norm2s[tbegin, tlen].join
           span_index[span] = {norm1:norm1, norm2:norm2, positions:[]}
         end
 
@@ -108,6 +218,7 @@ class TextAnnotator
 
     # To search mapping entries per span
     span_entries = {}
+
     bad_key = nil
     span_index.each do |span, info|
       entries = Entry.search_term(@dictionaries, @ssdbs, @threshold, span, info[:norm1], info[:norm2])
@@ -168,9 +279,19 @@ class TextAnnotator
     }
   end
 
+  def sentence_break(text)
+    sbreaks = []
+    position = 0
+    text.scan(/[a-z0-9][.!?]\s+[A-Z]/).each do |sen|
+      sbreaks << position + sen.index(/\s/)
+      position += sen.length
+    end
+    sbreaks
+  end
+
   def tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
-    @post_tokenizer.body = text.gsub('{', '\{').sub(/^-/, '\-')
+    @post_tokenizer.body = text.sub(/^-/, '\-')
     res = @es_connection.request @uri_tokenizer, @post_tokenizer
     (JSON.parse res.body, symbolize_names: true)[:tokens]
   end
@@ -178,14 +299,75 @@ class TextAnnotator
   # TODO: this method is overlapped with the same method in the entry model.
   def normalize2(text)
     raise ArgumentError, "Empty text" if text.empty?
-    @post_normalizer2.body = text.gsub('{', '\{').sub(/^-/, '\-')
+    @post_normalizer2.body = text.sub(/^-/, '\-')
     res = @es_connection.request @uri_normalizer2, @post_normalizer2
     (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
 
   def self.time_estimation(texts)
     length = (texts.class == String) ? texts.length : texts.inject(0){|sum, text| sum += text.length}
-    1 + length * 0.0001
+    1 + length * 0.00001
   end
 
+end
+
+
+if __FILE__ == $0
+  # require 'profile'
+  require 'json'
+  require 'optparse'
+
+  outdir = 'out'
+  mode = :pas
+
+  optparse = OptionParser.new do |opts|
+    opts.banner = "Usage: enju_accessor.rb [option(s)] a-directory-with-annotation-files"
+
+    opts.on('-o', '--output directory', "specifies the output directory (default: '#{outdir}')") do |d|
+      outdir = d
+    end
+
+    opts.on('-h', '--help', 'displays this screen') do
+      puts opts
+      exit
+    end
+  end
+
+  optparse.parse!
+  unless ARGV.length == 1
+    puts optparse
+    exit
+  end
+
+  indir = ARGV[0]
+  puts "# input directory: #{indir}"
+  puts "# output directory: #{outdir}"
+
+  if !outdir.nil? && !File.exists?(outdir)
+    Dir.mkdir(outdir)
+    puts "# output directory (#{outdir}) created."
+  end
+
+  anns_in = []
+  count_files = 0
+  Dir.foreach(indir) do |infile|
+    next unless infile.end_with?('.json')
+    pmid = File.basename(infile, ".json")
+
+    count_files += 1
+    print "#{pmid}\t#{count_files}\r"
+
+    anns_in << JSON.parse(File.read(indir + '/' + infile), symbolize_names: true)
+  end
+  puts "                           \r"
+  puts "# count files: #{count_files}"
+
+  annotator = TextAnnotator.new(dictionaries, options[:tokens_len_max], options[:threshold], options[:rich])
+  anns_out = anns_in.each_slice(2).inject([]) do |col, anns_slice|
+    col += annotator.annotate_batch(anns_slice)
+  end
+  annotator.done
+
+  outfile = outdir + '/' + 'out.json' unless outdir.nil?
+  File.write(outfile, anns_out.to_json)
 end
