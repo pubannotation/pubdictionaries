@@ -31,7 +31,9 @@ class Job < ActiveRecord::Base
       rescue
         nil
       end
+      update_attribute(:delayed_job_id, nil)
       dj.delete unless dj.nil?
+
       update_attribute(:begun_at, Time.now)
       self.destroy
     end
