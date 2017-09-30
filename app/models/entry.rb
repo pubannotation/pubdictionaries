@@ -194,11 +194,14 @@ class Entry < ActiveRecord::Base
   #
   def self.normalize2(text, connection = nil)
     raise ArgumentError, "Empty text" if text.empty?
+
+    _text = text.gsub('{', '\{').sub(/^-/, '\-')
+
     res = if connection.nil?
       http = Net::HTTP.new('localhost', 9200)
-      http.request_post('/entries/_analyze?analyzer=normalization2', text.gsub('{', '\{').sub(/^-/, '\-'))
+      http.request_post('/entries/_analyze?analyzer=normalization2', _text)
     else
-      connection[:post].body = text.gsub('{', '\{').sub(/^-/, '\-')
+      connection[:post].body = _text
       connection[:http].request(connection[:uri], connection[:post])
     end
     (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
