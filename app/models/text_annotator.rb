@@ -98,19 +98,28 @@ class TextAnnotator
       end
     end
 
+    # To sort anns by their position
+    entry_anns.each_value do |anns|
+      anns.sort! do |a, b|
+        c = (a[:position][:start_offset] <=> b[:position][:start_offset])
+        c.zero? ? (b[:position][:end_offset] <=> a[:position][:end_offset]) : c
+      end
+    end
+
     # To choose the best annotated span per entry
-    # It is assumed that anns are sorted by their position
     entry_anns.each do |eid, anns|
       full_anns = anns
       best_anns = []
       full_anns.each do |ann|
-        last_ann = best_anns.pop
-        if last_ann.nil?
+        if best_anns.empty?
           best_anns.push(ann)
-        elsif (ann[:position][:text_idx] == last_ann[:position][:text_idx]) && (ann[:position][:start_offset] < last_ann[:position][:end_offset]) #span_overlap?
-          best_anns.push(ann[:score] > last_ann[:score] ? ann : last_ann) # to prefer shorter span
         else
-          best_anns.push(last_ann, ann)
+          last_ann = best_anns.pop
+          if (ann[:position][:text_idx] == last_ann[:position][:text_idx]) && (ann[:position][:start_offset] < last_ann[:position][:end_offset]) #span_overlap?
+            best_anns.push(ann[:score] > last_ann[:score] ? ann : last_ann) # to prefer shorter span
+          else
+            best_anns.push(last_ann, ann)
+          end
         end
       end
       entry_anns[eid] = best_anns
@@ -147,6 +156,8 @@ class TextAnnotator
     norm1s = spans.map{|s| Entry.normalize1(s)}
     norm2s = spans.map{|s| normalize2(s)}
 
+    sbreaks = sentence_break(text)
+
     (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
       next if NOTERMWORDS.include?(tokens[tbegin][:token])
       next if NOEDGEWORDS.include?(tokens[tbegin][:token])
@@ -154,7 +165,7 @@ class TextAnnotator
       (@tokens_len_min .. @tokens_len_max).each do |tlen|
         break if tbegin + tlen > tokens.length
         break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
-        # break if tlen > 1 && text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\.\s+[A-Z][a-z ]/ # sentence boundary
+        break if cross_sentence(sbreaks, tokens[tbegin][:start_offset], tokens[tbegin + tlen - 1][:end_offset])
         break if NOTERMWORDS.include?(tokens[tbegin + tlen - 1][:token])
         next if NOEDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
 
@@ -281,12 +292,14 @@ class TextAnnotator
 
   def sentence_break(text)
     sbreaks = []
-    position = 0
-    text.scan(/[a-z0-9][.!?]\s+[A-Z]/).each do |sen|
-      sbreaks << position + sen.index(/\s/)
-      position += sen.length
+    text.scan(/[a-z0-9][.!?](?<sb>\s+)[A-Z]/) do |sen|
+      sbreaks << Regexp.last_match.begin(:sb)
     end
     sbreaks
+  end
+
+  def cross_sentence(sbreaks, b, e)
+    !sbreaks.find{|p| p > b && p < e}.nil?
   end
 
   def tokenize(text)
