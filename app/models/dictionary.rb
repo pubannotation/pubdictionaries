@@ -57,7 +57,6 @@ class Dictionary < ActiveRecord::Base
       entries.create(label:label, identifier:id, norm1:norm1, norm2:norm2, label_length:label.length, mode:Entry::MODE_ADDITION)
       increment!(:entries_num)
     end
-
     update_tmp_ssdb
   end
 
@@ -79,6 +78,7 @@ class Dictionary < ActiveRecord::Base
   end
 
   def update_tmp_ssdb
+    FileUtils.mkdir_p(ssdb_dir) unless Dir.exist?(ssdb_dir)
     db = Simstring::Writer.new tmp_ssdb_path, 3, false, true
     self.entries.where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
     db.close
