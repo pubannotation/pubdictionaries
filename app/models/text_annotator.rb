@@ -60,16 +60,28 @@ class TextAnnotator
     @post_normalizer2 = Net::HTTP::Post.new @uri_normalizer2.request_uri
 
     @ssdbs = @dictionaries.inject({}) do |h, dic|
-      h[dic.name] = Simstring::Reader.new(dic.ssdb_path)
-      h[dic.name].measure = Simstring::Jaccard
-      h[dic.name].threshold = @threshold
+      h[dic.name] = begin
+        Simstring::Reader.new(dic.ssdb_path)
+      rescue
+        nil
+      end
+      if h[dic.name]
+        h[dic.name].measure = Simstring::Jaccard
+        h[dic.name].threshold = @threshold
+      end
       h
     end
 
     @ssdbs_overlap = @dictionaries.inject({}) do |h, dic|
-      h[dic.name] = Simstring::Reader.new(dic.ssdb_path)
-      h[dic.name].measure = Simstring::Overlap
-      h[dic.name].threshold = @threshold
+      h[dic.name] = begin
+        Simstring::Reader.new(dic.ssdb_path)
+      rescue
+        nil
+      end
+      if h[dic.name]
+        h[dic.name].measure = Simstring::Overlap
+        h[dic.name].threshold = @threshold
+      end
       h
     end
 
@@ -88,8 +100,8 @@ class TextAnnotator
   end
 
   def done
-    @ssdbs.each{|name, db| db.close}
-    @ssdbs_overlap.each{|name, db| db.close}
+    @ssdbs.each{|name, db| db.close if db}
+    @ssdbs_overlap.each{|name, db| db.close if db}
     @tmp_ssdbs_overlap.each{|name, db| db.close if db}
   end
 
@@ -185,8 +197,9 @@ class TextAnnotator
 
         norm2 = norm2s[tbegin, tlen].join
         lookup = @dictionaries.inject([]) do |col, dic|
+          col += @ssdbs_overlap[dic.name].retrieve(norm2) unless @ssdbs_overlap[dic.name].nil?
           col += @tmp_ssdbs_overlap[dic.name].retrieve(norm2) unless @tmp_ssdbs_overlap[dic.name].nil?
-          col += @ssdbs_overlap[dic.name].retrieve(norm2)
+          col
         end
         break if lookup.empty?
 
@@ -204,7 +217,6 @@ class TextAnnotator
 
     span_index
   end
-
 
   def annotate(text, denotations = [])
     # tokens are produced in the order of their position.

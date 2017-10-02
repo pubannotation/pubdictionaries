@@ -114,10 +114,9 @@ class Entry < ActiveRecord::Base
   end
 
   def self.narrow_by_identifier(str, dictionary = nil, page = 0)
-    norm1 = Entry.normalize1(str)
     dictionary.nil? ?
-      self.where("identifier LIKE ?", "%#{norm1}%").page(page) :
-      dictionary.entries.where("identifier LIKE ?", "%#{norm1}%").page(page)
+      self.where("identifier ILIKE ?", "%#{str}%").page(page) :
+      dictionary.entries.where("identifier ILIKE ?", "%#{str}%").page(page)
   end
 
   def self.search_term(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
@@ -126,8 +125,9 @@ class Entry < ActiveRecord::Base
     norm2 = Entry.normalize2(term) if norm2.nil?
 
     entries = dictionaries.inject([]) do |a1, dic|
-      norm2s = ssdbs[dic.name].retrieve(norm2)
-      a1 + norm2s.inject([]){|a2, norm2| a2 + dic.entries.where(norm2:norm2, mode:Entry::MODE_NORMAL)} + dic.entries.where(mode:Entry::MODE_ADDITION)
+      norm2s = ssdbs[dic.name].retrieve(norm2) if ssdbs[dic.name]
+      a1 += norm2s.inject([]){|a2, norm2| a2 + dic.entries.where(norm2:norm2, mode:Entry::MODE_NORMAL)} if norm2s
+      a1 += dic.entries.where(mode:Entry::MODE_ADDITION)
     end
 
     entries.map!{|e| {id: e.id, label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}.uniq!
