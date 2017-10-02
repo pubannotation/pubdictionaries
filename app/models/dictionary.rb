@@ -57,6 +57,8 @@ class Dictionary < ActiveRecord::Base
       entries.create(label:label, identifier:id, norm1:norm1, norm2:norm2, label_length:label.length, mode:Entry::MODE_ADDITION)
       increment!(:entries_num)
     end
+
+    update_tmp_ssdb
   end
 
   def create_deletion(entry)
@@ -72,6 +74,14 @@ class Dictionary < ActiveRecord::Base
       entry.update_attribute(:mode, Entry::MODE_NORMAL)
       increment!(:entries_num)
     end
+
+    update_tmp_ssdb
+  end
+
+  def update_tmp_ssdb
+    db = Simstring::Writer.new tmp_ssdb_path, 3, false, true
+    self.entries.where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
+    db.close
   end
 
   def num_addition
@@ -162,6 +172,10 @@ class Dictionary < ActiveRecord::Base
 
   def ssdb_path
     Rails.root.join(ssdb_dir, "simstring.db").to_s
+  end
+
+  def tmp_ssdb_path
+    Rails.root.join(ssdb_dir, "tmp_entries.db").to_s
   end
 
   def compile

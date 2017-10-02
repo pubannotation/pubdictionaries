@@ -72,11 +72,25 @@ class TextAnnotator
       h[dic.name].threshold = @threshold
       h
     end
+
+    @tmp_ssdbs_overlap = @dictionaries.inject({}) do |h, dic|
+      h[dic.name] = begin
+        Simstring::Reader.new(dic.tmp_ssdb_path)
+      rescue
+        nil
+      end
+      if h[dic.name]
+        h[dic.name].measure = Simstring::Overlap
+        h[dic.name].threshold = @threshold
+      end
+      h
+    end
   end
 
   def done
     @ssdbs.each{|name, db| db.close}
     @ssdbs_overlap.each{|name, db| db.close}
+    @tmp_ssdbs_overlap.each{|name, db| db.close if db}
   end
 
   def annotate_batch(anns_col)
@@ -170,7 +184,10 @@ class TextAnnotator
         next if NOEDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
 
         norm2 = norm2s[tbegin, tlen].join
-        lookup = @dictionaries.inject([]){|col, dic| col += @ssdbs_overlap[dic.name].retrieve(norm2)}
+        lookup = @dictionaries.inject([]) do |col, dic|
+          col += @tmp_ssdbs_overlap[dic.name].retrieve(norm2) unless @tmp_ssdbs_overlap[dic.name].nil?
+          col += @ssdbs_overlap[dic.name].retrieve(norm2)
+        end
         break if lookup.empty?
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
