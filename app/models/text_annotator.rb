@@ -196,12 +196,15 @@ class TextAnnotator
         next if NOEDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
 
         norm2 = norm2s[tbegin, tlen].join
-        lookup = @dictionaries.inject([]) do |col, dic|
-          col += @ssdbs_overlap[dic.name].retrieve(norm2) unless @ssdbs_overlap[dic.name].nil?
-          col += @tmp_ssdbs_overlap[dic.name].retrieve(norm2) unless @tmp_ssdbs_overlap[dic.name].nil?
-          col
+
+        if tlen > 2
+          lookup = @dictionaries.inject([]) do |col, dic|
+            col += @ssdbs_overlap[dic.name].retrieve(norm2) unless @ssdbs_overlap[dic.name].nil?
+            col += @tmp_ssdbs_overlap[dic.name].retrieve(norm2) unless @tmp_ssdbs_overlap[dic.name].nil?
+            col
+          end
+          break if lookup.empty?
         end
-        break if lookup.empty?
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
 
