@@ -197,7 +197,7 @@ class TextAnnotator
 
         norm2 = norm2s[tbegin, tlen].join
 
-        if tlen > 2
+        if tlen > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
           lookup = @dictionaries.inject([]) do |col, dic|
             col += @ssdbs_overlap[dic.name].retrieve(norm2) unless @ssdbs_overlap[dic.name].nil?
             col += @tmp_ssdbs_overlap[dic.name].retrieve(norm2) unless @tmp_ssdbs_overlap[dic.name].nil?
