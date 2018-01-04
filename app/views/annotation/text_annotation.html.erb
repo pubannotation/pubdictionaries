@@ -80,7 +80,11 @@
 	});
 
 	function set_url() {
-		var param_dics = $('#dictionaries').text().split(',').map(function(v, i){return 'dictionary=' + v}).join('&');
+		if ($('#dictionaries').text()) {
+			var param_dics = 'dictionary=' + $('#dictionaries').text();
+		} else {
+			var param_dics = '';
+		}
 		var param1 = $('#param1').val();
 		var param2 = $('#param2').val();
 		var param3 = $('#param3').val();
@@ -90,7 +94,8 @@
 		if (param2 != '') {params.push(param2)};
 		if (param3 != '') {params.push(param3)};
 
-		var url = '<%= root_url %>text_annotation.json' + '?'  + param_dics;
+		var url = '<%= root_url %>text_annotation.json'
+		if (param_dics) {url += '?'  + param_dics}
 		if (params.length > 0) {url += '&' + params.join('&')}
 		$('#rest_url').text(url);
 
