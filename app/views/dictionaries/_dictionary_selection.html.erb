@@ -27,9 +27,9 @@
   });
 
 	$('#filter').on('keyup', function(){
-		var filter = $('#filter').val();
-    $("#unselected_dictionaries > .dictionary").filter(function(){return $(this).text().indexOf(filter) > -1}).css('visibility', 'visible');
-    $("#unselected_dictionaries > .dictionary").filter(function(){return $(this).text().indexOf(filter) < 0}).css('visibility', 'hidden');
+		var filter = $('#filter').val().toLowerCase();
+    $("#unselected_dictionaries > .dictionary").filter(function(){return $(this).text().toLowerCase().indexOf(filter) > -1}).css('visibility', 'visible');
+    $("#unselected_dictionaries > .dictionary").filter(function(){return $(this).text().toLowerCase().indexOf(filter) < 0}).css('visibility', 'hidden');
 	});
 
 	function filterUnselecteds() {
