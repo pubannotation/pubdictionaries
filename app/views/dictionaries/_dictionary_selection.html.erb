@@ -1,8 +1,11 @@
 <table class="dictionary_selection">
 	<tr>
-		<th class="pane">Selected</th>
+		<th class="pane selected">Selected</th>
 		<th></th>
-		<th class="pane">Unselected</th>
+		<th class="pane unselected">
+			Unselected
+			<%= text_field_tag :filter, nil, placeholder: "filter" %>
+		</th>
 	</tr>
 	<tr>
 		<td class="pane" id='selected_dictionaries'>
@@ -22,6 +25,15 @@
     $("#selected_dictionaries > .dictionary > i").on("click", deselectDictionary);
     $("#unselected_dictionaries > .dictionary > i").on("click", selectDictionary);
   });
+
+	$('#filter').on('keyup', function(){
+		var filter = $('#filter').val();
+    $("#unselected_dictionaries > .dictionary").filter(function(){return $(this).text().indexOf(filter) > -1}).css('visibility', 'visible');
+    $("#unselected_dictionaries > .dictionary").filter(function(){return $(this).text().indexOf(filter) < 0}).css('visibility', 'hidden');
+	});
+
+	function filterUnselecteds() {
+	}
 
   function dictionarySelectionReset() {
     $("#selected_dictionaries > .dictionary").hide();

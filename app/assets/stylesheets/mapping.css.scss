@@ -13,13 +13,26 @@ table.dictionary_selection {
 	}
 
 	th.pane, td.pane {
-		width: 48%;
 		border: 1px solid black;
 		padding: 5px;
+
+		input {
+			padding: 2px;
+			width: 5em;
+			border-radius: 4px;
+		}
 	}
 
 	th.pane {
 		background-color: #ccccff;
+	}
+
+	.pane.selected {
+		width: 33%;
+	}
+
+	.pane.unselected {
+		width: 63%;
 	}
 }
 
@@ -28,7 +41,7 @@ table.dictionary_selection {
   margin: 2px;
   padding: 1px;
   border: 1px solid #ccc;
-  border-radius: 3px;
+  border-radius: 4px;
   background-color: #fafafa;
   box-shadow: 1px 1px 1px #555555;
 }
