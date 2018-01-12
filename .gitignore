@@ -20,6 +20,7 @@ db/simstring/*
 
 # Temporary files #
 ###################
+log/
 tmp/
 *.swp
 public/tempfiles/

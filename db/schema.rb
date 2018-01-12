@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20170311055148) do
+ActiveRecord::Schema.define(:version => 20180112125844) do
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false
@@ -50,6 +50,7 @@ ActiveRecord::Schema.define(:version => 20170311055148) do
     t.datetime "updated_at",                   :null => false
   end
 
+  add_index "entries", ["dictionary_id"], :name => "index_entries_on_dictionary_id"
   add_index "entries", ["identifier"], :name => "index_entries_on_identifier"
   add_index "entries", ["label"], :name => "index_entries_on_label"
   add_index "entries", ["label_length"], :name => "index_entries_on_label_length"

@@ -22,12 +22,13 @@ gem 'elasticsearch-model'
 gem 'elasticsearch-rails'
 gem 'rails-jquery-autocomplete'
 gem 'rack-cors', :require => 'rack/cors'
+gem 'clipboard-rails', '~> 1.4'
 
 # gem 'jquery-rails', "<3.0.0"
 # gem 'will_paginate', '>= 3.0.pre'     # Not compatible with Wice_Grid
 
 group :development, :test do
-  gem 'rspec-rails', '~> 2.0'
+  gem 'rspec-rails', '~> 3.4', '>= 3.4.2'
 end
 
 group :development do
