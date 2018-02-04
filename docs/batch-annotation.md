@@ -1,18 +1,21 @@
 ---
 layout: docs
-title: Asynchronous Annotation
-permalink: /asynchronous-annotation/
+title: Batch Annotation
+permalink: /batch-annotation/
 ---
 
-# Asynchronous Annotation
+# Batch Annotation (Asyncronous annotation)
 
-If you want to annotate a large amount of texts using a dictionary on PubDictionaries,
-you can use the API for asynchronous annotation.
+When you want to annotate a large amount of texts,
+if you use the normal annotation API,
+there is a chance of timeout of connection before you get the results.
 
-For an asynchronous annotation, the path _/annotation_request can be called in _POST_ method,
-with an array of texts in JSON in the body of the POST request.
+In the case, you can use the API for batch annotation, which implements an asynchronous communication model.
 
-Suppose that a JSON file, _example.json_, has an array of JSON objects as follows:
+For a batch annotation, the path _/annotation_request_ can be called using the _POST_ method,
+with a _JSON array of objects_ which contain texts, as the body of the request.
+
+Below is a simple example of JSON array of objects each of which include a block of text:
 
 	[
 		{
@@ -23,10 +26,10 @@ Suppose that a JSON file, _example.json_, has an array of JSON objects as follow
 		}
 	]
 
-The content of the file can be sent to the above path as the body of the request
+If the above JSON array of object is stored in the file, _example.json_, a [cURL][cURL] command can be used as follows to send a batch annotation request to PubAnnotation:
 
 <textarea class="bash" readonly="true" style="height:5em">
-curl -H "content-type:application/json" -i -d @example.json "http://pubdictionaries.org/text_annotation.json?dictionaries=UBERON-AE"
+curl -H "content-type:application/json" -i -d @example.json "http://pubdictionaries.org/annotation_request?dictionaries=UBERON-AE"
 </textarea>
 
 (In this document, examples are shown using the [cURL][cURL] command. It is highly recommended to read the manual of the curl command to understand the examples properly.)
@@ -44,18 +47,18 @@ The follow is a typical response of PubAnnotation:
 	Cache-Control: no-cache
 	(Unnecessary part truncated.)
 
-Note that a normal response will come with the status code 303 (See Other),
-with particularly the following two headers:
+A normal response will come with the status code 303 (See Other),
+with the following two headers:
 * Location : specifies the location where the client can access to retrieve the result of annotation
 * Retry-After : specifies the duration (seconds) after which the client is recommented to access the location
 
-Following the instructions, you can access the location to retrieve the result of annotation
+To retrieve the result of annotation, you can access the location, after the time recommended through the header, _Retry-After_.
 
 <textarea class="bash" readonly="true" style="height:5em">
 curl "http://pubdictionaries.org/annotation_result/annotation-result-ba8a0bb2-39b3-4530-a2a1-7da7c2df92ed"
 </textarea>
 
-Then, you will get the annotation in JSON:
+Then, you will get the annotation results in JSON:
 
 	[
 		{
@@ -84,7 +87,9 @@ Then, you will get the annotation in JSON:
 		}
 	]
 
-Note that in the output JSON objects, all the content of the input JSON objects will be retained.
+Note that what PubDictionaries will do to the input JSON array of objects is to add the denotation object to each of the JSON object in the array: to read the _text_ object and to add the _denotation_ object. Consequently, in the resulting JSON array of objects,
+* the order of the objects will be retained, and
+* all the contents in each of the JSON object will be retained.
 
 For example, if the input JSON objects include some other fields
 
@@ -129,5 +134,8 @@ They will be retained in the output JSON
 			]
 		}
 	]
+
+Note that if an object in the input JSON array of objects already include a _denotation_ object, it will be replaced with a new one by PubDictionaries. In other words, the _denotation_ objects in the input JSON array of objects will be the only objects which will not be retained in the resulting JSON array of objects.
+
 
 [cURL]: https://curl.haxx.se/

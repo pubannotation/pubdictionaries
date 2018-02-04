@@ -4,6 +4,6 @@
     - /lookup/
     - /lookup-api/
     - /annotation/
-    - /asynchronous-annotation/
+    - /batch-annotation/
     - /annotation-api/
     - /about/
