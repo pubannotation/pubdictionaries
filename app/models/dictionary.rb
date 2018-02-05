@@ -145,9 +145,15 @@ class Dictionary < ActiveRecord::Base
 
   def self.find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
     ssdbs = dictionaries.inject({}) do |h, dic|
-      h[dic.name] = Simstring::Reader.new(dic.ssdb_path)
-      h[dic.name].measure = Simstring::Jaccard
-      h[dic.name].threshold = threshold
+      h[dic.name] = begin
+        Simstring::Reader.new(dic.ssdb_path)
+      rescue
+        nil
+      end
+      if h[dic.name]
+        h[dic.name].measure = Simstring::Jaccard
+        h[dic.name].threshold = threshold
+      end
       h
     end
 
@@ -157,7 +163,7 @@ class Dictionary < ActiveRecord::Base
       h
     end
 
-    ssdbs.each{|name, db| db.close}
+    ssdbs.each{|name, db| db.close if db}
 
     r
   end
