@@ -1,69 +1,80 @@
+<!-- It updates the value of the input element, 'dictionaries' which should be defined outside of this partial -->
+
 <table class="dictionary_selection">
 	<tr>
 		<th class="pane selected">Selected</th>
-		<th></th>
+		<td></td>
 		<th class="pane unselected">
 			Unselected
+			&nbsp;
 			<%= text_field_tag :filter, nil, placeholder: "filter" %>
 		</th>
 	</tr>
 	<tr>
-		<td class="pane" id='selected_dictionaries'>
-			<%= render partial: 'dictionaries/selected_dictionary', collection: @dictionaries -%>
-			<textarea id="dictionaries" name="dictionaries" required="required" style="display:none"></textarea>
+		<td class="pane">
+			<div class="pane_box" id='selected_dictionaries'>
+				<%= render partial: 'dictionaries/selected_dictionary', collection: @dicnames_all -%>
+			</div>
 		</td>
+
 		<td style="text-align: center"><%= content_tag :i, '', class:"fa fa-exchange" %></td>
-		<td class="pane" id='unselected_dictionaries'>
-			<%= render partial: 'dictionaries/unselected_dictionary', collection: @dictionaries -%>
+
+		<td class="pane">
+			<div class="pane_box" id='unselected_dictionaries'>
+				<%= render partial: 'dictionaries/unselected_dictionary', collection: @dicnames_all -%>
+			</div>
 		</td>
 	</tr>
 </table>
 
 <script>
-  $(function() {
-  	dictionarySelectionReset();
-    $("#selected_dictionaries > .dictionary > i").on("click", deselectDictionary);
-    $("#unselected_dictionaries > .dictionary > i").on("click", selectDictionary);
-  });
+  function dictionarySelectionInit() {
+    $("#selected_dictionaries > .dictionary > i").on("click", unselectDictionaryClick);
+    $("#unselected_dictionaries > .dictionary > i").on("click", selectDictionaryClick);
+    $.each(<%= raw @dicnames_sel %>, function(i,v){selectDictionary(v)});
+  }
+
+  function dictionarySelectionReset() {
+    $('#selected_dictionaries > .dictionary').hide();
+    $('#unselected_dictionaries > .dictionary').show();
+		$('#unselected_dictionaries > .dictionary').attr('selected', false);
+    $.each(<%= raw @dicnames_sel %>, function(i,v){selectDictionary(v)});
+		setParamDics();
+  }
 
 	$('#filter').on('keyup', function(){
 		var filter = $('#filter').val().toLowerCase();
-    $("#unselected_dictionaries > .dictionary").filter(function(){return $(this).text().toLowerCase().indexOf(filter) > -1}).css('visibility', 'visible');
-    $("#unselected_dictionaries > .dictionary").filter(function(){return $(this).text().toLowerCase().indexOf(filter) < 0}).css('visibility', 'hidden');
+    $("#unselected_dictionaries > .dictionary:not([selected])").filter(function(){return $(this).text().toLowerCase().indexOf(filter) > -1}).show();
+    $("#unselected_dictionaries > .dictionary:not([selected])").filter(function(){return $(this).text().toLowerCase().indexOf(filter) < 0}).hide();
 	});
 
-	function filterUnselecteds() {
+	function selectDictionaryClick() {
+		var dicname = $(this).parent().attr("name");
+		selectDictionary(dicname);
 	}
 
-  function dictionarySelectionReset() {
-    $("#selected_dictionaries > .dictionary").hide();
-    $("#unselected_dictionaries > .dictionary").show();
-    $.each(<%= @dictionaries_selected.map{|d| d.id} %>, function(i,v){selectDictionaryById(v)});
-  }
+	function unselectDictionaryClick() {
+		var dicname = $(this).parent().attr("name");
+		unselectDictionary(dicname);
+	}
 
-	function selectDictionaryById(id) {
-		$('#unselected_dictionaries > #dictionary_' + id).hide();
-		$('#selected_dictionaries > #dictionary_' + id).show();
+	function selectDictionary(dicname) {
+		$('#unselected_dictionaries > #dictionary_' + dicname).hide();
+		$('#unselected_dictionaries > #dictionary_' + dicname).attr('selected', true);
+		$('#selected_dictionaries > #dictionary_' + dicname).show();
 		setParamDics();
 	}
 
-	function selectDictionary(d) {
-		var id = $(this).parent().attr("id");
-		$(this).parent().hide();
-		$('#selected_dictionaries > #' + id).show();
-		setParamDics();
-	}
-
-	function deselectDictionary(d) {
-		var id = $(this).parent().attr("id");
-		$(this).parent().hide();
-		$('#unselected_dictionaries > #' + id).show();
+	function unselectDictionary(dicname) {
+		$('#selected_dictionaries > #dictionary_' + dicname).hide();
+		$('#unselected_dictionaries > #dictionary_' + dicname).show();
+		$('#unselected_dictionaries > #dictionary_' + dicname).attr('selected', false);
 		setParamDics();
 	}
 
 	function setParamDics() {
 		var dics = $('#selected_dictionaries > .dictionary:visible').map(function(i, v){return $(v).find(".name").text()}).toArray();
 		$('#dictionaries').text(dics.join(','));
-		set_url();
+		$('#dictionaries').trigger('change');
 	}
 </script>

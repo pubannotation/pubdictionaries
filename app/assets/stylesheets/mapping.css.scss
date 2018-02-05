@@ -2,6 +2,28 @@
 // They will automatically be included in application.css.
 // You can use Sass (SCSS) here: http://sass-lang.com/
 
+fieldset {
+	background-color: #f2ffff;
+	legend {
+	  margin: 15px 0 5px 0;
+	  font-size: 1.2em;
+	  font-weight: bold;
+	}
+}
+
+fieldset:hover {
+	background-color: #fff2ff;
+}
+
+.center-align {
+	text-align:center;
+}
+
+.option {
+	display:inline-block;
+	border-width: 0.1px;
+}
+
 table.dictionary_selection {
 	width: 100%;
 	border-collapse: collapse;
@@ -9,7 +31,6 @@ table.dictionary_selection {
 	th, td {
 		border-top-style: hidden;
 		border-bottom-style: hidden;
-		background-color: #ffffff;
 	}
 
 	th.pane, td.pane {
@@ -25,6 +46,11 @@ table.dictionary_selection {
 
 	th.pane {
 		background-color: #ccccff;
+	}
+
+	.pane_box {
+		height: 60px;
+		overflow-y: auto;
 	}
 
 	.pane.selected {
@@ -52,4 +78,13 @@ textarea {
 
 .textae-editor {
 	padding: 4px;
+}
+
+.http_method {
+	margin: 1px;
+	border: 1px solid blue;
+	border-radius: 3px;
+	padding: 1px 2px;
+	background-color: #58f;
+	color: white;
 }

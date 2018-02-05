@@ -70,14 +70,20 @@ a {
 
 h1 {
   margin: 0 0 10px 0;
-  border-left: 15px solid;
+  border-left: 15px solid #336699;
   padding: 0 0 0 5px;
+  background-color: #ddf;
   font-size: 1.6em;
 }
 
 h2 {
-  margin: 15px 0 5px 0;
-  font-size: 1.2em;
+  margin: 5px 0;
+  font-size: 1em;
+}
+
+ul.note {
+  list-style-type: '*';
+  color: #668;
 }
 
 /* This button was generated using CSSButtonGenerator.com */

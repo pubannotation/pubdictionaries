@@ -6,9 +6,7 @@ class AnnotationController < ApplicationController
   # GET
   def text_annotation
     begin
-      @dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
-      @dictionaries = Dictionary.all
-
+      dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
       text =
         if params[:text].present?
           params[:text]
@@ -24,15 +22,18 @@ class AnnotationController < ApplicationController
           end
         end
 
+      @dicnames_all = Dictionary.order(:name).pluck(:name)
+      @dicnames_sel = dictionaries_selected.map{|d| d.name}
+
       @result = if text.present?
+        raise ArgumentError, "At least one dictionary has to be specified for annotation." unless dictionaries_selected.present?
         rich = true if params[:rich] == 'true' || params[:rich] == '1'
         tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
         threshold = params[:threshold].to_f if params[:threshold].present?
-        annotator = TextAnnotator.new(@dictionaries_selected, tokens_len_max, threshold, rich)
+        annotator = TextAnnotator.new(dictionaries_selected, tokens_len_max, threshold, rich)
         r = annotator.annotate_batch([{text:text}])
         annotator.done
         r.first
-        # r
       else
         {}
       end
@@ -46,10 +47,12 @@ class AnnotationController < ApplicationController
       end
     rescue ArgumentError => e
       respond_to do |format|
-        format.any {render json: {message:e.message}, status: :bad_request}
+        format.html {flash.now[:notice] = e.message}
+        format.any  {render json: {message:e.message}, status: :bad_request}
       end
     rescue => e
       respond_to do |format|
+        format.html {flash.now[:notice] = e.message}
         format.any {render json: {message:e.message}, status: :internal_server_error}
       end
     end

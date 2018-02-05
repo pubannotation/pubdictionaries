@@ -1,5 +1,6 @@
-<h1>Dictionaries</h1>
+<% content_for :page_title do %>
+	<span class="page_title">Dictionaries</span>
+<% end %>
 
 <%= render partial: 'list' -%>
-
 <%= button_to('Create a New Dictionary', new_dictionary_path, :method => :get, :class => "button") if !current_user.nil? %>

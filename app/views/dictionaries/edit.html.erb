@@ -1,5 +1,7 @@
-<%= render 'title' %>
-
+<% content_for :page_title do %>
+	<%= render partial: 'title' %>
+<% end %>
+<br/>
 <fieldset>
   <legend>Edit</legend>
   <%= render 'form' %>

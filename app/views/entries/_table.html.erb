@@ -11,7 +11,7 @@
       <% if @deletion_num > 0 %>
         <th style="background-color:#aaffaa">#Deleted</th><td><%= @deletion_num %></td>
       <% end %>
-      <td style="font-style:italic; color:red"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> You need to compile the dictionary for the performance of Text Annotation or Find IDs.</td>
+      <td style="font-style:italic; color:red"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> The dictionary is modified. You can use it as it is. However, for a faster lookup or annotation, you are recommended to compile it. Go to <%= link_to('settings <i class="fa fa-cog fa-lg"></i>'.html_safe, edit_dictionary_path(@dictionary.name)) %>.</td>
     </tr>
   </table>
 <% end %>

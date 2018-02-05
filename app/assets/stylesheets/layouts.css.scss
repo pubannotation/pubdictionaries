@@ -10,9 +10,9 @@ body {
 
 .inner {
   position:relative;
-  max-width:800px;
+  max-width:900px;
   margin:0 auto;
-  padding: 4px;
+  padding: 6px;
 }
 
 .header, .footer {
@@ -72,8 +72,26 @@ body {
   }
 }
 
+.title_area {
+  padding: 0 10px;
+  background-color: #eef;
+  font-size: 1.6em;
+  font-weight: bold;
+
+  .page_title {
+    border-left: 15px solid #336699;
+    padding: 0 5px;
+  }
+}
+
+.notice, .alert {
+  color: red;
+  font-style: italic;
+}
+
 .main {
   position: relative;
+  margin: 0;
   padding: 5px 10px;
   
   .control {
