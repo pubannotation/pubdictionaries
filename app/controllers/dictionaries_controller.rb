@@ -23,7 +23,7 @@ class DictionariesController < ApplicationController
     @dictionaries_grid = initialize_grid(Dictionary,
       :order => 'created_at',
       :order_direction => 'desc',
-      :per_page => 10
+      :per_page => 20
     )
 
     respond_to do |format|

@@ -117,11 +117,11 @@ ul.note {
   text-decoration: none;
 }
 
-.disabled:hover {
+.button.disabled:hover {
   background: gray;
 }
 
-.disabled {
+.button.disabled {
   background: gray;
 }
 
@@ -149,8 +149,31 @@ ul.note {
 @import "font-awesome-sprockets";
 @import "font-awesome";
 
-.pagination li {
-  display:inline-block;
+.pagination {
+  li {
+    display: inline-block;
+    width: 1.5em;
+    border: 1px solid #cfcfcf;
+    border-radius: 2px;
+    a {
+      display:inline-block;
+      width: 100%;
+    }
+  }
+
+  li.disabled {
+    border-style: none;
+  }
+
+  li.active {
+    background: #336699;
+    a {
+      color: #efefef;
+    }
+    a:visited {
+      color: #efefef;
+    }
+  }
 }
 
 .desc, .asc{

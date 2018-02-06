@@ -34,10 +34,24 @@
 }
 
 .my-grid {
-  border-style: hidden;
+  border: none;
 
-  th, td {
-    border-style: hidden;
+  tr, th, td, tfoot {
+    border: none;
+  }
+
+  tr.even {
+    background-color: #eeeeff
+  }
+
+  thead, tbody {
+    border: 1px solid #aaaaff;
+  }
+}
+
+.wice-grid-title-row {
+  th:last-of-type {
+    width: 1.5em;
   }
 }
 

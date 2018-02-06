@@ -22,10 +22,10 @@
 
   <tr class="<%= tr_class %>">
     <td>
-      <%= content_tag(:span, entry.label, class: label_class) -%>
+      <%= content_tag(:span, entry.label, class: label_class, title: entry.label) -%>
     </td>
     <td>
-      <%= content_tag(:span, entry.identifier, class: id_class) -%>
+      <%= content_tag(:span, entry.identifier, class: id_class, title: entry.identifier) -%>
     </td>
     <% if @dictionary.editable?(current_user) %>
       <td style="text-align:center">
