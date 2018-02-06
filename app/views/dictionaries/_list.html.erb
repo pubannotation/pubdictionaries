@@ -16,7 +16,7 @@
       end
 
       g.column name: "Created By", attribute: "user_id", filter: false do |dic| 
-        link_to dic.user.username, show_user_path(current_user.username)
+        link_to dic.user.username, show_user_path(dic.user.username)
       end
 
       g.column name: "Created At", attribute: "created_at", filter: false do |dic| 
