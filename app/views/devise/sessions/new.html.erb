@@ -1,4 +1,6 @@
-<h2>Sign in</h2>
+<% content_for :page_title do %>
+  <span class="page_title">Login</span>
+<% end %>
 
 <%= form_for(resource, :as => resource_name, :url => session_path(resource_name)) do |f| %>
 	<table>
@@ -15,7 +17,7 @@
 				<% if devise_mapping.rememberable? -%>
 				  <%= f.check_box :remember_me %> <%= f.label :remember_me %>
 				<% end -%>
-				<%= f.submit "Sign in" %>
+				<%= f.submit "Login" %>
 			</th>
 		</tr>
 	</table>

@@ -1,15 +1,8 @@
-<% content_for :path do %>
-  > <%= link_to t('views.paths.home'), home_path %>
-  > users
-  > <%= @user.username %>
+<% content_for :page_title do %>
+  <span class="page_title"><%= @user.username %></span>
 <% end %>
 
 <section>
-  <h1>
-    Userpage for 
-    <%= @user.username %>
-  </h1>
-
   <section>
     <% if @user == current_user %>
       <div style="margin: 4px 0">
