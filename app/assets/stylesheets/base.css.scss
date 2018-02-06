@@ -77,13 +77,19 @@ h1 {
 }
 
 h2 {
-  margin: 5px 0;
+  margin: 8px 0 5px 0;
   font-size: 1em;
 }
 
 ul.note {
-  list-style-type: '*';
+  margin: 5px 0;
+  list-style-type: '* ';
   color: #668;
+}
+
+ul.warning {
+  font-style: italic;
+  color: red;
 }
 
 /* This button was generated using CSSButtonGenerator.com */

@@ -26,6 +26,10 @@
 		</td>
 	</tr>
 </table>
+<ul class="note warning" id="dictionary_selection_note">
+	<li>At least one dictionary has to be selected.</li>
+</ul>
+
 
 <script>
   function dictionarySelectionInit() {
@@ -75,6 +79,11 @@
 	function setParamDics() {
 		var dics = $('#selected_dictionaries > .dictionary:visible').map(function(i, v){return $(v).find(".name").text()}).toArray();
 		$('#dictionaries').text(dics.join(','));
+		if (dics.length == 0) {
+			$('#dictionary_selection_note').show();
+		} else {
+			$('#dictionary_selection_note').hide();
+		}
 		$('#dictionaries').trigger('change');
 	}
 </script>
