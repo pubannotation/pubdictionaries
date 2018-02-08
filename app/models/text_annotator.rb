@@ -120,14 +120,15 @@ class TextAnnotator
     entry_anns = Hash.new([])
     span_entries.each do |span, entries|
       entries.each do |entry|
-        entry_anns[entry[:id]] += span_index[span][:positions].collect{|p| {span:span, position:p, label:entry[:label], identifier:entry[:identifier], score:entry[:score]}}
+        entry_anns[entry[:id]] += span_index[span][:positions].collect{|p| {span:span, position:p, label:entry[:label], norm2:entry[:norm2], identifier:entry[:identifier], score:entry[:score]}}
       end
     end
 
     # To sort anns by their position
     entry_anns.each_value do |anns|
       anns.sort! do |a, b|
-        c = (a[:position][:start_offset] <=> b[:position][:start_offset])
+        c = (a[:position][:text_idx] <=> b[:position][:text_idx])
+        c = c.zero? ? (a[:position][:start_offset] <=> b[:position][:start_offset]) : c
         c.zero? ? (b[:position][:end_offset] <=> a[:position][:end_offset]) : c
       end
     end
@@ -164,6 +165,7 @@ class TextAnnotator
         if @rich
           d[:score] = ann[:score]
           d[:label] = ann[:label]
+          d[:norm2] = ann[:norm2]
         end
         anns_col[ann[:position][:text_idx]][:denotations] << d
       end
