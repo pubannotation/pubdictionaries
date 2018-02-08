@@ -10,7 +10,7 @@ class UsersController < ApplicationController
     @dictionaries_grid = initialize_grid(Dictionary.mine(@user),
       :order => 'created_at',
       :order_direction => 'desc',
-      :per_page => 10
+      :per_page => 20
     )
   end
 end
