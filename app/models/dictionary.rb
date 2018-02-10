@@ -36,13 +36,14 @@ class Dictionary < ActiveRecord::Base
   scope :editable, -> (user) {
     if user.nil?
       none
+    elsif user.admin?
     else
       where('user_id = ?', user.id)
     end
   }
 
   def editable?(user)
-    user && user_id == user.id
+    user && (user.admin? || user_id == user.id)
   end
 
   def get_entry(label, id)
