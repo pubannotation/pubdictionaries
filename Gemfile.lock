@@ -189,6 +189,8 @@ GEM
       ruby-graphviz (~> 1.2)
     rails-jquery-autocomplete (1.0.3)
       rails (>= 3.2)
+    rails3-jquery-autocomplete (1.0.15)
+      rails (>= 3.2)
     railties (3.2.22.1)
       actionpack (= 3.2.22.1)
       activesupport (= 3.2.22.1)
@@ -302,6 +304,7 @@ DEPENDENCIES
   rails (= 3.2.22.1)
   rails-erd
   rails-jquery-autocomplete
+  rails3-jquery-autocomplete (~> 1.0, >= 1.0.15)
   rspec-rails (~> 3.4, >= 3.4.2)
   ruby-stemmer (~> 0.9.6)
   sass-rails (~> 3.2.3)

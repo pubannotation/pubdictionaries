@@ -15,9 +15,7 @@ class DictionariesController < ApplicationController
     :text_annotation, :id_mapping, :label_mapping
   ], :if => Proc.new { |c| c.request.format == 'application/json' }
 
-  ###########################
-  #####     ACTIONS     #####
-  ###########################
+  autocomplete :user, :username
 
   def index
     @dictionaries_grid = initialize_grid(Dictionary,
@@ -96,7 +94,20 @@ class DictionariesController < ApplicationController
     @dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
     raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
 
+    associated_managers = if params[:dictionary][:associated_managers]
+      _m = params[:dictionary][:associated_managers].split(/,/).map{|u| User.find_by_username(u)}
+      params[:dictionary].delete(:associated_managers)
+      _m
+    end
+
     @dictionary.update_attributes(params[:dictionary])
+
+    unless !associated_managers || associated_managers == @dictionary.associated_managers
+      to_delete = @dictionary.associated_managers - associated_managers
+      to_add = associated_managers - @dictionary.associated_managers
+      to_delete.each{|u| @dictionary.associated_managers.destroy(u)}
+      to_add.each{|u| @dictionary.associated_managers << u}
+    end
 
     redirect_to dictionary_path(@dictionary)
   end
@@ -183,7 +194,7 @@ class DictionariesController < ApplicationController
 
   def destroy
     begin
-      dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
+      dictionary = Dictionary.administerable(current_user).find_by_name(params[:id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
       raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 

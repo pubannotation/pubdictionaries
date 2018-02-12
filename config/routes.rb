@@ -36,6 +36,7 @@ PubDictionaries::Application.routes.draw do
       get  'select_dictionaries_for_label_mapping', to: 'dictionaries#select_dictionaries_for_label_mapping'
       post 'label_mapping', to: 'dictionaries#label_mapping'
       get  'get_delayed_job_diclist'
+      get :autocomplete_user_username
     end  
 
     # Add routes as a member, /dictionary/:id/...

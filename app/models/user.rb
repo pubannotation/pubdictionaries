@@ -10,6 +10,8 @@ class User < ActiveRecord::Base
   attr_accessible :username, :email, :password, :password_confirmation, :remember_me
 
   has_many :dictionaries, dependent: :destroy
+  has_many :associations
+  has_many :associated_dictionaries, through: :associations, source: :dictionary
 
   validates :username, :presence => true, :length => {:minimum => 5, :maximum => 20}, uniqueness: true
   validates_format_of :username, :with => /\A[a-z0-9][a-z0-9_-]+\z/i

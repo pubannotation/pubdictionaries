@@ -34,7 +34,13 @@
 <script>
   function dictionarySelectionInit() {
     $("#selected_dictionaries > .dictionary > i").on("click", unselectDictionaryClick);
+    $("#selected_dictionaries > .dictionary > i").hover(function(){$(this).parent().css("border-style", "inset")});
+    $("#selected_dictionaries > .dictionary > i").mouseleave(function(){$(this).parent().css("border-style", "solid")});
+
     $("#unselected_dictionaries > .dictionary > i").on("click", selectDictionaryClick);
+    $("#unselected_dictionaries > .dictionary > i").hover(function(){$(this).parent().css("border-style", "inset")});
+    $("#unselected_dictionaries > .dictionary > i").mouseleave(function(){$(this).parent().css("border-style", "solid")});
+
     $.each(<%= raw @dicnames_sel %>, function(i,v){selectDictionary(v)});
   }
 
@@ -51,6 +57,11 @@
     $("#unselected_dictionaries > .dictionary:not([selected])").filter(function(){return $(this).text().toLowerCase().indexOf(filter) > -1}).show();
     $("#unselected_dictionaries > .dictionary:not([selected])").filter(function(){return $(this).text().toLowerCase().indexOf(filter) < 0}).hide();
 	});
+
+	$('#associated_managers').on('mouseleave', '.remove_icon', function() {
+		$(this).parent().css("border-style", "solid");
+	});
+
 
 	function selectDictionaryClick() {
 		var dicname = $(this).parent().attr("name");

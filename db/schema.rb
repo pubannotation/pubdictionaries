@@ -11,7 +11,17 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20180210013634) do
+ActiveRecord::Schema.define(:version => 20180210045953) do
+
+  create_table "associations", :force => true do |t|
+    t.integer  "user_id"
+    t.integer  "dictionary_id"
+    t.datetime "created_at",    :null => false
+    t.datetime "updated_at",    :null => false
+  end
+
+  add_index "associations", ["dictionary_id"], :name => "index_associations_on_dictionary_id"
+  add_index "associations", ["user_id"], :name => "index_associations_on_user_id"
 
   create_table "delayed_jobs", :force => true do |t|
     t.integer  "priority",   :default => 0, :null => false

@@ -1,9 +1,18 @@
 <div class="infobox">
 <table>
 <tr>
-<th>creator</th>
-<td><%= @dictionary.user.email %></td>
+<th>administrator</th>
+<td><%= user_object(@dictionary.user.username) %></td>
 </tr>
+
+<% collaborators = @dictionary.associated_managers.pluck(:username) %>
+<% unless collaborators.empty? %>
+	<tr>
+	<th>managers</th>
+	<td><%= @dictionary.associated_managers.pluck(:username).map{|u| user_object(u)}.join('').html_safe %></td>
+	</tr>
+<% end %>
+
 <tr>
 <th>created at</th>
 <td><%= @dictionary.created_at %></td>

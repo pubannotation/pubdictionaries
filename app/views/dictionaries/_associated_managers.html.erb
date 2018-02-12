@@ -1,0 +1,79 @@
+<% associated_managers = @dictionary.associated_managers.pluck(:username) %>
+<div id='associated_managers'></div>
+<div style="margin:2px 1px 1px 0; border:1px solid #aaa; border-radius:3px; padding:1px 2px">
+	<%= autocomplete_field_tag 'username', '', autocomplete_user_username_dictionaries_path, style: "width:calc(100% - 18px); border-style:none", placeholder: "username" %>
+	<i id="add_user" class="fa fa-plus-circle", title="Add"></i>
+</div>
+<textarea id="dictionary_associated_managers" name="dictionary[associated_managers]" style="display:none"></textarea>
+
+<script>
+	$(function() {
+		init_associated_managers();
+	});
+
+	$('#add_user').on("click", function() {
+		var username = $('#username').val();
+		check_and_add_user(username)
+	});
+
+	$('#associated_managers').on('click', '.remove_icon', function() {
+		$(this).parent().remove();
+		update_associated_managers();
+	});
+
+	function check_and_add_user(username) {
+		$.get("/users/" + username, function(data) {
+			$('#username').val("");
+			add_user(username);
+		});
+	}
+
+	function add_user(username) {
+		if (!selected_user_p(username)) {
+			$('#associated_managers').append(user_object(username));
+			update_associated_managers();
+		}
+	}
+
+	function init_associated_managers() {
+		var associated_managers = <%= raw associated_managers %>
+    $.each(associated_managers, function(i,v){add_user(v)});
+	}
+
+	function update_associated_managers() {
+		var associated_managers_concat = $('#associated_managers .user_object').map(function(){
+			return this.id.slice(5);
+		}).get().join();
+		$('#dictionary_associated_managers').text(associated_managers_concat);
+	}
+
+	function selected_user_p(username) {
+		return $('#user-' + username).length > 0;
+	}
+
+	function user_object(username) {
+		obj = '<div class="user_object" id="user-' + username + '">'
+		+ '<a class="name" href="' + '/users/' + username + '">' + username + '</a>'
+		+ ' '
+		+ '<i class="fa fa-minus-circle remove_icon", title="Remove"></i>'
+		+ '</div>';
+		return obj;
+	}
+
+	// dynamic CSS control
+	$('#associated_managers').on('mouseover', '.remove_icon', function() {
+		$(this).parent().css("border-style", "inset");
+	});
+
+	$('#associated_managers').on('mouseleave', '.remove_icon', function() {
+		$(this).parent().css("border-style", "solid");
+	});
+
+	$('#add_user').on('mouseover', function() {
+		$(this).parent().css("border-style", "inset");
+	});
+
+	$('#add_user').on('mouseleave', function() {
+		$(this).parent().css("border-style", "solid");
+	});
+</script>

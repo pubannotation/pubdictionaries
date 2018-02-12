@@ -4,6 +4,8 @@ class Dictionary < ActiveRecord::Base
   include StringManipulator
 
   belongs_to :user
+  has_many :associations
+  has_many :associated_managers, through: :associations, source: :user
   has_many :entries, :dependent => :destroy
   has_many :jobs, :dependent => :destroy
 
@@ -29,11 +31,20 @@ class Dictionary < ActiveRecord::Base
     if user.nil?
       none
     else
-      where('user_id = ?', user.id)
+      includes(:associations).where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
     end
   }
 
   scope :editable, -> (user) {
+    if user.nil?
+      none
+    elsif user.admin?
+    else
+      includes(:associations).where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
+    end
+  }
+
+  scope :administerable, -> (user) {
     if user.nil?
       none
     elsif user.admin?
@@ -43,6 +54,10 @@ class Dictionary < ActiveRecord::Base
   }
 
   def editable?(user)
+    user && (user.admin? || user_id == user.id || associated_managers.include?(user))
+  end
+
+  def administerable?(user)
     user && (user.admin? || user_id == user.id)
   end
 

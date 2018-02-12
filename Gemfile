@@ -23,6 +23,7 @@ gem 'elasticsearch-rails'
 gem 'rails-jquery-autocomplete'
 gem 'rack-cors', :require => 'rack/cors'
 gem 'clipboard-rails', '~> 1.4'
+gem 'rails3-jquery-autocomplete', '~> 1.0', '>= 1.0.15'
 
 # gem 'jquery-rails', "<3.0.0"
 # gem 'will_paginate', '>= 3.0.pre'     # Not compatible with Wice_Grid

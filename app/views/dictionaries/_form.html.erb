@@ -13,19 +13,32 @@
     </div>
   <% end %>
 
-  <div class="field">
-    <%= f.label :name, "Dictionary name:" %><br />
-    <%= f.text_field :name %>
-  </div>
+  <table style="width:100%; max-width:600px">
+    <tr>
+      <th><%= f.label :name, "Name" %></th>
+      <td><%= f.text_field :name, style: "box-sizing: border-box; width:100%" %></td>
+    </tr>
 
-  <div class="field">
-    <%= f.label :description, "Description:" %><br />
-    <%= f.text_area :description, cols: 40, rows: 5 %>
-  </div>
+    <tr>
+      <th><%= f.label :description, "Description" %></th>
+      <td><%= f.text_area :description, rows: 5, style: "box-sizing: border-box; width:100%" %></td>
+    </tr>
 
-  <div class="actions">
-    <%= f.submit @submit_text, {:class =>"button"} %>
-  </div>
+    <tr>
+      <th>Administrator</th>
+      <td><%= user_object(@dictionary.user.username) %></td>
+    </tr>
+
+    <tr>
+      <th>Managers</th>
+      <% if @dictionary.administerable?(current_user) %>
+        <td><%= render "associated_managers" %></td>
+      <% else %>
+        <td><%= @dictionary.associated_managers.pluck(:username).map{|u| user_object(u)}.join('').html_safe %></td>
+      <% end %>
+    </tr>
+  </table>
+  <td colspan="2"><%= f.submit @submit_text, {:class =>"button"} %></td>
 
 <% end %>
 

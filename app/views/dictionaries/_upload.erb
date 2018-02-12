@@ -9,21 +9,23 @@
     <li>If a line has a label shorter than 2 or longer than 127, the line will be skipped.</li>
   </ul>
 
-  <% if @dictionary.compilable? %>
-    <span class="message">You need to compile the dictionary before uploading additional entries.</span>
-  <% else %>
-    <%= form_tag dictionary_entries_path(@dictionary), multipart: true do -%>
-      <% if @dictionary.errors.any? %>
-        <div id="error_explanation">
-          <h2><%= pluralize(@dictionary.errors.count, "error") %> prohibited this dictionary from being saved:</h2>
-          <ul>
-            <% @dictionary.errors.full_messages.each do |msg| %>
-              <li><%= msg %></li>
-            <% end %>
-          </ul>
-        </div>
-      <% end %>
+  <%= form_tag dictionary_entries_path(@dictionary), multipart: true do -%>
+    <% if @dictionary.errors.any? %>
+      <div id="error_explanation">
+        <h2><%= pluralize(@dictionary.errors.count, "error") %> prohibited this dictionary from being saved:</h2>
+        <ul>
+          <% @dictionary.errors.full_messages.each do |msg| %>
+            <li><%= msg %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
 
+    <% if @dictionary.compilable? %>
+      <%= file_field_tag :file, required: true, disabled: true %><br/>
+      <%= submit_tag 'Upload', class: "button disabled", disabled: true %>
+      <span class="message">Uploading is diabled because the dictionary is modified. You need to compile it before uploading additional entries.</span>
+    <% else %>
       <%= file_field_tag :file, required: true %><br/>
       <%= submit_tag 'Upload', class: "button" %>
     <% end %>

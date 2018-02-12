@@ -9,13 +9,15 @@
     )
   %>
 
-  <%=
-    link_to(
-      '<i class="fa fa-bomb fa-lg"></i>'.html_safe, 
-      @dictionary, 
-      title: 'Delete the dictionary',
-      method: :delete, 
-      data: {confirm: 'Are you sure to completely delete this dictionary?'}
-    )
-  %>
+  <% if @dictionary.administerable?(current_user) %>
+    <%=
+      link_to(
+        '<i class="fa fa-bomb fa-lg"></i>'.html_safe,
+        @dictionary,
+        title: 'Delete the dictionary',
+        method: :delete,
+        data: {confirm: 'Are you sure to completely delete this dictionary?'}
+      )
+    %>
+    <% end %>
 </div>
