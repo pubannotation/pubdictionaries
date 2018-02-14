@@ -9,19 +9,20 @@ class TextAnnotator
 
   NOTERMWORDS = [ # terms will never include these words
     "is", "are", "am", "be", "was", "were", "do", "did",
-    "doe", # does
+    "does",
     "what", "which", "when", "where", "who", "how",
-    "a", "an", "the", "this", "that", "these", "those", "it", "its", "we", "our", "us", "they", "their", "them", "there", "then", "I", "he", "she", "my", "me", "his", "him", "her",
+    # "a",
+    "an", "the", "this", "that", "these", "those", "it", "its", "we", "our", "us", "they", "their", "them", "there", "then", "I", "he", "she", "my", "me", "his", "him", "her",
     "will", "shall", "may", "can", "cannot", "would", "should", "might", "could", "ought",
     "each", "every", "many", "much", "very",
     "more", "most", "than", "such", "several", "some", "both", "even",
     "and", "or", "but", "neither", "nor",
     "not", "never", "also", "much", "as", "well",
-    "mani", # many
+    "many",
     "e.g"
   ]
 
-  NOEDGEWORDS = [ # terms will never begin with these words, mostly prepositions
+  NOEDGEWORDS = [ # terms will never begin or end with these words, mostly prepositions
     "about", "above", "across", "after", "against", "along",
     "amid", "among", "around", "at", "before", "behind", "below",
     "beneath", "beside", "besides", "between", "beyond",
@@ -33,7 +34,7 @@ class TextAnnotator
     "through", "to", "toward", "towards",
     "under", "underneath", "unlike", "until", "upon",
     "versus", "via", "with", "within", "without",
-    "dure" # during
+    "during"
   ]
 
   # Initialize the text annotator instance.
@@ -53,11 +54,11 @@ class TextAnnotator
 
     @es_connection = Net::HTTP::Persistent.new
 
-    @uri_tokenizer = URI.parse('http://localhost:9200/entries/_analyze?analyzer=tokenization')
-    @uri_normalizer2 = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization2')
+    @norm1_tokenizer_url = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization1')
+    @norm2_tokenizer_url = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization2')
 
-    @post_tokenizer = Net::HTTP::Post.new @uri_tokenizer.request_uri
-    @post_normalizer2 = Net::HTTP::Post.new @uri_normalizer2.request_uri
+    @norm1_tokenizer_post = Net::HTTP::Post.new @norm1_tokenizer_url.request_uri
+    @norm2_tokenizer_post = Net::HTTP::Post.new @norm2_tokenizer_url.request_uri
 
     @ssdbs = @dictionaries.inject({}) do |h, dic|
       h[dic.name] = begin
@@ -67,7 +68,7 @@ class TextAnnotator
       end
       if h[dic.name]
         h[dic.name].measure = Simstring::Jaccard
-        h[dic.name].threshold = @threshold
+        h[dic.name].threshold = @threshold * 0.7
       end
       h
     end
@@ -80,7 +81,7 @@ class TextAnnotator
       end
       if h[dic.name]
         h[dic.name].measure = Simstring::Overlap
-        h[dic.name].threshold = @threshold
+        h[dic.name].threshold = @threshold * 0.7
       end
       h
     end
@@ -93,7 +94,7 @@ class TextAnnotator
       end
       if h[dic.name]
         h[dic.name].measure = Simstring::Overlap
-        h[dic.name].threshold = @threshold
+        h[dic.name].threshold = @threshold * 0.7
       end
       h
     end
@@ -120,7 +121,7 @@ class TextAnnotator
     entry_anns = Hash.new([])
     span_entries.each do |span, entries|
       entries.each do |entry|
-        entry_anns[entry[:id]] += span_index[span][:positions].collect{|p| {span:span, position:p, label:entry[:label], norm2:entry[:norm2], identifier:entry[:identifier], score:entry[:score]}}
+        entry_anns[entry[:identifier]] += span_index[span][:positions].collect{|p| {span:span, position:p, label:entry[:label], norm2:entry[:norm2], identifier:entry[:identifier], score:entry[:score]}}
       end
     end
 
@@ -137,6 +138,7 @@ class TextAnnotator
     entry_anns.each do |eid, anns|
       full_anns = anns
       best_anns = []
+
       full_anns.each do |ann|
         if best_anns.empty?
           best_anns.push(ann)
@@ -178,11 +180,10 @@ class TextAnnotator
   def index_spans(text, text_idx, span_index)
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
-    tokens = tokenize(Entry.decapitalize(text))
+    tokens = norm1_tokenize(text)
     spans  = tokens.map{|t| text[t[:start_offset] ... t[:end_offset]]}
-
-    norm1s = spans.map{|s| Entry.normalize1(s)}
-    norm2s = spans.map{|s| normalize2(s)}
+    norm1s = tokens.map{|t| t[:token]}
+    norm2s = norm2_tokenize(text).inject(Array.new(spans.length, "")){|s, t| s[t[:position]] = t[:token]; s}
 
     sbreaks = sentence_break(text)
 
@@ -226,11 +227,11 @@ class TextAnnotator
   def annotate(text, denotations = [])
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
-    tokens = tokenize(Entry.decapitalize(text))
+    tokens = norm1_tokenize(Entry.decapitalize(text))
     spans  = tokens.map{|t| text[t[:start_offset] ... t[:end_offset]]}
 
     norm1s = spans.map{|s| Entry.normalize1(s)}
-    norm2s = spans.map{|s| normalize2(s)}
+    norm2s = spans.map{|s| norm2_tokenize(s)}
 
     # index spans with their tokens and positions (array)
     span_index = {}
@@ -336,19 +337,18 @@ class TextAnnotator
     !sbreaks.find{|p| p > b && p < e}.nil?
   end
 
-  def tokenize(text)
+  def norm1_tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
-    @post_tokenizer.body = text.sub(/^-/, '\-')
-    res = @es_connection.request @uri_tokenizer, @post_tokenizer
+    @norm1_tokenizer_post.body = text.tr('{}', '()')
+    res = @es_connection.request @norm1_tokenizer_url, @norm1_tokenizer_post
     (JSON.parse res.body, symbolize_names: true)[:tokens]
   end
 
-  # TODO: this method is overlapped with the same method in the entry model.
-  def normalize2(text)
+  def norm2_tokenize(text)
     raise ArgumentError, "Empty text" if text.empty?
-    @post_normalizer2.body = text.sub(/^-/, '\-')
-    res = @es_connection.request @uri_normalizer2, @post_normalizer2
-    (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+    @norm2_tokenizer_post.body = text.tr('{}', '()')
+    res = @es_connection.request @norm2_tokenizer_url, @norm2_tokenizer_post
+    (JSON.parse res.body, symbolize_names: true)[:tokens]
   end
 
   def self.time_estimation(texts)

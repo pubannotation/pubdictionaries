@@ -8,11 +8,19 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
       @job.update_attribute(:num_items, num_entries)
       @job.update_attribute(:num_dones, 0)
 
-      uri = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization2')
-      connection = {
-        uri: uri,
+      normalizer1_url = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization1')
+      normalizer2_url = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization2')
+
+      normalizer1 = {
+        uri: normalizer1_url,
         http: Net::HTTP::Persistent.new,
-        post: Net::HTTP::Post.new(uri.request_uri)
+        post: Net::HTTP::Post.new(normalizer1_url.request_uri)
+      }
+
+      normalizer2 = {
+        uri: normalizer2_url,
+        http: Net::HTTP::Persistent.new,
+        post: Net::HTTP::Post.new(normalizer2_url.request_uri)
       }
 
       new_entries = []
@@ -24,13 +32,13 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
         else
           new_entries << [label, id]
           if new_entries.length >= transaction_size
-            dictionary.add_entries(new_entries, connection)
+            dictionary.add_entries(new_entries, normalizer1, normalizer2)
             new_entries.clear
             @job.update_attribute(:num_dones, i + 1)
           end
         end
       end
-      dictionary.add_entries(new_entries, connection) unless new_entries.empty?
+      dictionary.add_entries(new_entries, normalizer1, normalizer2) unless new_entries.empty?
       @job.update_attribute(:num_dones, num_entries)
 
       dictionary.compile
@@ -38,7 +46,8 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
 			@job.message = e.message
     end
 
-    connection[:http].shutdown
+    normalizer1[:http].shutdown
+    normalizer2[:http].shutdown
     File.delete(filename)
 	end
 end

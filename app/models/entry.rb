@@ -11,18 +11,29 @@ class Entry < ActiveRecord::Base
 
   settings index: {
     analysis: {
+      filter: {
+        english_stop: {
+          type: :stop,
+          stopwords: [
+            # "a",
+            "an", "and", "are", "as", "at", "be", "but", "by", "for", "if", "in", "into", "is", "it",
+            "no", "not", "of", "on", "or", "such", "that", "the", "their", "then", "there", "these",
+            "they", "this", "to", "was", "will", "with"
+          ]
+        }
+      },
       analyzer: {
-        tokenization: { # typographic normalization _ morphosyntactic normalization 
+        tokenization: { # typographic normalization
           tokenizer: :standard,
-          filter: [:standard, :asciifolding, :lowercase, :snowball]
+          filter: [:icu_folding]
         },
         normalization1: { # typographic normalization
           tokenizer: :standard,
-          filter: [:standard, :asciifolding, :lowercase]
+          filter: [:icu_folding]
         },
         normalization2: { # typographic normalization _ morphosyntactic normalization + stopword removal
           tokenizer: :standard,
-          filter: [:standard, :asciifolding, :lowercase, :snowball, :stop]
+          filter: [:icu_folding, :snowball, :english_stop]
         },
         ngrams: {
           tokenizer: :trigram,
@@ -150,7 +161,7 @@ class Entry < ActiveRecord::Base
     if s1norm2.empty? && s2norm2.empty?
       (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams)) / 2
     else
-      (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams) + 5 * jaccard_sim(s1norm2_trigrams, s2norm2_trigrams)) / 7
+      (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams) + 10 * jaccard_sim(s1norm2_trigrams, s2norm2_trigrams)) / 12
     end
   end
 
@@ -182,27 +193,32 @@ class Entry < ActiveRecord::Base
   #
   # * (string) text  - Input text.
   #
-  def self.normalize1(str)
-    raise ArgumentError, "Empty string" if str.empty?
-    str.downcase.gsub(/[[:space:]]/, '').gsub(/[[:punct:]]/, '')
+  def self.normalize1(text, normalizer = nil)
+    raise ArgumentError, "Empty text" if text.empty?
+    _text = text.tr('{}', '()')
+    res = if normalizer.nil?
+      http = Net::HTTP.new('localhost', 9200)
+      http.request_post('/entries/_analyze?analyzer=normalization1', _text)
+    else
+      normalizer[:post].body = _text
+      normalizer[:http].request(normalizer[:uri], normalizer[:post])
+    end
+    (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
 
-  # TODO: to stop using elasticsearch
   # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
   #
   # * (string) text  - Input text.
   #
-  def self.normalize2(text, connection = nil)
+  def self.normalize2(text, normalizer = nil)
     raise ArgumentError, "Empty text" if text.empty?
-
-    _text = text.gsub('{', '\{').sub(/^-/, '\-')
-
-    res = if connection.nil?
+    _text = text.tr('{}', '()')
+    res = if normalizer.nil?
       http = Net::HTTP.new('localhost', 9200)
       http.request_post('/entries/_analyze?analyzer=normalization2', _text)
     else
-      connection[:post].body = _text
-      connection[:http].request(connection[:uri], connection[:post])
+      normalizer[:post].body = _text
+      normalizer[:http].request(normalizer[:uri], normalizer[:post])
     end
     (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
