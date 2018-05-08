@@ -9,7 +9,7 @@ class Dictionary < ActiveRecord::Base
   has_many :entries, :dependent => :destroy
   has_many :jobs, :dependent => :destroy
 
-  attr_accessible :name, :description, :user_id
+  attr_accessible :name, :description, :user_id, :public
   attr_accessible :entries_num
 
   validates :name, presence:true, uniqueness: true

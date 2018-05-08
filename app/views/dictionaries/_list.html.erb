@@ -11,6 +11,12 @@
         link_to dic.name, dic
       end
 
+      if current_user.present?
+        g.column name: '', attribute: 'public', filter: false do |target|
+          [target.public ? '' : '<i class="fa fa-eye-slash" aria-hidden="true" title="Private"></i>'.html_safe, {style: 'width:1em; text-align:center'}]
+        end
+      end
+
       g.column name: "Size", attribute: "entries_num", filter: false do |dic| 
         number_with_delimiter(dic.entries_num, :delimiter => ',')
       end

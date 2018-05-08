@@ -25,6 +25,11 @@
     </tr>
 
     <tr>
+      <th>Public?</th>
+      <td><%= f.check_box :public %>Yes, I want this dictionary to be public.</td>
+    </tr>
+
+    <tr>
       <th>Administrator</th>
       <td><%= user_object(@dictionary.user.username) %></td>
     </tr>
