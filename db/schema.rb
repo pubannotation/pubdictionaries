@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20180508055639) do
+ActiveRecord::Schema.define(:version => 20180512083926) do
 
   create_table "associations", :force => true do |t|
     t.integer  "user_id"
@@ -47,7 +47,17 @@ ActiveRecord::Schema.define(:version => 20180508055639) do
     t.datetime "created_at",                     :null => false
     t.datetime "updated_at",                     :null => false
     t.boolean  "public",      :default => false
+    t.string   "license"
+    t.string   "license_url"
   end
+
+  create_table "dl_associations", :force => true do |t|
+    t.integer "dictionary_id"
+    t.integer "language_id"
+  end
+
+  add_index "dl_associations", ["dictionary_id"], :name => "index_dl_associations_on_dictionary_id"
+  add_index "dl_associations", ["language_id"], :name => "index_dl_associations_on_language_id"
 
   create_table "entries", :force => true do |t|
     t.integer  "mode",          :default => 0
@@ -84,6 +94,11 @@ ActiveRecord::Schema.define(:version => 20180508055639) do
 
   add_index "jobs", ["delayed_job_id"], :name => "index_jobs_on_delayed_job_id"
   add_index "jobs", ["dictionary_id"], :name => "index_jobs_on_dictionary_id"
+
+  create_table "languages", :force => true do |t|
+    t.string "name"
+    t.string "abbreviation"
+  end
 
   create_table "users", :force => true do |t|
     t.text     "username",               :default => "",    :null => false

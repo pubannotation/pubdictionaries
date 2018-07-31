@@ -124,6 +124,7 @@ GEM
     http_parser.rb (0.6.0)
     i18n (0.9.1)
       concurrent-ruby (~> 1.0)
+    i18n_data (0.8.0)
     journey (1.0.4)
     jquery-rails (3.1.4)
       railties (>= 3.0, < 5.0)
@@ -267,6 +268,9 @@ GEM
     unicorn (5.3.1)
       kgio (~> 2.6)
       raindrops (~> 0.7)
+    validate_url (1.0.2)
+      activemodel (>= 3.0.0)
+      addressable
     warden (1.2.7)
       rack (>= 1.0)
     wice_grid (3.6.2)
@@ -294,6 +298,7 @@ DEPENDENCIES
   faker
   font-awesome-sass
   guard-livereload
+  i18n_data
   jquery-rails (> 3.0.0)
   jquery-ui-rails
   kaminari
@@ -315,6 +320,7 @@ DEPENDENCIES
   therubyracer
   uglifier
   unicorn
+  validate_url (~> 1.0, >= 1.0.2)
   wice_grid
 
 BUNDLED WITH

@@ -14,6 +14,7 @@ gem 'devise', '3.0.3'
 gem 'net-http-persistent', '~> 3.0'
 gem 'ruby-stemmer', '~> 0.9.6'
 gem 'stopwords-filter', '~> 0.3.1'
+gem 'validate_url', '~> 1.0', '>= 1.0.2'
 gem 'delayed_job_active_record'
 gem 'delayed_job_recurring'
 gem 'daemons'
@@ -24,6 +25,7 @@ gem 'rails-jquery-autocomplete'
 gem 'rack-cors', :require => 'rack/cors'
 gem 'clipboard-rails', '~> 1.4'
 gem 'rails3-jquery-autocomplete', '~> 1.0', '>= 1.0.15'
+gem 'i18n_data'
 
 # gem 'jquery-rails', "<3.0.0"
 # gem 'will_paginate', '>= 3.0.pre'     # Not compatible with Wice_Grid

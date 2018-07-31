@@ -6,15 +6,18 @@ class Dictionary < ActiveRecord::Base
   belongs_to :user
   has_many :associations
   has_many :associated_managers, through: :associations, source: :user
+  has_many :dl_associations
+  has_many :languages, through: :dl_associations, source: :language
   has_many :entries, :dependent => :destroy
   has_many :jobs, :dependent => :destroy
 
-  attr_accessible :name, :description, :user_id, :public
+  attr_accessible :name, :description, :user_id, :public, :license, :license_url
   attr_accessible :entries_num
 
   validates :name, presence:true, uniqueness: true
   validates :user_id, presence: true 
   validates :description, presence: true
+  validates :license_url, url: true
   validates_format_of :name,                              # because of to_param overriding.
                       :with => /^[^\.]*$/,
                       :message => "should not contain dot!"

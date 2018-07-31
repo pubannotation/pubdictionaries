@@ -101,6 +101,20 @@ class DictionariesController < ApplicationController
       _m
     end
 
+    languages = if params[:dictionary][:languages]
+      _languages = params[:dictionary][:languages].split(/,/).map do |l|
+        _l = Language.find_by_abbreviation(l)
+        if _l.nil?
+          name = I18nData.languages[l]
+          raise ArgumentError, "Invalid language selection: #{l}" if name.nil?
+          _l = Language.create({abbreviation: l, name:name})
+        end
+        _l
+      end
+      params[:dictionary].delete(:languages)
+      _languages
+    end
+
     @dictionary.update_attributes(params[:dictionary])
 
     unless !associated_managers || associated_managers == @dictionary.associated_managers
@@ -108,6 +122,13 @@ class DictionariesController < ApplicationController
       to_add = associated_managers - @dictionary.associated_managers
       to_delete.each{|u| @dictionary.associated_managers.destroy(u)}
       to_add.each{|u| @dictionary.associated_managers << u}
+    end
+
+    unless !languages || languages == @dictionary.languages
+      to_delete = @dictionary.languages - languages
+      to_add = languages - @dictionary.languages
+      to_delete.each{|u| @dictionary.languages.destroy(u)}
+      to_add.each{|u| @dictionary.languages << u}
     end
 
     redirect_to dictionary_path(@dictionary)

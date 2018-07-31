@@ -25,8 +25,29 @@
     </tr>
 
     <tr>
+      <th><%= f.label :description, "Languages" %></th>
+      <td>
+        <% if @dictionary.administerable?(current_user) %>
+          <%= render "language_selection" %>
+        <% else %>
+          <%= @dictionary.associated_managers.pluck(:username).map{|u| user_object(u)}.join('').html_safe %>
+        <% end %>
+      </td>
+    </tr>
+
+    <tr>
       <th>Public?</th>
-      <td><%= f.check_box :public %>Yes, I want this dictionary to be public.</td>
+      <td><%= f.check_box :public %>Yes, I want this dictionary to appear in the public list.</td>
+    </tr>
+
+    <tr>
+      <th>Lisence Name</th>
+      <td><%= f.text_field :license, style: "box-sizing: border-box; width:100%" %></td>
+    </tr>
+
+    <tr>
+      <th>Lisence URL</th>
+      <td><%= f.text_field :license_url, style: "box-sizing: border-box; width:100%" %></td>
     </tr>
 
     <tr>
@@ -46,5 +67,7 @@
   <td colspan="2"><%= f.submit @submit_text, {:class =>"button"} %></td>
 
 <% end %>
+
+
 
 </div>

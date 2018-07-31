@@ -14,6 +14,21 @@
 <% end %>
 
 <tr>
+<th>languages</th>
+<td>
+	<% if @dictionary.languages.empty? %>
+		not specified
+	<% else %>
+		<%= @dictionary.languages.pluck(:abbreviation).map{|l| language_object(l)}.join('').html_safe %>
+	<% end %>
+</td>
+</tr>
+
+<tr>
+<th>license</th>
+<td><%= @dictionary.license ? (@dictionary.license_url ? link_to(@dictionary.license, @dictionary.license_url) : @dictionary.license) : 'unknown' %></td>
+</tr>
+<tr>
 <th>created at</th>
 <td><%= @dictionary.created_at %></td>
 </tr>
