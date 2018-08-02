@@ -99,3 +99,17 @@ paths:
           description: An ordered list of pairs of (label, id) 
         400:
           description: No term
+  /dictionaries/{name}/substring_completion:
+    get:
+      summary: Get substring completions, based on the specified dictionary
+      parameters:
+        - name: term
+          in: url
+          description: substring of a term
+          type: string
+          required: true
+      responses:
+        200:
+          description: An ordered list of pairs of (label, id) 
+        400:
+          description: No term
