@@ -323,5 +323,8 @@ DEPENDENCIES
   validate_url (~> 1.0, >= 1.0.2)
   wice_grid
 
+RUBY VERSION
+   ruby 2.3.4p301
+
 BUNDLED WITH
-   1.16.0.pre.3
+   1.16.2

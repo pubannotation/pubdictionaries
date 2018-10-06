@@ -1,4 +1,5 @@
 source 'https://rubygems.org'
+ruby '2.3.4'
 
 gem 'rails', '3.2.22.1'
 gem 'activerecord-import', '~> 0.3.1'
