@@ -11,13 +11,13 @@ class Dictionary < ActiveRecord::Base
   has_many :entries, :dependent => :destroy
   has_many :jobs, :dependent => :destroy
 
-  attr_accessible :name, :description, :user_id, :public, :license, :license_url
+  attr_accessible :name, :description, :user_id, :public, :license, :license_url, :languages, :associated_managers
   attr_accessible :entries_num
 
   validates :name, presence:true, uniqueness: true
   validates :user_id, presence: true 
   validates :description, presence: true
-  validates :license_url, url: true
+  validates :license_url, url: {allow_blank: true}
   validates_format_of :name,                              # because of to_param overriding.
                       :with => /^[^\.]*$/,
                       :message => "should not contain dot!"

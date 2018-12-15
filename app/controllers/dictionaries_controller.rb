@@ -72,6 +72,8 @@ class DictionariesController < ApplicationController
   end
 
   def create
+    params[:dictionary][:associated_managers] = [] unless params[:dictionary][:associated_managers].respond_to?(:each)
+    params[:dictionary][:languages] = [] unless params[:dictionary][:languages].respond_to?(:each)
     @dictionary = current_user.dictionaries.new(params[:dictionary])
     @dictionary.name.strip!
     @dictionary.user = current_user
