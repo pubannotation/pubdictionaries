@@ -54,11 +54,9 @@ class TextAnnotator
 
     @es_connection = Net::HTTP::Persistent.new
 
-    @norm1_tokenizer_url = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization1')
-    @norm2_tokenizer_url = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization2')
-
-    @norm1_tokenizer_post = Net::HTTP::Post.new @norm1_tokenizer_url.request_uri
-    @norm2_tokenizer_post = Net::HTTP::Post.new @norm2_tokenizer_url.request_uri
+    @tokenizer_url = URI.parse('http://localhost:9200/entries/_analyze')
+    @tokenizer_post = Net::HTTP::Post.new @tokenizer_url.request_uri
+    @tokenizer_post['content-type'] = 'application/json'
 
     @ssdbs = @dictionaries.inject({}) do |h, dic|
       h[dic.name] = begin
@@ -338,16 +336,17 @@ class TextAnnotator
   end
 
   def norm1_tokenize(text)
-    raise ArgumentError, "Empty text" if text.empty?
-    @norm1_tokenizer_post.body = text.tr('{}', '()')
-    res = @es_connection.request @norm1_tokenizer_url, @norm1_tokenizer_post
-    (JSON.parse res.body, symbolize_names: true)[:tokens]
+    tokenize('normalization1', text)
   end
 
   def norm2_tokenize(text)
+    tokenize('normalization2', text)
+  end
+
+  def tokenize(analyzer, text)
     raise ArgumentError, "Empty text" if text.empty?
-    @norm2_tokenizer_post.body = text.tr('{}', '()')
-    res = @es_connection.request @norm2_tokenizer_url, @norm2_tokenizer_post
+    @tokenizer_post.body = {analyzer: analyzer, text: text.tr('{}', '()')}.to_json
+    res = @es_connection.request @tokenizer_url, @tokenizer_post
     (JSON.parse res.body, symbolize_names: true)[:tokens]
   end
 
