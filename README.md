@@ -8,6 +8,7 @@ PubDictionaries aims to provide a platform in which users can easily share their
 * Rails v3.2.x
 * ElasticSearch v6.5.3
   * [ICU Analysis Plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/6.5/analysis-icu.html)
+  * [Korean (nori) Analysis plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/6.5/analysis-nori.html)
 
 ## Install
 1. clone

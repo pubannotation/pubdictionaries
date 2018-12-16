@@ -24,15 +24,15 @@ class Entry < ActiveRecord::Base
       },
       analyzer: {
         tokenization: { # typographic normalization
-          tokenizer: :standard,
+          tokenizer: :nori_tokenizer,
           filter: [:icu_folding]
         },
         normalization1: { # typographic normalization
-          tokenizer: :standard,
+          tokenizer: :nori_tokenizer,
           filter: [:icu_folding]
         },
         normalization2: { # typographic normalization _ morphosyntactic normalization + stopword removal
-          tokenizer: :standard,
+          tokenizer: :nori_tokenizer,
           filter: [:icu_folding, :snowball, :english_stop]
         },
         ngrams: {
