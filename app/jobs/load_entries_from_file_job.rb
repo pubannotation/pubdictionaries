@@ -14,13 +14,13 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
       normalizer1 = {
         uri: normalizer1_url,
         http: Net::HTTP::Persistent.new,
-        post: Net::HTTP::Post.new(normalizer1_url.request_uri)
+        post: Net::HTTP::Post.new(normalizer1_url.request_uri, 'Content-Type' => 'application/json')
       }
 
       normalizer2 = {
         uri: normalizer2_url,
         http: Net::HTTP::Persistent.new,
-        post: Net::HTTP::Post.new(normalizer2_url.request_uri)
+        post: Net::HTTP::Post.new(normalizer2_url.request_uri, 'Content-Type' => 'application/json')
       }
 
       new_entries = []

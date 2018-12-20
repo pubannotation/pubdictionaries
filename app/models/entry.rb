@@ -196,11 +196,12 @@ class Entry < ActiveRecord::Base
   def self.normalize1(text, normalizer = nil)
     raise ArgumentError, "Empty text" if text.empty?
     _text = text.tr('{}', '()')
+    body = {analyzer: 'normalization1', text: _text}.to_json
     res = if normalizer.nil?
       http = Net::HTTP.new('localhost', 9200)
-      http.request_post('/entries/_analyze?analyzer=normalization1', _text)
+      http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
     else
-      normalizer[:post].body = _text
+      normalizer[:post].body = body
       normalizer[:http].request(normalizer[:uri], normalizer[:post])
     end
     (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
@@ -213,11 +214,12 @@ class Entry < ActiveRecord::Base
   def self.normalize2(text, normalizer = nil)
     raise ArgumentError, "Empty text" if text.empty?
     _text = text.tr('{}', '()')
+    body = {analyzer: 'normalization2', text: _text}.to_json
     res = if normalizer.nil?
       http = Net::HTTP.new('localhost', 9200)
-      http.request_post('/entries/_analyze?analyzer=normalization2', _text)
+      http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
     else
-      normalizer[:post].body = _text
+      normalizer[:post].body = body
       normalizer[:http].request(normalizer[:uri], normalizer[:post])
     end
     (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
