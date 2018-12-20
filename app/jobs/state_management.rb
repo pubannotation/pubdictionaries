@@ -9,6 +9,6 @@ module StateManagement
 	end
 
   def error(job, exception)
-		@job.message << Message.create({item: "The job failed", body: exception.message})
+		@job.message = "'" + exception.message + "'\n" + exception.backtrace.join("\n")
   end
 end
