@@ -8,8 +8,8 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
       @job.update_attribute(:num_items, num_entries)
       @job.update_attribute(:num_dones, 0)
 
-      normalizer1_url = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization1')
-      normalizer2_url = URI.parse('http://localhost:9200/entries/_analyze?analyzer=normalization2')
+      normalizer1_url = URI.parse('http://localhost:9200/entries/_analyze')
+      normalizer2_url = URI.parse('http://localhost:9200/entries/_analyze')
 
       normalizer1 = {
         uri: normalizer1_url,
