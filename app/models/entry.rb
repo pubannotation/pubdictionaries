@@ -212,7 +212,8 @@ class Entry < ActiveRecord::Base
     _text = text.tr('{}', '()')
     body = {analyzer: analyzer, text: _text}.to_json
     res = if normalizer.nil?
-            http = Net::HTTP.new('localhost', 9200)
+            uri = URI(Rails.configuration.elasticsearch[:host])
+            http = Net::HTTP.new(uri.host, uri.port)
             http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
           else
             normalizer[:post].body = body

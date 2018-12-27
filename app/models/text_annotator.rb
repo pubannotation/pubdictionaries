@@ -54,7 +54,7 @@ class TextAnnotator
 
     @es_connection = Net::HTTP::Persistent.new
 
-    @tokenizer_url = URI.parse('http://localhost:9200/entries/_analyze')
+    @tokenizer_url = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
     @tokenizer_post = Net::HTTP::Post.new @tokenizer_url.request_uri
     @tokenizer_post['content-type'] = 'application/json'
 

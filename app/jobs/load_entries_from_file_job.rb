@@ -8,7 +8,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
       @job.update_attribute(:num_items, num_entries)
       @job.update_attribute(:num_dones, 0)
 
-      normalizer_url = URI.parse('http://localhost:9200/entries/_analyze')
+      normalizer_url = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
 
       normalizer = {
         uri: normalizer_url,
