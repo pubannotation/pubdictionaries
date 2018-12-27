@@ -120,12 +120,12 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
-  def add_entries(pairs, normalizer1 = nil, normalizer2 = nil)
+  def add_entries(pairs, normalizer = nil)
     ActiveRecord::Base.transaction do
       new_entries = pairs.map do |label, id|
         begin
-          norm1 = Entry.normalize1(label, normalizer1)
-          norm2 = Entry.normalize2(label, normalizer2)
+          norm1 = Entry.normalize1(label, normalizer)
+          norm2 = Entry.normalize2(label, normalizer)
           Entry.new(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length:label.length, dictionary_id: self.id)
         rescue => e
           raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e}."

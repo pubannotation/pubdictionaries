@@ -194,17 +194,7 @@ class Entry < ActiveRecord::Base
   # * (string) text  - Input text.
   #
   def self.normalize1(text, normalizer = nil)
-    raise ArgumentError, "Empty text" if text.empty?
-    _text = text.tr('{}', '()')
-    body = {analyzer: 'normalization1', text: _text}.to_json
-    res = if normalizer.nil?
-      http = Net::HTTP.new('localhost', 9200)
-      http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
-    else
-      normalizer[:post].body = body
-      normalizer[:http].request(normalizer[:uri], normalizer[:post])
-    end
-    (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+    normalize text, 'normalization1', normalizer
   end
 
   # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
@@ -212,17 +202,22 @@ class Entry < ActiveRecord::Base
   # * (string) text  - Input text.
   #
   def self.normalize2(text, normalizer = nil)
-    raise ArgumentError, "Empty text" if text.empty?
-    _text = text.tr('{}', '()')
-    body = {analyzer: 'normalization2', text: _text}.to_json
-    res = if normalizer.nil?
-      http = Net::HTTP.new('localhost', 9200)
-      http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
-    else
-      normalizer[:post].body = body
-      normalizer[:http].request(normalizer[:uri], normalizer[:post])
-    end
-    (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+    normalize text, 'normalization2', normalizer
   end
 
+  private
+
+  def self.normalize(text, analyzer, normalizer = nil)
+    raise ArgumentError, "Empty text" if text.empty?
+    _text = text.tr('{}', '()')
+    body = {analyzer: analyzer, text: _text}.to_json
+    res = if normalizer.nil?
+            http = Net::HTTP.new('localhost', 9200)
+            http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
+          else
+            normalizer[:post].body = body
+            normalizer[:http].request(normalizer[:uri], normalizer[:post])
+          end
+    (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+  end
 end
