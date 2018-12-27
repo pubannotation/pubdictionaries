@@ -36,7 +36,9 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
 
       dictionary.compile
     rescue => e
-			@job.message = e.message
+      Delayed::Worker.logger.debug e.message + e.backtrace.join("\n")
+      @job.message = e.message
+      raise
     end
 
     normalizer && normalizer[:http] && normalizer[:http].shutdown

@@ -219,6 +219,7 @@ class Entry < ActiveRecord::Base
             normalizer[:post].body = body
             normalizer[:http].request(normalizer[:uri], normalizer[:post])
           end
+    raise res.body unless res.kind_of? Net::HTTPSuccess
     (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
 end

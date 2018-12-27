@@ -128,7 +128,7 @@ class Dictionary < ActiveRecord::Base
           norm2 = Entry.normalize2(label, normalizer)
           Entry.new(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length:label.length, dictionary_id: self.id)
         rescue => e
-          raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e}."
+          raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
         end
       end
 
