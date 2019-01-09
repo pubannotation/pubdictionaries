@@ -39,7 +39,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
 			@job.message = e.message
     end
 
-    normalizer[:http].shutdown
+    normalizer && normalizer[:http] && normalizer[:http].shutdown
     File.delete(filename)
 	end
 end
