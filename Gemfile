@@ -2,19 +2,18 @@ source 'https://rubygems.org'
 ruby '2.3.3'
 
 gem 'rails', '3.2.22.1'
-gem 'activerecord-import', '~> 0.3.1'
+gem 'activerecord-import'
 gem 'libv8'
 
-gem 'pg', :require => 'pg'   # Use PostgreSQL
+gem 'pg', '~> 0.21', :require => 'pg'   # Use PostgreSQL
 gem 'wice_grid'              # Grid viewer for tab-separated data view.
-gem 'font-awesome-sass'
-gem 'jquery-rails', '>3.0.0' # Jquery.
-gem 'jquery-ui-rails'        # Jquery.
-gem 'devise', '3.0.3'
-gem 'net-http-persistent', '~> 3.0'
-gem 'ruby-stemmer', '~> 0.9.6'
-gem 'stopwords-filter', '~> 0.3.1'
-gem 'validate_url', '~> 1.0', '>= 1.0.2'
+gem 'font-awesome-sass', '~> 4.7.0'
+gem 'jquery-rails'
+gem 'jquery-ui-rails'
+gem 'devise', '~> 3.0.3'
+gem 'net-http-persistent'
+gem 'ruby-stemmer'
+gem 'validate_url'
 gem 'delayed_job_active_record'
 gem 'delayed_job_recurring'
 gem 'daemons'
@@ -23,8 +22,8 @@ gem 'elasticsearch-model'
 gem 'elasticsearch-rails'
 gem 'rails-jquery-autocomplete'
 gem 'rack-cors', :require => 'rack/cors'
-gem 'clipboard-rails', '~> 1.4'
-gem 'rails3-jquery-autocomplete', '~> 1.0', '>= 1.0.15'
+gem 'clipboard-rails'
+gem 'rails3-jquery-autocomplete'
 gem 'i18n_data'
 
 group :development do
@@ -42,8 +41,8 @@ group :production do
 end
 
 group :assets do
-  gem 'sass-rails',   '~> 3.2.3'
-  gem 'coffee-rails', '~> 3.2.1'
+  gem 'sass-rails'
+  gem 'coffee-rails'
 
   # See https://github.com/sstephenson/execjs#readme for more supported runtimes
   gem 'therubyracer', :platforms => :ruby
