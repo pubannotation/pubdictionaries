@@ -31,10 +31,6 @@ gem 'i18n_data'
 # gem 'jquery-rails', "<3.0.0"
 # gem 'will_paginate', '>= 3.0.pre'     # Not compatible with Wice_Grid
 
-group :development, :test do
-  gem 'rspec-rails', '~> 3.4', '>= 3.4.2'
-end
-
 group :development do
   gem 'guard-livereload', require: false
   gem 'faker'
@@ -42,10 +38,6 @@ group :development do
 end
 
 group :test do
-  gem 'spork-rails'
-  gem 'factory_girl_rails'
-  gem 'simplecov', :require => false
-  gem 'capybara'
   gem 'test-unit'
 end
 

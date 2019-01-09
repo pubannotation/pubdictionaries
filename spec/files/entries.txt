@@ -1,2 +1,0 @@
-view_title_1,uri1,label_1
-view_title_2,uri2,label_2
