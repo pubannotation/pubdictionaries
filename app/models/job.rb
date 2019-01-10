@@ -1,7 +1,6 @@
 class Job < ActiveRecord::Base
   belongs_to :dictionary
   belongs_to :delayed_job
-  attr_accessible :name, :num_dones, :num_items, :dictionary_id, :delayed_job_id, :time, :message
 
   scope :waiting, -> {where('begun_at IS NULL')}
   scope :running, -> {where('begun_at IS NOT NULL AND ended_at IS NULL')}

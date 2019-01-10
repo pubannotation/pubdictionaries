@@ -47,13 +47,6 @@ class Entry < ActiveRecord::Base
 
   belongs_to :dictionary
 
-  attr_accessible :id
-  attr_accessible :label, :identifier
-  attr_accessible :norm1, :norm2
-  attr_accessible :label_length
-  attr_accessible :mode
-  attr_accessible :dictionary_id
-
   validates :label, presence: true
   validates :identifier, presence: true
 
