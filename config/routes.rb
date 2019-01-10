@@ -12,7 +12,7 @@ PubDictionaries::Application.routes.draw do
   get  'annotation_result/:filename', to: 'annotation#annotation_result', as: 'annotation_result'
 
   devise_for :users
-  match '/users/:name' => 'users#show', :as => 'show_user'
+  get '/users/:name' => 'users#show', :as => 'show_user'
   
   resources :dictionaries do
     post 'clone'
