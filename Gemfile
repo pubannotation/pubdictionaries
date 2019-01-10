@@ -3,7 +3,6 @@ ruby '2.3.3'
 
 gem 'rails', '3.2.22.1'
 gem 'activerecord-import'
-gem 'libv8'
 
 gem 'pg', '~> 0.21', :require => 'pg'   # Use PostgreSQL
 gem 'wice_grid'              # Grid viewer for tab-separated data view.
@@ -43,9 +42,5 @@ end
 group :assets do
   gem 'sass-rails'
   gem 'coffee-rails'
-
-  # See https://github.com/sstephenson/execjs#readme for more supported runtimes
-  gem 'therubyracer', :platforms => :ruby
-
   gem 'uglifier'
 end
