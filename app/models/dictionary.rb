@@ -16,7 +16,7 @@ class Dictionary < ActiveRecord::Base
   validates :description, presence: true
   validates :license_url, url: {allow_blank: true}
   validates_format_of :name,                              # because of to_param overriding.
-                      :with => /^[^\.]*$/,
+                      :with => /\A[^\.]*\z/,
                       :message => "should not contain dot!"
 
   SIM_STRING_DB_DIR = "db/simstring/"
