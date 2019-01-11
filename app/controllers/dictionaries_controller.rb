@@ -72,9 +72,9 @@ class DictionariesController < ApplicationController
   end
 
   def create
-    params[:dictionary][:associated_managers] = [] unless params[:dictionary][:associated_managers].respond_to?(:each)
-    params[:dictionary][:languages] = [] unless params[:dictionary][:languages].respond_to?(:each)
-    @dictionary = current_user.dictionaries.new(params[:dictionary])
+    dictionary_params[:associated_managers] = [] unless dictionary_params[:associated_managers].respond_to?(:each)
+    dictionary_params[:languages] = [] unless dictionary_params[:languages].respond_to?(:each)
+    @dictionary = current_user.dictionaries.new(dictionary_params)
     @dictionary.name.strip!
     @dictionary.user = current_user
 
@@ -117,7 +117,7 @@ class DictionariesController < ApplicationController
       _languages
     end
 
-    @dictionary.update_attributes(params[:dictionary])
+    @dictionary.update_attributes(dictionary_params)
 
     unless !associated_managers || associated_managers == @dictionary.associated_managers
       to_delete = @dictionary.associated_managers - associated_managers
@@ -216,4 +216,17 @@ class DictionariesController < ApplicationController
     end
   end
 
+  private
+
+  def dictionary_params
+    @dictionary_params ||= params.require(:dictionary).permit(
+      :name,
+      :description,
+      :languages,
+      :public,
+      :license,
+      :license_url,
+      :associated_managers
+    )
+  end
 end
