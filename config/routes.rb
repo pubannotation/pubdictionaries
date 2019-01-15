@@ -60,11 +60,7 @@ PubDictionaries::Application.routes.draw do
   end
 
   resources :dictionaries do
-    resources :jobs do
-      member do
-        get 'messages' => 'messages#index'
-      end
-    end
+    resources :jobs, only: [:show, :destroy]
   end
  
   root :to => 'home#index'
