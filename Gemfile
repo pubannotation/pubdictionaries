@@ -24,6 +24,9 @@ gem 'rack-cors', :require => 'rack/cors'
 gem 'clipboard-rails'
 gem 'rails3-jquery-autocomplete'
 gem 'i18n_data'
+gem 'sass-rails'
+gem 'coffee-rails'
+gem 'uglifier'
 
 group :development do
   gem 'guard-livereload', require: false
@@ -37,10 +40,4 @@ end
 
 group :production do
  gem 'unicorn'
-end
-
-group :assets do
-  gem 'sass-rails'
-  gem 'coffee-rails'
-  gem 'uglifier'
 end
