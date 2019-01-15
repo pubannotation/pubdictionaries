@@ -1,13 +1,9 @@
-require 'simstring'
-require 'pp'
-
 class Entry < ActiveRecord::Base
   MODE_NORMAL   = 0
   MODE_ADDITION = 1
   MODE_DELETION = 2
 
   include Elasticsearch::Model
-  # include Elasticsearch::Model::Callbacks
 
   settings index: {
     analysis: {
@@ -15,7 +11,6 @@ class Entry < ActiveRecord::Base
         english_stop: {
           type: :stop,
           stopwords: [
-            # "a",
             "an", "and", "are", "as", "at", "be", "but", "by", "for", "if", "in", "into", "is", "it",
             "no", "not", "of", "on", "or", "such", "that", "the", "their", "then", "there", "these",
             "they", "this", "to", "was", "will", "with"
@@ -63,8 +58,6 @@ class Entry < ActiveRecord::Base
   validates :identifier, presence: true
 
   def self.as_tsv
-    column_names = %w{label identifier}
-
     CSV.generate(col_sep: "\t") do |tsv|
       tsv << [:label, :id]
       all.each do |entry|
@@ -79,8 +72,6 @@ class Entry < ActiveRecord::Base
       include: {dictionaries: {only: :id}}
     )
   end
-
-  scope :updated, where("updated_at > ?", 1.seconds.ago)
 
   def self.get_by_value(label, identifier)
     self.find_by_label_and_identifier(label, identifier)
@@ -105,10 +96,6 @@ class Entry < ActiveRecord::Base
 
     [items[0], items[1]]
   end
-
-  # def self.none
-  #   where(:id => nil).where("id IS NOT ?", nil)
-  # end
 
   def self.narrow_by_label_prefix(str, dictionary = nil, page = 0)
     norm1 = Entry.normalize1(str)
@@ -163,15 +150,6 @@ class Entry < ActiveRecord::Base
     else
       (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams) + 10 * jaccard_sim(s1norm2_trigrams, s2norm2_trigrams)) / 12
     end
-  end
-
-  # Compute cosine similarity of two vectors
-  #
-  # * (array) items1
-  # * (array) items2
-  #
-  def self.cosine_sim(items1, items2)
-    (items1 & items2).size.to_f / Math.sqrt(items1.size * items2.size)
   end
 
   # Compute jaccard similarity of two sets
