@@ -90,9 +90,6 @@ class AnnotationController < ApplicationController
       texts = target.class == Hash ? target[:text] : target.map{|t| t[:text]}
       time_for_annotation = TextAnnotator.time_estimation(texts)
 
-      # a = TextAnnotationJob.new(target, filename, dictionaries, options)
-      # a.perform()
-
       delayed_job = Delayed::Job.enqueue TextAnnotationJob.new(target, filename, dictionaries, options), queue: :annotation
       Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: time_for_annotation})
 

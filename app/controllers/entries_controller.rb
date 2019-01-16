@@ -18,9 +18,6 @@ class EntriesController < ApplicationController
         # TODO: at the moment, it is hard-coded. It should be improved.
         `/usr/bin/dos2unix #{target_filepath}`
 
-        # job = LoadEntriesFromFileJob.new(target_filepath, dictionary)
-        # job.perform
-
         delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dictionary), queue: :upload
         Job.create({name:"Upload dictionary entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
         message = ''
