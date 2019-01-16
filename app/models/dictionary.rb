@@ -24,12 +24,6 @@ class Dictionary < ActiveRecord::Base
 
   SSDB_DIR = "db/simstring/"
 
-  # Override the original to_param so that it returns name, not ID, for constructing URLs.
-  # Use Model#find_by_name() instead of Model.find() in controllers.
-  def to_param
-    name
-  end
-
   scope :mine, -> (user) {
     if user.nil?
       none
@@ -56,16 +50,61 @@ class Dictionary < ActiveRecord::Base
     end
   }
 
+  class << self
+    def find_dictionaries_from_params(params)
+      dicnames = if params.has_key?(:dictionaries)
+                   params[:dictionaries]
+                 elsif params.has_key?(:dictionary)
+                   params[:dictionary]
+                 elsif params.has_key?(:id)
+                   params[:id]
+                 end
+      return [] unless dicnames.present?
+
+      dictionaries = dicnames.split(',').collect{|d| Dictionary.find_by_name(d.strip)}
+      raise ArgumentError, "wrong dictionary specification." if dictionaries.include? nil
+
+      dictionaries
+    end
+
+    def find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
+    ssdbs = dictionaries.inject({}) do |h, dic|
+      h[dic.name] = begin
+        Simstring::Reader.new(dic.ssdb_path)
+      rescue
+        nil
+      end
+      if h[dic.name]
+        h[dic.name].measure = Simstring::Jaccard
+        h[dic.name].threshold = threshold
+      end
+      h
+    end
+
+    r = labels.inject({}) do |h, label|
+      h[label] = Entry.search_term(dictionaries, ssdbs, threshold, label)
+      h[label].map!{|entry| entry[:identifier]} unless rich
+      h
+    end
+
+    ssdbs.each{|name, db| db.close if db}
+
+    r
+    end
+  end
+
+  # Override the original to_param so that it returns name, not ID, for constructing URLs.
+  # Use Model#find_by_name() instead of Model.find() in controllers.
+  def to_param
+    name
+  end
+
   def editable?(user)
     user && (user.admin? || user_id == user.id || associated_managers.include?(user))
   end
 
   def administerable?(user)
     user && (user.admin? || user_id == user.id)
-  end
-
-  def get_entry(label, id)
-    entries.find_by(label:label, identifier: id)
   end
 
   def create_addition(label, id)
@@ -96,28 +135,12 @@ class Dictionary < ActiveRecord::Base
     update_tmp_ssdb
   end
 
-  def update_tmp_ssdb
-    FileUtils.mkdir_p(ssdb_dir) unless Dir.exist?(ssdb_dir)
-    db = Simstring::Writer.new tmp_ssdb_path, 3, false, true
-    self.entries.where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
-    db.close
-  end
-
   def num_addition
     entries.where(mode:Entry::MODE_ADDITION).count
   end
 
   def num_deletion
     entries.where(mode:Entry::MODE_DELETION).count
-  end
-
-  def destroy_entry(e)
-    if entries.include?(e)
-      entries.destroy(e)
-      decrement!(:entries_num)
-      e.decrement!(:dictionaries_num)
-      e.destroy if e.dictionaries_num == 0
-    end
   end
 
   def add_entries(pairs, normalizer = nil)
@@ -146,55 +169,6 @@ class Dictionary < ActiveRecord::Base
     end
   end
 
-  def self.find_dictionaries_from_params(params)
-    dicnames = if params.has_key?(:dictionaries)
-      params[:dictionaries]
-    elsif params.has_key?(:dictionary)
-      params[:dictionary]
-    elsif params.has_key?(:id)
-      params[:id]
-    end
-    return [] unless dicnames.present?
-
-    dictionaries = dicnames.split(',').collect{|d| Dictionary.find_by_name(d.strip)}
-    raise ArgumentError, "wrong dictionary specification." if dictionaries.include? nil
-
-    dictionaries
-  end
-
-  def self.find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
-    ssdbs = dictionaries.inject({}) do |h, dic|
-      h[dic.name] = begin
-        Simstring::Reader.new(dic.ssdb_path)
-      rescue
-        nil
-      end
-      if h[dic.name]
-        h[dic.name].measure = Simstring::Jaccard
-        h[dic.name].threshold = threshold
-      end
-      h
-    end
-
-    r = labels.inject({}) do |h, label|
-      h[label] = Entry.search_term(dictionaries, ssdbs, threshold, label)
-      h[label].map!{|entry| entry[:identifier]} unless rich
-      h
-    end
-
-    ssdbs.each{|name, db| db.close if db}
-
-    r
-  end
-
-  def ssdb_exist?
-    File.exists? ssdb_path
-  end
-
-  def ssdb_dir
-    Dictionary::SSDB_DIR + self.name
-  end
-
   def ssdb_path
     Rails.root.join(ssdb_dir, "simstring.db").to_s
   end
@@ -218,11 +192,20 @@ class Dictionary < ActiveRecord::Base
     db.close
   end
 
-  def compiled_at
-    File.mtime(ssdb_path).utc if ssdb_exist?
-  end
-
   def compilable?
     num_addition > 0 || num_deletion > 0
+  end
+
+  private
+
+  def ssdb_dir
+    Dictionary::SSDB_DIR + self.name
+  end
+
+  def update_tmp_ssdb
+    FileUtils.mkdir_p(ssdb_dir) unless Dir.exist?(ssdb_dir)
+    db = Simstring::Writer.new tmp_ssdb_path, 3, false, true
+    self.entries.where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
+    db.close
   end
 end
