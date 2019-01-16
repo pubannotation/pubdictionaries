@@ -176,27 +176,6 @@ class DictionariesController < ApplicationController
     end
   end
 
-  def create_addition
-    begin
-      dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
-      raise ArgumentError, "Cannot find the dictionary." if dictionary.nil?
-
-    end
-  end
-
-  def create_deletion
-    begin
-      dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
-      raise ArgumentError, "Cannot find the dictionary." if dictionary.nil?
-
-      dictionary.create_deletion(params[:id])
-    end
-
-    respond_to do |format|
-      format.html{ redirect_to :back }
-    end
-  end
-
   def compile
     begin
       dictionary = Dictionary.editable(current_user).find_by_name(params[:id])

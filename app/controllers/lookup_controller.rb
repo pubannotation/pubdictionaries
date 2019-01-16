@@ -91,32 +91,4 @@ class LookupController < ApplicationController
       end
     end
   end
-
-
-  def call_ws
-    rest_url = params[:rest_url]
-    delimiter = params[:delimiter]
-    labels = params[:labels]
-    method = 1
-
-    response = begin
-      if method == 0
-        RestClient.get rest_url, {:params => call_params, :accept => :json}
-      else
-        RestClient.post rest_url, labels.split(delimiter).to_json, :content_type => :json, :accept => :json
-      end
-    rescue => e
-      raise IOError, "Invalid connection"
-    end
-
-    raise IOError, "Bad gateway" unless response.code == 200
-
-    begin
-      result = JSON.parse response, :symbolize_names => true
-    rescue => e
-      raise IOError, "Received a non-JSON object: [#{response}]"
-    end
-
-    render :find_ids
-  end
 end
