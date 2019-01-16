@@ -9,7 +9,7 @@
     <li>If a line has a label shorter than 2 or longer than 127, the line will be skipped.</li>
   </ul>
 
-  <%= form_tag dictionary_entries_path(@dictionary), multipart: true do -%>
+  <%= form_tag tsv_dictionary_entries_path(@dictionary), multipart: true do -%>
     <% if @dictionary.errors.any? %>
       <div id="error_explanation">
         <h2><%= pluralize(@dictionary.errors.count, "error") %> prohibited this dictionary from being saved:</h2>

@@ -36,6 +36,7 @@ PubDictionaries::Application.routes.draw do
     resources :entries do
       collection do
         put 'empty', to: 'dictionaries#empty'
+        post 'tsv', to: 'entries#upload_tsv'
       end
 
       member do
