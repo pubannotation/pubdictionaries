@@ -1,6 +1,3 @@
-require 'fileutils'
-require 'json'
-
 class AnnotationController < ApplicationController
 
   # GET
@@ -77,11 +74,7 @@ class AnnotationController < ApplicationController
       options[:tokens_len_max] = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
       options[:threshold] = params[:threshold].to_f if params[:threshold].present?
 
-      # Set up directory
-      TextAnnotator::Result.setup_directory
-
-      filename = "annotation-result-#{SecureRandom.uuid}"
-      FileUtils.touch(TextAnnotator::RESULTS_PATH + filename)
+      result = TextAnnotator::BatchResult.new
 
       number_of_annotation_workers = 4
       time_for_queue = Job.time_for_tasks_to_go(:annotation) / number_of_annotation_workers
@@ -90,11 +83,11 @@ class AnnotationController < ApplicationController
       texts = target.class == Hash ? target[:text] : target.map{|t| t[:text]}
       time_for_annotation = TextAnnotator.time_estimation(texts)
 
-      delayed_job = Delayed::Job.enqueue TextAnnotationJob.new(target, filename, dictionaries, options), queue: :annotation
+      delayed_job = Delayed::Job.enqueue TextAnnotationJob.new(target, result.name, dictionaries, options), queue: :annotation
       Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: time_for_annotation})
 
       respond_to do |format|
-        format.any {head :see_other, location: annotation_result_url(filename), retry_after: time_for_queue + time_for_annotation}
+        format.any {head :see_other, location: annotation_result_url(result.name), retry_after: time_for_queue + time_for_annotation}
       end
     rescue ArgumentError => e
       respond_to do |format|
@@ -113,29 +106,17 @@ class AnnotationController < ApplicationController
 
   # get
   def annotation_result
-    begin
-      filename = params[:filename] + '.json'
-      filepath = TextAnnotator::RESULTS_PATH + filename
+    result = TextAnnotator::BatchResult.new(params[:filename])
 
-      if File.exist?(filepath)
-        annotations = JSON.parse(File.read(filepath), symbolize_names: true)
-
-        success = if annotations.class == Array
-          annotations.first.has_key?(:text)
-        else
-          annotations.has_key?(:text)
-        end
-
-        if success
-          send_file filepath, filename: filename, type: :json
-        else
-          send_file filepath, filename: filename, type: :json, status: :internal_server_error
-        end
-      elsif File.exist?(TextAnnotator::RESULTS_PATH + params[:filename])
-        head :not_found
-      else
-        head :gone
-      end
+    case result.status
+    when :not_found
+      head :gone
+    when :queued
+      head :not_found
+    when :success
+      send_file result.file_path, type: :json
+    when :error
+      send_file result.file_path, type: :json, status: :internal_server_error
     end
   end
 end

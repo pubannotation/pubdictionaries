@@ -5,8 +5,6 @@ require 'pp'
 # Provide functionalities for text annotation.
 # 
 class TextAnnotator
-  RESULTS_PATH = "tmp/annotations/"
-
   NOTERMWORDS = [ # terms will never include these words
     "is", "are", "am", "be", "was", "were", "do", "did",
     "does",

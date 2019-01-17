@@ -12,11 +12,9 @@ class TextAnnotationJob < Struct.new(:targets, :filename, :dictionaries, :option
 
       annotator.done
 
-      File.write(TextAnnotator::RESULTS_PATH + filename + '.json', JSON.generate(annotations_col))
-      File.delete(TextAnnotator::RESULTS_PATH + filename)
+      TextAnnotator::BatchResult.new(filename).save!(annotations_col)
     rescue => e
-      File.write(TextAnnotator::RESULTS_PATH + filename + '.json', JSON.generate({"message":e.message}))
-      File.delete(TextAnnotator::RESULTS_PATH + filename)
+      TextAnnotator::BatchResult.new(filename).save!({"message":e.message})
     end
 	end
 
