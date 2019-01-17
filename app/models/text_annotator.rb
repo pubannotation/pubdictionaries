@@ -60,7 +60,7 @@ class TextAnnotator
 
     @ssdbs = @dictionaries.inject({}) do |h, dic|
       h[dic.name] = begin
-        Simstring::Reader.new(dic.ssdb_path)
+        Simstring::Reader.new(dic.sim_string_db_path)
       rescue
         nil
       end
@@ -73,7 +73,7 @@ class TextAnnotator
 
     @ssdbs_overlap = @dictionaries.inject({}) do |h, dic|
       h[dic.name] = begin
-        Simstring::Reader.new(dic.ssdb_path)
+        Simstring::Reader.new(dic.sim_string_db_path)
       rescue
         nil
       end
@@ -86,7 +86,7 @@ class TextAnnotator
 
     @tmp_ssdbs_overlap = @dictionaries.inject({}) do |h, dic|
       h[dic.name] = begin
-        Simstring::Reader.new(dic.tmp_ssdb_path)
+        Simstring::Reader.new(dic.tmp_sim_string_db_path)
       rescue
         nil
       end

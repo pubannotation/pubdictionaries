@@ -183,6 +183,36 @@ class Entry < ActiveRecord::Base
     normalize text, 'normalization2', normalizer
   end
 
+  def self.addition_entry_params(label, id)
+    norm1 = normalize1(label)
+    norm2 = normalize2(label)
+    {label: label, identifier: id, norm1: norm1, norm2: norm2, label_length: label.length, mode: Entry::MODE_ADDITION}
+  end
+
+  def self.new_for(dictionary_id, label, id, normalizer)
+    norm1 = normalize1(label, normalizer)
+    norm2 = normalize2(label, normalizer)
+    new(label: label, identifier: id, norm1: norm1, norm2: norm2, label_length: label.length, dictionary_id: dictionary_id)
+  rescue => e
+    raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
+  end
+
+  def be_normal!
+    update_attribute(:mode, Entry::MODE_NORMAL)
+  end
+
+  def be_deletion!
+    update_attribute(:mode, Entry::MODE_DELETION)
+  end
+
+  def addition?
+    mode == Entry::MODE_ADDITION
+  end
+
+  def deletion?
+    mode == Entry::MODE_DELETION
+  end
+
   private
 
   def self.normalize(text, analyzer, normalizer = nil)

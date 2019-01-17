@@ -22,7 +22,7 @@ class Dictionary < ActiveRecord::Base
                       :with => /^[^\.]*$/,
                       :message => "should not contain dot!"
 
-  SSDB_DIR = "db/simstring/"
+  SIM_STRING_DB_DIR = "db/simstring/"
 
   scope :mine, -> (user) {
     if user.nil?
@@ -41,7 +41,7 @@ class Dictionary < ActiveRecord::Base
     end
   }
 
-  scope :administerable, -> (user) {
+  scope :administrable, -> (user) {
     if user.nil?
       none
     elsif user.admin?
@@ -52,25 +52,25 @@ class Dictionary < ActiveRecord::Base
 
   class << self
     def find_dictionaries_from_params(params)
-      dicnames = if params.has_key?(:dictionaries)
+      dic_names = if params.has_key?(:dictionaries)
                    params[:dictionaries]
                  elsif params.has_key?(:dictionary)
                    params[:dictionary]
                  elsif params.has_key?(:id)
                    params[:id]
                  end
-      return [] unless dicnames.present?
+      return [] unless dic_names.present?
 
-      dictionaries = dicnames.split(',').collect{|d| Dictionary.find_by_name(d.strip)}
+      dictionaries = dic_names.split(',').collect{|d| Dictionary.find_by_name(d.strip)}
       raise ArgumentError, "wrong dictionary specification." if dictionaries.include? nil
 
       dictionaries
     end
 
     def find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
-    ssdbs = dictionaries.inject({}) do |h, dic|
+    sim_string_dbs = dictionaries.inject({}) do |h, dic|
       h[dic.name] = begin
-        Simstring::Reader.new(dic.ssdb_path)
+        Simstring::Reader.new(dic.sim_string_db_path)
       rescue
         nil
       end
@@ -82,12 +82,12 @@ class Dictionary < ActiveRecord::Base
     end
 
     r = labels.inject({}) do |h, label|
-      h[label] = Entry.search_term(dictionaries, ssdbs, threshold, label)
+      h[label] = Entry.search_term(dictionaries, sim_string_dbs, threshold, label)
       h[label].map!{|entry| entry[:identifier]} unless rich
       h
     end
 
-    ssdbs.each{|name, db| db.close if db}
+    sim_string_dbs.each{|name, db| db.close if db}
 
     r
     end
@@ -103,36 +103,30 @@ class Dictionary < ActiveRecord::Base
     user && (user.admin? || user_id == user.id || associated_managers.include?(user))
   end
 
-  def administerable?(user)
+  def administrable?(user)
     user && (user.admin? || user_id == user.id)
   end
 
   def create_addition(label, id)
-    e = entries.find_by_label_and_identifier(label, id)
-    if e.nil?
-      norm1 = Entry.normalize1(label)
-      norm2 = Entry.normalize2(label)
-      entries.create(label:label, identifier:id, norm1:norm1, norm2:norm2, label_length:label.length, mode:Entry::MODE_ADDITION)
-      increment!(:entries_num)
-    end
-    update_tmp_ssdb
+    increment!(:entries_num) if create_addition_entry(id, label)
+    update_tmp_sim_string_db
   end
 
   def create_deletion(entry)
-    entry.update_attribute(:mode, Entry::MODE_DELETION)
+    entry.be_deletion!
     decrement!(:entries_num)
   end
 
   def undo_entry(entry)
-    if entry.mode == Entry::MODE_ADDITION
+    if entry.addition?
       entry.delete
       decrement!(:entries_num)
-    elsif entry.mode == Entry::MODE_DELETION
-      entry.update_attribute(:mode, Entry::MODE_NORMAL)
+    elsif entry.deletion?
+      entry.be_normal!
       increment!(:entries_num)
     end
 
-    update_tmp_ssdb
+    update_tmp_sim_string_db
   end
 
   def num_addition
@@ -144,16 +138,8 @@ class Dictionary < ActiveRecord::Base
   end
 
   def add_entries(pairs, normalizer = nil)
-    ActiveRecord::Base.transaction do
-      new_entries = pairs.map do |label, id|
-        begin
-          norm1 = Entry.normalize1(label, normalizer)
-          norm2 = Entry.normalize2(label, normalizer)
-          Entry.new(label:label, identifier:id, norm1: norm1, norm2: norm2, label_length:label.length, dictionary_id: self.id)
-        rescue => e
-          raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
-        end
-      end
+    transaction do
+      new_entries = pairs.map {|label, id| Entry.new_for(self.id, label, id, normalizer)}
 
       r = Entry.import new_entries, validate: false
       raise "Import error" unless r.failed_instances.empty?
@@ -163,31 +149,34 @@ class Dictionary < ActiveRecord::Base
   end
 
   def empty_entries
-    ActiveRecord::Base.transaction do
+    transaction do
+      # Generate to one delete SQL statement for performance
       Entry.delete(Entry.where(dictionary_id: self.id).pluck(:id))
       update_attribute(:entries_num, 0)
     end
   end
 
-  def ssdb_path
-    Rails.root.join(ssdb_dir, "simstring.db").to_s
+  def sim_string_db_path
+    Rails.root.join(sim_string_db_dir, "simstring.db").to_s
   end
 
-  def tmp_ssdb_path
-    Rails.root.join(ssdb_dir, "tmp_entries.db").to_s
+  def tmp_sim_string_db_path
+    Rails.root.join(sim_string_db_dir, "tmp_entries.db").to_s
   end
 
   def compile
-    FileUtils.mkdir_p(ssdb_dir) unless Dir.exist?(ssdb_dir)
-    # Simstring::Writer.new(db_filename, n-gram, begin/end marker, unicode)
-    db = Simstring::Writer.new ssdb_path, 3, false, true
+    FileUtils.mkdir_p(sim_string_db_dir) unless Dir.exist?(sim_string_db_dir)
+    db = Simstring::Writer.new sim_string_db_path, 3, false, true
 
-    # dictionary.entries.each do |entry|     # This is too slow.
-    self.entries.where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
-    # Entry.where(dictionary_id: self.id).pluck(:norm2).uniq.each {|norm2| db.insert norm2}
+    entries
+      .where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION])
+      .pluck(:norm2)
+      .uniq
+      .each{|norm2| db.insert norm2}
 
+    # Generate to one delete SQL statement for performance
     Entry.delete(Entry.where(dictionary_id: self.id, mode:Entry::MODE_DELETION).pluck(:id))
-    entries.where(mode:Entry::MODE_ADDITION).update_all(mode:Entry::MODE_NORMAL)
+    entries.where(mode:Entry::MODE_ADDITION).update_all(mode: Entry::MODE_NORMAL)
 
     db.close
   end
@@ -198,13 +187,22 @@ class Dictionary < ActiveRecord::Base
 
   private
 
-  def ssdb_dir
-    Dictionary::SSDB_DIR + self.name
+  def create_addition_entry(id, label)
+    e = entries.find_by_label_and_identifier(label, id)
+    return unless e.nil?
+
+    params = Entry.addition_entry_params(label, id)
+    entries.create(params)
+    true
   end
 
-  def update_tmp_ssdb
-    FileUtils.mkdir_p(ssdb_dir) unless Dir.exist?(ssdb_dir)
-    db = Simstring::Writer.new tmp_ssdb_path, 3, false, true
+  def sim_string_db_dir
+    Dictionary::SIM_STRING_DB_DIR + self.name
+  end
+
+  def update_tmp_sim_string_db
+    FileUtils.mkdir_p(sim_string_db_dir) unless Dir.exist?(sim_string_db_dir)
+    db = Simstring::Writer.new tmp_sim_string_db_path, 3, false, true
     self.entries.where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
     db.close
   end

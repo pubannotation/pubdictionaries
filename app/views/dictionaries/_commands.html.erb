@@ -9,7 +9,7 @@
     )
   %>
 
-  <% if @dictionary.administerable?(current_user) %>
+  <% if @dictionary.administrable?(current_user) %>
     <%=
       link_to(
         '<i class="fa fa-bomb fa-lg"></i>'.html_safe,

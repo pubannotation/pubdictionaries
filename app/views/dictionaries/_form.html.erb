@@ -27,7 +27,7 @@
     <tr>
       <th><%= f.label :description, "Languages" %></th>
       <td>
-        <% if @dictionary.administerable?(current_user) %>
+        <% if @dictionary.administrable?(current_user) %>
           <%= render "language_selection" %>
         <% else %>
           <%= @dictionary.associated_managers.pluck(:username).map{|u| user_object(u)}.join('').html_safe %>
@@ -57,7 +57,7 @@
 
     <tr>
       <th>Managers</th>
-      <% if @dictionary.administerable?(current_user) %>
+      <% if @dictionary.administrable?(current_user) %>
         <td><%= render "associated_managers" %></td>
       <% else %>
         <td><%= @dictionary.associated_managers.pluck(:username).map{|u| user_object(u)}.join('').html_safe %></td>

@@ -197,7 +197,7 @@ class DictionariesController < ApplicationController
 
   def destroy
     begin
-      dictionary = Dictionary.administerable(current_user).find_by_name(params[:id])
+      dictionary = Dictionary.administrable(current_user).find_by_name(params[:id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
       raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 
