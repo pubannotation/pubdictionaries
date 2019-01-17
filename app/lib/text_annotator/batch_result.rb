@@ -8,17 +8,17 @@ class TextAnnotator
     attr_reader :name
 
     class << self
-      def old_files
+      def older_files(duration)
         to_delete = []
         Dir.foreach(PATH) do |filename|
           next if filename == '.' or filename == '..'
-          filepath = result_file(filename)
-          to_delete << filepath if Time.now - File.mtime(filepath) > 1.day
+          filepath = to_path(filename)
+          to_delete << filepath if Time.now - File.mtime(filepath) > duration
         end
         to_delete
       end
 
-      def result_file(filename)
+      def to_path(filename)
         PATH + filename
       end
     end
@@ -50,7 +50,7 @@ class TextAnnotator
     end
 
     def file_path
-      self.class.result_file(@name + '.json')
+      self.class.to_path(@name + '.json')
     end
 
     private
@@ -59,7 +59,7 @@ class TextAnnotator
       setup_directory
 
       filename = "annotation-result-#{SecureRandom.uuid}"
-      FileUtils.touch(self.class.result_file(filename))
+      FileUtils.touch(self.class.to_path(filename))
       filename
     end
 
@@ -88,7 +88,7 @@ class TextAnnotator
     end
 
     def temp_file_path
-      self.class.result_file(@name)
+      self.class.to_path(@name)
     end
 
     def annotations

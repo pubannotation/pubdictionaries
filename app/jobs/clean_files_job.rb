@@ -6,7 +6,7 @@ class CleanFilesJob
   queue 'general'
 
   def perform
-  	to_delete = TextAnnotator::BatchResult.old_files
+  	to_delete = TextAnnotator::BatchResult.older_files 1.day
     File.delete(*to_delete)
   end
 end
