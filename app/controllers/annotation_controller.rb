@@ -77,6 +77,9 @@ class AnnotationController < ApplicationController
       options[:tokens_len_max] = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
       options[:threshold] = params[:threshold].to_f if params[:threshold].present?
 
+      # Set up directory
+      TextAnnotator::Result.setup_directory
+
       filename = "annotation-result-#{SecureRandom.uuid}"
       FileUtils.touch(TextAnnotator::RESULTS_PATH + filename)
 
