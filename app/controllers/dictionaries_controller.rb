@@ -231,7 +231,7 @@ class DictionariesController < ApplicationController
       end
     rescue => e
       respond_to do |format|
-        format.html {redirect_to dictionaris_path, notice: e.message}
+        format.html {redirect_to dictionaries_path, notice: e.message}
         format.json {head :no_content}
       end
     end
