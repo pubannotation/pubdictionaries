@@ -25,7 +25,9 @@ class Dictionary < ActiveRecord::Base
     if user.nil?
       none
     else
-      includes(:associations).where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
+      includes(:associations)
+        .where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
+        .references(:associations)
     end
   }
 
@@ -34,7 +36,9 @@ class Dictionary < ActiveRecord::Base
       none
     elsif user.admin?
     else
-      includes(:associations).where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
+      includes(:associations)
+        .where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
+        .references(:associations)
     end
   }
 
