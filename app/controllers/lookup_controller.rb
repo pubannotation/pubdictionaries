@@ -14,8 +14,8 @@ class LookupController < ApplicationController
         body.strip.split(/[\n\t\r|]+/) if body.present?
       end
 
-      @dicnames_all = Dictionary.order(:name).pluck(:name)
-      @dicnames_sel = dictionaries_selected.map{|d| d.name}
+      @dictionary_names_all = Dictionary.order(:name).pluck(:name)
+      @dictionary_names_selected = dictionaries_selected.map{|d| d.name}
 
       @result = if labels.present?
         raise ArgumentError, "At least one dictionary has to be specified for lookup." unless dictionaries_selected.present?

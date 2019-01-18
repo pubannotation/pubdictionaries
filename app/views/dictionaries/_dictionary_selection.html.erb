@@ -13,7 +13,7 @@
 	<tr>
 		<td class="pane">
 			<div class="pane_box" id='selected_dictionaries'>
-				<%= render partial: 'dictionaries/selected_dictionary', collection: @dicnames_all -%>
+				<%= render partial: 'dictionaries/selected_dictionary', collection: @dictionary_names_all -%>
 			</div>
 		</td>
 
@@ -21,7 +21,7 @@
 
 		<td class="pane">
 			<div class="pane_box" id='unselected_dictionaries'>
-				<%= render partial: 'dictionaries/unselected_dictionary', collection: @dicnames_all -%>
+				<%= render partial: 'dictionaries/unselected_dictionary', collection: @dictionary_names_all -%>
 			</div>
 		</td>
 	</tr>
@@ -41,14 +41,14 @@
     $("#unselected_dictionaries > .dictionary > i").hover(function(){$(this).parent().css("border-style", "inset")});
     $("#unselected_dictionaries > .dictionary > i").mouseleave(function(){$(this).parent().css("border-style", "solid")});
 
-    $.each(<%= raw @dicnames_sel %>, function(i,v){selectDictionary(v)});
+    $.each(<%= raw @dictionary_names_selected %>, function(i, v){selectDictionary(v)});
   }
 
   function dictionarySelectionReset() {
     $('#selected_dictionaries > .dictionary').hide();
     $('#unselected_dictionaries > .dictionary').show();
 		$('#unselected_dictionaries > .dictionary').attr('selected', false);
-    $.each(<%= raw @dicnames_sel %>, function(i,v){selectDictionary(v)});
+    $.each(<%= raw @dictionary_names_selected %>, function(i, v){selectDictionary(v)});
 		setParamDics();
   }
 
