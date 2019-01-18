@@ -1,106 +1,63 @@
 class AnnotationController < ApplicationController
 
-  # GET
+  # GET / POST
   def text_annotation
-    begin
-      dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
-      text =
-        if params[:text].present?
-          params[:text]
-        else
-          body = request.body.read.force_encoding('UTF-8')
-          if body.present?
-            begin
-              r = JSON.parse body, symbolize_names: true
-              r[:text]
-            rescue
-              body
-            end
-          end
-        end
+    @dictionary_names_all = Dictionary.order(:name).pluck(:name)
+    dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
+    @dictionary_names_selected = dictionaries_selected.map{|d| d.name}
 
-      @dictionary_names_all = Dictionary.order(:name).pluck(:name)
-      @dictionary_names_selected = dictionaries_selected.map{|d| d.name}
+    text = get_text_from_params
+    if text.present?
+      raise ArgumentError, "At least one dictionary has to be specified for annotation." unless dictionaries_selected.present?
+      @result = annotate(text, dictionaries_selected)
+    end
 
-      @result = if text.present?
-        raise ArgumentError, "At least one dictionary has to be specified for annotation." unless dictionaries_selected.present?
-        rich = true if params[:rich] == 'true' || params[:rich] == '1'
-        tokens_len_max = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
-        threshold = params[:threshold].to_f if params[:threshold].present?
-        annotator = TextAnnotator.new(dictionaries_selected, tokens_len_max, threshold, rich)
-        r = annotator.annotate_batch([{text:text}])
-        annotator.done
-        r.first
-      else
-        {}
+    respond_to do |format|
+      format.html
+      format.json do
+        raise ArgumentError, "no text was supplied." unless text.present?
+        render json: @result
       end
-
-      respond_to do |format|
-        format.html
-        format.json {
-          raise ArgumentError, "no text was supplied." unless text.present?
-          render json:@result
-        }
-      end
-    rescue ArgumentError => e
-      respond_to do |format|
-        format.html {flash.now[:notice] = e.message}
-        format.any  {render json: {message:e.message}, status: :bad_request}
-      end
-    rescue => e
-      respond_to do |format|
-        format.html {flash.now[:notice] = e.message}
-        format.any {render json: {message:e.message}, status: :internal_server_error}
-      end
+    end
+  rescue ArgumentError => e
+    respond_to do |format|
+      format.html {flash.now[:notice] = e.message}
+      format.any  {render json: {message:e.message}, status: :bad_request}
+    end
+  rescue => e
+    respond_to do |format|
+      format.html {flash.now[:notice] = e.message}
+      format.any {render json: {message:e.message}, status: :internal_server_error}
     end
   end
 
   # POST
   def annotation_request
-    begin
-      dictionaries = Dictionary.find_dictionaries_from_params(params)
+    raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 8
 
-      body = request.body.read.force_encoding('UTF-8')
+    targets = get_targets_from_json_body
+    raise ArgumentError, "No text was supplied." unless targets.present?
 
-      target = if body.present?
-        JSON.parse body, symbolize_names: true
-      end
+    result_name = TextAnnotator::BatchResult.new.name
+    delayed_job = enqueue_job(targets, result_name)
+    time_for_annotation = calc_time_for_annotation(targets)
+    Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: time_for_annotation})
 
-      raise ArgumentError, "No text was supplied." unless target.present?
-      raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 8
-
-      options = {}
-      options[:rich] = true if params[:rich] == 'true' || params[:rich] == '1'
-      options[:tokens_len_max] = params[:tokens_len_max].to_i if params[:tokens_len_max].present?
-      options[:threshold] = params[:threshold].to_f if params[:threshold].present?
-
-      result = TextAnnotator::BatchResult.new
-
-      number_of_annotation_workers = 4
-      time_for_queue = Job.time_for_tasks_to_go(:annotation) / number_of_annotation_workers
-
-      # texts may contain a text block or an array of text blocks
-      texts = target.class == Hash ? target[:text] : target.map{|t| t[:text]}
-      time_for_annotation = TextAnnotator.time_estimation(texts)
-
-      delayed_job = Delayed::Job.enqueue TextAnnotationJob.new(target, result.name, dictionaries, options), queue: :annotation
-      Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: time_for_annotation})
-
-      respond_to do |format|
-        format.any {head :see_other, location: annotation_result_url(result.name), retry_after: time_for_queue + time_for_annotation}
-      end
-    rescue ArgumentError => e
-      respond_to do |format|
-        format.any {render json: {message:e.message}, status: :bad_request}
-      end
-    rescue RuntimeError => e
-      respond_to do |format|
-        format.any {render json: {message:e.message}, status: :service_unavailable}
-      end
-    rescue => e
-      respond_to do |format|
-        format.any {render json: {message:e.message}, status: :internal_server_error}
-      end
+    respond_to do |format|
+      retry_after = calc_retry_after(time_for_annotation)
+      format.any {head :see_other, location: annotation_result_url(result_name), retry_after: retry_after}
+    end
+  rescue ArgumentError => e
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :bad_request}
+    end
+  rescue RuntimeError => e
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :service_unavailable}
+    end
+  rescue => e
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :internal_server_error}
     end
   end
 
@@ -118,5 +75,80 @@ class AnnotationController < ApplicationController
     when :error
       send_file result.file_path, type: :json, status: :internal_server_error
     end
+  end
+
+  private
+
+  def annotate(text, dictionaries_selected)
+    options = get_options_from_params
+    annotator = TextAnnotator.new(dictionaries_selected, options[:tokens_len_max], options[:threshold], options[:rich])
+    r = annotator.annotate_batch([{text: text}])
+    annotator.done
+    r.first
+  end
+
+  def enqueue_job(targets, result_name)
+    dictionaries = Dictionary.find_dictionaries_from_params(params)
+    options = get_options_from_params
+    Delayed::Job.enqueue TextAnnotationJob.new(targets, result_name, dictionaries, options), queue: :annotation
+  end
+
+  def calc_time_for_annotation(targets)
+    @time_for_annotation ||= begin
+                               # texts may contain a text block or an array of text blocks
+      texts = targets.class == Hash ? targets[:text] : targets.map {|t| t[:text]}
+      TextAnnotator.time_estimation(texts)
+    end
+  end
+
+  def calc_retry_after(time_for_annotation)
+    number_of_annotation_workers = 4
+    time_for_queue = Job.time_for_tasks_to_go(:annotation) / number_of_annotation_workers
+    time_for_queue + time_for_annotation
+  end
+
+  def get_text_from_params
+    if params[:text].present?
+      params[:text]
+    else
+      if body.present?
+        begin
+          r = JSON.parse body, symbolize_names: true
+          r[:text]
+        rescue
+          body
+        end
+      end
+    end
+  end
+
+  def get_targets_from_json_body
+    if body.present?
+      JSON.parse body, symbolize_names: true
+    end
+  end
+
+  def get_options_from_params
+    options = {}
+    options[:rich] = rich
+    options[:tokens_len_max] = tokens_len
+    options[:threshold] = threshold
+    options
+  end
+
+  def body
+    @body ||= request.body.read.force_encoding('UTF-8')
+  end
+
+  def threshold
+    params[:threshold].to_f if params[:threshold].present?
+  end
+
+  def tokens_len
+    params[:tokens_len_max].to_i if params[:tokens_len_max].present?
+  end
+
+  def rich
+    true if params[:rich] == 'true' || params[:rich] == '1'
   end
 end
