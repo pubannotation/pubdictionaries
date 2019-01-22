@@ -10,7 +10,7 @@ class TextAnnotationJob < Struct.new(:targets, :filename, :dictionaries, :option
         col += annotator.annotate_batch(slice)
       end
 
-      annotator.done
+      annotator.dispose
 
       TextAnnotator::BatchResult.new(filename).save!(annotations_col)
     rescue => e

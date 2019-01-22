@@ -83,7 +83,7 @@ class AnnotationController < ApplicationController
     options = get_options_from_params
     annotator = TextAnnotator.new(dictionaries_selected, options[:tokens_len_max], options[:threshold], options[:rich])
     r = annotator.annotate_batch([{text: text}])
-    annotator.done
+    annotator.dispose
     r.first
   end
 

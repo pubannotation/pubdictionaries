@@ -1,46 +1,19 @@
 #!/usr/bin/env ruby
 require 'simstring'
-require 'pp'
 
 # Provide functionalities for text annotation.
-# 
 class TextAnnotator
-  NOTERMWORDS = [ # terms will never include these words
-    "is", "are", "am", "be", "was", "were", "do", "did",
-    "does",
-    "what", "which", "when", "where", "who", "how",
-    # "a",
-    "an", "the", "this", "that", "these", "those", "it", "its", "we", "our", "us", "they", "their", "them", "there", "then", "I", "he", "she", "my", "me", "his", "him", "her",
-    "will", "shall", "may", "can", "cannot", "would", "should", "might", "could", "ought",
-    "each", "every", "many", "much", "very",
-    "more", "most", "than", "such", "several", "some", "both", "even",
-    "and", "or", "but", "neither", "nor",
-    "not", "never", "also", "much", "as", "well",
-    "many",
-    "e.g"
-  ]
+  # terms will never include these words
+  NO_TERM_WORDS = %w(is are am be was were do did does what which when where who how an the this that these those it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
 
-  NOEDGEWORDS = [ # terms will never begin or end with these words, mostly prepositions
-    "about", "above", "across", "after", "against", "along",
-    "amid", "among", "around", "at", "before", "behind", "below",
-    "beneath", "beside", "besides", "between", "beyond",
-    "by", "concerning", "considering", "despite", "except",
-    "excepting", "excluding",
-    "for", "from", "in", "inside", "into", "like", 
-    "of", "off", "on", "onto",
-    "regarding", "since", 
-    "through", "to", "toward", "towards",
-    "under", "underneath", "unlike", "until", "upon",
-    "versus", "via", "with", "within", "without",
-    "during"
-  ]
+  # terms will never begin or end with these words, mostly prepositions
+  NO_EDGE_WORDS = %w(about above across after against along amid among around at before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from in inside into like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
 
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
   def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, rich=false)
     @dictionaries = dictionaries
-    @dicids = @dictionaries.map{|d| d.id}
     @tokens_len_max = tokens_len_max
     @threshold = threshold
     @rich = rich
@@ -56,7 +29,7 @@ class TextAnnotator
     @tokenizer_post = Net::HTTP::Post.new @tokenizer_url.request_uri
     @tokenizer_post['content-type'] = 'application/json'
 
-    @ssdbs = @dictionaries.inject({}) do |h, dic|
+    @sub_string_dbs = @dictionaries.inject({}) do |h, dic|
       h[dic.name] = begin
         Simstring::Reader.new(dic.sim_string_db_path)
       rescue
@@ -69,7 +42,7 @@ class TextAnnotator
       h
     end
 
-    @ssdbs_overlap = @dictionaries.inject({}) do |h, dic|
+    @sub_string_dbs_overlap = @dictionaries.inject({}) do |h, dic|
       h[dic.name] = begin
         Simstring::Reader.new(dic.sim_string_db_path)
       rescue
@@ -82,7 +55,7 @@ class TextAnnotator
       h
     end
 
-    @tmp_ssdbs_overlap = @dictionaries.inject({}) do |h, dic|
+    @tmp_sub_string_dbs_overlap = @dictionaries.inject({}) do |h, dic|
       h[dic.name] = begin
         Simstring::Reader.new(dic.tmp_sim_string_db_path)
       rescue
@@ -96,10 +69,10 @@ class TextAnnotator
     end
   end
 
-  def done
-    @ssdbs.each{|name, db| db.close if db}
-    @ssdbs_overlap.each{|name, db| db.close if db}
-    @tmp_ssdbs_overlap.each{|name, db| db.close if db}
+  def dispose
+    @sub_string_dbs.each{|name, db| db.close if db}
+    @sub_string_dbs_overlap.each{|name, db| db.close if db}
+    @tmp_sub_string_dbs_overlap.each{|name, db| db.close if db}
   end
 
   def annotate_batch(anns_col)
@@ -109,7 +82,7 @@ class TextAnnotator
     # To search mapping entries per span
     span_entries = {}
     span_index.each do |span, info|
-      entries = Entry.search_term(@dictionaries, @ssdbs, @threshold, span, info[:norm1], info[:norm2])
+      entries = Entry.search_term(@dictionaries, @sub_string_dbs, @threshold, span, info[:norm1], info[:norm2])
       span_entries[span] = entries if entries.present?
     end
 
@@ -173,53 +146,6 @@ class TextAnnotator
     anns_col
   end
 
-  def index_spans(text, text_idx, span_index)
-    # tokens are produced in the order of their position.
-    # tokens are normalzed, but stopwords are preserved.
-    tokens = norm1_tokenize(text)
-    spans  = tokens.map{|t| text[t[:start_offset] ... t[:end_offset]]}
-    norm1s = tokens.map{|t| t[:token]}
-    norm2s = norm2_tokenize(text).inject(Array.new(spans.length, "")){|s, t| s[t[:position]] = t[:token]; s}
-
-    sbreaks = sentence_break(text)
-
-    (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
-      next if NOTERMWORDS.include?(tokens[tbegin][:token])
-      next if NOEDGEWORDS.include?(tokens[tbegin][:token])
-
-      (@tokens_len_min .. @tokens_len_max).each do |tlen|
-        break if tbegin + tlen > tokens.length
-        break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
-        break if cross_sentence(sbreaks, tokens[tbegin][:start_offset], tokens[tbegin + tlen - 1][:end_offset])
-        break if NOTERMWORDS.include?(tokens[tbegin + tlen - 1][:token])
-        next if NOEDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
-
-        norm2 = norm2s[tbegin, tlen].join
-
-        if tlen > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
-          lookup = @dictionaries.inject([]) do |col, dic|
-            col += @ssdbs_overlap[dic.name].retrieve(norm2) unless @ssdbs_overlap[dic.name].nil?
-            col += @tmp_ssdbs_overlap[dic.name].retrieve(norm2) unless @tmp_ssdbs_overlap[dic.name].nil?
-            col
-          end
-          break if lookup.empty?
-        end
-
-        span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
-
-        unless span_index.has_key?(span)
-          norm1 = norm1s[tbegin, tlen].join
-          span_index[span] = {norm1:norm1, norm2:norm2, positions:[]}
-        end
-
-        position = {text_idx: text_idx, start_offset: tokens[tbegin][:start_offset], end_offset: tokens[tbegin+tlen-1][:end_offset]}
-        span_index[span][:positions] << position
-      end
-    end
-
-    span_index
-  end
-
   def annotate(text, denotations = [])
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
@@ -232,18 +158,18 @@ class TextAnnotator
     # index spans with their tokens and positions (array)
     span_index = {}
     (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
-      next if NOTERMWORDS.include?(tokens[tbegin][:token])
-      next if NOEDGEWORDS.include?(tokens[tbegin][:token])
+      next if NO_TERM_WORDS.include?(tokens[tbegin][:token])
+      next if NO_EDGE_WORDS.include?(tokens[tbegin][:token])
 
       (@tokens_len_min .. @tokens_len_max).each do |tlen|
         break if tbegin + tlen > tokens.length
         break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
         # break if tlen > 1 && text[tokens[tbegin + tlen - 2][:start_offset] ... tokens[tbegin + tlen - 1][:end_offset]] =~ /[^A-Z]\.\s+[A-Z][a-z ]/ # sentence boundary
-        break if NOTERMWORDS.include?(tokens[tbegin + tlen - 1][:token])
-        next if NOEDGEWORDS.include?(tokens[tbegin + tlen - 1][:token])
+        break if NO_TERM_WORDS.include?(tokens[tbegin + tlen - 1][:token])
+        next if NO_EDGE_WORDS.include?(tokens[tbegin + tlen - 1][:token])
 
         norm2 = norm2s[tbegin, tlen].join
-        lookup = @dictionaries.inject([]){|col, dic| col += @ssdbs_overlap[dic.name].retrieve(norm2)}
+        lookup = @dictionaries.inject([]){|col, dic| col += @sub_string_dbs_overlap[dic.name].retrieve(norm2)}
         break if lookup.empty?
 
         span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
@@ -263,7 +189,7 @@ class TextAnnotator
 
     bad_key = nil
     span_index.each do |span, info|
-      entries = Entry.search_term(@dictionaries, @ssdbs, @threshold, span, info[:norm1], info[:norm2])
+      entries = Entry.search_term(@dictionaries, @sub_string_dbs, @threshold, span, info[:norm1], info[:norm2])
 
       if entries.present?
         span_entries[span] = entries
@@ -315,10 +241,64 @@ class TextAnnotator
       end
     end
 
-    annotation = {
+    {
       text: text,
       denotations: denotations.uniq
     }
+  end
+
+  def self.time_estimation(texts)
+    length = (texts.class == String) ? texts.length : texts.inject(0){|sum, text| sum += text.length}
+    1 + length * 0.00001
+  end
+
+  private
+
+  def index_spans(text, text_idx, span_index)
+    # tokens are produced in the order of their position.
+    # tokens are normalzed, but stopwords are preserved.
+    tokens = norm1_tokenize(text)
+    spans  = tokens.map{|t| text[t[:start_offset] ... t[:end_offset]]}
+    norm1s = tokens.map{|t| t[:token]}
+    norm2s = norm2_tokenize(text).inject(Array.new(spans.length, "")){|s, t| s[t[:position]] = t[:token]; s}
+
+    sbreaks = sentence_break(text)
+
+    (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
+      next if NO_TERM_WORDS.include?(tokens[tbegin][:token])
+      next if NO_EDGE_WORDS.include?(tokens[tbegin][:token])
+
+      (@tokens_len_min .. @tokens_len_max).each do |tlen|
+        break if tbegin + tlen > tokens.length
+        break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
+        break if cross_sentence(sbreaks, tokens[tbegin][:start_offset], tokens[tbegin + tlen - 1][:end_offset])
+        break if NO_TERM_WORDS.include?(tokens[tbegin + tlen - 1][:token])
+        next if NO_EDGE_WORDS.include?(tokens[tbegin + tlen - 1][:token])
+
+        norm2 = norm2s[tbegin, tlen].join
+
+        if tlen > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
+          lookup = @dictionaries.inject([]) do |col, dic|
+            col += @sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @sub_string_dbs_overlap[dic.name].nil?
+            col += @tmp_sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @tmp_sub_string_dbs_overlap[dic.name].nil?
+            col
+          end
+          break if lookup.empty?
+        end
+
+        span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
+
+        unless span_index.has_key?(span)
+          norm1 = norm1s[tbegin, tlen].join
+          span_index[span] = {norm1:norm1, norm2:norm2, positions:[]}
+        end
+
+        position = {text_idx: text_idx, start_offset: tokens[tbegin][:start_offset], end_offset: tokens[tbegin+tlen-1][:end_offset]}
+        span_index[span][:positions] << position
+      end
+    end
+
+    span_index
   end
 
   def sentence_break(text)
@@ -347,71 +327,4 @@ class TextAnnotator
     res = @es_connection.request @tokenizer_url, @tokenizer_post
     (JSON.parse res.body, symbolize_names: true)[:tokens]
   end
-
-  def self.time_estimation(texts)
-    length = (texts.class == String) ? texts.length : texts.inject(0){|sum, text| sum += text.length}
-    1 + length * 0.00001
-  end
-
-end
-
-
-if __FILE__ == $0
-  # require 'profile'
-  require 'json'
-  require 'optparse'
-
-  outdir = 'out'
-  mode = :pas
-
-  optparse = OptionParser.new do |opts|
-    opts.banner = "Usage: enju_accessor.rb [option(s)] a-directory-with-annotation-files"
-
-    opts.on('-o', '--output directory', "specifies the output directory (default: '#{outdir}')") do |d|
-      outdir = d
-    end
-
-    opts.on('-h', '--help', 'displays this screen') do
-      puts opts
-      exit
-    end
-  end
-
-  optparse.parse!
-  unless ARGV.length == 1
-    puts optparse
-    exit
-  end
-
-  indir = ARGV[0]
-  puts "# input directory: #{indir}"
-  puts "# output directory: #{outdir}"
-
-  if !outdir.nil? && !File.exists?(outdir)
-    Dir.mkdir(outdir)
-    puts "# output directory (#{outdir}) created."
-  end
-
-  anns_in = []
-  count_files = 0
-  Dir.foreach(indir) do |infile|
-    next unless infile.end_with?('.json')
-    pmid = File.basename(infile, ".json")
-
-    count_files += 1
-    print "#{pmid}\t#{count_files}\r"
-
-    anns_in << JSON.parse(File.read(indir + '/' + infile), symbolize_names: true)
-  end
-  puts "                           \r"
-  puts "# count files: #{count_files}"
-
-  annotator = TextAnnotator.new(dictionaries, options[:tokens_len_max], options[:threshold], options[:rich])
-  anns_out = anns_in.each_slice(2).inject([]) do |col, anns_slice|
-    col += annotator.annotate_batch(anns_slice)
-  end
-  annotator.done
-
-  outfile = outdir + '/' + 'out.json' unless outdir.nil?
-  File.write(outfile, anns_out.to_json)
 end
