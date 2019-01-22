@@ -10,11 +10,7 @@ class Entry < ActiveRecord::Base
       filter: {
         english_stop: {
           type: :stop,
-          stopwords: [
-            "an", "and", "are", "as", "at", "be", "but", "by", "for", "if", "in", "into", "is", "it",
-            "no", "not", "of", "on", "or", "such", "that", "the", "their", "then", "there", "these",
-            "they", "this", "to", "was", "will", "with"
-          ]
+          stopwords: %w(an and are as at be but by for if in into is it no not of on or such that the their then there these they this to was will with)
         }
       },
       analyzer: {
@@ -57,21 +53,6 @@ class Entry < ActiveRecord::Base
         tsv << [entry.label, entry.identifier]
       end
     end
-  end
-
-  def as_indexed_json(options={})
-    as_json(
-      only: [:id, :label, :norm1, :norm2, :label_length, :norm1_length, :norm2_length, :identifier],
-      include: {dictionaries: {only: :id}}
-    )
-  end
-
-  def self.get_by_value(label, identifier)
-    self.find_by_label_and_identifier(label, identifier)
-  end
-
-  def self.find_by_identifier(identifier, dictionary)
-    dictionary.nil? ? dictionary.entries.where(identifier:identifier) : self.where(identifier:identifier)
   end
 
   def self.read_entry_line(line)
@@ -126,36 +107,6 @@ class Entry < ActiveRecord::Base
     entries.sort_by{|e| e[:score]}.reverse
   end
 
-  # Compute similarity of two strings
-  #
-  # * (string) string1
-  # * (string) string2
-  #
-  def self.str_jaccard_sim(str1, s1norm1, s1norm2, str2, s2norm1, s2norm2)
-    str1_trigrams = []; str1.split('').each_cons(2){|a| str1_trigrams << a};
-    str2_trigrams = []; str2.split('').each_cons(2){|a| str2_trigrams << a};
-    s1norm1_trigrams = []; s1norm1.split('').each_cons(2){|a| s1norm1_trigrams << a};
-    s1norm2_trigrams = []; s1norm2.split('').each_cons(2){|a| s1norm2_trigrams << a};
-    s2norm1_trigrams = []; s2norm1.split('').each_cons(2){|a| s2norm1_trigrams << a};
-    s2norm2_trigrams = []; s2norm2.split('').each_cons(2){|a| s2norm2_trigrams << a};
-    if s1norm2.empty? && s2norm2.empty?
-      (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams)) / 2
-    else
-      (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams) + 10 * jaccard_sim(s1norm2_trigrams, s2norm2_trigrams)) / 12
-    end
-  end
-
-  # Compute jaccard similarity of two sets
-  #
-  # * (array) items1
-  # * (array) items2
-  #
-  def self.jaccard_sim(items1, items2)
-    return 0.0 if items1.empty? || items2.empty?
-    (items1 & items2).size.to_f / (items1 | items2).size
-  end
-
-
   def self.decapitalize(text)
     text.gsub(/(^| )[A-Z][a-z ]/, &:downcase)
   end
@@ -166,14 +117,6 @@ class Entry < ActiveRecord::Base
   #
   def self.normalize1(text, normalizer = nil)
     normalize text, 'normalization1', normalizer
-  end
-
-  # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
-  #
-  # * (string) text  - Input text.
-  #
-  def self.normalize2(text, normalizer = nil)
-    normalize text, 'normalization2', normalizer
   end
 
   def self.addition_entry_params(label, id)
@@ -207,6 +150,44 @@ class Entry < ActiveRecord::Base
   end
 
   private
+
+  # Compute similarity of two strings
+  #
+  # * (string) string1
+  # * (string) string2
+  #
+  def self.str_jaccard_sim(str1, s1norm1, s1norm2, str2, s2norm1, s2norm2)
+    str1_trigrams = []; str1.split('').each_cons(2){|a| str1_trigrams << a};
+    str2_trigrams = []; str2.split('').each_cons(2){|a| str2_trigrams << a};
+    s1norm1_trigrams = []; s1norm1.split('').each_cons(2){|a| s1norm1_trigrams << a};
+    s1norm2_trigrams = []; s1norm2.split('').each_cons(2){|a| s1norm2_trigrams << a};
+    s2norm1_trigrams = []; s2norm1.split('').each_cons(2){|a| s2norm1_trigrams << a};
+    s2norm2_trigrams = []; s2norm2.split('').each_cons(2){|a| s2norm2_trigrams << a};
+    if s1norm2.empty? && s2norm2.empty?
+      (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams)) / 2
+    else
+      (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams) + 10 * jaccard_sim(s1norm2_trigrams, s2norm2_trigrams)) / 12
+    end
+  end
+
+  # Compute jaccard similarity of two sets
+  #
+  # * (array) items1
+  # * (array) items2
+  #
+  def self.jaccard_sim(items1, items2)
+    return 0.0 if items1.empty? || items2.empty?
+    (items1 & items2).size.to_f / (items1 | items2).size
+  end
+
+  # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
+  #
+  # * (string) text  - Input text.
+  #
+  def self.normalize2(text, normalizer = nil)
+    normalize text, 'normalization2', normalizer
+  end
+
 
   def self.normalize(text, analyzer, normalizer = nil)
     raise ArgumentError, "Empty text" if text.empty?
