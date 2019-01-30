@@ -1,12 +1,10 @@
-require File.expand_path('../boot', __FILE__)
+require_relative 'boot'
 
 require 'rails/all'
 
-if defined?(Bundler)
-  # Require the gems listed in Gemfile, including any gems
-  # you've limited to :test, :development, or :production.
-  Bundler.require(*Rails.groups)
-end
+# Require the gems listed in Gemfile, including any gems
+# you've limited to :test, :development, or :production.
+Bundler.require(*Rails.groups)
 
 module PubDictionaries
   class Application < Rails::Application
@@ -17,7 +15,7 @@ module PubDictionaries
     # Custom directories with classes and modules you want to be autoloadable.
     # config.autoload_paths += %W(#{config.root}/extras)
     config.autoload_paths += Dir["#{config.root}/app/controllers/text_annotator",
-        "#{Rails.root}/lib"]
+                                 "#{Rails.root}/lib"]
 
     # Only load the plugins named here, in the order given (default is alphabetical).
     # :all can be used as a placeholder for all plugins not explicitly named.
@@ -54,8 +52,8 @@ module PubDictionaries
     # Version of your assets, change this if you want to expire all your assets
     config.assets.version = '1.0'
 
-  	# Use SSL
-  	# config.force_ssl = true
+    # Use SSL
+    # config.force_ssl = true
 
     config.middleware.insert_before 0, Rack::Cors do
       allow do

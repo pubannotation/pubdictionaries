@@ -1,4 +1,5 @@
-PubDictionaries::Application.routes.draw do
+Rails.application.routes.draw do
+  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
   get "home/about", as: "about"
 
   get  "find_ids", to: "lookup#find_ids"
@@ -13,12 +14,12 @@ PubDictionaries::Application.routes.draw do
 
   devise_for :users
   get '/users/:name' => 'users#show', :as => 'show_user'
-  
+
   resources :dictionaries do
     # Add routes for a collection route, /dictionaries/...
     collection do
       get :autocomplete_user_username
-    end  
+    end
 
     # Add routes as a member, /dictionary/:id/...
     member do
@@ -44,6 +45,6 @@ PubDictionaries::Application.routes.draw do
 
     resources :jobs, only: [:show, :destroy]
   end
- 
+
   root :to => 'home#index'
 end
