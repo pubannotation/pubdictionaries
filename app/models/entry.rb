@@ -1,4 +1,4 @@
-class Entry < ActiveRecord::Base
+class Entry < ApplicationRecord
   MODE_NORMAL   = 0
   MODE_ADDITION = 1
   MODE_DELETION = 2

@@ -1,4 +1,4 @@
-class Job < ActiveRecord::Base
+class Job < ApplicationRecord
   belongs_to :dictionary
   belongs_to :delayed_job
 

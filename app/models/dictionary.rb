@@ -1,6 +1,6 @@
 require 'simstring'
 
-class Dictionary < ActiveRecord::Base
+class Dictionary < ApplicationRecord
   include StringManipulator
 
   belongs_to :user
