@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 ruby '2.3.8'
 
-gem 'rails', '4.0.13'
+gem 'rails', '4.1.16'
 gem 'activerecord-import'
 
 gem 'pg', '~> 0.21', :require => 'pg'   # Use PostgreSQL
