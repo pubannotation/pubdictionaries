@@ -5,13 +5,13 @@ require 'pp'
 
 class DictionariesController < ApplicationController
   # Require authentication for all actions except :index, :show, and some others.
-  before_filter :authenticate_user!, except: [ 
+  before_action :authenticate_user!, except: [
     :index, :show,
     :find_ids, :text_annotation,
   ]
 
   # Disable CSRF check for REST-API actions.
-  skip_before_filter :verify_authenticity_token, :only => [
+  skip_before_action :verify_authenticity_token, :only => [
     :text_annotation, :id_mapping, :label_mapping
   ], :if => Proc.new { |c| c.request.format == 'application/json' }
 
