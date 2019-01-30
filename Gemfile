@@ -9,7 +9,7 @@ gem 'wice_grid'              # Grid viewer for tab-separated data view.
 gem 'font-awesome-sass', '~> 4.7.0'
 gem 'jquery-rails'
 gem 'jquery-ui-rails'
-gem 'devise', '~> 3.0.3'
+gem 'devise'
 gem 'net-http-persistent'
 gem 'ruby-stemmer'
 gem 'validate_url'
