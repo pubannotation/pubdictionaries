@@ -4,7 +4,7 @@ ruby '2.5.3'
 gem 'rails', '5.2.2'
 gem 'activerecord-import'
 
-gem 'pg', '~> 0.21', :require => 'pg'   # Use PostgreSQL
+gem 'pg'
 gem 'wice_grid'              # Grid viewer for tab-separated data view.
 gem 'font-awesome-sass', '~> 4.7.0'
 gem 'jquery-rails'
