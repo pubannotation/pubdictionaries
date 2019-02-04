@@ -27,6 +27,7 @@ gem 'i18n_data'
 gem 'sass-rails'
 gem 'coffee-rails'
 gem 'uglifier'
+gem 'bootsnap'
 
 group :development do
   gem 'guard-livereload', require: false
