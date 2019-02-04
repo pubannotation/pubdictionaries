@@ -15,8 +15,6 @@ PubDictionaries::Application.routes.draw do
   get '/users/:name' => 'users#show', :as => 'show_user'
   
   resources :dictionaries do
-    post 'clone'
-
     # Add routes for a collection route, /dictionaries/...
     collection do
       get :autocomplete_user_username

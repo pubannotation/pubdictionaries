@@ -136,29 +136,6 @@ class DictionariesController < ApplicationController
     redirect_to dictionary_path(@dictionary)
   end
 
-  def clone
-    begin
-      dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
-      raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}, in your management." if dictionary.nil?
-
-      raise ArgumentError, "A source dictionary should be specified." if params[:source_dictionary].nil?
-      source_dictionary = Dictionary.find_by_name(params[:source_dictionary])
-      raise ArgumentError, "Cannot find the dictionary, #{params[:source_dictionary]}." if source_dictionary.nil?
-      raise ArgumentError, "You cannot clone from itself." if source_dictionary == dictionary
-
-      delayed_job = Delayed::Job.enqueue CloneDictionaryJob.new(source_dictionary, dictionary), queue: :upload
-      Job.create({name:"Clone dictionary", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
-
-      respond_to do |format|
-        format.html {redirect_to :back}
-      end
-    rescue => e
-      respond_to do |format|
-        format.html {redirect_to :back, notice: e.message}
-      end
-    end
-  end
-
   def empty
     begin
       dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
