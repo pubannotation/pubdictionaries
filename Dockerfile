@@ -1,4 +1,4 @@
-FROM ruby:2.5.3-alpine
+FROM ruby:2.6.1-alpine
 
 ENV BUILD_PACKAGES="curl-dev ruby-dev build-base bash less linux-headers" \
     DEV_PACKAGES="zlib-dev libxml2-dev libxslt-dev tzdata yaml-dev postgresql-dev" \
@@ -32,7 +32,6 @@ WORKDIR /myapp
 COPY Gemfile /myapp
 COPY Gemfile.lock /myapp
 
-RUN gem install bundler -v '1.17.3'
 RUN bundle config build.nokogiri --use-system-libraries && \
     bundle install --jobs=4 --retry=10 --clean
 
