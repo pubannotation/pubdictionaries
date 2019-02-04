@@ -144,11 +144,11 @@ class DictionariesController < ApplicationController
       dictionary.empty_entries
 
       respond_to do |format|
-        format.html{ redirect_to :back }
+        format.html{ redirect_back fallback_location: root_path }
       end
     rescue => e
       respond_to do |format|
-        format.html{ redirect_to :back, notice: e.message }
+        format.html{ redirect_back fallback_location: root_path, notice: e.message }
       end
     end
   end
@@ -162,7 +162,7 @@ class DictionariesController < ApplicationController
       Job.create({name:"Compile entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
 
       respond_to do |format|
-        format.html{ redirect_to :back }
+        format.html{ redirect_back fallback_location: root_path }
       end
     rescue => e
       respond_to do |format|
