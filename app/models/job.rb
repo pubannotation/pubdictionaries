@@ -1,6 +1,5 @@
 class Job < ApplicationRecord
   belongs_to :dictionary
-  belongs_to :delayed_job
 
   scope :waiting, -> {where('begun_at IS NULL')}
   scope :running, -> {where('begun_at IS NOT NULL AND ended_at IS NULL')}
