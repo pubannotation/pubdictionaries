@@ -1,4 +1,4 @@
-class CreateJobs < ActiveRecord::Migration
+class CreateJobs < ActiveRecord::Migration[5.2]
   def change
     create_table :jobs do |t|
     	t.string :name
@@ -11,7 +11,5 @@ class CreateJobs < ActiveRecord::Migration
 	    t.datetime :ended_at
 	    t.datetime :registered_at
     end
-    add_index :jobs, :dictionary_id
-    add_index :jobs, :delayed_job_id
   end
 end

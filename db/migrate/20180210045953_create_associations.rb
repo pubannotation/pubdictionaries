@@ -1,4 +1,4 @@
-class CreateAssociations < ActiveRecord::Migration
+class CreateAssociations < ActiveRecord::Migration[5.2]
   def change
     create_table :associations do |t|
       t.references :user
@@ -6,7 +6,5 @@ class CreateAssociations < ActiveRecord::Migration
 
       t.timestamps
     end
-    add_index :associations, :user_id
-    add_index :associations, :dictionary_id
   end
 end

@@ -1,4 +1,4 @@
-class CreateEntries < ActiveRecord::Migration
+class CreateEntries < ActiveRecord::Migration[5.2]
   def change
     create_table :entries do |t|
       t.integer :mode, default: 0  # 1: addition, 2: deletion
