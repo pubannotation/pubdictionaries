@@ -5,17 +5,11 @@ default: &default
 
 development:
   <<: *default
-  database: pubdictionaries
-  username: postgres
-  password: password
-  host: db
+  database: pubdictionaries_dev
 
 test:
   <<: *default
   database: pubdictionaries_test
-  username: postgres
-  password: password
-  host: db
 
 production:
   <<: *default
