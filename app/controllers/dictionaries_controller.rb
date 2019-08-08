@@ -77,10 +77,12 @@ class DictionariesController < ApplicationController
     @dictionary = current_user.dictionaries.new(dictionary_params)
     @dictionary.name.strip!
     @dictionary.user = current_user
+    message  = "An empty dictionary, #{@dictionary.name}, created."
+    message += "\nAs it is created in non-public mode, it is visible only in your personal list." unless @dictionary.public
 
     respond_to do |format|
       if @dictionary.save
-        format.html { redirect_to dictionaries_path, notice: 'Empty dictionary created.'}
+        format.html { redirect_to dictionaries_path, notice: message}
       else
         format.html { render action: "new" }
       end

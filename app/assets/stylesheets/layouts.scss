@@ -59,17 +59,6 @@ body {
     display: inline-block;
   }
 
-  .message {
-    padding: 4px;
-
-    .notice {
-      color: #00aa00;
-    }
-
-    .alert {
-      color: #aa0000;
-    }
-  }
 }
 
 .title_area {
@@ -83,10 +72,23 @@ body {
   }
 }
 
-.notice, .alert {
-  color: red;
+
+.message {
+  margin: 2px 0;
+  padding: 4px;
   font-style: italic;
+
+  .notice {
+    background-color: #eef;
+    color: #d22;
+  }
+
+  .alert {
+    background-color: #fee;
+    color: #d22;
+  }
 }
+
 
 .main {
   position: relative;
