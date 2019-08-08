@@ -82,7 +82,7 @@ class DictionariesController < ApplicationController
 
     respond_to do |format|
       if @dictionary.save
-        format.html { redirect_to dictionaries_path, notice: message}
+        format.html { redirect_to show_user_path(current_user.username), notice: message}
       else
         format.html { render action: "new" }
       end
