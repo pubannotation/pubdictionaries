@@ -103,9 +103,23 @@ class Entry < ApplicationRecord
       a1 += dic.entries.where(mode:Entry::MODE_ADDITION)
     end
 
+    return [] if entries.empty?
     entries.map!{|e| {id: e.id, label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}.uniq!
-    entries.map!{|e| e.merge(score: str_jaccard_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}.delete_if{|e| e[:score] < threshold}
+    entries.map!{|e| e.merge(score: str_jaccard_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}
+  end
+
+  def self.search_term_order(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
+    entries = self.search_term(dictionaries, ssdbs, threshold, term, norm1, norm2)
+    entries.delete_if{|e| e[:score] < threshold}
     entries.sort_by{|e| e[:score]}.reverse
+  end
+
+  def self.search_term_top(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
+    entries = self.search_term(dictionaries, ssdbs, threshold, term, norm1, norm2)
+    return [] if entries.empty?
+    max_score = entries.max{|a, b| a[:score] <=> b[:score]}[:score]
+    return [] if max_score < threshold
+    entries = entries.delete_if{|e| e[:score] < max_score}
   end
 
   def self.decapitalize(text)

@@ -83,7 +83,7 @@ class Dictionary < ApplicationRecord
     end
 
     r = labels.inject({}) do |h, label|
-      h[label] = Entry.search_term(dictionaries, sim_string_dbs, threshold, label)
+      h[label] = Entry.search_term_top(dictionaries, sim_string_dbs, threshold, label)
       h[label].map!{|entry| entry[:identifier]} unless rich
       h
     end
