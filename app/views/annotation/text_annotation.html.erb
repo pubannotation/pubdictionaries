@@ -1,7 +1,8 @@
 <%
 	default_tokens_len_max = '6'
 	default_threshold = '0.85'
-	default_rich = 'false'
+	default_superfluous = 'false'
+	default_verbose = 'false'
 %>
 
 
@@ -30,8 +31,15 @@
 
 			<table class="option">
 			<tr>
-			<th><%= label_tag :rich, "Verbose output" %></th>
-			<td><%= check_box_tag :rich, true, (params[:rich] ? params[:rich] : default_rich) == 'true' %></td>
+			<th><%= label_tag :superfluous, "Superfluous", title: "Superflous annotation: all the annotation with a higher score than the threshold will be produced, while, in the default mode, only the ones with the highest score will be produced." %></th>
+			<td><%= check_box_tag :superfluous, true, (params[:superfluous] ? params[:superfluous] : default_superfluous) == 'true' %></td>
+			</tr>
+			</table>
+
+			<table class="option">
+			<tr>
+			<th><%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include information for debugging." %></th>
+			<td><%= check_box_tag :verbose, true, (params[:verbose] ? params[:verbose] : default_verbose) == 'true' %></td>
 			</tr>
 			</table>
 		</div>
@@ -179,7 +187,11 @@
 		set_url();
 	});
 
-	$("#rich").change(function() {
+	$("#superfluous").change(function() {
+		set_url();
+	});
+
+	$("#verbose").change(function() {
 		set_url();
 	});
 
@@ -213,10 +225,17 @@
 			params.push(param);
 		}
 
-		var rich = $('#rich').is(':checked');
-		var default_rich = <%= default_rich == 'true' %>;
-		if (rich != default_rich) {
-			var param = 'rich=' + rich;
+		var superfluous = $('#superfluous').is(':checked');
+		var default_verbose = <%= default_superfluous == 'true' %>;
+		if (superfluous != default_verbose) {
+			var param = 'superfluous=' + superfluous;
+			params.push(param);
+		}
+
+		var verbose = $('#verbose').is(':checked');
+		var default_verbose = <%= default_verbose == 'true' %>;
+		if (verbose != default_verbose) {
+			var param = 'verbose=' + verbose;
 			params.push(param);
 		}
 

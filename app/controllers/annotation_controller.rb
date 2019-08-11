@@ -81,7 +81,7 @@ class AnnotationController < ApplicationController
 
   def annotate(text, dictionaries_selected)
     options = get_options_from_params
-    annotator = TextAnnotator.new(dictionaries_selected, options[:tokens_len_max], options[:threshold], options[:rich])
+    annotator = TextAnnotator.new(dictionaries_selected, options[:tokens_len_max], options[:threshold], options[:superfluous], options[:verbose])
     r = annotator.annotate_batch([{text: text}])
     annotator.dispose
     r.first
@@ -90,6 +90,10 @@ class AnnotationController < ApplicationController
   def enqueue_job(targets, result_name)
     dictionaries = Dictionary.find_dictionaries_from_params(params)
     options = get_options_from_params
+
+    # job = TextAnnotationJob.new(targets, result_name, dictionaries, options)
+    # job.perform()
+
     Delayed::Job.enqueue TextAnnotationJob.new(targets, result_name, dictionaries, options), queue: :annotation
   end
 
@@ -130,9 +134,10 @@ class AnnotationController < ApplicationController
 
   def get_options_from_params
     options = {}
-    options[:rich] = rich
     options[:tokens_len_max] = tokens_len
     options[:threshold] = threshold
+    options[:superfluous] = superfluous
+    options[:verbose] = verbose
     options
   end
 
@@ -148,7 +153,11 @@ class AnnotationController < ApplicationController
     params[:tokens_len_max].to_i if params[:tokens_len_max].present?
   end
 
-  def rich
-    true if params[:rich] == 'true' || params[:rich] == '1'
+  def superfluous
+    true if params[:superfluous] == 'true' || params[:superfluous] == '1'
+  end
+
+  def verbose
+    true if params[:verbose] == 'true' || params[:verbose] == '1'
   end
 end

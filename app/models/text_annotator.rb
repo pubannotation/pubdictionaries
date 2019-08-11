@@ -12,16 +12,18 @@ class TextAnnotator
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
-  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, rich=false)
+  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, superfluous = false, verbose=false)
     @dictionaries = dictionaries
     @tokens_len_max = tokens_len_max
     @threshold = threshold
-    @rich = rich
+    @superfluous = superfluous
+    @verbose = verbose
 
     @tokens_len_min ||= 1
     @tokens_len_max ||= 6
     @threshold ||= 0.85
-    @rich ||= false
+    @superfluous ||= false
+    @verbose ||= false
 
     @es_connection = Net::HTTP::Persistent.new
 
@@ -88,8 +90,13 @@ class TextAnnotator
 
     # To search mapping entries per span
     span_entries = {}
+
+    # To determine the search method
+    search_method = @superfluous ? Entry.method(:search_term_order) : Entry.method(:search_term_top)
+
+    # To perform the search
     span_index.each do |span, info|
-      entries = Entry.search_term_top(@dictionaries, @sub_string_dbs, @threshold, span, info[:norm1], info[:norm2])
+      entries = search_method.call(@dictionaries, @sub_string_dbs, @threshold, span, info[:norm1], info[:norm2])
       span_entries[span] = entries if entries.present?
     end
 
@@ -99,7 +106,7 @@ class TextAnnotator
       locs.each do |loc|
         entries.each do |entry|
           d = {span:{begin:loc[:start_offset], end:loc[:end_offset]}, obj:entry[:identifier], score:entry[:score]}
-          if @rich
+          if @verbose
             d[:label] = entry[:label]
             d[:norm2] = entry[:norm2]
           end
@@ -130,7 +137,11 @@ class TextAnnotator
           if ((d[:obj] == last_denotation[:obj]) && (d[:span][:begin] < last_denotation[:span][:end])) # span_overlap with the same obj
             denotations_sel[-1] = d if d[:score] > last_denotation[:score] # to choose the one with higher score, preferring the shorter span
           elsif ((d[:span][:end] < last_denotation[:span][:end]) && (d[:score] < last_denotation[:score])) # embedded span with lower score than the embedding one
-            # do not choose
+            if @superfluous
+              denotations_sel << d # to choose it
+            else
+              # do not choose
+            end
           else
             denotations_sel << d # to choose all others
           end

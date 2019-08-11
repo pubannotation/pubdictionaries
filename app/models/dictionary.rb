@@ -68,29 +68,31 @@ class Dictionary < ApplicationRecord
       dictionaries
     end
 
-    def find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, rich = false)
-    sim_string_dbs = dictionaries.inject({}) do |h, dic|
-      h[dic.name] = begin
-        Simstring::Reader.new(dic.sim_string_db_path)
-      rescue
-        nil
+    def find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, superfluous = false, verbose = false)
+      sim_string_dbs = dictionaries.inject({}) do |h, dic|
+        h[dic.name] = begin
+          Simstring::Reader.new(dic.sim_string_db_path)
+        rescue
+          nil
+        end
+        if h[dic.name]
+          h[dic.name].measure = Simstring::Jaccard
+          h[dic.name].threshold = threshold
+        end
+        h
       end
-      if h[dic.name]
-        h[dic.name].measure = Simstring::Jaccard
-        h[dic.name].threshold = threshold
+
+      search_method = superfluous ? Entry.method(:search_term_order) : Entry.method(:search_term_top)
+
+      r = labels.inject({}) do |h, label|
+        h[label] = search_method.call(dictionaries, sim_string_dbs, threshold, label)
+        h[label].map!{|entry| entry[:identifier]} unless verbose
+        h
       end
-      h
-    end
 
-    r = labels.inject({}) do |h, label|
-      h[label] = Entry.search_term_top(dictionaries, sim_string_dbs, threshold, label)
-      h[label].map!{|entry| entry[:identifier]} unless rich
-      h
-    end
+      sim_string_dbs.each{|name, db| db.close if db}
 
-    sim_string_dbs.each{|name, db| db.close if db}
-
-    r
+      r
     end
   end
 

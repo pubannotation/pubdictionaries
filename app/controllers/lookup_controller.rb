@@ -19,9 +19,10 @@ class LookupController < ApplicationController
 
       @result = if labels.present?
         raise ArgumentError, "At least one dictionary has to be specified for lookup." unless dictionaries_selected.present?
-        rich = true if params[:rich] == 'true' || params[:rich] == '1'
+        superfluous = true if params[:superfluous] == 'true' || params[:superfluous] == '1'
+        verbose = true if params[:verbose] == 'true' || params[:verbose] == '1'
         threshold = params[:threshold].present? ? params[:threshold].to_f : 0.85
-        @result = Dictionary.find_ids_by_labels(labels, dictionaries_selected, threshold, rich)
+        @result = Dictionary.find_ids_by_labels(labels, dictionaries_selected, threshold, superfluous, verbose)
       else
         {}
       end

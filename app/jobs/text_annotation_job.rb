@@ -4,7 +4,7 @@ class TextAnnotationJob < Struct.new(:targets, :filename, :dictionaries, :option
 	def perform
     begin
       raise ArgumentError, "The annotation targets have to be in an array." unless targets.class == Array
-      annotator = TextAnnotator.new(dictionaries, options[:tokens_len_max], options[:threshold], options[:rich])
+      annotator = TextAnnotator.new(dictionaries, options[:tokens_len_max], options[:threshold], options[:superfluous], options[:verbose])
 
       annotations_col = targets.each_slice(100).inject([]) do |col, slice|
         col += annotator.annotate_batch(slice)
