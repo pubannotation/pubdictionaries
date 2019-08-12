@@ -172,17 +172,24 @@ class Entry < ApplicationRecord
   # * (string) string2
   #
   def self.str_jaccard_sim(str1, s1norm1, s1norm2, str2, s2norm1, s2norm2)
-    str1_trigrams = []; str1.split('').each_cons(2){|a| str1_trigrams << a};
-    str2_trigrams = []; str2.split('').each_cons(2){|a| str2_trigrams << a};
-    s1norm1_trigrams = []; s1norm1.split('').each_cons(2){|a| s1norm1_trigrams << a};
-    s1norm2_trigrams = []; s1norm2.split('').each_cons(2){|a| s1norm2_trigrams << a};
-    s2norm1_trigrams = []; s2norm1.split('').each_cons(2){|a| s2norm1_trigrams << a};
-    s2norm2_trigrams = []; s2norm2.split('').each_cons(2){|a| s2norm2_trigrams << a};
+    str1_trigrams = get_trigrams(str1)
+    str2_trigrams = get_trigrams(str2)
+    s1norm1_trigrams = get_trigrams(s1norm1)
+    s1norm2_trigrams = get_trigrams(s1norm2)
+    s2norm1_trigrams = get_trigrams(s2norm1)
+    s2norm2_trigrams = get_trigrams(s2norm2)
+
     if s1norm2.empty? && s2norm2.empty?
       (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams)) / 2
     else
       (jaccard_sim(str1_trigrams, str2_trigrams) + jaccard_sim(s1norm1_trigrams, s2norm1_trigrams) + 10 * jaccard_sim(s1norm2_trigrams, s2norm2_trigrams)) / 12
     end
+  end
+
+  def self.get_trigrams(str)
+    return [] if str.empty?
+    fstr = str[-1] + str + str[0] # to make a set of circular trigrams
+    (0 .. (fstr.length - 3)).collect{|i| fstr[i .. (i + 2)]}
   end
 
   # Compute jaccard similarity of two sets
