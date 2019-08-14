@@ -17,7 +17,7 @@
 		<div class="center-align">
 			<table class="option">
 			<tr>
-			<th><%= label_tag :max_token_length %></th>
+			<th><%= label_tag :tokens_len_max %></th>
 			<td><%= text_field_tag :tokens_len_max, (params[:tokens_len_max] ? params[:tokens_len_max] : default_tokens_len_max).to_i, type: :number, min:1, max:30, step:1 %></td>
 			</tr>
 			</table>
@@ -31,7 +31,7 @@
 
 			<table class="option">
 			<tr>
-			<th><%= label_tag :superfluous, "Superfluous", title: "Superflous annotation: all the annotation with a higher score than the threshold will be produced, while, in the default mode, only the ones with the highest score will be produced." %></th>
+			<th><%= label_tag :superfluous, "Superfluous", title: "Superflous annotation: all the annotations with a higher score than the threshold will be produced, while, in the default mode, only the ones with the highest score will be produced." %></th>
 			<td><%= check_box_tag :superfluous, true, (params[:superfluous] ? params[:superfluous] : default_superfluous) == 'true' %></td>
 			</tr>
 			</table>

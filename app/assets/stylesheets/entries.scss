@@ -26,6 +26,7 @@ table.entries {
   th.button_column {
     width: 15px;
   }
+
 }
 
 .entries td {
@@ -43,6 +44,11 @@ tr.addition {
   background-color: #bbffbb;
 }
 
+tr.addition:hover {
+  background-color: #ccffcc;
+}
+
+
 span.addition {
   font-style: italic;
 }
@@ -51,6 +57,14 @@ tr.deletion {
   background-color: #ffbbbb;
 }
 
+tr.deletion:hover {
+  background-color: #ffcccc;
+}
+
 span.deletion {
   text-decoration: line-through;
+}
+
+tr.entry:hover {
+  background-color: #fdf;
 }
