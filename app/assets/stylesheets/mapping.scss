@@ -20,9 +20,19 @@ fieldset:hover {
 	text-align:center;
 }
 
-.option {
-	display:inline-block;
-	border-width: 0.1px;
+table.options {
+	margin: auto;
+	border-width: 2px;
+	text-align:center;
+	th {
+		border-width: 2px;
+		width: 7em;
+	}
+	td {
+		input {
+			text-align: right;
+		}
+	}
 }
 
 table.dictionary_selection {

@@ -81,7 +81,7 @@ class AnnotationController < ApplicationController
 
   def annotate(text, dictionaries_selected)
     options = get_options_from_params
-    annotator = TextAnnotator.new(dictionaries_selected, options[:tokens_len_max], options[:threshold], options[:superfluous], options[:verbose])
+    annotator = TextAnnotator.new(dictionaries_selected, options[:tokens_len_max], options[:threshold], options[:abbreviation], options[:longest], options[:superfluous], options[:verbose])
     r = annotator.annotate_batch([{text: text}])
     annotator.dispose
     r.first
@@ -136,6 +136,8 @@ class AnnotationController < ApplicationController
     options = {}
     options[:tokens_len_max] = tokens_len
     options[:threshold] = threshold
+    options[:abbreviation] = abbreviation
+    options[:longest] = longest
     options[:superfluous] = superfluous
     options[:verbose] = verbose
     options
@@ -153,11 +155,19 @@ class AnnotationController < ApplicationController
     params[:tokens_len_max].to_i if params[:tokens_len_max].present?
   end
 
+  def abbreviation
+    (params[:abbreviation] == 'true' || params[:abbreviation] == '1') ? true : false
+  end
+
+  def longest
+    (params[:longest] == 'true' || params[:longest] == '1') ? true : false
+  end
+
   def superfluous
-    true if params[:superfluous] == 'true' || params[:superfluous] == '1'
+    (params[:superfluous] == 'true' || params[:superfluous] == '1') ? true : false
   end
 
   def verbose
-    true if params[:verbose] == 'true' || params[:verbose] == '1'
+    (params[:verbose] == 'true' || params[:verbose] == '1') ? true : false
   end
 end

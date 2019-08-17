@@ -1,8 +1,10 @@
 <%
 	default_tokens_len_max = '6'
 	default_threshold = '0.85'
-	default_superfluous = 'false'
-	default_verbose = 'false'
+	default_abbreviation = true
+	default_longest = false
+	default_superfluous = false
+	default_verbose = false
 %>
 
 
@@ -14,35 +16,26 @@
 	<legend>Demo</legend>
 	<%= form_tag '/text_annotation', id: 'text_annotation', method: :get do -%>
 		<%= text_area_tag :text, params[:text], required: true, placeholder: 'text', style: "height:50px" %>
-		<div class="center-align">
-			<table class="option">
-			<tr>
-			<th><%= label_tag :tokens_len_max %></th>
-			<td><%= text_field_tag :tokens_len_max, (params[:tokens_len_max] ? params[:tokens_len_max] : default_tokens_len_max).to_i, type: :number, min:1, max:30, step:1 %></td>
-			</tr>
-			</table>
 
-			<table class="option">
+		<table class="options">
 			<tr>
-			<th><%= label_tag :threshold %></th>
-			<td><%= text_field_tag :threshold, (params[:threshold] ? params[:threshold] : default_threshold).to_f, type: :number, min:0.5, max:1, step:0.01 %></td>
+				<th><%= label_tag :tokens_len_max, "Length", title: "The maximum number of tokens to be considered." %></th>
+				<th><%= label_tag :threshold, nil, title: "The output will include only the annotations whose matching score is above the threshold." %></th>
+				<th><%= label_tag :abbreviation, "Abbreviation", title: "Abbreviations which are locally defined in an input document will be automatically detected." %></th>
+				<th><%= label_tag :longest, "Longest", title: "Longest only annotation: the output will not include embedded annotations." %></th>
+				<th><%= label_tag :superfluous, "Superfluous", title: "Superflous annotation: all the annotations with a higher score than the threshold will be produced, while, in the default mode, only the ones with the highest score will be produced." %></th>
+				<th><%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include information for debugging." %></th>
 			</tr>
-			</table>
+			<tr>
+				<td><%= text_field_tag :tokens_len_max, (params[:tokens_len_max] ? params[:tokens_len_max] : default_tokens_len_max).to_i, type: :number, min:1, max:30, step:1 %></td>
+				<td><%= text_field_tag :threshold, (params[:threshold] ? params[:threshold] : default_threshold).to_f, type: :number, min:0.5, max:1, step:0.01 %></td>
+				<td><%= check_box_tag :abbreviation, true, (params[:text] ? params[:abbreviation] : default_abbreviation) %></td>
+				<td><%= check_box_tag :longest, true, (params[:text] ? params[:longest] : default_longest) %></td>
+				<td><%= check_box_tag :superfluous, true, (params[:text] ? params[:superfluous] : default_superfluous) %></td>
+				<td><%= check_box_tag :verbose, true, (params[:text] ? params[:verbose] : default_verbose) %></td>
+			</tr>
 
-			<table class="option">
-			<tr>
-			<th><%= label_tag :superfluous, "Superfluous", title: "Superflous annotation: all the annotations with a higher score than the threshold will be produced, while, in the default mode, only the ones with the highest score will be produced." %></th>
-			<td><%= check_box_tag :superfluous, true, (params[:superfluous] ? params[:superfluous] : default_superfluous) == 'true' %></td>
-			</tr>
-			</table>
-
-			<table class="option">
-			<tr>
-			<th><%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include information for debugging." %></th>
-			<td><%= check_box_tag :verbose, true, (params[:verbose] ? params[:verbose] : default_verbose) == 'true' %></td>
-			</tr>
-			</table>
-		</div>
+		</table>
 
 		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>
 

@@ -12,18 +12,18 @@ class TextAnnotator
   # Initialize the text annotator instance.
   #
   # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
-  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, superfluous = false, verbose=false)
+  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, abbreviation = true, longest = false, superfluous = false, verbose=false)
     @dictionaries = dictionaries
     @tokens_len_max = tokens_len_max
     @threshold = threshold
+    @abbreviation = abbreviation
+    @longest = longest
     @superfluous = superfluous
     @verbose = verbose
 
     @tokens_len_min ||= 1
     @tokens_len_max ||= 6
     @threshold ||= 0.85
-    @superfluous ||= false
-    @verbose ||= false
 
     @es_connection = Net::HTTP::Persistent.new
 
@@ -108,6 +108,7 @@ class TextAnnotator
           d = {span:{begin:loc[:start_offset], end:loc[:end_offset]}, obj:entry[:identifier], score:entry[:score]}
           if @verbose
             d[:label] = entry[:label]
+            d[:norm1] = entry[:norm1]
             d[:norm2] = entry[:norm2]
           end
           anns_col[loc[:text_idx]][:denotations] << d
@@ -124,8 +125,13 @@ class TextAnnotator
 
       # To sort denotations by their position
       denotations.sort! do |a, b|
-        c = (a[:span][:begin] <=> b[:span][:begin])
-        c.zero? ? (b[:span][:end] <=> a[:span][:end]) : c
+        c1 = (a[:span][:begin] <=> b[:span][:begin])
+        if c1.zero?
+          c2 = (b[:span][:end] <=> a[:span][:end])
+          c2.zero? ? (b[:score] <=> a[:score]) : c2
+        else
+          c1
+        end
       end
 
       denotations_sel = []
@@ -136,8 +142,11 @@ class TextAnnotator
           last_denotation = denotations_sel.last
           if ((d[:obj] == last_denotation[:obj]) && (d[:span][:begin] < last_denotation[:span][:end])) # span_overlap with the same obj
             denotations_sel[-1] = d if d[:score] > last_denotation[:score] # to choose the one with higher score, preferring the shorter span
-          elsif ((d[:span][:end] < last_denotation[:span][:end]) && (d[:score] < last_denotation[:score])) # embedded span with lower score than the embedding one
-            if @superfluous
+          elsif (d[:span][:end] <= last_denotation[:span][:end]) # embedded span
+            if @longest
+              denotations_sel << d if ((d[:span] == last_denotation[:span]) && (d[:score] == last_denotation[:score]))
+              # do not choose
+            elsif @superfluous || (d[:score] >= last_denotation[:score])
               denotations_sel << d # to choose it
             else
               # do not choose
@@ -148,6 +157,80 @@ class TextAnnotator
         end
       end
       anns[:denotations] = denotations_sel
+    end
+
+    ## Local abbreviation annotation
+    if @abbreviation
+      anns_col.each_with_index do |anns, i|
+        denotations = anns[:denotations]
+        text = anns[:text]
+
+        # collection
+        abbrs = []
+        denotations.each do |d|
+          if abbrs.last && d[:span][:end] == abbrs.last[:ff_span][:end] && abbrs.last[:score] == 'regAbbreviation'
+            if d[:span][:begin] == abbrs.last[:ff_span][:begin]
+              abbrs << {ff_span: d[:span], span:abbrs.last[:span], abbr: abbrs.last[:abbr], obj: d[:obj], score: 'regAbbreviation'}
+            else
+              next
+            end
+          end
+
+          abbr_begin, abbr_end = if abbrs.last && d[:span][:end] == abbrs.last[:ff_span][:end]
+            abbrs.last[:span]
+          else
+            _abbr_begin = d[:span][:end] + 1
+            _abbr_begin += 1 while text[_abbr_begin] == ' '
+            next unless text[_abbr_begin] == '('
+            _abbr_begin += 1
+
+            _abbr_end = text.index(')', _abbr_begin + 1)
+            [_abbr_begin, _abbr_end]
+          end
+
+          next if abbr_end.nil?
+          next if (abbr_end - abbr_begin) >= (d[:span][:end] - d[:span][:begin]) # an abbreviation may not be longer than the full form.
+
+          abbr = text[abbr_begin ... abbr_end]
+          next if abbr.index(' ') # an abbreviation may not include a space
+
+          term = text[d[:span][:begin] ... d[:span][:end]]
+          abbr_down = abbr.downcase
+
+          # test a regular abbreviation form
+          if term.split.collect{|w| w[0]}.join('').downcase == abbr_down
+            abbrs << {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'regAbbreviation'}
+
+          # test another regular abbreviation form
+          elsif term.scan(/[0-9A-Z]/).join('').downcase == abbr_down
+            abbrs << {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'regAbbreviation'}
+
+          # test a liberal abbreviation form
+          elsif (abbrs.last) && (abbr.downcase.chars - term.chars).empty?
+            if abbrs.last && d[:span][:end] == abbrs.last[:span][:end]
+              abbrs.last = {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'freeAbbreviation'}
+            else
+              abbrs << {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'freeAbbreviation'}
+            end
+          end
+        end
+
+        # annotation
+        unless abbrs.empty?
+          abbrs.each do |abbr|
+            locs = span_index[abbr[:abbr]][:positions].select{|p| p[:text_idx] == i}
+            locs.each do |loc|
+              denotations <<  {span:{begin:loc[:start_offset], end:loc[:end_offset]}, obj:abbr[:obj], score:abbr[:score]}
+            end
+          end
+
+          denotations.uniq!{|d| [d[:span][:begin], d[:span][:end], d[:obj]]}
+          denotations.sort! do |a, b|
+            c = (a[:span][:begin] <=> b[:span][:begin])
+            c.zero? ? (b[:span][:end] <=> a[:span][:end]) : c
+          end
+        end
+      end
     end
 
     anns_col
