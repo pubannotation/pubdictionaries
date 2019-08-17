@@ -180,6 +180,14 @@
 		set_url();
 	});
 
+	$("#abbreviation").change(function() {
+		set_url();
+	});
+
+	$("#longest").change(function() {
+		set_url();
+	});
+
 	$("#superfluous").change(function() {
 		set_url();
 	});
@@ -218,15 +226,29 @@
 			params.push(param);
 		}
 
+		var abbreviation = $('#abbreviation').is(':checked');
+		var default_abbreviation = <%= default_abbreviation == true %>;
+		if (abbreviation != default_abbreviation) {
+			var param = 'abbreviation=' + abbreviation;
+			params.push(param);
+		}
+
+		var longest = $('#longest').is(':checked');
+		var default_longest = <%= default_longest == true %>;
+		if (longest != default_longest) {
+			var param = 'longest=' + longest;
+			params.push(param);
+		}
+
 		var superfluous = $('#superfluous').is(':checked');
-		var default_verbose = <%= default_superfluous == 'true' %>;
-		if (superfluous != default_verbose) {
+		var default_superfluous = <%= default_superfluous == true %>;
+		if (superfluous != default_superfluous) {
 			var param = 'superfluous=' + superfluous;
 			params.push(param);
 		}
 
 		var verbose = $('#verbose').is(':checked');
-		var default_verbose = <%= default_verbose == 'true' %>;
+		var default_verbose = <%= default_verbose == true %>;
 		if (verbose != default_verbose) {
 			var param = 'verbose=' + verbose;
 			params.push(param);
