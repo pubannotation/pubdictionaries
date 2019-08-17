@@ -19,7 +19,9 @@ class TextAnnotationJob < Struct.new(:targets, :filename, :dictionaries, :option
 	end
 
   def after
-    @job.update_attribute(:ended_at, Time.now)
-    @job.destroy
+    if @job
+      @job.update_attribute(:ended_at, Time.now)
+      @job.destroy
+    end
   end
 end

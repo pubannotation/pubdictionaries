@@ -81,6 +81,7 @@ class AnnotationController < ApplicationController
 
   def annotate(text, dictionaries_selected)
     options = get_options_from_params
+
     annotator = TextAnnotator.new(dictionaries_selected, options[:tokens_len_max], options[:threshold], options[:abbreviation], options[:longest], options[:superfluous], options[:verbose])
     r = annotator.annotate_batch([{text: text}])
     annotator.dispose
@@ -156,7 +157,7 @@ class AnnotationController < ApplicationController
   end
 
   def abbreviation
-    (params[:abbreviation] == 'true' || params[:abbreviation] == '1') ? true : false
+    (!params[:abbreviation] || params[:abbreviation] == 'true' || params[:abbreviation] == '1') ? true : false
   end
 
   def longest
