@@ -207,7 +207,7 @@ class TextAnnotator
 
           # test a liberal abbreviation form
           elsif (abbrs.last) && (abbr.downcase.chars - term.chars).empty?
-            if abbrs.last && d[:span][:end] == abbrs.last[:span][:end]
+            if abbrs.last && (d[:span][:end] == abbrs.last[:ff_span][:end])
               abbrs.last = {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'freeAbbreviation'}
             else
               abbrs << {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'freeAbbreviation'}
