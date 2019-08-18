@@ -157,7 +157,7 @@ class AnnotationController < ApplicationController
   end
 
   def abbreviation
-    (!params[:abbreviation] || params[:abbreviation] == 'true' || params[:abbreviation] == '1') ? true : false
+    (params[:abbreviation] == 'true' || params[:abbreviation] == '1') ? true : false
   end
 
   def longest
