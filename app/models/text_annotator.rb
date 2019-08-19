@@ -194,9 +194,9 @@ class TextAnnotator
             abbrs << {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'regAbbreviation'}
 
           # test a liberal abbreviation form
-          elsif (abbrs.last) && (abbr.downcase.chars - term.downcase.chars).empty?
+          elsif (abbr.downcase.chars - term.downcase.chars).empty?
             if abbrs.last && (d[:span][:end] == abbrs.last[:ff_span][:end])
-              abbrs.last = {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'freeAbbreviation'}
+              abbrs[-1] = {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'freeAbbreviation'}
             else
               abbrs << {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'freeAbbreviation'}
             end
@@ -258,7 +258,7 @@ class TextAnnotator
           next if tlen == 1 && tokens[tbegin][:token].length == 1
           next if NO_EDGE_WORDS.include?(tokens[tbegin + tlen - 1][:token])
 
-          pars_open  = text[tokens[tbegin + tlen - 1][:start_offset] - 1] == '('
+          pars_open  = tbegin > 0 && text[tokens[tbegin + tlen - 1][:start_offset] - 1] == '('
           pars_close = text[tokens[tbegin + tlen - 1][:end_offset]] == ')'
 
           if tbegin > 0 && tlen == 1 && tokens[tbegin][:start_offset] && pars_open && pars_close
@@ -309,10 +309,6 @@ class TextAnnotator
           span_index[span][:positions] << position
         end
       end
-    end
-
-    abbr_index.reject! do |key, value|
-      value[1] - value[0] > 10
     end
 
     [span_index, abbr_index]
