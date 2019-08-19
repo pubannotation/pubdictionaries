@@ -86,7 +86,7 @@ class TextAnnotator
     end
 
     # index spans with their positions and norms
-    span_index = anns_col.each_with_index.inject({}){|index, (anns, i)| index_spans(anns[:text], i, index)}
+    span_index, abbr_index = index_spans(anns_col)
 
     # To search mapping entries per span
     span_entries = {}
@@ -176,23 +176,11 @@ class TextAnnotator
             end
           end
 
-          abbr_begin, abbr_end = if abbrs.last && d[:span][:end] == abbrs.last[:ff_span][:end]
-            abbrs.last[:span]
-          else
-            _abbr_begin = d[:span][:end] + 1
-            _abbr_begin += 1 while text[_abbr_begin] == ' '
-            next unless text[_abbr_begin] == '('
-            _abbr_begin += 1
-
-            _abbr_end = text.index(')', _abbr_begin + 1)
-            [_abbr_begin, _abbr_end]
-          end
-
-          next if abbr_end.nil?
+          abbr_begin, abbr_end = abbr_index[i.to_s + ':' + d[:span][:end].to_s]
+          next if abbr_begin.nil?
           next if (abbr_end - abbr_begin) >= (d[:span][:end] - d[:span][:begin]) # an abbreviation may not be longer than the full form.
 
           abbr = text[abbr_begin ... abbr_end]
-          next if abbr.index(' ') # an abbreviation may not include a space
 
           term = text[d[:span][:begin] ... d[:span][:end]]
           abbr_down = abbr.downcase
@@ -206,7 +194,7 @@ class TextAnnotator
             abbrs << {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'regAbbreviation'}
 
           # test a liberal abbreviation form
-          elsif (abbrs.last) && (abbr.downcase.chars - term.chars).empty?
+          elsif (abbrs.last) && (abbr.downcase.chars - term.downcase.chars).empty?
             if abbrs.last && (d[:span][:end] == abbrs.last[:ff_span][:end])
               abbrs.last = {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'freeAbbreviation'}
             else
@@ -243,51 +231,91 @@ class TextAnnotator
 
   private
 
-  def index_spans(text, text_idx, span_index)
+  def index_spans(anns_col)
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
-    tokens = norm1_tokenize(text)
-    spans  = tokens.map{|t| text[t[:start_offset] ... t[:end_offset]]}
-    norm1s = tokens.map{|t| t[:token]}
-    norm2s = norm2_tokenize(text).inject(Array.new(spans.length, "")){|s, t| s[t[:position]] = t[:token]; s}
+    span_index = {} # index of spans
+    abbr_index = {} # index of (potential) abbreviations
 
-    sbreaks = sentence_break(text)
+    anns_col.each_with_index do |anns, text_idx|
+      text = anns[:text]
+      tokens = norm1_tokenize(text)
+      spans  = tokens.map{|t| text[t[:start_offset] ... t[:end_offset]]}
+      norm1s = tokens.map{|t| t[:token]}
+      norm2s = norm2_tokenize(text).inject(Array.new(spans.length, "")){|s, t| s[t[:position]] = t[:token]; s}
 
-    (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
-      next if NO_TERM_WORDS.include?(tokens[tbegin][:token])
-      next if NO_EDGE_WORDS.include?(tokens[tbegin][:token])
+      sbreaks = sentence_break(text)
 
-      (@tokens_len_min .. @tokens_len_max).each do |tlen|
-        break if tbegin + tlen > tokens.length
-        break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
-        break if cross_sentence(sbreaks, tokens[tbegin][:start_offset], tokens[tbegin + tlen - 1][:end_offset])
-        break if NO_TERM_WORDS.include?(tokens[tbegin + tlen - 1][:token])
-        next if NO_EDGE_WORDS.include?(tokens[tbegin + tlen - 1][:token])
+      (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
+        next if NO_TERM_WORDS.include?(tokens[tbegin][:token])
+        next if NO_EDGE_WORDS.include?(tokens[tbegin][:token])
 
-        norm2 = norm2s[tbegin, tlen].join
+        (@tokens_len_min .. @tokens_len_max).each do |tlen|
+          break if tbegin + tlen > tokens.length
+          break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
+          break if cross_sentence(sbreaks, tokens[tbegin][:start_offset], tokens[tbegin + tlen - 1][:end_offset])
+          break if NO_TERM_WORDS.include?(tokens[tbegin + tlen - 1][:token])
+          next if tlen == 1 && tokens[tbegin][:token].length == 1
+          next if NO_EDGE_WORDS.include?(tokens[tbegin + tlen - 1][:token])
 
-        if tlen > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
-          lookup = @dictionaries.inject([]) do |col, dic|
-            col += @sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @sub_string_dbs_overlap[dic.name].nil?
-            col += @tmp_sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @tmp_sub_string_dbs_overlap[dic.name].nil?
-            col
+          pars_open  = text[tokens[tbegin + tlen - 1][:start_offset] - 1] == '('
+          pars_close = text[tokens[tbegin + tlen - 1][:end_offset]] == ')'
+
+          if tbegin > 0 && tlen == 1 && tokens[tbegin][:start_offset] && pars_open && pars_close
+            abbr_index[text_idx.to_s + ':' + tokens[tbegin - 1][:end_offset].to_s] = [tokens[tbegin][:start_offset], tokens[tbegin][:end_offset]]
           end
-          break if lookup.empty?
+
+          span_begin = tokens[tbegin][:start_offset]
+          span_end   = tokens[tbegin+tlen-1][:end_offset]
+          span = text[span_begin...span_end]
+          span_open_pars = span.index('(')
+          span_close_pars = span.index(')')
+
+          if span_open_pars && !span_close_pars
+            if pars_close
+              span_end += 1
+              span += ')'
+            else
+              next
+            end
+          end
+
+          if !span_open_pars && span_close_pars
+            if text[span_begin - 1] == '('
+              span_begin -= 1
+              span = '(' + span
+            else
+              next
+            end
+          end
+
+          norm2 = norm2s[tbegin, tlen].join
+
+          if tlen > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
+            lookup = @dictionaries.inject([]) do |col, dic|
+              col += @sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @sub_string_dbs_overlap[dic.name].nil?
+              col += @tmp_sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @tmp_sub_string_dbs_overlap[dic.name].nil?
+              col
+            end
+            break if lookup.empty?
+          end
+
+          unless span_index.has_key?(span)
+            norm1 = norm1s[tbegin, tlen].join
+            span_index[span] = {norm1:norm1, norm2:norm2, positions:[]}
+          end
+
+          position = {text_idx: text_idx, start_offset: span_begin, end_offset: span_end}
+          span_index[span][:positions] << position
         end
-
-        span = text[tokens[tbegin][:start_offset]...tokens[tbegin+tlen-1][:end_offset]]
-
-        unless span_index.has_key?(span)
-          norm1 = norm1s[tbegin, tlen].join
-          span_index[span] = {norm1:norm1, norm2:norm2, positions:[]}
-        end
-
-        position = {text_idx: text_idx, start_offset: tokens[tbegin][:start_offset], end_offset: tokens[tbegin+tlen-1][:end_offset]}
-        span_index[span][:positions] << position
       end
     end
 
-    span_index
+    abbr_index.reject! do |key, value|
+      value[1] - value[0] > 10
+    end
+
+    [span_index, abbr_index]
   end
 
   def sentence_break(text)
