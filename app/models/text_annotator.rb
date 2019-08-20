@@ -186,7 +186,7 @@ class TextAnnotator
           abbr_down = abbr.downcase
 
           # test a regular abbreviation form
-          if term.split.collect{|w| w[0]}.join('').downcase == abbr_down
+          if term.split(/[- ]/).collect{|w| w[0]}.join('').downcase == abbr_down
             abbrs << {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'regAbbreviation'}
 
           # test another regular abbreviation form
@@ -194,7 +194,7 @@ class TextAnnotator
             abbrs << {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'regAbbreviation'}
 
           # test a liberal abbreviation form
-          elsif (abbr.downcase.chars - term.downcase.chars).empty?
+          elsif (abbr[0].downcase == term[0].downcase) && (abbr.downcase.chars - term.downcase.chars).empty?
             if abbrs.last && (d[:span][:end] == abbrs.last[:ff_span][:end])
               abbrs[-1] = {ff_span: d[:span], span:[begin:abbr_begin, end:abbr_end], abbr: abbr, obj: d[:obj], score: 'freeAbbreviation'}
             else
@@ -245,51 +245,52 @@ class TextAnnotator
       norm2s = norm2_tokenize(text).inject(Array.new(spans.length, "")){|s, t| s[t[:position]] = t[:token]; s}
 
       sbreaks = sentence_break(text)
+      add_pars_info(tokens, text, sbreaks)
 
-      (0 ... tokens.length - @tokens_len_min + 1).each do |tbegin|
-        next if NO_TERM_WORDS.include?(tokens[tbegin][:token])
-        next if NO_EDGE_WORDS.include?(tokens[tbegin][:token])
+      (0 ... tokens.length - @tokens_len_min + 1).each do |idx_token_begin|
+        token_begin = tokens[idx_token_begin]
+
+        next if NO_TERM_WORDS.include?(token_begin[:token])
+        next if NO_EDGE_WORDS.include?(token_begin[:token])
 
         (@tokens_len_min .. @tokens_len_max).each do |tlen|
-          break if tbegin + tlen > tokens.length
-          break if (tokens[tbegin + tlen - 1][:position] - tokens[tbegin][:position]) + 1 > @tokens_len_max
-          break if cross_sentence(sbreaks, tokens[tbegin][:start_offset], tokens[tbegin + tlen - 1][:end_offset])
-          break if NO_TERM_WORDS.include?(tokens[tbegin + tlen - 1][:token])
-          next if tlen == 1 && tokens[tbegin][:token].length == 1
-          next if NO_EDGE_WORDS.include?(tokens[tbegin + tlen - 1][:token])
+          idx_token_end = idx_token_begin + tlen - 1
+          break if idx_token_begin + tlen > tokens.length
 
-          pars_open  = tbegin > 0 && text[tokens[tbegin + tlen - 1][:start_offset] - 1] == '('
-          pars_close = text[tokens[tbegin + tlen - 1][:end_offset]] == ')'
+          token_end = tokens[idx_token_end]
+          break if (token_end[:position] - token_begin[:position]) + 1 > @tokens_len_max
+          break if cross_sentence(sbreaks, token_begin[:start_offset], token_end[:end_offset])
+          break if NO_TERM_WORDS.include?(token_end[:token])
+          next if tlen == 1 && token_begin[:token].length == 1
+          next if NO_EDGE_WORDS.include?(token_end[:token])
 
-          if tbegin > 0 && tlen == 1 && tokens[tbegin][:start_offset] && pars_open && pars_close
-            abbr_index[text_idx.to_s + ':' + tokens[tbegin - 1][:end_offset].to_s] = [tokens[tbegin][:start_offset], tokens[tbegin][:end_offset]]
+          if idx_token_begin > 0 && tlen == 1 && token_begin[:pars_open] && token_end[:pars_close]
+            abbr_index[text_idx.to_s + ':' + tokens[idx_token_begin - 1][:end_offset].to_s] = [token_begin[:start_offset], token_begin[:end_offset]]
           end
 
-          span_begin = tokens[tbegin][:start_offset]
-          span_end   = tokens[tbegin+tlen-1][:end_offset]
-          span = text[span_begin...span_end]
-          span_open_pars = span.index('(')
-          span_close_pars = span.index(')')
+          span_begin = token_begin[:start_offset]
+          span_end   = token_end[:end_offset]
 
-          if span_open_pars && !span_close_pars
-            if pars_close
+          case token_begin[:pars_level] - token_end[:pars_level]
+          when 0
+          when -1
+            if token_end[:pars_close]
               span_end += 1
-              span += ')'
             else
               next
             end
-          end
-
-          if !span_open_pars && span_close_pars
-            if text[span_begin - 1] == '('
+          when 1
+            if token_end[:pars_open]
               span_begin -= 1
-              span = '(' + span
             else
               next
             end
+          else
+            next
           end
+          span = text[span_begin...span_end]
 
-          norm2 = norm2s[tbegin, tlen].join
+          norm2 = norm2s[idx_token_begin, tlen].join
 
           if tlen > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
             lookup = @dictionaries.inject([]) do |col, dic|
@@ -301,7 +302,7 @@ class TextAnnotator
           end
 
           unless span_index.has_key?(span)
-            norm1 = norm1s[tbegin, tlen].join
+            norm1 = norm1s[idx_token_begin, tlen].join
             span_index[span] = {norm1:norm1, norm2:norm2, positions:[]}
           end
 
@@ -324,6 +325,31 @@ class TextAnnotator
 
   def cross_sentence(sbreaks, b, e)
     !sbreaks.find{|p| p > b && p < e}.nil?
+  end
+
+  def add_pars_info(tokens, text, sbreaks)
+    prev_token = nil
+    pars_level = 0
+    tokens.each do |token|
+      if prev_token && cross_sentence(sbreaks, prev_token[:end_offset], token[:start_offset])
+        prev_token = nil
+        pars_level = 0
+      end
+
+      start_offset = token[:start_offset]
+      pars_open  = start_offset > 0 && text[start_offset - 1] == '('
+      pars_close = text[token[:end_offset]] == ')'
+
+      if prev_token
+        count_pars_open  = text[prev_token[:end_offset] ... start_offset].count('(')
+        count_pars_close = text[prev_token[:end_offset] ... start_offset].count(')')
+        pars_level += (count_pars_open - count_pars_close)
+        pars_level = 0 if pars_level < 0
+      end
+
+      token.merge!({pars_open:pars_open, pars_close:pars_close, pars_level:pars_level})
+      prev_token = token
+    end
   end
 
   def norm1_tokenize(text)
