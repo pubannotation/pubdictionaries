@@ -3,27 +3,40 @@ require 'simstring'
 
 # Provide functionalities for text annotation.
 class TextAnnotator
-  # terms will never include these words
-  NO_TERM_WORDS = %w(is are am be was were do did does what which when where who how an the this that these those it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
+  OPTIONS_DEFAULT = {
+    # terms will never include these words
+    no_term_words: %w(is are am be was were do did does what which when where who how an the this that these those it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g),
 
-  # terms will never begin or end with these words, mostly prepositions
-  NO_EDGE_WORDS = %w(about above across after against along amid among around at before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from in inside into like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
+    # terms will never begin or end with these words, mostly prepositions
+    no_edge_words: %w(about above across after against along amid among around at before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from in inside into like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during),
+
+    tokens_len_min: 1,
+    tokens_len_max: 6,
+    threshold: 0.85,
+    abbreviation: false,
+    longest: false,
+    superfluous: false,
+    verbose: false
+  }
 
   # Initialize the text annotator instance.
   #
-  # * (array)  dictionaries  - The Id of dictionaries to be used for annotation.
-  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, abbreviation = true, longest = false, superfluous = false, verbose=false)
+  # * (Array) dictionaries  - The Id of dictionaries to be used for annotation.
+  # * (Hash) options
+#  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, abbreviation = true, longest = false, superfluous = false, verbose=false)
+  def initialize(dictionaries, options = {})
     @dictionaries = dictionaries
-    @tokens_len_max = tokens_len_max
-    @threshold = threshold
-    @abbreviation = abbreviation
-    @longest = longest
-    @superfluous = superfluous
-    @verbose = verbose
 
-    @tokens_len_min ||= 1
-    @tokens_len_max ||= 6
-    @threshold ||= 0.85
+    @no_term_words = options[:no_term_words] || OPTIONS_DEFAULT[:no_term_words]
+    @no_edge_words = options[:no_edge_words] || OPTIONS_DEFAULT[:no_edge_words]
+
+    @tokens_len_min = options[:tokens_len_min] || OPTIONS_DEFAULT[:tokens_len_min]
+    @tokens_len_max = options[:tokens_len_max] || OPTIONS_DEFAULT[:tokens_len_max]
+    @threshold = options[:threshold] || OPTIONS_DEFAULT[:threshold]
+    @abbreviation = options[:abbreviation] || OPTIONS_DEFAULT[:abbreviation]
+    @longest = options[:longest] || OPTIONS_DEFAULT[:longest]
+    @superfluous = options[:superfluous] || OPTIONS_DEFAULT[:superfluous]
+    @verbose = options[:verbose] || OPTIONS_DEFAULT[:verbose]
 
     @es_connection = Net::HTTP::Persistent.new
 
@@ -250,8 +263,8 @@ class TextAnnotator
       (0 ... tokens.length - @tokens_len_min + 1).each do |idx_token_begin|
         token_begin = tokens[idx_token_begin]
 
-        next if NO_TERM_WORDS.include?(token_begin[:token])
-        next if NO_EDGE_WORDS.include?(token_begin[:token])
+        next if @no_term_words.include?(token_begin[:token])
+        next if @no_edge_words.include?(token_begin[:token])
 
         (@tokens_len_min .. @tokens_len_max).each do |tlen|
           idx_token_end = idx_token_begin + tlen - 1
@@ -260,9 +273,9 @@ class TextAnnotator
           token_end = tokens[idx_token_end]
           break if (token_end[:position] - token_begin[:position]) + 1 > @tokens_len_max
           break if cross_sentence(sbreaks, token_begin[:start_offset], token_end[:end_offset])
-          break if NO_TERM_WORDS.include?(token_end[:token])
+          break if @no_term_words.include?(token_end[:token])
           next if tlen == 1 && token_begin[:token].length == 1
-          next if NO_EDGE_WORDS.include?(token_end[:token])
+          next if @no_edge_words.include?(token_end[:token])
 
           if idx_token_begin > 0 && tlen == 1 && token_begin[:pars_open] && token_end[:pars_close]
             abbr_index[text_idx.to_s + ':' + tokens[idx_token_begin - 1][:end_offset].to_s] = [token_begin[:start_offset], token_begin[:end_offset]]

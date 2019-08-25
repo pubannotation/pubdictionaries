@@ -82,7 +82,7 @@ class AnnotationController < ApplicationController
   def annotate(text, dictionaries_selected)
     options = get_options_from_params
 
-    annotator = TextAnnotator.new(dictionaries_selected, options[:tokens_len_max], options[:threshold], options[:abbreviation], options[:longest], options[:superfluous], options[:verbose])
+    annotator = TextAnnotator.new(dictionaries_selected, options)
     r = annotator.annotate_batch([{text: text}])
     annotator.dispose
     r.first
@@ -135,12 +135,13 @@ class AnnotationController < ApplicationController
 
   def get_options_from_params
     options = {}
-    options[:tokens_len_max] = tokens_len
-    options[:threshold] = threshold
-    options[:abbreviation] = abbreviation
-    options[:longest] = longest
-    options[:superfluous] = superfluous
-    options[:verbose] = verbose
+    options[:tokens_len_min] = get_option_integer(:tokens_len_min)
+    options[:tokens_len_max] = get_option_integer(:tokens_len_max)
+    options[:threshold] = get_option_float(:threshold)
+    options[:abbreviation] = get_option_boolean(:abbreviation)
+    options[:longest] = get_option_boolean(:longest)
+    options[:superfluous] = get_option_boolean(:superfluous)
+    options[:verbose] = get_option_boolean(:verbose)
     options
   end
 
@@ -148,27 +149,15 @@ class AnnotationController < ApplicationController
     @body ||= request.body.read.force_encoding('UTF-8')
   end
 
-  def threshold
-    params[:threshold].to_f if params[:threshold].present?
+  def get_option_float(key)
+    params[key].present? ? params[key].to_f : nil
   end
 
-  def tokens_len
-    params[:tokens_len_max].to_i if params[:tokens_len_max].present?
+  def get_option_integer(key)
+    params[key].present? ? params[key].to_i : nil
   end
 
-  def abbreviation
-    (params[:abbreviation] == 'true' || params[:abbreviation] == '1') ? true : false
-  end
-
-  def longest
-    (params[:longest] == 'true' || params[:longest] == '1') ? true : false
-  end
-
-  def superfluous
-    (params[:superfluous] == 'true' || params[:superfluous] == '1') ? true : false
-  end
-
-  def verbose
-    (params[:verbose] == 'true' || params[:verbose] == '1') ? true : false
+  def get_option_boolean(key)
+    (params[key] == 'true' || params[key] == '1') ? true : false
   end
 end

@@ -1,16 +1,8 @@
-<%
-	default_tokens_len_max = '6'
-	default_threshold = '0.85'
-	default_abbreviation = false
-	default_longest = false
-	default_superfluous = false
-	default_verbose = false
-%>
-
-
 <% content_for :page_title do %>
 	<span class="page_title">Text annotation</span>
 <% end %>
+
+<% options_default = TextAnnotator::OPTIONS_DEFAULT %>
 
 <fieldset>
 	<legend>Demo</legend>
@@ -27,12 +19,12 @@
 				<th><%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include information for debugging." %></th>
 			</tr>
 			<tr>
-				<td><%= text_field_tag :tokens_len_max, (params[:tokens_len_max] ? params[:tokens_len_max] : default_tokens_len_max).to_i, type: :number, min:1, max:30, step:1 %></td>
-				<td><%= text_field_tag :threshold, (params[:threshold] ? params[:threshold] : default_threshold).to_f, type: :number, min:0.5, max:1, step:0.01 %></td>
-				<td><%= check_box_tag :abbreviation, true, (params[:text] ? params[:abbreviation] : default_abbreviation) %></td>
-				<td><%= check_box_tag :longest, true, (params[:text] ? params[:longest] : default_longest) %></td>
-				<td><%= check_box_tag :superfluous, true, (params[:text] ? params[:superfluous] : default_superfluous) %></td>
-				<td><%= check_box_tag :verbose, true, (params[:text] ? params[:verbose] : default_verbose) %></td>
+				<td><%= text_field_tag :tokens_len_max, (params[:tokens_len_max] ? params[:tokens_len_max] : options_default[:tokens_len_max]).to_i, type: :number, min:1, max:30, step:1 %></td>
+				<td><%= text_field_tag :threshold, (params[:threshold] ? params[:threshold] : options_default[:threshold]).to_f, type: :number, min:0.5, max:1, step:0.01 %></td>
+				<td><%= check_box_tag :abbreviation, true, (params[:text] ? params[:abbreviation] : options_default[:abbreviation]) %></td>
+				<td><%= check_box_tag :longest, true, (params[:text] ? params[:longest] : options_default[:longest]) %></td>
+				<td><%= check_box_tag :superfluous, true, (params[:text] ? params[:superfluous] : options_default[:superfluous]) %></td>
+				<td><%= check_box_tag :verbose, true, (params[:text] ? params[:verbose] : options_default[:verbose]) %></td>
 			</tr>
 
 		</table>
@@ -213,43 +205,37 @@
 		}
 
 		var tokens_len_max = $('#tokens_len_max').val();
-		var default_tokens_len_max = <%= default_tokens_len_max %>;
-		if (tokens_len_max != <%= default_tokens_len_max %>) {
+		if (tokens_len_max != <%= options_default[:tokens_len_max] %>) {
 			var param = 'tokens_len_max=' + tokens_len_max;
 			params.push(param);
 		}
 
 		var threshold = $('#threshold').val();
-		var default_threshold = <%= default_threshold %>;
-		if (threshold != <%= default_threshold %>) {
+		if (threshold != <%= options_default[:threshold] %>) {
 			var param = 'threshold=' + threshold;
 			params.push(param);
 		}
 
 		var abbreviation = $('#abbreviation').is(':checked');
-		var default_abbreviation = <%= default_abbreviation  %>;
-		if (abbreviation != default_abbreviation) {
+		if (abbreviation != <%= options_default[:abbreviation] %>) {
 			var param = 'abbreviation=' + abbreviation;
 			params.push(param);
 		}
 
 		var longest = $('#longest').is(':checked');
-		var default_longest = <%= default_longest %>;
-		if (longest != default_longest) {
+		if (longest != <%= options_default[:longest] %>) {
 			var param = 'longest=' + longest;
 			params.push(param);
 		}
 
 		var superfluous = $('#superfluous').is(':checked');
-		var default_superfluous = <%= default_superfluous %>;
-		if (superfluous != default_superfluous) {
+		if (superfluous != <%= options_default[:superfluous] %>) {
 			var param = 'superfluous=' + superfluous;
 			params.push(param);
 		}
 
 		var verbose = $('#verbose').is(':checked');
-		var default_verbose = <%= default_verbose %>;
-		if (verbose != default_verbose) {
+		if (verbose != <%= options_default[:verbose] %>) {
 			var param = 'verbose=' + verbose;
 			params.push(param);
 		}

@@ -10,6 +10,7 @@ class Entry < ApplicationRecord
       filter: {
         english_stop: {
           type: :stop,
+          # stop words. They will be ignored  for norm1 and norm2 indexing
           # 'an' is removed from the stopwords list for "ANS disease"
           stopwords: %w(and are as at be but by for if in into is it no not of on or such that the their then there these they this to was will with)
         }
