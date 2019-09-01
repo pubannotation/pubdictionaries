@@ -131,12 +131,12 @@ class TextAnnotator
 
     anns_col.each{|anns| anns[:denotations].uniq!}
 
-    # To remove unnecessary denotations
+    # To remove redundant denotations
     anns_col.each do |anns|
       denotations = anns[:denotations]
       next unless denotations.length > 1
 
-      # To sort denotations by their position
+      # Too order denotations by their position and score
       denotations.sort! do |a, b|
         c1 = (a[:span][:begin] <=> b[:span][:begin])
         if c1.zero?
@@ -147,29 +147,83 @@ class TextAnnotator
         end
       end
 
-      denotations_sel = []
-      denotations.each do |d|
-        if denotations_sel.empty?
-          denotations_sel << d
-        else
-          last_denotation = denotations_sel.last
-          if ((d[:obj] == last_denotation[:obj]) && (d[:span][:begin] < last_denotation[:span][:end])) # span_overlap with the same obj
-            denotations_sel[-1] = d if d[:score] > last_denotation[:score] # to choose the one with higher score, preferring the shorter span
-          elsif (d[:span][:end] <= last_denotation[:span][:end]) # embedded span
-            if @longest
-              denotations_sel << d if ((d[:span] == last_denotation[:span]) && (d[:score] == last_denotation[:score]))
-              # do not choose
-            elsif @superfluous || (d[:score] >= last_denotation[:score])
-              denotations_sel << d # to choose it
+      # To find boundary_crossings
+      boundary_crossings = {}
+      incomplete = []
+      denotations.each_with_index do |d, c|
+        c_span = d[:span]
+
+        incomplete.delete_if{|h| denotations[h][:span][:end] <= c_span[:begin]}
+        incomplete.each do |h|
+          if denotations[h][:span][:end] < c_span[:end] # in case of boundary crossing
+            if boundary_crossings.has_key? c
+              boundary_crossings[c] << h
             else
-              # do not choose
+              boundary_crossings[c] = [h]
             end
+          end
+        end
+
+        incomplete << c
+      end
+
+      # To remove boundary crossings
+      to_be_removed = []
+      denotations.each_with_index do |d, i|
+        if boundary_crossings[i] # if it has boundary-crossing spans
+          max_c = boundary_crossings[i].max_by{|c| denotations[c][:score] }
+          if d[:score] > denotations[max_c][:score]
+            to_be_removed += boundary_crossings[i]
           else
-            denotations_sel << d # to choose all others
+            to_be_removed << i
           end
         end
       end
-      anns[:denotations] = denotations_sel
+      to_be_removed.sort.reverse.each{|i| denotations.delete_at(i)}
+
+      # To find embedded spans
+      embeddings = {}
+      denotations.each_with_index do |d, i|
+        next if i == 0
+        c_span = d[:span]
+
+        if c_span[:begin] < denotations[i - 1][:span][:end] # in case of overlap (which means embedding)
+          embeddings[i] = [i - 1]
+          embeddings[i] = embeddings[i - 1] + embeddings[i] if embeddings.has_key? i - 1
+        elsif embeddings.has_key? i - 1 # in case of non-overlap but the previous one is embedded in another
+          candidates = embeddings[i - 1]
+          i_with_embedding = candidates.rindex{|h| denotations[h][:span][:end] >= c_span[:end]}
+          if i_with_embedding
+            embeddings[i] = candidates.first(i_with_embedding + 1)
+          end
+        end
+      end
+
+      sel_d_indice = []
+      denotations.each_with_index do |d, i|
+        if embeddings[i]
+          i_with_the_same_obj = embeddings[i].find{|e| denotations[e][:obj] == d[:obj]}
+          if i_with_the_same_obj
+            if d[:score] >= denotations[i_with_the_same_obj][:score]
+              sel_d_indice.delete(i_with_the_same_obj)
+              sel_d_indice << i
+            end
+          else
+            if @longest
+              # to add the current one when it ties with the last one
+              if (d[:span] == denotations[i - 1][:span]) && (d[:score] == denotations[i - 1][:score])
+                sel_d_indice << i
+              end
+            elsif @superfluous || (d[:score] >= denotations[embeddings[i].last][:score])
+              sel_d_indice << i
+            end
+          end
+        else
+          sel_d_indice << i # otherwise, to add the current one
+        end
+      end
+
+      anns[:denotations] = sel_d_indice.map{|i| denotations[i]}
     end
 
     ## Local abbreviation annotation
@@ -330,7 +384,7 @@ class TextAnnotator
 
   def sentence_break(text)
     sbreaks = []
-    text.scan(/[a-z0-9][.!?](?<sb>\s+)[A-Z]/) do |sen|
+    text.scan(/[a-z0-9][.!?](?<sb>\s+)[A-Z]|(?<sb>\n)/) do |sen|
       sbreaks << Regexp.last_match.begin(:sb)
     end
     sbreaks
