@@ -199,12 +199,13 @@ class TextAnnotator
         end
       end
 
+      # To (selectively) remove embedded spans
       sel_d_indice = []
       denotations.each_with_index do |d, i|
         if embeddings[i]
           i_with_the_same_obj = embeddings[i].find{|e| denotations[e][:obj] == d[:obj]}
           if i_with_the_same_obj
-            if d[:score] >= denotations[i_with_the_same_obj][:score]
+            if d[:score] > denotations[i_with_the_same_obj][:score]
               sel_d_indice.delete(i_with_the_same_obj)
               sel_d_indice << i
             end
