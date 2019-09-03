@@ -213,22 +213,23 @@ class TextAnnotator
                 to_be_chosen.delete(i_with_the_same_obj)
                 embeddings_for_i.delete(i_with_the_same_obj)
                 to_be_chosen << i
+                embeddings[i] = embeddings_for_i if embeddings_for_i
               end
             else
               if @longest
                 # to add the current one only when it ties with the last one
                 if (d[:span] == denotations[l_idx][:span]) && (d[:score] == denotations[l_idx][:score])
                   to_be_chosen << i
+                  embeddings[i] = embeddings_for_i
                 end
               elsif @superfluous || (d[:score] >= denotations[embeddings_for_i.last][:score])
                 to_be_chosen << i
+                embeddings[i] = embeddings_for_i
               end
             end
           else
             to_be_chosen << i # otherwise, to add the current one
           end
-
-          embeddings[i] = embeddings_for_i if to_be_chosen.last == i
         end
       end
 
