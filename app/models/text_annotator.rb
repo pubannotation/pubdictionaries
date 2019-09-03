@@ -120,6 +120,7 @@ class TextAnnotator
         entries.each do |entry|
           d = {span:{begin:loc[:start_offset], end:loc[:end_offset]}, obj:entry[:identifier], score:entry[:score]}
           if @verbose
+            d[:string] = span
             d[:label] = entry[:label]
             d[:norm1] = entry[:norm1]
             d[:norm2] = entry[:norm2]
@@ -147,38 +148,30 @@ class TextAnnotator
         end
       end
 
-      # To find boundary_crossings
+      # To eliminate boundary_crossings
+      to_be_removed = []
       boundary_crossings = {}
       incomplete = []
       denotations.each_with_index do |d, c|
         c_span = d[:span]
 
         incomplete.delete_if{|h| denotations[h][:span][:end] <= c_span[:begin]}
-        incomplete.each do |h|
-          if denotations[h][:span][:end] < c_span[:end] # in case of boundary crossing
-            if boundary_crossings.has_key? c
-              boundary_crossings[c] << h
-            else
-              boundary_crossings[c] = [h]
-            end
-          end
-        end
+        boundary_crossings = incomplete.find_all{|h| denotations[h][:span][:end] < c_span[:end]}
 
-        incomplete << c
-      end
-
-      # To remove boundary crossings
-      to_be_removed = []
-      denotations.each_with_index do |d, i|
-        if boundary_crossings[i] # if it has boundary-crossing spans
-          max_c = boundary_crossings[i].max_by{|c| denotations[c][:score] }
+        if boundary_crossings.empty?
+          incomplete << c
+        else
+          max_c = boundary_crossings.max_by{|c| denotations[c][:score] }
           if d[:score] > denotations[max_c][:score]
-            to_be_removed += boundary_crossings[i]
+            to_be_removed += boundary_crossings
+            incomplete -= boundary_crossings
+            incomplete << c
           else
-            to_be_removed << i
+            to_be_removed << c
           end
         end
       end
+
       to_be_removed.sort.reverse.each{|i| denotations.delete_at(i)}
 
       # To find embedded spans, and to remove redundant ones
