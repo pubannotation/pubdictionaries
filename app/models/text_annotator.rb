@@ -181,50 +181,58 @@ class TextAnnotator
       end
       to_be_removed.sort.reverse.each{|i| denotations.delete_at(i)}
 
-      # To find embedded spans
+      # To find embedded spans, and to remove redundant ones
+      to_be_chosen = []
       embeddings = {}
       denotations.each_with_index do |d, i|
-        next if i == 0
-        c_span = d[:span]
+        if i == 0
+          to_be_chosen << 0
+        else
+          c_span = d[:span]
+          l_idx = to_be_chosen.last
 
-        if c_span[:begin] < denotations[i - 1][:span][:end] # in case of overlap (which means embedding)
-          embeddings[i] = [i - 1]
-          embeddings[i] = embeddings[i - 1] + embeddings[i] if embeddings.has_key? i - 1
-        elsif embeddings.has_key? i - 1 # in case of non-overlap but the previous one is embedded in another
-          candidates = embeddings[i - 1]
-          i_with_embedding = candidates.rindex{|h| denotations[h][:span][:end] >= c_span[:end]}
-          if i_with_embedding
-            embeddings[i] = candidates.first(i_with_embedding + 1)
+          embeddings_for_i = if c_span[:begin] < denotations[l_idx][:span][:end] # in case of overlap (which means embedding)
+            if embeddings.has_key? l_idx
+              embeddings[l_idx].dup << (l_idx)
+            else
+              [l_idx]
+            end
+          elsif embeddings.has_key? l_idx # in case of non-overlap but the previous one has embeddings spans
+            i_with_embedding = embeddings[l_idx].rindex{|h| denotations[h][:span][:end] >= c_span[:end]}
+            if i_with_embedding
+              embeddings[l_idx].first(i_with_embedding + 1)
+            else
+              nil
+            end
           end
-        end
-      end
 
-      # To (selectively) remove embedded spans
-      sel_d_indice = []
-      denotations.each_with_index do |d, i|
-        if embeddings[i]
-          i_with_the_same_obj = embeddings[i].find{|e| denotations[e][:obj] == d[:obj]}
-          if i_with_the_same_obj
-            if d[:score] > denotations[i_with_the_same_obj][:score]
-              sel_d_indice.delete(i_with_the_same_obj)
-              sel_d_indice << i
+          if embeddings_for_i
+            i_with_the_same_obj = embeddings_for_i.find{|e| denotations[e][:obj] == d[:obj]}
+            if i_with_the_same_obj
+              if d[:score] > denotations[i_with_the_same_obj][:score]
+                to_be_chosen.delete(i_with_the_same_obj)
+                embeddings_for_i.delete(i_with_the_same_obj)
+                to_be_chosen << i
+              end
+            else
+              if @longest
+                # to add the current one only when it ties with the last one
+                if (d[:span] == denotations[l_idx][:span]) && (d[:score] == denotations[l_idx][:score])
+                  to_be_chosen << i
+                end
+              elsif @superfluous || (d[:score] >= denotations[embeddings_for_i.last][:score])
+                to_be_chosen << i
+              end
             end
           else
-            if @longest
-              # to add the current one when it ties with the last one
-              if (d[:span] == denotations[i - 1][:span]) && (d[:score] == denotations[i - 1][:score])
-                sel_d_indice << i
-              end
-            elsif @superfluous || (d[:score] >= denotations[embeddings[i].last][:score])
-              sel_d_indice << i
-            end
+            to_be_chosen << i # otherwise, to add the current one
           end
-        else
-          sel_d_indice << i # otherwise, to add the current one
+
+          embeddings[i] = embeddings_for_i if to_be_chosen.last == i
         end
       end
 
-      anns[:denotations] = sel_d_indice.map{|i| denotations[i]}
+      anns[:denotations] = to_be_chosen.map{|i| denotations[i]}
     end
 
     ## Local abbreviation annotation
