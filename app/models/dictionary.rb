@@ -144,7 +144,7 @@ class Dictionary < ApplicationRecord
     transaction do
       new_entries = pairs.map {|label, id| Entry.new_for(self.id, label, id, normalizer)}
 
-      r = Entry.import new_entries, validate: false
+      r = Entry.ar_import new_entries, validate: false
       raise "Import error" unless r.failed_instances.empty?
 
       increment!(:entries_num, new_entries.length)
