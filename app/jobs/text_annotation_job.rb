@@ -1,27 +1,33 @@
-class TextAnnotationJob < Struct.new(:targets, :filename, :dictionaries, :options)
+class TextAnnotationJob < Struct.new(:targets, :dictionaries, :options)
   include StateManagement
 
 	def perform
     begin
-      raise ArgumentError, "The annotation targets have to be in an array." unless targets.class == Array
+      raise ArgumentError, "Annotation targets have to be in an array." unless targets.class == Array
+
+      if @job
+        @job.update_attribute(:num_items, targets.length)
+        @job.update_attribute(:num_dones, 0)
+      end
+
       annotator = TextAnnotator.new(dictionaries, options)
 
+      i = 0
       annotations_col = targets.each_slice(100).inject([]) do |col, slice|
         col += annotator.annotate_batch(slice)
+        @job.update_attribute(:num_dones, i += slice.length) if @job
+        col
       end
 
       annotator.dispose
 
-      TextAnnotator::BatchResult.new(filename).save!(annotations_col)
+      if @job
+        TextAnnotator::BatchResult.new(nil, @job.id).save!(annotations_col)
+      end
     rescue => e
-      TextAnnotator::BatchResult.new(filename).save!({"message":e.message})
+      if @job
+        TextAnnotator::BatchResult.new(nil, @job.id).save!({"message":e.message})
+      end
     end
 	end
-
-  def after
-    if @job
-      @job.update_attribute(:ended_at, Time.now)
-      @job.destroy
-    end
-  end
 end

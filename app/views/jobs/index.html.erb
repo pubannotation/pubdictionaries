@@ -1,67 +1,70 @@
-<% content_for :path do %>
-    > <%= link_to t('views.paths.home'), home_path %>
-    <% if @doc and @doc.sourcedb == 'PubMed' %>
-        > <%= link_to t('views.shared.pmdocs'), pmdocs_path %>
-        > <%= link_to @doc.sourceid, pmdoc_path(@doc.sourceid) %>
-        > <%= link_to t('activerecord.models.project').pluralize, pmdoc_projects_path(@doc.sourceid) %>
-    <% elsif @doc and @doc.sourcedb == 'PMC' %>
-        > <%= link_to t('views.shared.pmcdocs'), pmcdocs_path %>
-        > <%= link_to @doc.sourceid, pmcdoc_path(@doc.sourceid) %>
-        > <%= link_to t('views.shared.divs'),    pmcdoc_divs_path(@doc.sourceid) %>
-        > <%= link_to @doc.serial,   pmcdoc_div_path(@doc.sourceid, @doc.serial) %>
-        > <%= link_to t('activerecord.models.project').pluralize, pmcdoc_div_projects_path(@doc.sourceid, @doc.serial) %>
-    <% else %>
-        > <%= link_to t('activerecord.models.project').pluralize, projects_path %>
-    <% end %>
-  > <%= link_to @project.name, project_path(@project.name) %>
-  > jobs
+<% content_for :page_title do %>
+    <span class="page_title">Jobs</span>
 <% end %>
 
-<section>
-<%= render :partial => 'projects/titlebar' -%>
+<%=
+  grid(@jobs_grid) do |g|
 
-<section>
-<h1>Background jobs
-<%= link_to 'Clear finished jobs', project_clear_finished_jobs_path(@project.name), method: :delete, :class => 'control button' %>
-</h1>
+    g.column name: 'ID' do |job|
+      [link_to(job.id, job), {style: 'text-align: right'}]
+    end
 
-<table>
-<tr>
-<th>Current time</th>
-<td><%= Time.now %></td>
-</tr>
-</table>
-<table>
-  <tr>
-    <th>#</th>
-    <th>Job type</th>
-    <th>Created at</th>
-    <th>State</th>
-    <th>Progress</th>
-    <th>#Messages</th>
-  </tr>
+    g.column name: 'Dictionary' do |job|
+      if job.dictionary.nil?
+        ['-',  {style: 'text-align: center'}]
+      else
+        [link_to(job.dictionary.name, job.dictionary_id), {style: 'text-align: right'}]
+      end
+    end
 
-<% @jobs.each_with_index do |job, i| %>
-  <tr
-    <%=
-        if job.running?
-            'style=background-color:#ffcccc'
-        elsif job.finished?
-            'style=color:#888888'
-        end
-    %>>
-    <td><%= i + 1 %></td>
-    <td><%= job.name %></td>
-    <td><%= job.created_at %></td>
-    <td><%= state(job) %></td>
-    <td style="text-align:center"><%= job.num_items.nil? ? '-' : "#{job.num_dones} / #{job.num_items}" %></td>
-    <td style="text-align:right"><%= job.messages.length %></td>
-    <td>
-        <%= link_to 'Show', project_job_path(@project.name, job), :class => :button %>
-        <%= link_to 'Remove', project_job_path(@project.name, job), method: :delete, data: { confirm: 'Are you sure?' }, :class => :button unless job.running? %>
-    </td>
-  </tr>
-<% end %>
-</table>
-</section>
+
+    g.column name: 'Name', attribute: 'name' do |job|
+      job.name
+    end
+
+    g.column name: 'd._job', attribute: 'delayed_job_id' do |job|
+      [job.delayed_job_id, {style: 'text-align: right'}]
+    end
+
+    g.column name: '# items' do |job|
+      [job.num_items, {style: 'text-align: right'}]
+    end
+
+    g.column name: '# dones' do |job|
+      [job.num_dones, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'registered_at' do |job|
+      [job.registered_at, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'began_at' do |job|
+      [job.begun_at, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'end_at' do |job|
+      [job.ended_at, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'ETP' do |job|
+      [job.time, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'ETR' do |job|
+      [job.etr, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'delete' do |job|
+      if job.running?
+        ['running', {style: :italic}]
+      else
+        link_to('Delete', job, method: :delete, data: { confirm: 'Are you sure?' }, class: :button)
+      end
+    end
+
+  end
+%>
+<br/>
+<%= link_to('Delete all', Job, method: :delete, data: { confirm: 'Are you sure?' }, class: :button) %>
+
 </section>

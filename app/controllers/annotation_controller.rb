@@ -33,20 +33,48 @@ class AnnotationController < ApplicationController
 
   # POST
   def annotation_request
-    raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 8
-
     targets = get_targets_from_json_body
     raise ArgumentError, "No text was supplied." unless targets.present?
+    raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 8
 
-    result_name = TextAnnotator::BatchResult.new.name
-    delayed_job = enqueue_job(targets, result_name)
+    delayed_job = enqueue_job(targets)
     time_for_annotation = calc_time_for_annotation(targets)
-    Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: time_for_annotation})
+    job = Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, num_items:targets.length, time: time_for_annotation, registered_at:delayed_job.created_at})
+    result_name = TextAnnotator::BatchResult.new(nil, job.id).filename
 
     respond_to do |format|
-      retry_after = calc_retry_after(time_for_annotation)
-      format.any {head :see_other, location: annotation_result_url(result_name), retry_after: retry_after}
+      format.any {head :see_other, location: annotation_result_url(result_name), retry_after: time_for_annotation}
     end
+  rescue ArgumentError => e
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :bad_request}
+    end
+  rescue RuntimeError => e
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :service_unavailable}
+    end
+  rescue => e
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :internal_server_error}
+    end
+  end
+
+  # POST
+  def batch_annotation
+    targets = get_targets_from_json_body
+    raise ArgumentError, "No text was supplied." unless targets.present?
+    raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 8
+
+    delayed_job = enqueue_job(targets)
+    time_for_annotation = calc_time_for_annotation(targets)
+    job = Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, num_items:targets.length, time: time_for_annotation, registered_at:delayed_job.created_at})
+
+    respond_to do |format|
+      format.any  {render json: job.description(request.host_with_port), status: :created, location: job_url(job)}
+      format.csv  {send_data job.description_csv(request.host_with_port), type: :csv, dispotition: :inline, status: :created, location: job_url(job)}
+      format.json {render json: job.description(request.host_with_port), status: :created, location: job_url(job)}
+    end
+
   rescue ArgumentError => e
     respond_to do |format|
       format.any {render json: {message:e.message}, status: :bad_request}
@@ -63,13 +91,21 @@ class AnnotationController < ApplicationController
 
   # get
   def annotation_result
-    result = TextAnnotator::BatchResult.new(params[:filename])
+    result = TextAnnotator::BatchResult.new(filename)
 
     case result.status
     when :not_found
-      head :gone
-    when :queued
-      head :not_found
+      job = Job.find(result.job_id)
+      if job
+        case job.status
+        when :in_queue, :in_progress
+          head :not_found, retry_after: job.etr
+        when :done
+          head :gone
+        end
+      else
+        head :gone
+      end
     when :success
       send_file result.file_path, type: :json
     when :error
@@ -77,7 +113,45 @@ class AnnotationController < ApplicationController
     end
   end
 
+  # POST
+  def annotation_job
+    targets = get_targets_from_params
+    raise ArgumentError, "No text was supplied." unless targets.present?
+
+    raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 50
+
+    result_name = TextAnnotator::BatchResult.new.name
+    delayed_job = enqueue_job(targets, result_name)
+    etr = calc_time_for_annotation(targets)
+    job = Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: etr})
+
+    respond_to do |format|
+      # retry_after = calc_retry_after(time_for_annotation)
+      format.any  {send_data job.description_csv, type: :csv, dispotition: :inline, status: :created, location: job_url(job) }
+      format.csv  {send_data job.description_csv, type: :csv, dispotition: :inline, status: :created, location: job_url(job) }
+      format.json {render json: job.description, status: :created, location: job_url(job)}
+    end
+  rescue ArgumentError => e
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :bad_request}
+    end
+  rescue RuntimeError => e
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :service_unavailable}
+    end
+  rescue => e
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :internal_server_error}
+    end
+  end
+
   private
+
+  def filename
+    fn = params[:filename]
+    fn += '.' + params[:format]  if params[:format]
+    fn
+  end
 
   def annotate(text, dictionaries_selected)
     options = get_options_from_params
@@ -88,14 +162,14 @@ class AnnotationController < ApplicationController
     r.first
   end
 
-  def enqueue_job(targets, result_name)
+  def enqueue_job(targets)
     dictionaries = Dictionary.find_dictionaries_from_params(params)
     options = get_options_from_params
 
-    # job = TextAnnotationJob.new(targets, result_name, dictionaries, options)
+    # job = TextAnnotationJob.new(targets, dictionaries, options)
     # job.perform()
 
-    Delayed::Job.enqueue TextAnnotationJob.new(targets, result_name, dictionaries, options), queue: :annotation
+    Delayed::Job.enqueue TextAnnotationJob.new(targets, dictionaries, options), queue: :annotation
   end
 
   def calc_time_for_annotation(targets)
@@ -130,6 +204,17 @@ class AnnotationController < ApplicationController
   def get_targets_from_json_body
     if body.present?
       JSON.parse body, symbolize_names: true
+    end
+  end
+
+  def get_targets_from_params
+    if params[:texts].present?
+      texts = params[:texts]
+      if texts.respond_to? :each
+        texts
+      else
+        JSON.parse texts, symbolize_names: true
+      end
     end
   end
 

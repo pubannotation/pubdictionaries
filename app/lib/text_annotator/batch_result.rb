@@ -5,13 +5,13 @@ class TextAnnotator
   class BatchResult
     PATH = "tmp/annotations/"
 
-    attr_reader :name
+    attr_reader :filename, :job_id
 
     class << self
       def older_files(duration)
         to_delete = []
         Dir.foreach(PATH) do |filename|
-          next if filename == '.' or filename == '..'
+          next if filename == '.' || filename == '..'
           filepath = to_path(filename)
           to_delete << filepath if Time.now - File.mtime(filepath) > duration
         end
@@ -23,14 +23,21 @@ class TextAnnotator
       end
     end
 
-    def initialize(filename = nil)
-      filename ||= new_file!
-      @name = filename
+    def initialize(filename = nil, job_id = nil)
+      @filename = if filename
+        filename =~ /^annotation-(.+)\.json$/
+        @job_id = $1
+        filename
+      elsif job_id
+        @job_id = job_id
+        "annotation-#{job_id}.json"
+      else
+        raise ArgumentError, "Either filename or job_id has to be specified."
+      end
     end
 
     def save!(result)
       File.write(file_path, JSON.generate(result))
-      File.delete(temp_file_path)
     end
 
     def status
@@ -41,27 +48,15 @@ class TextAnnotator
           :error
         end
       else
-        if queued?
-          :queued
-        else
-          :not_found
-        end
+        :not_found
       end
     end
 
     def file_path
-      self.class.to_path(@name + '.json')
+      @filepath ||= self.class.to_path(filename)
     end
 
     private
-
-    def new_file!
-      setup_directory
-
-      filename = "annotation-result-#{SecureRandom.uuid}"
-      FileUtils.touch(self.class.to_path(filename))
-      filename
-    end
 
     def setup_directory
       unless File.directory?(PATH)
@@ -81,14 +76,6 @@ class TextAnnotator
       else
         annotations.has_key?(:text)
       end
-    end
-
-    def queued?
-      File.exist?(temp_file_path)
-    end
-
-    def temp_file_path
-      self.class.to_path(@name)
     end
 
     def annotations

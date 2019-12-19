@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_05_12_083926) do
+ActiveRecord::Schema.define(version: 2019_12_16_060131) do
 
   # These are extensions that must be enabled in order to support this database
+  enable_extension "pgcrypto"
   enable_extension "plpgsql"
 
   create_table "associations", force: :cascade do |t|
@@ -78,7 +79,7 @@ ActiveRecord::Schema.define(version: 2018_05_12_083926) do
     t.index ["norm2"], name: "index_entries_on_norm2"
   end
 
-  create_table "jobs", force: :cascade do |t|
+  create_table "jobs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name"
     t.bigint "dictionary_id"
     t.bigint "delayed_job_id"

@@ -10,6 +10,8 @@ Rails.application.routes.draw do
   get  "text_annotation", to: "annotation#text_annotation"
   post "text_annotation", to: "annotation#text_annotation"
   post "annotation_request", to: "annotation#annotation_request"
+  post "annotation_job", to: "annotation#annotation_job"
+  post "batch_annotation", to: "annotation#batch_annotation"
   get  'annotation_result/:filename', to: 'annotation#annotation_result', as: 'annotation_result'
 
   devise_for :users
@@ -43,8 +45,10 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :jobs, only: [:show, :destroy]
   end
+
+  resources :jobs, only: [:index, :show, :destroy]
+  delete 'jobs', to: "jobs#destroy_all"
 
   root :to => 'home#index'
 end
