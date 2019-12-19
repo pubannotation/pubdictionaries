@@ -18,13 +18,14 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
         post: Net::HTTP::Post.new(normalizer_url.request_uri, 'Content-Type' => 'application/json')
       }
 
+      dictionary_empty = dictionary.entries.empty?
       new_entries = []
       File.foreach(filename).with_index do |line, i|
         label, id = Entry.read_entry_line(line)
         if label.nil?
           # invalid entry line detected.
           # output an error message or just ignore it.
-        else
+        elsif dictionary_empty || dictionary.entries.find_by_label_and_identifier(label, id).nil?
           new_entries << [label, id]
           if new_entries.length >= transaction_size
             dictionary.add_entries(new_entries, normalizer)
