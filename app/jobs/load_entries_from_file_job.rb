@@ -5,8 +5,10 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
     begin
       transaction_size = 1000
       num_entries = File.read(filename).each_line.count
-      @job.update_attribute(:num_items, num_entries)
-      @job.update_attribute(:num_dones, 0)
+      if @job
+        @job.update_attribute(:num_items, num_entries)
+        @job.update_attribute(:num_dones, 0)
+      end
 
       normalizer_url = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
 
@@ -27,17 +29,23 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
           if new_entries.length >= transaction_size
             dictionary.add_entries(new_entries, normalizer)
             new_entries.clear
-            @job.update_attribute(:num_dones, i + 1)
+            if @job
+              @job.update_attribute(:num_dones, i + 1)
+            end
           end
         end
       end
       dictionary.add_entries(new_entries, normalizer) unless new_entries.empty?
-      @job.update_attribute(:num_dones, num_entries)
+      if @job
+        @job.update_attribute(:num_dones, num_entries)
+      end
 
       dictionary.compile
     rescue => e
       Delayed::Worker.logger.debug e.message + e.backtrace.join("\n")
-      @job.message = e.message
+      if @job
+        @job.message = e.message
+      end
       raise
     end
 
