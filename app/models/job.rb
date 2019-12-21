@@ -46,7 +46,7 @@ class Job < ApplicationRecord
     if finished?
       :done
     elsif running?
-      :in_processing
+      :in_progress
     else
       :in_queue
     end
