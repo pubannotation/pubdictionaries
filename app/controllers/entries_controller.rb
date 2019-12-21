@@ -30,10 +30,6 @@ class EntriesController < ApplicationController
       target_filepath = File.join('tmp', "upload-#{dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
       FileUtils.cp source_filepath, target_filepath
 
-      # TODO: at the moment, it is hard-coded. It should be improved.
-      `/usr/bin/dos2unix #{target_filepath}`
-      `/usr/bin/cut -f1,2 #{target_filepath} | sort -u -o #{target_filepath}`
-
       # delayed_job = LoadEntriesFromFileJob.new(target_filepath, dictionary)
       # delayed_job.perform
 

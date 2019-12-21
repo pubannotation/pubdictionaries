@@ -4,6 +4,12 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
 	def perform
     begin
       transaction_size = 1000
+
+      # file preprocessing
+      # TODO: at the moment, it is hard-coded. It should be improved.
+      `/usr/bin/dos2unix #{filename}`
+      `/usr/bin/cut -f1,2 #{filename} | sort -u -o #{filename}`
+
       num_entries = File.read(filename).each_line.count
       if @job
         @job.update_attribute(:num_items, num_entries)
