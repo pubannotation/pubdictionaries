@@ -446,7 +446,9 @@ class TextAnnotator
   end
 
   def language_suffix
-    @language_suffix ||= if @dictionaries.first.languages
+    @language_suffix ||= if @dictionaries.first.languages.empty?
+      ''
+    else
       case @dictionaries.first.languages.first.abbreviation
       when 'KO'
         '_ko'
@@ -455,8 +457,6 @@ class TextAnnotator
       else
         ''
       end
-    else
-      ''
     end
   end
 

@@ -82,7 +82,7 @@ class Dictionary < ApplicationRecord
         h
       end
 
-      search_method = superfluous ? Entry.method(:search_term_order) : Entry.method(:search_term_top)
+      search_method = superfluous ? Dictionary.method(:search_term_order) : Dictionary.method(:search_term_top)
 
       r = labels.inject({}) do |h, label|
         h[label] = search_method.call(dictionaries, sim_string_dbs, threshold, label)
@@ -253,7 +253,7 @@ class Dictionary < ApplicationRecord
 
     results  = []
     norm2s   = ssdb.retrieve(norm2) if ssdb
-    results += norm2s.inject([]){|sum, norm2| sum + results.where(norm2:norm2, mode:Entry::MODE_NORMAL)} if norm2s
+    results += norm2s.inject([]){|sum, norm2| sum + entries.where(norm2:norm2, mode:Entry::MODE_NORMAL)} if norm2s
     results += entries.where(mode:Entry::MODE_ADDITION)
     return [] if results.empty?
 
@@ -317,7 +317,9 @@ class Dictionary < ApplicationRecord
   end
 
   def language_suffix
-    @language_suffix ||= if languages
+    @language_suffix ||= if languages.empty?
+      ''
+    else
       case languages.first.abbreviation
       when 'KO'
         '_ko'
@@ -326,8 +328,6 @@ class Dictionary < ApplicationRecord
       else
         ''
       end
-    else
-      ''
     end
   end
 end
