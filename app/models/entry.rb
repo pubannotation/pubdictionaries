@@ -16,28 +16,29 @@ class Entry < ApplicationRecord
         }
       },
       analyzer: {
-        tokenization: { # typographic normalization
+        normalizer1: { # typographic normalization
+          tokenizer: :icu_tokenizer,
+          filter: [:icu_folding]
+        },
+        normalizer2: { # typographic normalization _ morphosyntactic normalization + stopword removal
+          tokenizer: :icu_tokenizer,
+          filter: [:icu_folding, :snowball, :english_stop]
+        },
+        normalizer1_ko: { # typographic normalization
           tokenizer: :nori_tokenizer,
           filter: [:icu_folding]
         },
-        normalization1: { # typographic normalization
-          tokenizer: :nori_tokenizer,
-          filter: [:icu_folding]
-        },
-        normalization2: { # typographic normalization _ morphosyntactic normalization + stopword removal
+        normalizer2_ko: { # typographic normalization _ morphosyntactic normalization + stopword removal
           tokenizer: :nori_tokenizer,
           filter: [:icu_folding, :snowball, :english_stop]
         },
-        ngrams: {
-          tokenizer: :trigram,
-          filter: [:standard, :asciifolding]
-        }
-      },
-      tokenizer: {
-        trigram: {
-          type: :ngram,
-          min_gram: 3,
-          max_gram: 3
+        normalizer1_ja: { # typographic normalization
+          tokenizer: :kuromoji_tokenizer,
+          filter: [:icu_folding]
+        },
+        normalizer2_ja: { # typographic normalization _ morphosyntactic normalization + stopword removal
+          tokenizer: :kuromoji_tokenizer,
+          filter: [:icu_folding, :snowball, :english_stop]
         }
       }
     }
@@ -73,80 +74,8 @@ class Entry < ApplicationRecord
     [items[0], items[1]]
   end
 
-  def self.narrow_by_label_prefix(str, dictionary = nil, page = 0)
-    norm1 = Entry.normalize1(str)
-    dictionary.nil? ?
-      self.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page) :
-      dictionary.entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
-  end
-
-  def self.narrow_by_label(str, dictionary = nil, page = 0)
-    norm1 = Entry.normalize1(str)
-    dictionary.nil? ?
-      self.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page) :
-      dictionary.entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page)
-  end
-
-  def self.narrow_by_identifier(str, dictionary = nil, page = 0)
-    dictionary.nil? ?
-      self.where("identifier ILIKE ?", "%#{str}%").page(page) :
-      dictionary.entries.where("identifier ILIKE ?", "%#{str}%").page(page)
-  end
-
-  def self.search_term(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
-    return [] if term.empty?
-    norm1 = Entry.normalize1(term) if norm1.nil?
-    norm2 = Entry.normalize2(term) if norm2.nil?
-
-    entries = dictionaries.inject([]) do |a1, dic|
-      norm2s = ssdbs[dic.name].retrieve(norm2) if ssdbs[dic.name]
-      a1 += norm2s.inject([]){|a2, norm2| a2 + dic.entries.where(norm2:norm2, mode:Entry::MODE_NORMAL)} if norm2s
-      a1 += dic.entries.where(mode:Entry::MODE_ADDITION)
-    end
-
-    return [] if entries.empty?
-    entries.map!{|e| {label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}.uniq!
-    entries.map!{|e| e.merge(score: str_jaccard_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}
-  end
-
-  def self.search_term_order(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
-    entries = self.search_term(dictionaries, ssdbs, threshold, term, norm1, norm2)
-    entries.delete_if{|e| e[:score] < threshold}
-    entries.sort_by{|e| e[:score]}.reverse
-  end
-
-  def self.search_term_top(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
-    entries = self.search_term(dictionaries, ssdbs, threshold, term, norm1, norm2)
-    return [] if entries.empty?
-    max_score = entries.max{|a, b| a[:score] <=> b[:score]}[:score]
-    return [] if max_score < threshold
-    entries = entries.delete_if{|e| e[:score] < max_score}
-  end
-
   def self.decapitalize(text)
     text.gsub(/(^| )[A-Z][a-z ]/, &:downcase)
-  end
-
-  # Get typographic normalization of an input text using an analyzer of ElasticSearch.
-  #
-  # * (string) text  - Input text.
-  #
-  def self.normalize1(text, normalizer = nil)
-    normalize text, 'normalization1', normalizer
-  end
-
-  def self.addition_entry_params(label, id)
-    norm1 = normalize1(label)
-    norm2 = normalize2(label)
-    {label: label, identifier: id, norm1: norm1, norm2: norm2, label_length: label.length, mode: Entry::MODE_ADDITION}
-  end
-
-  def self.new_for(dictionary_id, label, id, normalizer)
-    norm1 = normalize1(label, normalizer)
-    norm2 = normalize2(label, normalizer)
-    new(label: label, identifier: id, norm1: norm1, norm2: norm2, label_length: label.length, dictionary_id: dictionary_id)
-  rescue => e
-    raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
 
   def be_normal!
@@ -163,6 +92,22 @@ class Entry < ApplicationRecord
 
   def deletion?
     mode == Entry::MODE_DELETION
+  end
+
+  def self.normalize(text, normalizer, analyzer = nil)
+    raise ArgumentError, "Empty text" if text.empty?
+    _text = text.tr('{}', '()')
+    body = {analyzer: normalizer, text: _text}.to_json
+    res = if analyzer.nil?
+            uri = URI(Rails.configuration.elasticsearch[:host])
+            http = Net::HTTP.new(uri.host, uri.port)
+            http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
+          else
+            analyzer[:post].body = body
+            analyzer[:http].request(analyzer[:uri], analyzer[:post])
+          end
+    raise res.body unless res.kind_of? Net::HTTPSuccess
+    (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
 
   private
@@ -201,30 +146,5 @@ class Entry < ApplicationRecord
   def self.jaccard_sim(items1, items2)
     return 0.0 if items1.empty? || items2.empty?
     (items1 & items2).size.to_f / (items1 | items2).size
-  end
-
-  # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
-  #
-  # * (string) text  - Input text.
-  #
-  def self.normalize2(text, normalizer = nil)
-    normalize text, 'normalization2', normalizer
-  end
-
-
-  def self.normalize(text, analyzer, normalizer = nil)
-    raise ArgumentError, "Empty text" if text.empty?
-    _text = text.tr('{}', '()')
-    body = {analyzer: analyzer, text: _text}.to_json
-    res = if normalizer.nil?
-            uri = URI(Rails.configuration.elasticsearch[:host])
-            http = Net::HTTP.new(uri.host, uri.port)
-            http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
-          else
-            normalizer[:post].body = body
-            normalizer[:http].request(normalizer[:uri], normalizer[:post])
-          end
-    raise res.body unless res.kind_of? Net::HTTPSuccess
-    (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
 end

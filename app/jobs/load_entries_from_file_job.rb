@@ -16,12 +16,12 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
         @job.update_attribute(:num_dones, 0)
       end
 
-      normalizer_url = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
+      analyzer_url = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
 
-      normalizer = {
-        uri: normalizer_url,
+      analyzer = {
+        uri: analyzer_url,
         http: Net::HTTP::Persistent.new,
-        post: Net::HTTP::Post.new(normalizer_url.request_uri, 'Content-Type' => 'application/json')
+        post: Net::HTTP::Post.new(analyzer_url.request_uri, 'Content-Type' => 'application/json')
       }
 
       dictionary_empty = dictionary.entries.empty?
@@ -34,7 +34,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
         elsif dictionary_empty || dictionary.entries.find_by_label_and_identifier(label, id).nil?
           new_entries << [label, id]
           if new_entries.length >= transaction_size
-            dictionary.add_entries(new_entries, normalizer)
+            dictionary.add_entries(new_entries, analyzer)
             new_entries.clear
             if @job
               @job.update_attribute(:num_dones, i + 1)
@@ -42,7 +42,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
           end
         end
       end
-      dictionary.add_entries(new_entries, normalizer) unless new_entries.empty?
+      dictionary.add_entries(new_entries, analyzer) unless new_entries.empty?
       if @job
         @job.update_attribute(:num_dones, num_entries)
       end
@@ -56,7 +56,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
       raise
     end
 
-    normalizer && normalizer[:http] && normalizer[:http].shutdown
+    analyzer && analyzer[:http] && analyzer[:http].shutdown
     File.delete(filename)
 	end
 end

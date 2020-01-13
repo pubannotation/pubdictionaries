@@ -105,7 +105,7 @@ class TextAnnotator
     span_entries = {}
 
     # To determine the search method
-    search_method = @superfluous ? Entry.method(:search_term_order) : Entry.method(:search_term_top)
+    search_method = @superfluous ? Dictionary.method(:search_term_order) : Dictionary.method(:search_term_top)
 
     # To perform the search
     span_index.each do |span, info|
@@ -331,7 +331,7 @@ class TextAnnotator
           break if (token_end[:position] - token_begin[:position]) + 1 > @tokens_len_max
           break if cross_sentence(sbreaks, token_begin[:start_offset], token_end[:end_offset])
           break if @no_term_words.include?(token_end[:token])
-          next if tlen == 1 && token_begin[:token].length == 1
+          # next if tlen == 1 && token_begin[:token].length == 1
           next if @no_edge_words.include?(token_end[:token])
 
           if idx_token_begin > 0 && tlen == 1 && token_begin[:pars_open] && token_end[:pars_close]
@@ -423,11 +423,11 @@ class TextAnnotator
   end
 
   def norm1_tokenize(text)
-    tokenize('normalization1', text)
+    tokenize(normalizer1, text)
   end
 
   def norm2_tokenize(text)
-    tokenize('normalization2', text)
+    tokenize(normalizer2, text)
   end
 
   def tokenize(analyzer, text)
@@ -436,4 +436,28 @@ class TextAnnotator
     res = @es_connection.request @tokenizer_url, @tokenizer_post
     (JSON.parse res.body, symbolize_names: true)[:tokens]
   end
+
+  def normalizer1
+    @normalizer1 ||= 'normalizer1' + language_suffix
+  end
+
+  def normalizer2
+    @normalizer2 ||= 'normalizer2' + language_suffix
+  end
+
+  def language_suffix
+    @language_suffix ||= if @dictionaries.first.languages
+      case @dictionaries.first.languages.first.abbreviation
+      when 'KO'
+        '_ko'
+      when 'JA'
+        '_ja'
+      else
+        ''
+      end
+    else
+      ''
+    end
+  end
+
 end
