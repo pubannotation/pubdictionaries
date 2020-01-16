@@ -162,7 +162,7 @@ class Dictionary < ApplicationRecord
   def empty_entries
     transaction do
       # Generate to one delete SQL statement for performance
-      Entry.delete(Entry.where(dictionary_id: self.id).pluck(:id))
+      entries.delete_all
       update_attribute(:entries_num, 0)
     end
   end
