@@ -154,7 +154,7 @@ class Dictionary < ApplicationRecord
   def new_entry_params(dictionary_id, label, id, normalizer)
     norm1 = normalize1(label, normalizer)
     norm2 = normalize2(label, normalizer)
-    new(label: label, identifier: id, norm1: norm1, norm2: norm2, label_length: label.length, dictionary_id: dictionary_id)
+    Entry.new(label: label, identifier: id, norm1: norm1, norm2: norm2, label_length: label.length, dictionary_id: dictionary_id)
   rescue => e
     raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
