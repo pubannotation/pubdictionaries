@@ -95,7 +95,7 @@ class Entry < ApplicationRecord
   end
 
   def self.normalize(text, normalizer, analyzer = nil)
-    raise ArgumentError, "Empty text" if text.empty?
+    raise ArgumentError, "Empty text" unless text.present?
     _text = text.tr('{}', '()')
     body = {analyzer: normalizer, text: _text}.to_json
     res = if analyzer.nil?

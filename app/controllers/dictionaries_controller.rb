@@ -37,11 +37,13 @@ class DictionariesController < ApplicationController
       raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
 
       if params[:label_search]
-        @entries = Entry.narrow_by_label(params[:label_search], @dictionary, params[:page])
+        params[:label_search].strip!
+        @entries = @dictionary.narrow_entries_by_label(params[:label_search], params[:page])
       elsif params[:id_search]
-        @entries = Entry.narrow_by_identifier(params[:id_search], @dictionary).page(params[:page])
+        params[:id_search].strip!
+        @entries = @dictionary.narrow_entries_by_identifier(params[:id_search], params[:page])
       else
-        @entries = @dictionary.entries.order("mode DESC").order(:label).page(params[:page]) if @dictionary.present?
+        @entries = @dictionary.entries.order("mode DESC").order(:label).page(params[:page])
       end
 
       @addition_num = @dictionary.num_addition

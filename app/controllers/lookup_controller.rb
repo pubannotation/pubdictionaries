@@ -53,7 +53,7 @@ class LookupController < ApplicationController
       raise ArgumentError, "Unknown dictionary" if dictionary.nil?
 
       entries = if params[:term]
-        Entry.narrow_by_label_prefix(params[:term], dictionary)
+        dictionary.narrow_entries_by_label_prefix(params[:term])
       end
 
       respond_to do |format|
@@ -76,7 +76,7 @@ class LookupController < ApplicationController
       raise ArgumentError, "Unknown dictionary" if dictionary.nil?
 
       entries = if params[:term]
-        Entry.narrow_by_label(params[:term], dictionary)
+        dictionary.narrow_entries_by_label(params[:term])
       end
 
       respond_to do |format|

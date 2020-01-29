@@ -196,11 +196,7 @@ class Dictionary < ApplicationRecord
     num_addition > 0 || num_deletion > 0
   end
 
-  def narrow_entries_by_identifier(str, page = 0)
-    Entry.where("identifier ILIKE ?", "%#{str}%").page(page)
-  end
-
-  def narrow_entries_by_label(str, dictionary = nil, page = 0)
+  def narrow_entries_by_label(str, page = 0)
     norm1 = normalize1(str)
     entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page)
   end
@@ -212,6 +208,10 @@ class Dictionary < ApplicationRecord
 
   def narrow_entries_by_identifier(str, page = 0)
     entries.where("identifier ILIKE ?", "%#{str}%").page(page)
+  end
+
+  def self.narrow_entries_by_identifier(str, page = 0)
+    Entry.where("identifier ILIKE ?", "%#{str}%").page(page)
   end
 
   def self.narrow_entries_by_label(str, page = 0)
