@@ -49,6 +49,13 @@ class Entry < ApplicationRecord
   validates :label, presence: true
   validates :identifier, presence: true
 
+  def as_json(options={})
+    {
+      id: identifier,
+      label: label
+    }
+  end
+
   def self.as_tsv
     CSV.generate(col_sep: "\t") do |tsv|
       tsv << [:label, :id]
