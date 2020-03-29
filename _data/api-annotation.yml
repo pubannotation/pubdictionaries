@@ -89,9 +89,9 @@ paths:
               {
                 "message": "no text is supplied."
               }
-  /annotation_request:
+  /annotation_tasks:
     post:
-      summary: Request to annotate a block of text (or blocks of text).
+      summary: To create an annotation task to a block of text (or blocks of text).
       parameters:
         - name: dictionaries
           in: query
@@ -115,17 +115,13 @@ paths:
           description: similarity threshold for cut-off  
           required: false
       responses:
-        303:
+        201:
           description: The URL from which the result of annotation to be retrieved will be informed through the Location header
           headers:
             Location:
               description: The URL from which the result of annotation to be retrieved
               type: string
               format: url
-            Retry-after:
-              description: How long the client is advised to wait before accessing the location of result
-              type: string | integer
-              format: http-date | delta-seconds
         400:
           description: Bad Request, e.g., a mandatory parameter setting is missing.
           examples:
@@ -135,9 +131,13 @@ paths:
               }
         503:
           description: The request is valid, but the server is unavailable to fulfil it due to, e.g., server overload.
-  /annotation_result/{id}:
+
+  /annotation_tasks/{id}:
     get:
-      summary: Retrieve the result of annotation
+      summary: To show the status of the task
+  /annotation_results/{id}:
+    get:
+      summary: To retrieve the result of annotation
       parameters:
         - name: id
           in: path

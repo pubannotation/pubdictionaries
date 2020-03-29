@@ -2,8 +2,9 @@
   docs:
     - /
     - /lookup/
-    - /lookup-api/
     - /annotation/
+    - /batch-annotation-old/
     - /batch-annotation/
+    - /lookup-api/
     - /annotation-api/
     - /about/
