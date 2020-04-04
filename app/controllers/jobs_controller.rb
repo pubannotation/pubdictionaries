@@ -13,9 +13,10 @@ class JobsController < ApplicationController
     @job = Job.find(params[:id])
 
     respond_to do |format|
-      format.any  { render json: @job.description(request.host_with_port) }
+      format.any  { render json: @job.description(request.host_with_port), content_type: 'applicatin/json' }
       format.csv  { send_data @job.description_csv(request.host_with_port), type: :csv }
-      format.json { render json: @job.description(request.host_with_port) }
+      format.tsv  { send_data @job.description_csv(request.host_with_port), type: :csv }
+      format.json { render json: @job.description(request.host_with_port), type: :json }
     end
   end
 

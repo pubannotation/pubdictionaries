@@ -11,8 +11,10 @@ Rails.application.routes.draw do
   post "text_annotation", to: "annotation#text_annotation"
   post "annotation_request", to: "annotation#annotation_request"
   post "annotation_job", to: "annotation#annotation_job"
-  post "batch_annotation", to: "annotation#batch_annotation"
-  get  'annotation_result/:filename', to: 'annotation#annotation_result', as: 'annotation_result'
+  post "annotation_tasks", to: "annotation#annotation_task"
+  get "annotation_tasks/:id", to: "jobs#show", as: "annotation_task_show"
+
+  get  'annotation_results/:filename', to: 'annotation#annotation_result', as: 'annotation_result'
 
   devise_for :users
   get '/users/:name' => 'users#show', :as => 'show_user'

@@ -24,16 +24,10 @@ class TextAnnotator
     end
 
     def initialize(filename = nil, job_id = nil)
-      @filename = if filename
-        filename =~ /^annotation-(.+)\.json$/
-        @job_id = $1
-        filename
-      elsif job_id
-        @job_id = job_id
-        "annotation-#{job_id}.json"
-      else
-        raise ArgumentError, "Either filename or job_id has to be specified."
-      end
+      raise ArgumentError, "Either filename or job_id has to be specified." unless filename || job_id
+
+      @filename = filename || "annotation-#{job_id}.json"
+      @job_id = job_id || filename =~ /^annotation-(.+)\.json$/; $1
     end
 
     def save!(result)

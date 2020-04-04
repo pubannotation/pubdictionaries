@@ -60,19 +60,22 @@ class AnnotationController < ApplicationController
   end
 
   # POST
-  def batch_annotation
-    targets = get_targets_from_json_body
-    raise ArgumentError, "No text was supplied." unless targets.present?
+  def annotation_task
+    target = get_target
+
+    raise ArgumentError, "No text was supplied." unless target.present?
     raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 8
 
-    delayed_job = enqueue_job(targets)
-    time_for_annotation = calc_time_for_annotation(targets)
-    job = Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, num_items:targets.length, time: time_for_annotation, registered_at:delayed_job.created_at})
+    delayed_job = enqueue_job(target)
+    time_for_annotation = calc_time_for_annotation(target)
+    num_items = target.class == Array ? target.length : 1
+    job = Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, num_items:num_items, time: time_for_annotation, registered_at:delayed_job.created_at})
 
     respond_to do |format|
-      format.any  {render json: job.description(request.host_with_port), status: :created, location: job_url(job)}
-      format.csv  {send_data job.description_csv(request.host_with_port), type: :csv, dispotition: :inline, status: :created, location: job_url(job)}
-      format.json {render json: job.description(request.host_with_port), status: :created, location: job_url(job)}
+      format.any  {render json: job.description(request.host_with_port), status: :created, location: annotation_task_show_url(job), content_type: 'application/json'}
+      format.csv  {send_data job.description_csv(request.host_with_port), type: :csv, dispotition: :inline, status: :created, location: annotation_task_show_url(job), content_type: 'text/csv'}
+      format.tsv  {send_data job.description_csv(request.host_with_port), type: :csv, dispotition: :inline, status: :created, location: annotation_task_show_url(job), content_type: 'text/csv'}
+      format.json {render json: job.description(request.host_with_port), status: :created, location: annotation_task_show_url(job)}
     end
 
   rescue ArgumentError => e
@@ -162,20 +165,20 @@ class AnnotationController < ApplicationController
     r.first
   end
 
-  def enqueue_job(targets)
+  def enqueue_job(target)
     dictionaries = Dictionary.find_dictionaries_from_params(params)
     options = get_options_from_params
 
-    # job = TextAnnotationJob.new(targets, dictionaries, options)
+    # job = TextAnnotationJob.new(target, dictionaries, options)
     # job.perform()
 
-    Delayed::Job.enqueue TextAnnotationJob.new(targets, dictionaries, options), queue: :annotation
+    Delayed::Job.enqueue TextAnnotationJob.new(target, dictionaries, options), queue: :annotation
   end
 
-  def calc_time_for_annotation(targets)
+  def calc_time_for_annotation(target)
     @time_for_annotation ||= begin
                                # texts may contain a text block or an array of text blocks
-      texts = targets.class == Hash ? targets[:text] : targets.map {|t| t[:text]}
+      texts = target.class == Hash ? target[:text] : target.map {|t| t[:text]}
       TextAnnotator.time_estimation(texts)
     end
   end
@@ -200,6 +203,28 @@ class AnnotationController < ApplicationController
       end
     end
   end
+
+  def get_target
+    content_type = request.content_type.downcase
+    if content_type =~ /json/
+      parsed = JSON.parse body, symbolize_names: true
+      raise ArgumentError, "No text was supplied." if (parsed.class == Array && parsed[0][:text].nil?) || (parsed.class == Hash && parsed[:text].nil?)
+      parsed
+    elsif content_type =~ /text/
+      {text: body}
+    elsif content_type =~ /form-urlencoded/
+      {text: params[:text]}
+    elsif content_type =~ /form-data/
+      {text: params[:text]}
+    end
+  end
+
+  def get_targets_from_body
+    if body.present?
+      JSON.parse body, symbolize_names: true
+    end
+  end
+
 
   def get_targets_from_json_body
     if body.present?

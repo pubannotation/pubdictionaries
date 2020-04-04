@@ -1,9 +1,15 @@
-class TextAnnotationJob < Struct.new(:targets, :dictionaries, :options)
+class TextAnnotationJob < Struct.new(:target, :dictionaries, :options)
   include StateManagement
 
 	def perform
     begin
-      raise ArgumentError, "Annotation targets have to be in an array." unless targets.class == Array
+      single_target = false
+      targets = if target.class == Array
+        target
+      else
+        single_target = true
+        [target]
+      end
 
       if @job
         @job.update_attribute(:num_items, targets.length)
@@ -13,20 +19,36 @@ class TextAnnotationJob < Struct.new(:targets, :dictionaries, :options)
       annotator = TextAnnotator.new(dictionaries, options)
 
       i = 0
-      annotations_col = targets.each_slice(100).inject([]) do |col, slice|
-        col += annotator.annotate_batch(slice)
-        @job.update_attribute(:num_dones, i += slice.length) if @job
-        col
+      annotation_result = []
+      buffer = []
+      buffer_size = 0
+      targets.each_with_index do |t, i|
+        t_size = t[:text].length
+        if buffer.present? && (buffer_size + t_size > 100000)
+          annotation_result += annotator.annotate_batch(buffer)
+          @job.update_attribute(:num_dones, i) if @job
+          buffer.clear
+          buffer_size = 0
+        end
+        buffer << t
+        buffer_size += t_size
       end
+
+      unless buffer.empty?
+        annotation_result += annotator.annotate_batch(buffer)
+        @job.update_attribute(:num_dones, targets.length) if @job
+      end
+
+      annotation_result = annotation_result.first if single_target
 
       annotator.dispose
 
       if @job
-        TextAnnotator::BatchResult.new(nil, @job.id).save!(annotations_col)
+        TextAnnotator::BatchResult.new(nil, @job.id).save!(annotation_result)
       end
     rescue => e
       if @job
-        TextAnnotator::BatchResult.new(nil, @job.id).save!({"message":e.message})
+        @job.update_attribute(:message, e.message)
       end
     end
 	end

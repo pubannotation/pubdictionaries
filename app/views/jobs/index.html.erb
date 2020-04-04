@@ -13,7 +13,7 @@
       if job.dictionary.nil?
         ['-',  {style: 'text-align: center'}]
       else
-        [link_to(job.dictionary.name, job.dictionary_id), {style: 'text-align: right'}]
+        [link_to(job.dictionary.name, job.dictionary), {style: 'text-align: right'}]
       end
     end
 
