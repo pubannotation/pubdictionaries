@@ -7,3 +7,13 @@
 	"docs",
 	"swagger"
 ;
+
+table {
+	border: 1px solid #aaa;
+	border-collapse: collapse;
+
+	th, td {
+		border: 1px solid #aaa;
+		padding: 2px 4px;
+	}
+}

@@ -38,7 +38,7 @@ Below is a typical response of PubDictionaries when the requested is successfull
   Content-Type: application/json; charset=utf-8
   Location: http://pubdictionaries.org/annotation_tasks/ba8a0bb2-39b3-4530-a2a1-7da7c2df92ed
 
-  {"submitted_at":"2020-03-29T11:26:37.542Z", "status":"in_queue", "ETR":3}
+  {"submitted_at":"2020-03-29T11:26:37.542Z", "status":"IN_QUEUE", "ETR":3}
 ```
 The response tells that the requested annotation task is successfully created at the location specified at the _Location_ header.
 
@@ -53,10 +53,17 @@ Below is a typical response:
   HTTP/1.1 200 OK 
   Content-Type: application/json; charset=utf-8
 
-  {"submitted_at":"2020-03-29T11:26:37.542Z", "status":"in_progress", "ETR":1}
+  {"submitted_at":"2020-03-29T11:26:37.542Z", "status":"IN_PROGRESS", "ETR":1}
 ```
 It tells you that the task is in the queue, and the estimated time of remaining is 2 second.
-The status is one of _in_queue_, _in_progress_, or _done_.
+The status is one of the following:
+
+| Status        | Description                                               |
+|---------------|-----------------------------------------------------------|
+| _IN_QUEUE_    | The task is in the task queue.                            |
+| _IN_PROGRESS_ | The task is under processing.                             |
+| _DONE_        | The task is completed.                                    |
+| _ERROR_       | The processing of the task has stopped before completion. |
 
 While the response body is in JSON by default, you can receivd it in TSV (Tab-separated-values) by suffixing the location with '.csv' or '.tsv':
 <textarea class="bash" readonly="true" style="height:3em">
@@ -70,7 +77,7 @@ Below is a typical response when the status is _done_:
   Content-Type: application/json; charset=utf-8
 
   submitted_at	2020-03-29 11:26:37 UTC
-  status	done
+  status	DONE
   started_at	2020-03-29 11:27:26 UTC
   finished_at	2020-03-29 11:27:27 UTC
   result_location	http://pubdictionaries.org/annotation_results/annotation-ba8a0bb2-39b3-4530-a2a1-7da7c2df92ed.json
