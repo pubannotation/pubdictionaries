@@ -254,7 +254,7 @@
 		$('#curl_command_post2').text(command_post2);
 		$('#curl_command_post3').text(command_post3);
 
-		var batch_url = '<%= root_url %>annotation_request'
+		var batch_url = '<%= root_url %>annotation_tasks'
 		if (params.length > 0) {batch_url += '?' + params.join('&')}
 		$('#batch_rest_url').text(batch_url);
 
