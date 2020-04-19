@@ -25,8 +25,17 @@
     <td>
       <%= content_tag(:span, entry.label, class: label_class, title: entry.label) -%>
     </td>
-    <td>
-      <%= content_tag(:span, entry.identifier, class: id_class, title: entry.identifier) -%>
+    <td style="position:relative">
+      <%=
+        if is_url?(entry.identifier)
+          link_to(entry.identifier, entry.identifier, class: id_class, title: entry.identifier)
+        else
+          content_tag(:span, entry.identifier, class: id_class, title: entry.identifier)
+        end
+      -%>
+      <span style='position:absolute; right: 5px'>
+        <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'search') -%>
+      </span>
     </td>
     <% if @dictionary.editable?(current_user) %>
       <td style="text-align:center">
