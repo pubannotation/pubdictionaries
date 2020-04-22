@@ -246,15 +246,18 @@ class Dictionary < ApplicationRecord
     entries = entries.delete_if{|e| e[:score] < max_score}
   end
 
+  def additional_entries
+    @additional_entries ||= entries.where(mode:Entry::MODE_ADDITION).to_a
+  end
+
   def search_term(ssdb, term, norm1 = nil, norm2 = nil)
     return [] if term.empty?
     norm1 ||= normalize1(term)
     norm2 ||= normalize2(term)
 
-    results  = []
+    results  = additional_entries.dup
     norm2s   = ssdb.retrieve(norm2) if ssdb
-    results += norm2s.inject([]){|sum, norm2| sum + entries.where(norm2:norm2, mode:Entry::MODE_NORMAL)} if norm2s
-    results += entries.where(mode:Entry::MODE_ADDITION)
+    results += norm2s.inject([]){|sum, norm2| sum + entries.where(norm2:norm2, mode:Entry::MODE_NORMAL)} if norm2s.present?
     return [] if results.empty?
 
     results.map!{|e| {label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}.uniq!
