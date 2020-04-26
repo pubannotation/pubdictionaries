@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_12_16_060131) do
+ActiveRecord::Schema.define(version: 2020_04_23_173837) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
@@ -50,6 +50,12 @@ ActiveRecord::Schema.define(version: 2019_12_16_060131) do
     t.boolean "public", default: false
     t.string "license"
     t.string "license_url"
+    t.text "no_term_words", default: [], array: true
+    t.text "no_begin_words", default: [], array: true
+    t.text "no_end_words", default: [], array: true
+    t.integer "tokens_len_min", default: 1
+    t.integer "tokens_len_max", default: 6
+    t.float "threshold", default: 0.85
     t.index ["user_id"], name: "index_dictionaries_on_user_id"
   end
 

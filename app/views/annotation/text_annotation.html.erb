@@ -11,16 +11,26 @@
 
 		<table class="options">
 			<tr>
-				<th><%= label_tag :tokens_len_max, "Length", title: "The maximum number of tokens to be considered." %></th>
-				<th><%= label_tag :threshold, nil, title: "The output will include only the annotations whose matching score is above the threshold." %></th>
-				<th><%= label_tag :abbreviation, "Abbreviation", title: "Abbreviations which are locally defined in an input document will be automatically detected." %></th>
+				<th>
+					<%= label_tag :tokens_len_min, "Min Length", title: "The minimum number of tokens to be considered." %>
+					<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
+				</th>
+				<th><%= label_tag :tokens_len_max, "Max Length", title: "The maximum number of tokens to be considered." %>
+					<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
+				</th>
+				<th>
+					<%= label_tag :threshold, nil, title: "The output will include only the annotations whose matching score is above the threshold." %>
+					<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
+				</th>
+				<th><%= label_tag :abbreviation, "Abbreviation", title: "Abbreviations which are locally defined in an input document will be automatically detected. It defaults to true." %></th>
 				<th><%= label_tag :longest, "Longest", title: "Longest only annotation: the output will not include embedded annotations." %></th>
 				<th><%= label_tag :superfluous, "Superfluous", title: "Superflous annotation: all the annotations with a higher score than the threshold will be produced, while, in the default mode, only the ones with the highest score will be produced." %></th>
 				<th><%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include information for debugging." %></th>
 			</tr>
 			<tr>
-				<td><%= text_field_tag :tokens_len_max, (params[:tokens_len_max] ? params[:tokens_len_max] : options_default[:tokens_len_max]).to_i, type: :number, min:1, max:30, step:1 %></td>
-				<td><%= text_field_tag :threshold, (params[:threshold] ? params[:threshold] : options_default[:threshold]).to_f, type: :number, min:0.5, max:1, step:0.01 %></td>
+				<td><%= text_field_tag :tokens_len_min, params[:tokens_len_min].present? ? params[:tokens_len_min]: nil, type: :number, min:1, max:3, step:1 %></td>
+				<td><%= text_field_tag :tokens_len_max, params[:tokens_len_max].present? ? params[:tokens_len_max]: nil, type: :number, min:3, max:30, step:1 %></td>
+				<td><%= text_field_tag :threshold, params[:threshold].present? ? params[:threshold]: nil, type: :number, min:0.5, max:1, step:0.01 %></td>
 				<td><%= check_box_tag :abbreviation, true, (params[:text] ? params[:abbreviation] : options_default[:abbreviation]) %></td>
 				<td><%= check_box_tag :longest, true, (params[:text] ? params[:longest] : options_default[:longest]) %></td>
 				<td><%= check_box_tag :superfluous, true, (params[:text] ? params[:superfluous] : options_default[:superfluous]) %></td>
@@ -151,7 +161,6 @@
 <script type="text/javascript">
 	$(function() {
 		dictionarySelectionInit();
-		set_url();
 
 		var clipboard_url   = new Clipboard('#clip-btn-url');
 		var clipboard_get   = new Clipboard('#clip-btn-get');
@@ -161,6 +170,10 @@
 	});
 
 	$('#dictionaries').change(function() {
+		set_url();
+	});
+
+	$('#tokens_len_min').change(function() {
 		set_url();
 	});
 
@@ -188,8 +201,7 @@
 		set_url();
 	});
 
-	$('#text_annotation').on('reset', function(e)
-	{
+	$('#text_annotation').on('reset', function(e) {
 		setTimeout(function() {
 			dictionarySelectionReset();
 			set_url();
@@ -204,14 +216,20 @@
 			params.push(param_dics);
 		}
 
+		var tokens_len_min = $('#tokens_len_min').val();
+		if (tokens_len_min != '') {
+			var param = 'tokens_len_min=' + tokens_len_min;
+			params.push(param);
+		}
+
 		var tokens_len_max = $('#tokens_len_max').val();
-		if (tokens_len_max != <%= options_default[:tokens_len_max] %>) {
+		if (tokens_len_max != '') {
 			var param = 'tokens_len_max=' + tokens_len_max;
 			params.push(param);
 		}
 
 		var threshold = $('#threshold').val();
-		if (threshold != <%= options_default[:threshold] %>) {
+		if (threshold != '') {
 			var param = 'threshold=' + threshold;
 			params.push(param);
 		}

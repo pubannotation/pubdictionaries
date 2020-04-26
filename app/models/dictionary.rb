@@ -21,6 +21,15 @@ class Dictionary < ApplicationRecord
 
   SIM_STRING_DB_DIR = "db/simstring/"
 
+  # The terms which will never be included in terms
+  NO_TERM_WORDS = %w(is are am be was were do did does what which when where who how an the this that these those it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
+
+  # terms will never begin or end with these words, mostly prepositions
+  NO_BEGIN_WORDS = %w(a an about above across after against along amid among around at before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from in inside into like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
+
+  NO_END_WORDS = %w(about above across after against along amid among around at before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from in inside into like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
+
+
   scope :mine, -> (user) {
     if user.nil?
       none
@@ -68,7 +77,7 @@ class Dictionary < ApplicationRecord
       dictionaries
     end
 
-    def find_ids_by_labels(labels, dictionaries = [], threshold = 0.85, superfluous = false, verbose = false)
+    def find_ids_by_labels(labels, dictionaries = [], threshold = nil, superfluous = false, verbose = false)
       sim_string_dbs = dictionaries.inject({}) do |h, dic|
         h[dic.name] = begin
           Simstring::Reader.new(dic.sim_string_db_path)
@@ -77,7 +86,7 @@ class Dictionary < ApplicationRecord
         end
         if h[dic.name]
           h[dic.name].measure = Simstring::Jaccard
-          h[dic.name].threshold = threshold
+          h[dic.name].threshold = threshold || dic.threshold
         end
         h
       end
@@ -188,8 +197,16 @@ class Dictionary < ApplicationRecord
     # Generate to one delete SQL statement for performance
     Entry.delete(Entry.where(dictionary_id: self.id, mode:Entry::MODE_DELETION).pluck(:id))
     entries.where(mode:Entry::MODE_ADDITION).update_all(mode: Entry::MODE_NORMAL)
-
     db.close
+
+    mlabels = entries.pluck(:label).map{|l| l.downcase.split}
+    count_no_term_words = mlabels.map{|ml| ml & NO_TERM_WORDS}.select{|i| i.present?}.reduce([], :+).uniq
+    count_no_begin_words = mlabels.map{|ml| ml[0, 1] & NO_BEGIN_WORDS}.select{|i| i.present?}.reduce([], :+).uniq
+    count_no_end_words = mlabels.map{|ml| ml[-1, 1] & NO_END_WORDS}.select{|i| i.present?}.reduce([], :+).uniq
+    self.no_term_words = NO_TERM_WORDS - count_no_term_words
+    self.no_begin_words = NO_BEGIN_WORDS - count_no_begin_words
+    self.no_end_words = NO_END_WORDS - count_no_end_words
+    self.save!
   end
 
   def compilable?
@@ -224,33 +241,54 @@ class Dictionary < ApplicationRecord
     Entry.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
   end
 
-  def self.search_term(dictionaries, ssdbs, term, norm1 = nil, norm2 = nil)
+  def self.search_term_order(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
     return [] if term.empty?
 
-    dictionaries.inject([]) do |sum, dic|
-      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2)
+    entries = dictionaries.inject([]) do |sum, dic|
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold)
     end
-  end
 
-  def self.search_term_order(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
-    entries = self.search_term(dictionaries, ssdbs, term, norm1, norm2)
-    entries.delete_if{|e| e[:score] < threshold}
     entries.sort_by{|e| e[:score]}.reverse
   end
 
   def self.search_term_top(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
-    entries = self.search_term(dictionaries, ssdbs, term, norm1, norm2)
+    return [] if term.empty?
+
+    entries = dictionaries.inject([]) do |sum, dic|
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold)
+    end
+
     return [] if entries.empty?
+
     max_score = entries.max{|a, b| a[:score] <=> b[:score]}[:score]
-    return [] if max_score < threshold
-    entries = entries.delete_if{|e| e[:score] < max_score}
+    entries.delete_if{|e| e[:score] < max_score}
   end
 
   def additional_entries
-    @additional_entries ||= entries.where(mode:Entry::MODE_ADDITION).to_a
+    @additional_entries ||= ActiveRecord::Base.connection.select_all("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id='#{id}' AND mode=#{Entry::MODE_ADDITION}").to_a.each{|r| r.symbolize_keys!}
   end
 
-  def search_term(ssdb, term, norm1 = nil, norm2 = nil)
+  def search_term(ssdb, term, norm1 = nil, norm2 = nil, threshold = nil)
+    return [] if term.empty?
+    raise "no ssdb for the dictionry #{name}." unless ssdb.present?
+
+    norm1 ||= normalize1(term)
+    norm2 ||= normalize2(term)
+    threshold ||= self.threshold
+
+    results  = additional_entries.dup
+
+    norm2s   = ssdb.retrieve(norm2)
+    norm2s.each do |norm2|
+      results += ActiveRecord::Base.connection.select_all("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id='#{id}' AND norm2='#{norm2}' AND mode=#{Entry::MODE_NORMAL}").to_a.each{|r| r.symbolize_keys!}
+    end
+
+    results.uniq!
+    results.each{|e| e.merge!(score: Entry.str_jaccard_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}
+    results.delete_if{|e| e[:score] < threshold}
+  end
+
+  def search_term_old(ssdb, term, norm1 = nil, norm2 = nil)
     return [] if term.empty?
     norm1 ||= normalize1(term)
     norm2 ||= normalize2(term)

@@ -51,6 +51,7 @@ class DictionariesController < ApplicationController
 
       respond_to do |format|
         format.html
+        format.json { render json: @dictionary.as_json }
         format.tsv  { send_data @dictionary.entries.as_tsv,  filename: "#{@dictionary.name}.tsv",  type: :tsv  }
       end
     rescue => e
@@ -207,7 +208,10 @@ class DictionariesController < ApplicationController
       :public,
       :license,
       :license_url,
-      :associated_managers
+      :associated_managers,
+      :tokens_len_min,
+      :tokens_len_max,
+      :threshold
     )
   end
 end

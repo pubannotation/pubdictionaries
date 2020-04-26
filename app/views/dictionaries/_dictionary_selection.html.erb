@@ -42,6 +42,7 @@
     $("#unselected_dictionaries > .dictionary > i").mouseleave(function(){$(this).parent().css("border-style", "solid")});
 
     $.each(<%= raw @dictionary_names_selected %>, function(i, v){selectDictionary(v)});
+		setParamDics();
   }
 
   function dictionarySelectionReset() {
@@ -66,25 +67,25 @@
 	function selectDictionaryClick() {
 		var dicname = $(this).parent().attr("name");
 		selectDictionary(dicname);
+		setParamDics();
 	}
 
 	function unselectDictionaryClick() {
 		var dicname = $(this).parent().attr("name");
 		unselectDictionary(dicname);
+		setParamDics();
 	}
 
 	function selectDictionary(dicname) {
 		$('#unselected_dictionaries > #dictionary_' + dicname).hide();
 		$('#unselected_dictionaries > #dictionary_' + dicname).attr('selected', true);
 		$('#selected_dictionaries > #dictionary_' + dicname).show();
-		setParamDics();
 	}
 
 	function unselectDictionary(dicname) {
 		$('#selected_dictionaries > #dictionary_' + dicname).hide();
 		$('#unselected_dictionaries > #dictionary_' + dicname).show();
 		$('#unselected_dictionaries > #dictionary_' + dicname).attr('selected', false);
-		setParamDics();
 	}
 
 	function setParamDics() {

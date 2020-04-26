@@ -2,7 +2,7 @@
   <legend>Compile</legend>
 
   <p>When necessary, you can compile the dictionary to make searching the dictionary fast.</p>
-  <% if @dictionary.compilable? %>
+  <% if @dictionary.compilable? || @dictionary.no_term_words.empty? || (current_user && current_user.admin) %>
     <%= link_to(
       'Compile',
       compile_dictionary_path(@dictionary.name),

@@ -15,14 +15,17 @@
 		<div class="center-align">
 			<table class="option">
 			<tr>
-			<th><%= label_tag :threshold %></th>
-			<td><%= text_field_tag :threshold, (params[:threshold] ? params[:threshold] : default_threshold).to_f, type: :number, min:0.5, max:1, step:0.01 %></td>
+			<th>
+				<%= label_tag :threshold, nil, title: "The output will include only the terms whose matching score is above the threshold." %>
+				<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
+			</th>
+			<td><%= text_field_tag :threshold, nil, type: :number, min:0.5, max:1, step:0.01 %></td>
 			</tr>
 			</table>
 
 			<table class="option">
 			<tr>
-			<th><%= label_tag :superfluous, "Superfluous", title: "Superflous annotation: the output will include the entries with a higher score than the threshold, while, in the default mode, it will include only the ones with the highest score." %></th>
+			<th><%= label_tag :superfluous, "Superfluous", title: "Superfluous annotation: the output will include the entries with a higher score than the threshold, while, in the default mode, it will include only the ones with the highest score." %></th>
 			<td><%= check_box_tag :superfluous, true, (params[:superfluous] ? params[:superfluous] : default_superfluous) == 'true' %></td>
 			</tr>
 			</table>
@@ -156,6 +159,10 @@
 		set_url();
 	});
 
+	$("#superfluous").change(function() {
+		set_url();
+	});
+
 	$("#verbose").change(function() {
 		set_url();
 	});
@@ -181,6 +188,13 @@
 		var default_threshold = <%= default_threshold %>;
 		if (threshold != <%= default_threshold %>) {
 			var param = 'threshold=' + threshold;
+			params.push(param);
+		}
+
+		var superfluous = $('#superfluous').is(':checked');
+		var default_superfluous = <%= default_superfluous == 'true' %>;
+		if (superfluous != default_superfluous) {
+			var param = 'superfluous=' + superfluous;
 			params.push(param);
 		}
 
