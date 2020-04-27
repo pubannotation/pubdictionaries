@@ -61,7 +61,7 @@ class TextAnnotator
       end
       if h[dic.name]
         h[dic.name].measure = Simstring::Jaccard
-        h[dic.name].threshold = (@threshold || dic.threshold) * 0.7
+        h[dic.name].threshold = (@threshold || dic.threshold)
       end
       h
     end
