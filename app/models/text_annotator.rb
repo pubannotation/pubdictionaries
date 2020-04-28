@@ -288,10 +288,10 @@ class TextAnnotator
             next
           end
         when 1
-          if token_end[:pars_open_p]
+          if token_begin[:pars_open_p]
             span_begin -= 1
           else
-            next
+            break
           end
         else
           next
@@ -299,6 +299,7 @@ class TextAnnotator
         span = text[span_begin...span_end]
 
         norm2 = norm2s[idx_token_begin, tlen].join
+        next unless norm2.present?
 
         if tlen > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
           lookup = @dictionaries.inject([]) do |col, dic|
