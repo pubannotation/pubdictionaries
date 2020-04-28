@@ -1,4 +1,5 @@
 class AnnotationController < ApplicationController
+  skip_before_action :verify_authenticity_token, only: [:annotation_task]
 
   # GET / POST
   def text_annotation
