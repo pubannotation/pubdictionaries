@@ -22,12 +22,12 @@ class Dictionary < ApplicationRecord
   SIM_STRING_DB_DIR = "db/simstring/"
 
   # The terms which will never be included in terms
-  NO_TERM_WORDS = %w(is are am be was were do did does what which when where who how an the this that these those it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
+  NO_TERM_WORDS = %w(is are am be was were do did does had has have what which when where who how an the this that these those is it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
 
   # terms will never begin or end with these words, mostly prepositions
-  NO_BEGIN_WORDS = %w(a an about above across after against along amid among around at before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from in inside into like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
+  NO_BEGIN_WORDS = %w(a an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from had has have in inside into is it like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
 
-  NO_END_WORDS = %w(about above across after against along amid among around at before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from in inside into like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
+  NO_END_WORDS = %w(a an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from had has have in inside into is it like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
 
 
   scope :mine, -> (user) {
@@ -277,11 +277,11 @@ class Dictionary < ApplicationRecord
     norm2 ||= normalize2(term)
     threshold ||= self.threshold
 
-    results  = additional_entries.dup
+    results = additional_entries.dup
 
-    norm2s   = ssdb.retrieve(norm2)
-    norm2s.each do |norm2|
-      results += ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND norm2=$2 AND mode=0", 'SQL', [[nil, id], [nil, norm2]], prepare:true).to_a.each{|r| r.symbolize_keys!}
+    norm2s = ssdb.retrieve(norm2)
+    norm2s.each do |n2|
+      results += ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND norm2=$2 AND mode=0", 'SQL', [[nil, id], [nil, n2]], prepare:true).to_a.each{|r| r.symbolize_keys!}
     end
 
     results.uniq!
