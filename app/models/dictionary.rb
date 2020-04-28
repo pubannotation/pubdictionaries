@@ -22,12 +22,12 @@ class Dictionary < ApplicationRecord
   SIM_STRING_DB_DIR = "db/simstring/"
 
   # The terms which will never be included in terms
-  NO_TERM_WORDS = %w(is are am be was were do did does had has have what which when where who how an the this that these those is it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
+  NO_TERM_WORDS = %w(is are am be was were do did does had has have what which when where who how if whether an the this that these those is it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
 
   # terms will never begin or end with these words, mostly prepositions
-  NO_BEGIN_WORDS = %w(a an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from had has have in inside into is it like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
+  NO_BEGIN_WORDS = %w(a an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from had has have in inside into if is it like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during what which when where who how whether)
 
-  NO_END_WORDS = %w(a an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from had has have in inside into is it like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during)
+  NO_END_WORDS = %w(a an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from had has have in inside into if is it like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during what which when where who how whether)
 
 
   scope :mine, -> (user) {
