@@ -337,7 +337,7 @@ class TextAnnotator
 
         # to find abbreviation definitions
         if @abbreviation
-          if idx_token_begin > 0 && tlen == 1 && token_begin[:pars_open_p] && token_end[:pars_close_p]
+          if idx_token_begin > 0 && tlen == 1 && span.length > 1 && token_begin[:pars_open_p] && token_end[:pars_close_p]
             di = denotations.length - 1
             while di >= 0 && denotations[di][:span][:end] >= tokens[idx_token_begin - 1][:end_offset]
               if denotations[di][:span][:end] == tokens[idx_token_begin - 1][:end_offset]
