@@ -265,7 +265,8 @@ class Dictionary < ApplicationRecord
   end
 
   def additional_entries
-    @additional_entries ||= ActiveRecord::Base.connection.select_all("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id='#{id}' AND mode=#{Entry::MODE_ADDITION}").to_a.each{|r| r.symbolize_keys!}
+    @additional_entries ||= ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND mode=1", 'SQL', [[nil, id]], prepare:true).to_a.each{|r| r.symbolize_keys!}
+
   end
 
   def search_term(ssdb, term, norm1 = nil, norm2 = nil, threshold = nil)
@@ -280,7 +281,7 @@ class Dictionary < ApplicationRecord
 
     norm2s   = ssdb.retrieve(norm2)
     norm2s.each do |norm2|
-      results += ActiveRecord::Base.connection.select_all("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id='#{id}' AND norm2='#{norm2}' AND mode=#{Entry::MODE_NORMAL}").to_a.each{|r| r.symbolize_keys!}
+      results += ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND norm2=$2 AND mode=0", 'SQL', [[nil, id], [nil, norm2]], prepare:true).to_a.each{|r| r.symbolize_keys!}
     end
 
     results.uniq!
