@@ -75,12 +75,20 @@ class DictionariesController < ApplicationController
   end
 
   def create
-    dictionary_params[:associated_managers] = [] unless dictionary_params[:associated_managers].respond_to?(:each)
-    dictionary_params[:languages] = [] unless dictionary_params[:languages].respond_to?(:each)
     @dictionary = current_user.dictionaries.new(dictionary_params)
+
+    if @dictionary.language.present?
+      l = LanguageList::LanguageInfo.find(@dictionary.language)
+      if l.nil?
+        @dictionary.errors.add(:language, "unrecognizable language")
+      else
+        @dictionary.language = l.iso_639_3
+      end
+    end
     @dictionary.name.strip!
     @dictionary.user = current_user
-    message  = "An empty dictionary, #{@dictionary.name}, created."
+
+    message  = "An empty dictionary, #{@dictionary.name}, is just created."
     message += "\nAs it is created in non-public mode, it is visible only in your personal list." unless @dictionary.public
 
     respond_to do |format|
@@ -102,43 +110,47 @@ class DictionariesController < ApplicationController
     @dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
     raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
 
-    associated_managers = if params[:dictionary][:associated_managers]
-      _m = params[:dictionary][:associated_managers].split(/,/).map{|u| User.find_by_username(u)}
-      params[:dictionary].delete(:associated_managers)
-      _m
-    end
-
-    languages = if params[:dictionary][:languages]
-      _languages = params[:dictionary][:languages].split(/,/).map do |l|
-        _l = Language.find_by_abbreviation(l)
-        if _l.nil?
-          name = I18nData.languages[l]
-          raise ArgumentError, "Invalid language selection: #{l}" if name.nil?
-          _l = Language.create({abbreviation: l, name:name})
-        end
-        _l
-      end
-      params[:dictionary].delete(:languages)
-      _languages
-    end
-
     @dictionary.update_attributes(dictionary_params)
 
-    unless !associated_managers || associated_managers == @dictionary.associated_managers
-      to_delete = @dictionary.associated_managers - associated_managers
-      to_add = associated_managers - @dictionary.associated_managers
-      to_delete.each{|u| @dictionary.associated_managers.destroy(u)}
-      to_add.each{|u| @dictionary.associated_managers << u}
-    end
-
-    unless !languages || languages == @dictionary.languages
-      to_delete = @dictionary.languages - languages
-      to_add = languages - @dictionary.languages
-      to_delete.each{|u| @dictionary.languages.destroy(u)}
-      to_add.each{|u| @dictionary.languages << u}
-    end
-
     redirect_to dictionary_path(@dictionary)
+  end
+
+  def add_manager
+    begin
+      @dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
+      raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
+
+      username = params[:manager_name]
+      raise ArgumentError, "Empty username" unless username.present?
+      u = User.find_by_username(username)
+      raise ArgumentError, "Unknown user" unless u.present?
+      raise ArgumentError, "#{u.username} is the owner of the dictionary" if @dictionary.user == u
+      raise ArgumentError, "#{u.username} is already a manager of the dictionary" if @dictionary.associated_managers.include?(u)
+
+      @dictionary.associated_managers << u unless @dictionary.user == u || @dictionary.associated_managers.include?(u)
+
+      respond_to do |format|
+        format.html{ redirect_back fallback_location: root_path }
+      end
+    rescue => e
+      respond_to do |format|
+        format.html{ redirect_back fallback_location: root_path, notice: e.message }
+      end
+    end
+
+  end
+
+  def remove_manager
+    @dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
+    raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
+
+    username = params[:username]
+    u = User.find_by_username(username)
+    @dictionary.associated_managers.delete(u) if @dictionary.associated_managers.include?(u)
+
+    respond_to do |format|
+      format.html{ redirect_back fallback_location: root_path }
+    end
   end
 
   def empty
@@ -204,7 +216,7 @@ class DictionariesController < ApplicationController
     @dictionary_params ||= params.require(:dictionary).permit(
       :name,
       :description,
-      :languages,
+      :language,
       :public,
       :license,
       :license_url,

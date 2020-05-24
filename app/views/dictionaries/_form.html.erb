@@ -13,25 +13,30 @@
     </div>
   <% end %>
 
-  <table style="width:100%; max-width:800px">
+  <table style="width:100%">
     <tr>
-      <th><%= f.label :name, "Name" %></th>
-      <td><%= f.text_field :name, style: "box-sizing: border-box; width:100%" %></td>
+      <th colspan="2" class="section">Properties</th>
     </tr>
 
     <tr>
-      <th><%= f.label :description, "Description" %></th>
-      <td><%= f.text_area :description, rows: 5, style: "box-sizing: border-box; width:100%" %></td>
-    </tr>
-
-    <tr>
-      <th><%= f.label :description, "Languages" %></th>
+      <th><%= f.label :name, "Name*" %></th>
       <td>
-        <% if @dictionary.administrable?(current_user) %>
-          <%= render "language_selection" %>
-        <% else %>
-          <%= @dictionary.associated_managers.pluck(:username).map{|u| user_object(u)}.join('').html_safe %>
-        <% end %>
+        <p class="note">Please give it a descriptive name, which begins with an alphabet or underscore, and contains alphanumeric letters, underscore, hyphen, space, or round brackets.</p>
+        <%= f.text_field :name, required: true, style: "box-sizing: border-box; width:15em" %></td>
+    </tr>
+
+    <tr>
+      <th><%= f.label :description, "Description*" %></th>
+      <td>
+        <p class="note">Please describe the dictionary in detail, e.g., how it is developed, the source of the terms, etc.</p>
+        <%= f.text_area :description, required: true, rows: 5, style: "box-sizing: border-box; width:100%" %></td>
+    </tr>
+
+    <tr>
+      <th><%= f.label :description, "Language" %></th>
+      <td>
+        <p class="note">Please specify the language of the dictionary, which is important for correct analysis and annotation.</p>
+        <%= f.text_field :language, style: "box-sizing: border-box; width:15em" %> <span class="note">(default: English)</span>
       </td>
     </tr>
 
@@ -41,96 +46,121 @@
     </tr>
 
     <tr>
-      <th>Lisence Name</th>
-      <td><%= f.text_field :license, style: "box-sizing: border-box; width:100%" %></td>
-    </tr>
-
-    <tr>
-      <th>Lisence URL</th>
-      <td><%= f.text_field :license_url, style: "box-sizing: border-box; width:100%" %></td>
-    </tr>
-
-    <tr>
-      <th>Administrator</th>
-      <td><%= user_object(@dictionary.user.username) %></td>
-    </tr>
-
-    <tr>
-      <th>Managers</th>
-      <% if @dictionary.administrable?(current_user) %>
-        <td><%= render "associated_managers" %></td>
-      <% else %>
-        <td><%= @dictionary.associated_managers.pluck(:username).map{|u| user_object(u)}.join('').html_safe %></td>
-      <% end %>
-    </tr>
-
-    <tr>
-      <th>Min length</th>
-      <td><%= f.text_field :tokens_len_min, type: :number, min:1, max:3, step:1, style: "box-sizing: border-box; width:10em" %></td>
-    </tr>
-
-    <tr>
-      <th>Max length</th>
-      <td><%= f.text_field :tokens_len_max, type: :number, min:3, max:30, step:1, style: "box-sizing: border-box; width:10em" %></td>
-    </tr>
-
-    <tr>
-      <th>Threshold</th>
-      <td><%= f.text_field :threshold, type: :number, min:0.5, max:1, step:0.01, style: "box-sizing: border-box; width:10em" %></td>
-    </tr>
-
-    <tr>
-      <th title="The words that will not appear in a term">No term words</th>
+      <th>Lisence</th>
       <td>
-        <% if @dictionary.no_term_words.empty? %>
-          <i>compile to update or use the default</i>
-        <% else %>
-          <%= content_tag(:span, 'Default', title: Dictionary::NO_TERM_WORDS.sort.join(', ')) %>
-          <%=
-            count_no_term_words = Dictionary::NO_TERM_WORDS - @dictionary.no_term_words
-            if count_no_term_words.present?
-              "- #{count_no_term_words}"
-            end
-          %>
-        <% end %>
-      </td>
-    </tr>
-
-    <tr>
-      <th title="The words that will not appear in the beginning of a term">No begin words</th>
-      <td>
-        <% if @dictionary.no_begin_words.empty? %>
-          <i>compile to update or use the default</i>
-        <% else %>
-          <%= content_tag(:span, 'Default', title: Dictionary::NO_BEGIN_WORDS.sort.join(', ')) %>
-          <%=
-            count_no_begin_words = Dictionary::NO_BEGIN_WORDS - @dictionary.no_begin_words
-            if count_no_begin_words.present?
-              "- #{count_no_begin_words}"
-            end
-          %>
-        <% end %>
-      </td>
-    </tr>
-
-    <tr>
-      <th title="The words that will not appear in the end of a term">No end words</th>
-      <td>
-        <% if @dictionary.no_end_words.empty? %>
-          <i>compile to update for use the default</i>
-        <% else %>
-          <%= content_tag(:span, 'Default', title: Dictionary::NO_END_WORDS.sort.join(', ')) %>
-          <%=
-            count_no_end_words = Dictionary::NO_END_WORDS - @dictionary.no_end_words
-            if count_no_end_words.present?
-              "- #{count_no_end_words}"
-            end
-          %>
-        <% end %>
+        <p class="note">Please specify the license condition, which is important for proper and comfortable use of the dictionary. <a href="https://creativecommons.org/">Creative Commons</a> is a good source of various license conditions.</p>
+        <table>
+          <tr>
+            <th>Name</th>
+            <td><%= f.text_field :license, placeholder: "e.g., CC BY 4.0", style: "box-sizing: border-box; width:25em" %></td>
+          </tr>
+          <tr>
+            <th>URL</th>
+            <td><%= f.text_field :license_url, placeholder: "e.g., https://creativecommons.org/licenses/by/4.0/", style: "box-sizing: border-box; width:25em" %></td>
+          </tr>
+        </table>
       </td>
     </tr>
   </table>
-  <td colspan="2"><%= f.submit @submit_text, {:class =>"button"} %></td>
+
+  <% if params[:action] == 'edit' %>
+
+  <table style="width:100%">
+    <tr>
+      <th colspan="2" class="section">Advanced setting <span class="note">(Leave them to default if you don't know what they mean)</span></th>
+    </tr>
+
+    <tr>
+      <th style="width:6em">Params for Annotation</th>
+      <td>
+        <span class="note">Use the paramaters below to precisly control the text annotation using the dictionary.</span>
+        <table>
+          <tr>
+            <th>Min length</th>
+            <td><%= f.text_field :tokens_len_min, type: :number, min:1, max:3, step:1, style: "box-sizing: border-box; width:5em; text-align:right" %> <span class="note">The minimum length (number of words) of a string to be matched (default: 1)</span></td>
+          </tr>
+
+          <tr>
+            <th>Max length</th>
+            <td><%= f.text_field :tokens_len_max, type: :number, min:3, max:30, step:1, style: "box-sizing: border-box; width:5em; text-align:right" %> <span class="note">The maximum length (number of words) of a string to be matched (default: 6)</span></td>
+          </tr>
+
+          <tr>
+            <th>Threshold</th>
+            <td><%= f.text_field :threshold, type: :number, min:0.5, max:1, step:0.01, style: "box-sizing: border-box; width:5em; text-align:right" %> <span class="note">The lower it is, the softer the string matching will be (default: 0.85)</span></td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+
+    <tr>
+      <th>Stopwords</th>
+      <td>
+        <table>
+
+          <tr>
+            <th title="The words that will not appear in a term">No term words</th>
+            <td>
+              <% if @dictionary.no_term_words.empty? %>
+                <i>compile to update or use the default</i>
+              <% else %>
+                <%= content_tag(:span, 'Default', title: Dictionary::NO_TERM_WORDS.sort.join(', ')) %>
+                <%=
+                  count_no_term_words = Dictionary::NO_TERM_WORDS - @dictionary.no_term_words
+                  if count_no_term_words.present?
+                    "- #{count_no_term_words}"
+                  end
+                %>
+              <% end %>
+            </td>
+          </tr>
+
+          <tr>
+            <th title="The words that will not appear in the beginning of a term">No begin words</th>
+            <td>
+              <% if @dictionary.no_begin_words.empty? %>
+                <i>compile to update or use the default</i>
+              <% else %>
+                <%= content_tag(:span, 'Default', title: Dictionary::NO_BEGIN_WORDS.sort.join(', ')) %>
+                <%=
+                  count_no_begin_words = Dictionary::NO_BEGIN_WORDS - @dictionary.no_begin_words
+                  if count_no_begin_words.present?
+                    "- #{count_no_begin_words}"
+                  end
+                %>
+              <% end %>
+            </td>
+          </tr>
+
+          <tr>
+            <th title="The words that will not appear in the end of a term">No end words</th>
+            <td>
+              <% if @dictionary.no_end_words.empty? %>
+                <i>compile to update for use the default</i>
+              <% else %>
+                <%= content_tag(:span, 'Default', title: Dictionary::NO_END_WORDS.sort.join(', ')) %>
+                <%=
+                  count_no_end_words = Dictionary::NO_END_WORDS - @dictionary.no_end_words
+                  if count_no_end_words.present?
+                    "- #{count_no_end_words}"
+                  end
+                %>
+              <% end %>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+
+    <% end %>
+
+    <tr>
+      <td colspan="2"><%= f.submit @submit_text, {:class =>"button", style: "box-sizing: border-box; width: 100%"} %></td>
+    </tr>
+
+  </table>
 
 <% end %>
 

@@ -34,6 +34,8 @@ Rails.application.routes.draw do
       get  'prefix_completion', to: 'lookup#prefix_completion'
       get  'substring_completion', to: 'lookup#substring_completion'
       get 'compile'
+      post 'managers', to: 'dictionaries#add_manager'
+      delete 'managers/:username', to: 'dictionaries#remove_manager', as: 'manager'
     end
 
     resources :entries do

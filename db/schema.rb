@@ -10,11 +10,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_04_23_173837) do
+ActiveRecord::Schema.define(version: 2020_05_22_080221) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
+  enable_extension "uuid-ossp"
 
   create_table "associations", force: :cascade do |t|
     t.bigint "user_id"
@@ -56,14 +57,8 @@ ActiveRecord::Schema.define(version: 2020_04_23_173837) do
     t.integer "tokens_len_min", default: 1
     t.integer "tokens_len_max", default: 6
     t.float "threshold", default: 0.85
+    t.string "language"
     t.index ["user_id"], name: "index_dictionaries_on_user_id"
-  end
-
-  create_table "dl_associations", force: :cascade do |t|
-    t.bigint "dictionary_id"
-    t.bigint "language_id"
-    t.index ["dictionary_id"], name: "index_dl_associations_on_dictionary_id"
-    t.index ["language_id"], name: "index_dl_associations_on_language_id"
   end
 
   create_table "entries", force: :cascade do |t|
@@ -98,11 +93,6 @@ ActiveRecord::Schema.define(version: 2020_04_23_173837) do
     t.integer "time"
     t.index ["delayed_job_id"], name: "index_jobs_on_delayed_job_id"
     t.index ["dictionary_id"], name: "index_jobs_on_dictionary_id"
-  end
-
-  create_table "languages", force: :cascade do |t|
-    t.string "name"
-    t.string "abbreviation"
   end
 
   create_table "users", force: :cascade do |t|

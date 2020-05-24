@@ -3,10 +3,38 @@
 <% end %>
 <br/>
 <fieldset>
-  <legend>Edit</legend>
-  <%= render 'form' %>
+	<legend>Edit</legend>
+	<%= render 'form' %>
 </fieldset>
 
+<fieldset>
+	<legend>Administration</legend>
+	<table>
+		<tr>
+			<th>Owner</th>
+			<td><%= user_object(@dictionary.user.username, 'owner') %></td>
+			<td><span class="note">The owner of a dicitonary can make chages to the dictionary, <u>including</u> deleting the dicitonary.</span></td>
+		</tr>
+		<tr>
+			<th>Managers</th>
+			<td>
+				<% managers = @dictionary.associated_managers.pluck(:username) %>
+				<% if managers.present? %>
+					<%= managers.map{|u| user_object(u, 'manager', true)}.join('').html_safe %>
+				<% else %>
+					no associate managers
+				<% end %>
+				<div style="margin:2px 1px 1px 0; border:1px solid #aaa; border-radius:3px; padding:1px 2px">
+					<%= form_tag(managers_dictionary_path(@dictionary), method: :post, id: "add_manager_form") do %>
+						<%= autocomplete_field_tag 'manager_name', '', autocomplete_user_username_dictionaries_path, required: true, style: "width:calc(100% - 28px); border-style:none", placeholder: "type a username to add" %>
+						<a title="add a manager" href="javascript:{}" onclick="document.getElementById('add_manager_form').submit(); return false;"><i class="fa fa-plus-square" aria-hidden="true"></i></a>
+					<% end %>
+				</div>
+			</td>
+			<td><span class="note">A manager of a dicitonary can make chages to the dictionary, <u>except</u> deleting the dicitonary.</span></td>
+		</tr>
+	</table>
+</fieldset>
 
 <% if @dictionary.jobs.count == 0 %>
 	<%= render partial: 'commands' -%>

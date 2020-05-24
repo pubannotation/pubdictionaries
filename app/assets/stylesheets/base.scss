@@ -17,19 +17,27 @@ thead {
 }
 
 table {
+  margin: 6px 0;
   border-collapse: collapse;
   border: 1px solid gray;
 
   tr {
     border: 1px solid gray;
+
     th, td {
       border: 1px solid gray;
-      padding: 2px;
+      padding: 4px;
     }
     th {
       background-color: #ccccff;
+      vertical-align: top;
       text-align: center;
     }
+    th.section{
+      background-color: #aaaaff;
+      text-align: left;
+    }
+
   }
 }
 
@@ -75,6 +83,20 @@ h2 {
   font-size: 1em;
 }
 
+.note, .caution {
+  font-style: italic;
+  font-weight: normal;
+}
+
+.note {
+  color: #668;
+}
+
+.caution {
+  color: #e35;
+}
+
+
 ul.note {
   margin: 5px 0;
   list-style-type: '* ';
@@ -98,8 +120,8 @@ ul.warning {
   background-image: -ms-linear-gradient(top, #3498db, #2980b9);
   background-image: -o-linear-gradient(top, #3498db, #2980b9);
   background-image: linear-gradient(to bottom, #3498db, #2980b9);
-  -webkit-border-radius: 5;
-  -moz-border-radius: 5;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
   border-radius: 5px;
   font-family: Arial;
   color: #ffffff;

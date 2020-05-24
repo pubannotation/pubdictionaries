@@ -1,32 +1,22 @@
 <div class="infobox">
+<% collaborators = @dictionary.associated_managers.pluck(:username) %>
 <table>
 <tr>
-<th>administrator</th>
-<td><%= user_object(@dictionary.user.username) %></td>
+	<th><%= collaborators.empty? ? 'manager' : 'managers' %></th>
+	<td>
+		<%= user_object(@dictionary.user.username, 'owner') %>
+		<%= collaborators.map{|u| user_object(u, 'manager')}.join('').html_safe %>
+	</td>
 </tr>
 
-<% collaborators = @dictionary.associated_managers.pluck(:username) %>
-<% unless collaborators.empty? %>
-	<tr>
-	<th>managers</th>
-	<td><%= @dictionary.associated_managers.pluck(:username).map{|u| user_object(u)}.join('').html_safe %></td>
-	</tr>
-<% end %>
-
 <tr>
-<th>languages</th>
-<td>
-	<% if @dictionary.languages.empty? %>
-		not specified
-	<% else %>
-		<%= @dictionary.languages.pluck(:abbreviation).map{|l| language_object(l)}.join('').html_safe %>
-	<% end %>
-</td>
+	<th>language</th>
+	<td><%= language_object(@dictionary.language) || '-' %></td>
 </tr>
 
 <tr>
 <th>license</th>
-<td><%= @dictionary.license ? (@dictionary.license_url ? link_to(@dictionary.license, @dictionary.license_url) : @dictionary.license) : 'unknown' %></td>
+<td style='text-align:center'><%= @dictionary.license.present? ? (@dictionary.license_url.present? ? link_to(@dictionary.license, @dictionary.license_url) : @dictionary.license) : '-' %></td>
 </tr>
 <tr>
 <th>created at</th>

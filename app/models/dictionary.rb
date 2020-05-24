@@ -6,8 +6,6 @@ class Dictionary < ApplicationRecord
   belongs_to :user
   has_many :associations
   has_many :associated_managers, through: :associations, source: :user
-  has_many :dl_associations
-  has_many :languages, through: :dl_associations, source: :language
   has_many :entries, :dependent => :destroy
   has_many :jobs, :dependent => :destroy
 
@@ -15,19 +13,20 @@ class Dictionary < ApplicationRecord
   validates :user_id, presence: true 
   validates :description, presence: true
   validates :license_url, url: {allow_blank: true}
+  validates :name, length: {minimum: 3}
   validates_format_of :name,                              # because of to_param overriding.
-                      :with => /\A[^\.]*\z/,
-                      :message => "should not contain dot!"
+                      :with => /\A[a-zA-Z_][a-zA-Z0-9_\- ()]*\z/,
+                      :message => "should begin with an alphabet or underscore, and only contain alphanumeric letters, underscore, hyphen, space, or round brackets!"
 
   SIM_STRING_DB_DIR = "db/simstring/"
 
   # The terms which will never be included in terms
-  NO_TERM_WORDS = %w(is are am be was were do did does had has have what which when where who how if whether an the this that these those is it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
+  NO_TERM_WORDS = %w(are am be was were do did does had has have what which when where who how if whether an the this that these those is it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
 
   # terms will never begin or end with these words, mostly prepositions
-  NO_BEGIN_WORDS = %w(a an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from had has have in inside into if is it like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during what which when where who how whether)
+  NO_BEGIN_WORDS = %w(a am an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite do except excepting excluding for from had has have i in inside into if is it like my me of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during what which when where who how whether)
 
-  NO_END_WORDS = %w(a an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from had has have in inside into if is it like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during what which when where who how whether)
+  NO_END_WORDS = %w(a am an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite do except excepting excluding for from had has have i in inside into if is it like my me of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during what which when where who how whether)
 
 
   scope :mine, -> (user) {
