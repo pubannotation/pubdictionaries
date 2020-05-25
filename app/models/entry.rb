@@ -124,7 +124,7 @@ class Entry < ApplicationRecord
   # * (string) string1
   # * (string) string2
   #
-  def self.str_jaccard_sim(str1, s1norm1, s1norm2, str2, s2norm1, s2norm2)
+  def self.str_sim_jaccard_3gram(str1, str2, s1norm1, s2norm1, s1norm2, s2norm2)
     str1_trigrams = get_trigrams(str1)
     str2_trigrams = get_trigrams(str2)
     s1norm1_trigrams = get_trigrams(s1norm1)
@@ -139,13 +139,45 @@ class Entry < ApplicationRecord
     end
   end
 
+  def self.str_sim_jaccard_2gram(str1, str2, s1norm1, s2norm1, s1norm2, s2norm2)
+    str1_bigrams = get_bigrams(str1)
+    str2_bigrams = get_bigrams(str2)
+    s1norm1_bigrams = get_bigrams(s1norm1)
+    s1norm2_bigrams = get_bigrams(s1norm2)
+    s2norm1_bigrams = get_bigrams(s2norm1)
+    s2norm2_bigrams = get_bigrams(s2norm2)
+
+    if s1norm2.empty? && s2norm2.empty?
+      (jaccard_sim(str1_bigrams, str2_bigrams) + jaccard_sim(s1norm1_bigrams, s2norm1_bigrams)) / 2
+    else
+      (jaccard_sim(str1_bigrams, str2_bigrams) + jaccard_sim(s1norm1_bigrams, s2norm1_bigrams) + 10 * jaccard_sim(s1norm2_bigrams, s2norm2_bigrams)) / 12
+    end
+  end
+
+  def self.str_sim_jp(str1, str2, s1norm1 = nil, s2norm1 = nil, s1norm2 = nil, s2norm2 = nil)
+    sim1 = String::Similarity.cosine(str1, str2, ngram:1)
+    sim2 = String::Similarity.cosine(str1, str2, ngram:2)
+    (sim1 * 0.7) + (sim2 * 0.3)
+  end
+
+  def self.get_unigrams(str)
+    return [] if str.empty?
+    str.split(//)
+  end
+
+  def self.get_bigrams(str)
+    return [] if str.empty?
+    fstr = str + str[0] # to make a set of circular bigrams
+    (0 .. (fstr.length - 2)).collect{|i| fstr[i, 2]}
+  end
+
   def self.get_trigrams(str)
     return [] if str.empty?
     fstr = str[-1] + str + str[0] # to make a set of circular trigrams
-    (0 .. (fstr.length - 3)).collect{|i| fstr[i .. (i + 2)]}
+    (0 .. (fstr.length - 3)).collect{|i| fstr[i, 3]}
   end
 
-  # Compute jaccard similarity of two sets
+  # Compute the jaccard similarity of two sets
   #
   # * (array) items1
   # * (array) items2

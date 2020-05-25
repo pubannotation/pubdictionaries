@@ -183,9 +183,23 @@ class Dictionary < ApplicationRecord
     Rails.root.join(sim_string_db_dir, "tmp_entries.db").to_s
   end
 
+  def compilable?
+    num_addition > 0 || num_deletion > 0
+  end
+
   def compile
     FileUtils.mkdir_p(sim_string_db_dir) unless Dir.exist?(sim_string_db_dir)
-    db = Simstring::Writer.new sim_string_db_path, 3, false, true
+
+    ngram_order = case language
+    when 'kor'
+      2
+    when 'jpn'
+      1
+    else
+      3
+    end
+
+    db = Simstring::Writer.new sim_string_db_path, ngram_order, false, true
 
     entries
       .where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION])
@@ -208,8 +222,15 @@ class Dictionary < ApplicationRecord
     self.save!
   end
 
-  def compilable?
-    num_addition > 0 || num_deletion > 0
+  def simstring_method
+    @simstring_method ||= case language
+    when 'kor'
+      Simstring::Cosine
+    when 'jpn'
+      Simstring::Cosine
+    else
+      Simstring::Jaccard
+    end
   end
 
   def narrow_entries_by_label(str, page = 0)
@@ -279,27 +300,18 @@ class Dictionary < ApplicationRecord
     results = additional_entries.dup
 
     norm2s = ssdb.retrieve(norm2)
+
     norm2s.each do |n2|
       results += ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND norm2=$2 AND mode=0", 'SQL', [[nil, id], [nil, n2]], prepare:true).to_a.each{|r| r.symbolize_keys!}
     end
 
     results.uniq!
-    results.each{|e| e.merge!(score: Entry.str_jaccard_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}
+    results.each{|e| e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]))}
     results.delete_if{|e| e[:score] < threshold}
   end
 
-  def search_term_old(ssdb, term, norm1 = nil, norm2 = nil)
-    return [] if term.empty?
-    norm1 ||= normalize1(term)
-    norm2 ||= normalize2(term)
-
-    results  = additional_entries.dup
-    norm2s   = ssdb.retrieve(norm2) if ssdb
-    results += norm2s.inject([]){|sum, norm2| sum + entries.where(norm2:norm2, mode:Entry::MODE_NORMAL)} if norm2s.present?
-    return [] if results.empty?
-
-    results.map!{|e| {label: e.label, identifier:e.identifier, norm1: e.norm1, norm2: e.norm2}}.uniq!
-    results.map!{|e| e.merge(score: Entry.str_jaccard_sim(term, norm1, norm2, e[:label], e[:norm1], e[:norm2]))}
+  def sim_string_db_dir
+    Dictionary::SIM_STRING_DB_DIR + self.name
   end
 
   private
@@ -312,10 +324,6 @@ class Dictionary < ApplicationRecord
     norm2 = normalize2(label)
     entries.create({label: label, identifier: id, norm1: norm1, norm2: norm2, label_length: label.length, mode: Entry::MODE_ADDITION})
     true
-  end
-
-  def sim_string_db_dir
-    Dictionary::SIM_STRING_DB_DIR + self.name
   end
 
   def update_tmp_sim_string_db
@@ -358,17 +366,28 @@ class Dictionary < ApplicationRecord
   end
 
   def language_suffix
-    @language_suffix ||= if languages.empty?
-      ''
-    else
-      case languages.first.abbreviation
-      when 'KO'
+    @language_suffix ||= if language.present?
+      case language
+      when 'kor'
         '_ko'
-      when 'JA'
+      when 'jpn'
         '_ja'
       else
         ''
       end
+    else
+      ''
+    end
+  end
+
+  def str_sim
+    @str_sim ||= case language
+    when 'kor'
+      Entry.method(:str_sim_jaccard_2gram)
+    when 'jpn'
+      Entry.method(:str_sim_jp)
+    else
+      Entry.method(:str_sim_jaccard_3gram)
     end
   end
 end

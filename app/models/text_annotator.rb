@@ -54,41 +54,44 @@ class TextAnnotator
     @cache_span_search = {}
 
     @sub_string_dbs = @dictionaries.inject({}) do |h, dic|
-      h[dic.name] = begin
+      simstring_db = begin
         Simstring::Reader.new(dic.sim_string_db_path)
       rescue
-        nil
+        raise "Simstring DB is missing for #{dic.name}"
       end
-      if h[dic.name]
-        h[dic.name].measure = Simstring::Jaccard
-        h[dic.name].threshold = (@threshold || dic.threshold)
-      end
+
+      simstring_db.measure = dic.simstring_method
+      simstring_db.threshold = (@threshold || dic.threshold)
+
+      h[dic.name] = simstring_db
       h
     end
 
     @sub_string_dbs_overlap = @dictionaries.inject({}) do |h, dic|
-      h[dic.name] = begin
+      simstring_db = begin
         Simstring::Reader.new(dic.sim_string_db_path)
       rescue
-        nil
+        raise "Simstring DB is missing for #{dic.name}"
       end
-      if h[dic.name]
-        h[dic.name].measure = Simstring::Overlap
-        h[dic.name].threshold = (@threshold || dic.threshold) * 0.7
-      end
+
+      simstring_db.measure = Simstring::Overlap
+      simstring_db.threshold = (@threshold || dic.threshold) * 0.8
+
+      h[dic.name] = simstring_db
       h
     end
 
     @tmp_sub_string_dbs_overlap = @dictionaries.inject({}) do |h, dic|
-      h[dic.name] = begin
-        Simstring::Reader.new(dic.tmp_sim_string_db_path)
+      simstring_db = begin
+        Simstring::Reader.new(dic.sim_string_db_path)
       rescue
-        nil
+        raise "Simstring DB is missing for #{dic.name}"
       end
-      if h[dic.name]
-        h[dic.name].measure = Simstring::Overlap
-        h[dic.name].threshold = (@threshold || dic.threshold) * 0.7
-      end
+
+      simstring_db.measure = Simstring::Overlap
+      simstring_db.threshold = (@threshold || dic.threshold) * 0.8
+
+      h[dic.name] = simstring_db
       h
     end
   end
@@ -301,7 +304,7 @@ class TextAnnotator
         norm2 = norm2s[idx_token_begin, tlen].join
         next unless norm2.present?
 
-        if tlen > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
+        if span.length > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
           lookup = @dictionaries.inject([]) do |col, dic|
             col += @sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @sub_string_dbs_overlap[dic.name].nil?
             col += @tmp_sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @tmp_sub_string_dbs_overlap[dic.name].nil?
@@ -316,6 +319,7 @@ class TextAnnotator
         if entries.nil?
           norm1 = norm1s[idx_token_begin, tlen].join
           entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, span, norm1, norm2)
+
           if entries.present?
             # cache all the positive search results
             @cache_span_search[span] = entries
@@ -436,17 +440,15 @@ class TextAnnotator
   end
 
   def language_suffix
-    @language_suffix ||= if @dictionaries.first.languages.empty?
-      ''
+    return '' unless @dictionaries.first.language.present?
+
+    @language_suffix ||= case @dictionaries.first.language
+    when 'kor'
+      '_ko'
+    when 'jpn'
+      '_ja'
     else
-      case @dictionaries.first.languages.first.abbreviation
-      when 'KO'
-        '_ko'
-      when 'JA'
-        '_ja'
-      else
-        ''
-      end
+      ''
     end
   end
 

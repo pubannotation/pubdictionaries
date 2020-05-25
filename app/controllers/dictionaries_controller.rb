@@ -107,12 +107,26 @@ class DictionariesController < ApplicationController
   end
   
   def update
-    @dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
-    raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
+    begin
+      @dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
+      raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
 
-    @dictionary.update_attributes(dictionary_params)
+      if dictionary_params[:language].present?
+        l = LanguageList::LanguageInfo.find(dictionary_params[:language])
+        raise "unrecognizable language: #{dictionary_params[:language]}" if l.nil?
+        dictionary_params[:language] = l.iso_639_3
+      end
 
-    redirect_to dictionary_path(@dictionary)
+      db_loc_old = @dictionary.sim_string_db_dir
+      if @dictionary.update_attributes(dictionary_params)
+        db_loc_new = @dictionary.sim_string_db_dir
+        FileUtils.mv db_loc_old, db_loc_new unless db_loc_new == db_loc_old
+      end
+
+      redirect_to @dictionary
+    rescue => e
+      redirect_back fallback_location: @dictionary, notice: e.message
+    end
   end
 
   def add_manager

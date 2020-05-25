@@ -29,6 +29,7 @@ gem 'coffee-rails'
 gem 'uglifier'
 gem 'bootsnap'
 gem 'language_list', '~> 1.2', '>= 1.2.1'
+gem 'string-similarity', '~> 2.1'
 
 group :development do
   gem 'guard-livereload', require: false

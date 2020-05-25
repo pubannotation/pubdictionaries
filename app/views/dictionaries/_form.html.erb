@@ -21,22 +21,23 @@
     <tr>
       <th><%= f.label :name, "Name*" %></th>
       <td>
-        <p class="note">Please give it a descriptive name, which begins with an alphabet or underscore, and contains alphanumeric letters, underscore, hyphen, space, or round brackets.</p>
+        <p class="note" style="margin-top:0">Please give it a descriptive name, which begins with an alphabet or underscore, and contains alphanumeric letters, underscore, hyphen, space, or round brackets.</p>
         <%= f.text_field :name, required: true, style: "box-sizing: border-box; width:15em" %></td>
     </tr>
 
     <tr>
       <th><%= f.label :description, "Description*" %></th>
       <td>
-        <p class="note">Please describe the dictionary in detail, e.g., how it is developed, the source of the terms, etc.</p>
+        <p class="note" style="margin-top:0">Please describe the dictionary in detail, e.g., how it is developed, the source of the terms, etc.</p>
         <%= f.text_area :description, required: true, rows: 5, style: "box-sizing: border-box; width:100%" %></td>
     </tr>
 
     <tr>
       <th><%= f.label :description, "Language" %></th>
       <td>
-        <p class="note">Please specify the language of the dictionary, which is important for correct analysis and annotation.</p>
+        <p class="note" style="margin-top:0">Please specify the language of the dictionary, which is important for correct analysis and annotation.</p>
         <%= f.text_field :language, style: "box-sizing: border-box; width:15em" %> <span class="note">(default: English)</span>
+        <p class="caution" style="margin-bottom: 0">Once it is changed, the dictionary needs to be re-compiled.</p>
       </td>
     </tr>
 
@@ -48,7 +49,7 @@
     <tr>
       <th>Lisence</th>
       <td>
-        <p class="note">Please specify the license condition, which is important for proper and comfortable use of the dictionary. <a href="https://creativecommons.org/">Creative Commons</a> is a good source of various license conditions.</p>
+        <p class="note" style="margin-top:0">Please specify the license condition, which is important for proper and comfortable use of the dictionary. <a href="https://creativecommons.org/">Creative Commons</a> is a good source of various license conditions.</p>
         <table>
           <tr>
             <th>Name</th>
@@ -73,7 +74,7 @@
     <tr>
       <th style="width:6em">Params for Annotation</th>
       <td>
-        <span class="note">Use the paramaters below to precisly control the text annotation using the dictionary.</span>
+        <p class="note" style="margin-top:0">Use the paramaters below to precisly control the text annotation using the dictionary.</p>
         <table>
           <tr>
             <th>Min length</th>
@@ -97,6 +98,7 @@
     <tr>
       <th>Stopwords</th>
       <td>
+        <p class="note" style="margin-top:0">The stopwords are calculated based on the entries of the dictionary, and currently they cannot be manually changed. Please use them to figure out potentially unusual entires in the dicitonary.</p>
         <table>
 
           <tr>

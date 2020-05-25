@@ -11,12 +11,12 @@
 
 <tr>
 	<th>language</th>
-	<td><%= language_object(@dictionary.language) || '-' %></td>
+	<td><%= @dictionary.language.present? ? language_object(@dictionary.language) : '-' %></td>
 </tr>
 
 <tr>
 <th>license</th>
-<td style='text-align:center'><%= @dictionary.license.present? ? (@dictionary.license_url.present? ? link_to(@dictionary.license, @dictionary.license_url) : @dictionary.license) : '-' %></td>
+<td><%= @dictionary.license.present? ? (@dictionary.license_url.present? ? link_to(@dictionary.license, @dictionary.license_url) : @dictionary.license) : '-' %></td>
 </tr>
 <tr>
 <th>created at</th>
