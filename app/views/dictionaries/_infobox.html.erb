@@ -1,6 +1,6 @@
 <div class="infobox">
 <% collaborators = @dictionary.associated_managers.pluck(:username) %>
-<table>
+<table style="border:2px solid">
 <tr>
 	<th><%= collaborators.empty? ? 'manager' : 'managers' %></th>
 	<td>
