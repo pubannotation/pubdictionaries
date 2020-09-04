@@ -1,6 +1,7 @@
 class ChangeJobsToUuidTable < ActiveRecord::Migration[5.2]
   def up
-  	drop_table :jobs
+	  drop_table :jobs
+	    enable_extension 'pgcrypto' unless extension_enabled?('pgcrypto')
 		create_table :jobs, id: :uuid do |t|
 			t.string :name
 			t.references :dictionary
@@ -15,7 +16,8 @@ class ChangeJobsToUuidTable < ActiveRecord::Migration[5.2]
 		end
   end
   def down
-  	drop_table :jobs
+	  drop_table :jobs
+	    disable_extension 'pgcrypto'
 		create_table :jobs do |t|
 			t.string :name
 			t.references :dictionary
