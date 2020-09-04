@@ -40,3 +40,6 @@ ehthumbs.db
 Thumbs.db
 
 .idea
+
+# Ignore all files for rvm
+.env
