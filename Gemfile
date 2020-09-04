@@ -10,6 +10,8 @@ gem 'font-awesome-sass', '~> 4.7.0'
 gem 'jquery-rails'
 gem 'jquery-ui-rails'
 gem 'devise'
+gem 'omniauth'
+gem 'omniauth-google-oauth2'
 gem 'net-http-persistent'
 gem 'ruby-stemmer'
 gem 'validate_url'
@@ -32,6 +34,7 @@ gem 'language_list', '~> 1.2', '>= 1.2.1'
 gem 'string-similarity', '~> 2.1'
 
 group :development do
+  gem 'dotenv-rails'
   gem 'guard-livereload', require: false
   gem 'faker'
   gem 'rails-erd'
