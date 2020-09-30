@@ -21,7 +21,7 @@ class User < ApplicationRecord
     if user.save
       user
     else
-      "ユーザ名（ #{auth.info.name}）が無効です。"
+      "username(#{auth.info.name}) is invalid."
     end
   end
 end
