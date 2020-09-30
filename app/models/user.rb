@@ -17,11 +17,7 @@ class User < ApplicationRecord
     user = User.find_by_email(auth.info.email)
     return user if user and user.confirmed?
 
-    user = User.new(email: auth.info.email,
-                    username: auth.info.name,
-                    password: Devise.friendly_token[0,20]
-                   )
-    user.save
+    user = User.create!(email: auth.info.email, username: auth.info.name, password: Devise.friendly_token[0,20])
     user
   end
 end
