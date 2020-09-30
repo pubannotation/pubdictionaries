@@ -17,7 +17,11 @@ class User < ApplicationRecord
     user = User.find_by_email(auth.info.email)
     return user if user and user.confirmed?
 
-    user = User.create!(email: auth.info.email, username: auth.info.name, password: Devise.friendly_token[0,20])
-    user
+    user = User.new(email: auth.info.email, username: auth.info.name, password: Devise.friendly_token[0,20])
+    if user.save
+      user
+    else
+      "ユーザ名（ #{auth.info.name}）が無効です。"
+    end
   end
 end
