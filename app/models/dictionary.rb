@@ -102,6 +102,20 @@ class Dictionary < ApplicationRecord
 
 			r
 		end
+
+		def find_labels_by_ids(ids, dictionaries = [], verbose = false)
+			entries = if dictionaries.present?
+				Entry.where(identifier: ids, dictionary_id: dictionaries)
+			else
+				Entry.where(identifier: ids)
+			end
+
+			entries.inject({}) do |h, entry|
+				h[entry.identifier] = [] unless h.has_key? entry.identifier
+				h[entry.identifier] << {label: entry.label, dictionary: entry.dictionary.name}
+				h
+			end
+		end
 	end
 
 	# Override the original to_param so that it returns name, not ID, for constructing URLs.

@@ -47,6 +47,48 @@ class LookupController < ApplicationController
 		end
 	end
 
+	def find_terms
+		begin
+			dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
+			ids = if params[:ids]
+				params[:ids].strip.split(/[\n\t\r|]+/)
+			elsif params[:_json]
+				params[:_json]
+			else
+				body = request.body.read.force_encoding('UTF-8')
+				body.strip.split(/[\n\t\r|]+/) if body.present?
+			end
+
+			@dictionary_names_all = Dictionary.order(:name).pluck(:name)
+			@dictionary_names_selected = dictionaries_selected.map{|d| d.name}
+
+			@result = if ids.present?
+				verbose = true if params[:verbose] == 'true' || params[:verbose] == '1'
+				@result = Dictionary.find_labels_by_ids(ids, dictionaries_selected, verbose)
+			else
+				{}
+			end
+
+			respond_to do |format|
+				format.html
+				format.json {
+					raise ArgumentError, "no id was supplied." unless ids.present?
+					render json:@result
+				}
+			end
+		rescue ArgumentError => e
+			respond_to do |format|
+				format.html {flash.now[:notice] = e.message}
+				format.any {render json: {message:e.message}, status: :bad_request}
+			end
+		rescue => e
+			respond_to do |format|
+				format.html {flash.now[:notice] = e.message}
+				format.any {render json: {message:e.message}, status: :internal_server_error}
+			end
+		end
+	end
+
 	def prefix_completion
 		begin
 			dictionary = Dictionary.find_by_name(params[:id])

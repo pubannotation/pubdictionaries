@@ -4,6 +4,7 @@ Rails.application.routes.draw do
 
   get  "find_ids", to: "lookup#find_ids"
   post "find_ids", to: "lookup#find_ids"
+  get  "find_terms", to: "lookup#find_terms"
   get  "prefix_completion", to: "lookup#prefix_completion"
   get  "substring_completion", to: "lookup#substring_completion"
 
@@ -29,6 +30,7 @@ Rails.application.routes.draw do
     member do
       get  'find_ids', to: "lookup#find_ids"
       post 'find_ids', to: "lookup#find_ids"
+      get  'find_terms', to: "lookup#find_terms"
       get  'text_annotation', to: 'annotation#text_annotation'
       post 'text_annotation', to: 'annotation#text_annotation'
       get  'prefix_completion', to: 'lookup#prefix_completion'
