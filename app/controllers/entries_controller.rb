@@ -2,6 +2,16 @@ class EntriesController < ApplicationController
 	# Requires authentication for all actions
 	before_action :authenticate_user!
 
+	# GET /dictionaries/dic1/entries?page=1&per_page=20
+	def index
+		dictionary = Dictionary.find_by_name(params[:dictionary_id])
+		entries = dictionary.entries.order("mode DESC").order(:label).page(params[:page]).per(params[:per_page])
+
+		respond_to do |format|
+			format.json { render json: entries }
+		end
+	end
+
 	def create
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
