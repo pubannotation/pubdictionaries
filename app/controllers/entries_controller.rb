@@ -1,6 +1,6 @@
 class EntriesController < ApplicationController
 	# Requires authentication for all actions
-	before_action :authenticate_user!
+	before_action :authenticate_user!, except: [:index]
 
 	# GET /dictionaries/dic1/entries?page=1&per_page=20
 	def index
