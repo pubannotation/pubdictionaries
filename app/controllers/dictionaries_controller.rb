@@ -34,7 +34,7 @@ class DictionariesController < ApplicationController
 	def show
 		begin
 			@dictionary = Dictionary.find_by_name(params[:id])
-			raise ArgumentError, "Unknown dictionary" if @dictionary.nil?
+			raise ArgumentError, "Unknown dictionary: #{params[:id]}." if @dictionary.nil?
 
 			if params[:label_search]
 				params[:label_search].strip!
@@ -53,6 +53,11 @@ class DictionariesController < ApplicationController
 				format.html
 				format.json { render json: @dictionary.as_json }
 				format.tsv  { send_data @dictionary.entries.as_tsv,  filename: "#{@dictionary.name}.tsv",  type: :tsv  }
+			end
+		rescue ArgumentError => e
+			respond_to do |format|
+				format.html {flash.now[:notice] = e.message}
+				format.any {render json: {message:e.message}, status: :bad_request}
 			end
 		rescue => e
 			respond_to do |format|

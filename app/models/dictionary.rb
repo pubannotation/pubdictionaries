@@ -70,10 +70,11 @@ class Dictionary < ApplicationRecord
 								 end
 			return [] unless dic_names.present?
 
-			dictionaries = dic_names.split(',').collect{|d| Dictionary.find_by_name(d.strip)}
-			raise ArgumentError, "wrong dictionary specification." if dictionaries.include? nil
+			dictionaries = dic_names.split(',').collect{|d| [d.strip, Dictionary.find_by_name(d.strip)]}
+			unknown = dictionaries.select{|d| d[1].nil?}.collect{|d| d[0]}
+			raise ArgumentError, "unknown dictionary: #{unknown.join(', ')}." unless unknown.empty?
 
-			dictionaries
+			dictionaries.collect{|d| d[1]}
 		end
 
 		def find_ids_by_labels(labels, dictionaries = [], threshold = nil, superfluous = false, verbose = false)

@@ -5,10 +5,23 @@ class EntriesController < ApplicationController
 	# GET /dictionaries/dic1/entries?page=1&per_page=20
 	def index
 		dictionary = Dictionary.find_by_name(params[:dictionary_id])
+		raise ArgumentError, "Unknown dictionary: #{params[:dictionary_id]}." if dictionary.nil?
+
 		entries = dictionary.entries.order("mode DESC").order(:label).page(params[:page]).per(params[:per_page])
 
 		respond_to do |format|
 			format.json { render json: entries }
+		end
+	rescue ArgumentError => e
+		respond_to do |format|
+			format.html {flash.now[:notice] = e.message}
+			format.any {render json: {message:e.message}, status: :bad_request}
+		end
+	rescue => e
+		respond_to do |format|
+			format.html { redirect_to dictionaries_url, notice: e.message }
+			format.json { head :unprocessable_entity }
+			format.tsv  { head :unprocessable_entity }
 		end
 	end
 
