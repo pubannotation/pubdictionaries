@@ -70,7 +70,7 @@ class Dictionary < ApplicationRecord
 								 end
 			return [] unless dic_names.present?
 
-			dictionaries = dic_names.split(',').collect{|d| [d.strip, Dictionary.find_by_name(d.strip)]}
+			dictionaries = dic_names.split(/[,|]/).collect{|d| [d.strip, Dictionary.find_by_name(d.strip)]}
 			unknown = dictionaries.select{|d| d[1].nil?}.collect{|d| d[0]}
 			raise ArgumentError, "unknown dictionary: #{unknown.join(', ')}." unless unknown.empty?
 
