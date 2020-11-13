@@ -17,12 +17,16 @@ layout: docs
     <div class="swagger-path">{{ route[0] }}</h>
     {% for method in route[1] %}
     <div class="swagger-method swagger-method-{{ method[0] }}">
-        <h3 class="swagger-method-title">
-            <a href="#" class="swagger-method-link">
-                <span class="swagger-method-name">{{ method[0] | upcase }}</span>
-                {{ method[1].summary }}
-            </a>
-        </h3>
+        <table class="swagger-method-title">
+            <tr>
+                <th class="swagger-method-name">{{ method[0] | upcase }}</th>
+                <th>
+                    <a href="#" class="swagger-method-link">
+                        {{ method[1].summary }}
+                    </a>
+                </th>
+            </tr>
+        </table>
         <div class="swagger-method-details">
             {% if method[1].parameters %}
             <div class="swagger-parameters">

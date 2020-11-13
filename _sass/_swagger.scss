@@ -39,11 +39,14 @@ $on-laptop:        800px;
     border: 1px solid $color;
 
     .swagger-method-title {
+        width: 100%;
         background: lighten($color, 30%);
     }
 
     .swagger-method-link {
+        display: block;
         color: darken($color, 20%);
+        text-align: left;
     }
 
     .swagger-method-name {
@@ -78,7 +81,6 @@ $on-laptop:        800px;
 
 .swagger-method-name {
     padding: 6px 0;
-    display: inline-block;
     width: 80px;
     text-align: center;
     color: white;

@@ -5,12 +5,12 @@ produces:
 paths:
   /find_ids:
     get:
-      summary: Find ids for given labels, from some specified dictionaries
+      summary: Find the ids corresponding to given labels, from the dictionaries specified through the 'dictionaries' parameter
       parameters:
         - name: dictionaries
           in: url
           type: string
-          description: dictionary names, delimited by comma (',')
+          description: dictionary names, delimited by comma (',') or pipe ('|')
           required: true
         - name: labels
           in: url
@@ -49,14 +49,14 @@ paths:
       parameters:
         - name: dictionaries
           in: url
-          description: dictionary names, delimited by comma (',')
+          description: dictionary names, delimited by comma (',') or pipe ('|')
           required: true
         - name: labels
           in: body
           description: labels
           type: array
           items:
-            type: string
+          type: string
           required: true
         - name: rich
           in: url
@@ -85,6 +85,37 @@ paths:
               {
                 "message": "no label is supplied."
               }
+  /find_terms:
+    get:
+      summary: Find the terms correcponding to given ids, from the dictionaries specified through the 'dictionaries' parameter, or from all the dictionaries when the 'dictionaries' parameter is empty
+      parameters:
+        - name: dictionaries
+          in: url
+          type: string
+          description: dictionary names, delimited by comma (',') or pipe ('|')
+          required: true
+        - name: ids
+          in: url
+          type: string
+          description: labels, delimited by newline('\n'), tab('\t'), or pipe ('|')
+          required: true
+      responses:
+        200:
+          description: A hash of terms for ids
+          examples:
+            application/json: >
+              {
+                "http://purl.obolibrary.org/obo/UBERON_0000945": [
+                  {"label": "stomach", "dictionary": "UBERON-AE"}
+                ]
+              }
+        400:
+          description: Bad Request
+          examples:
+            application/json: >
+              {
+                "message": "no label is supplied."
+              }
   /dictionaries/{name}/prefix_completion:
     get:
       summary: Get prefix completions, based on the specified dictionary
@@ -94,11 +125,21 @@ paths:
           description: prefix of a term
           type: string
           required: true
+        - name: page
+          in: url
+          description: the page of the results you want to access
+          type: integer
+          required: false
+        - name: per_page
+          in: url
+          description: the number of items you want to get at once
+          type: integer
+          required: false
       responses:
         200:
           description: An ordered list of pairs of (label, id) 
         400:
-          description: No term
+          description: Wrong request
   /dictionaries/{name}/substring_completion:
     get:
       summary: Get substring completions, based on the specified dictionary
@@ -108,8 +149,42 @@ paths:
           description: substring of a term
           type: string
           required: true
+        - name: page
+          in: url
+          description: the page of the results you want to access
+          type: integer
+          required: false
+        - name: per_page
+          in: url
+          description: the number of items you want to get at once
+          type: integer
+          required: false
       responses:
         200:
           description: An ordered list of pairs of (label, id) 
         400:
-          description: No term
+          description: Wrong request
+  /dictionaries/{name}/mixed_completion:
+    get:
+      summary: Get prefix completions (top half) and substring completions (bottom half) at the same time, based on the specified dictionary
+      parameters:
+        - name: term
+          in: url
+          description: substring of a term
+          type: string
+          required: true
+        - name: page
+          in: url
+          description: the page of the results you want to access
+          type: integer
+          required: false
+        - name: per_page
+          in: url
+          description: the number of items you want to get at once
+          type: integer
+          required: false
+      responses:
+        200:
+          description: An ordered list of pairs of (label, id) 
+        400:
+          description: Wrong request
