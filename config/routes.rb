@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   get  "find_terms", to: "lookup#find_terms"
   get  "prefix_completion", to: "lookup#prefix_completion"
   get  "substring_completion", to: "lookup#substring_completion"
+  get  "mixed_completion", to: "lookup#mixed_completion"
 
   get  "text_annotation", to: "annotation#text_annotation"
   post "text_annotation", to: "annotation#text_annotation"
@@ -38,6 +39,7 @@ Rails.application.routes.draw do
       post 'text_annotation', to: 'annotation#text_annotation'
       get  'prefix_completion', to: 'lookup#prefix_completion'
       get  'substring_completion', to: 'lookup#substring_completion'
+      get  'mixed_completion', to: 'lookup#mixed_completion'
       get 'compile'
       post 'managers', to: 'dictionaries#add_manager'
       delete 'managers/:username', to: 'dictionaries#remove_manager', as: 'manager'

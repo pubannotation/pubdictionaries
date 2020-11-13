@@ -92,10 +92,11 @@ class LookupController < ApplicationController
 	def prefix_completion
 		begin
 			dictionary = Dictionary.find_by_name(params[:id])
-			raise ArgumentError, "Unknown dictionary" if dictionary.nil?
+			raise ArgumentError, "Unknown dictionary: #{params[:id]}." if dictionary.nil?
 
 			entries = if params[:term]
-				dictionary.narrow_entries_by_label_prefix(params[:term])
+				page = params[:page] || 0
+				dictionary.narrow_entries_by_label_prefix(params[:term], page, params[:per_page])
 			end
 
 			respond_to do |format|
@@ -115,10 +116,35 @@ class LookupController < ApplicationController
 	def substring_completion
 		begin
 			dictionary = Dictionary.find_by_name(params[:id])
-			raise ArgumentError, "Unknown dictionary" if dictionary.nil?
+			raise ArgumentError, "Unknown dictionary: #{params[:id]}." if dictionary.nil?
 
 			entries = if params[:term]
-				dictionary.narrow_entries_by_label(params[:term])
+				page = params[:page] || 0
+				dictionary.narrow_entries_by_label(params[:term], page, params[:per_page])
+			end
+
+			respond_to do |format|
+				format.any {render json:entries}
+			end
+		rescue ArgumentError => e
+			respond_to do |format|
+				format.any {render json: {message:e.message}, status: :bad_request}
+			end
+		rescue => e
+			respond_to do |format|
+				format.any {render json: {notice:e.message}, status: :unprocessable_entity}
+			end
+		end
+	end
+
+	def mixed_completion
+		begin
+			dictionary = Dictionary.find_by_name(params[:id])
+			raise ArgumentError, "Unknown dictionary: #{params[:id]}." if dictionary.nil?
+
+			entries = if params[:term]
+				page = params[:page] || 0
+				dictionary.narrow_entries_by_label_prefix_and_substring(params[:term], page, params[:per_page])
 			end
 
 			respond_to do |format|

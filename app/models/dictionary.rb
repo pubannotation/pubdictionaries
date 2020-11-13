@@ -248,14 +248,33 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
-	def narrow_entries_by_label(str, page = 0)
+	def narrow_entries_by_label(str, page = 0, per = nil)
 		norm1 = normalize1(str)
-		entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page)
+		if per.nil?
+			entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page)
+		else
+			entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page).per(per)
+		end
 	end
 
-	def narrow_entries_by_label_prefix(str, page = 0)
+	def narrow_entries_by_label_prefix(str, page = 0, per = nil)
 		norm1 = normalize1(str)
-		entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
+		if per.nil?
+			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
+		else
+			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page).per(per)
+		end
+	end
+
+	def narrow_entries_by_label_prefix_and_substring(str, page = 0, per = nil)
+		norm1 = normalize1(str)
+		if per.nil?
+			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page) +
+			entries.where("norm1 LIKE ?", "_%#{norm1}%").order(:label_length).page(page)
+		else
+			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page).per(per) +
+			entries.where("norm1 LIKE ?", "_%#{norm1}%").order(:label_length).page(page).per(per)
+		end
 	end
 
 	def narrow_entries_by_identifier(str, page = 0)
