@@ -12,7 +12,7 @@ class DictionariesController < ApplicationController
 
 	# Disable CSRF check for REST-API actions.
 	skip_before_action :verify_authenticity_token, :only => [
-		:text_annotation, :id_mapping, :label_mapping
+		:text_annotation, :id_mapping, :label_mapping, :create
 	], :if => Proc.new { |c| c.request.format == 'application/json' }
 
 	autocomplete :user, :username
@@ -94,13 +94,15 @@ class DictionariesController < ApplicationController
 		@dictionary.user = current_user
 
 		message  = "An empty dictionary, #{@dictionary.name}, is just created."
-		message += "\nAs it is created in non-public mode, it is visible only in your personal list." unless @dictionary.public
+		message += "\nAs it is created in the non-public mode, it is visible only in your personal list." unless @dictionary.public
 
 		respond_to do |format|
 			if @dictionary.save
 				format.html { redirect_to show_user_path(current_user.username), notice: message}
+				format.json { render json: {message:message}, status: :created, location: dictionary_url(@dictionary)}
 			else
 				format.html { render action: "new" }
+				format.json { render json: {message:@dictionary.errors}, status: :bad_request}
 			end
 		end
 	end
