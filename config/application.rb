@@ -67,6 +67,13 @@ module PubDictionaries
     # Use SSL
     # config.force_ssl = true
 
+    # filter out long text parameters
+    config.filter_parameters << lambda do |k, v|
+      if k == 'text' && v && v.class == String && v.length > 64
+        v.replace(v[0, 60] + ' ...')
+      end
+    end
+
     config.middleware.insert_before 0, Rack::Cors do
       allow do
         origins '*'
