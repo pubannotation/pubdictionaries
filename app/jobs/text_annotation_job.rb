@@ -39,6 +39,9 @@ class TextAnnotationJob < Struct.new(:target, :dictionaries, :options)
         @job.update_attribute(:num_dones, targets.length) if @job
       end
 
+      # delete text from the annotation result
+      annotation_result.each {|anns| anns.delete(:text)}
+
       annotation_result = annotation_result.first if single_target
 
       annotator.dispose
