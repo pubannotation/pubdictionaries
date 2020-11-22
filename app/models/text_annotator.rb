@@ -231,6 +231,9 @@ class TextAnnotator
       anns[:denotations] = denotations
     end
 
+    # delete text from the annotation result
+    anns_col.each {|anns| anns.delete(:text)}
+
     anns_col
   end
 
