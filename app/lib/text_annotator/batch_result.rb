@@ -66,9 +66,9 @@ class TextAnnotator
       annotations
 
       if annotations.class == Array
-        annotations.first.has_key?(:text)
+        annotations.first.class == Hash
       else
-        annotations.has_key?(:text)
+        annotations.class == Hash
       end
     end
 
