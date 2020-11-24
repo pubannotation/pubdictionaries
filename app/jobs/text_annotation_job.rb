@@ -44,6 +44,13 @@ class TextAnnotationJob < Struct.new(:target, :dictionaries, :options)
       annotator.dispose
 
       if @job
+        if options[:no_text]
+          if annotation_result.class == Hash
+            annotations_result.delete(:text)
+          elsif annotation_result.respond_to?(:each)
+            annotation_result.each{|ann| ann.delete(:text)}
+          end
+        end
         TextAnnotator::BatchResult.new(nil, @job.id).save!(annotation_result)
       end
     rescue => e

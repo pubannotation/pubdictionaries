@@ -161,9 +161,10 @@ class AnnotationController < ApplicationController
     options = get_options_from_params
 
     annotator = TextAnnotator.new(dictionaries_selected, options)
-    r = annotator.annotate_batch([{text: text}])
+    r = annotator.annotate_batch([{text: text}]).first
     annotator.dispose
-    r.first
+    r.delete(:text) if options[:no_text]
+    r
   end
 
   def enqueue_job(target)
@@ -253,6 +254,7 @@ class AnnotationController < ApplicationController
     options[:longest] = get_option_boolean(:longest)
     options[:superfluous] = get_option_boolean(:superfluous)
     options[:verbose] = get_option_boolean(:verbose)
+    options[:no_text] = get_option_boolean(:no_text)
     options
   end
 
