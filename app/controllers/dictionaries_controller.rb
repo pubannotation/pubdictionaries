@@ -34,7 +34,7 @@ class DictionariesController < ApplicationController
 	def show
 		begin
 			@dictionary = Dictionary.find_by_name(params[:id])
-			raise ArgumentError, "Unknown dictionary: #{params[:id]}." if @dictionary.nil?
+			raise ArgumentError, "Could not find the dictionary: #{params[:id]}." if @dictionary.nil?
 
 			if params[:label_search]
 				params[:label_search].strip!
@@ -56,8 +56,8 @@ class DictionariesController < ApplicationController
 			end
 		rescue ArgumentError => e
 			respond_to do |format|
-				format.html {flash.now[:notice] = e.message}
-				format.any {render json: {message:e.message}, status: :bad_request}
+				format.html {redirect_to dictionaries_path, notice: e.message}
+				format.any  {render json: {message:e.message}, status: :bad_request}
 			end
 		rescue => e
 			respond_to do |format|
