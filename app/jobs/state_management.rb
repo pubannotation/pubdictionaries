@@ -5,7 +5,7 @@ module StateManagement
 	end
 
 	def after
-		@job.update_attribute(:ended_at, Time.now)
+		@job.update_attribute(:ended_at, Time.now) if @job
 	end
 
   def error(job, exception)
