@@ -8,7 +8,11 @@ module StateManagement
 		@job.update_attribute(:ended_at, Time.now) if @job
 	end
 
-  def error(job, exception)
-		@job.message = "'" + exception.message + "'\n" + exception.backtrace.join("\n")
-  end
+	def error(job, exception)
+		if @job
+			@job.message = "'" + exception.message + "'\n" + exception.backtrace.join("\n")
+		else
+			raise exception
+		end
+	end
 end
