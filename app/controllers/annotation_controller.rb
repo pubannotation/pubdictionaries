@@ -111,6 +111,8 @@ class AnnotationController < ApplicationController
         head :gone
       end
     when :success
+      job = Job.find(result.job_id)
+      job.destroy_if_not_running
       send_file result.file_path, type: :json
     when :error
       send_file result.file_path, type: :json, status: :internal_server_error
