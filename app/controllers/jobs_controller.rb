@@ -43,4 +43,14 @@ class JobsController < ApplicationController
     end
   end
 
+  # DELETE /annotation_jobs
+  def destroy_all_annotation_jobs
+    jobs = Job.where(dictionary_id: nil)
+    jobs.each{|job| job.destroy_if_not_running}
+
+    respond_to do |format|
+      format.html { redirect_back fallback_location: root_path }
+      format.json { head :no_content }
+    end
+  end
 end

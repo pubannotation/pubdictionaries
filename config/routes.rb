@@ -61,6 +61,7 @@ Rails.application.routes.draw do
 
   resources :jobs, only: [:index, :show, :destroy]
   delete 'jobs', to: "jobs#destroy_all"
+  delete 'annotation_jobs', to: "jobs#destroy_all_annotation_jobs"
 
   root :to => 'home#index'
 end

@@ -2,6 +2,16 @@
     <span class="page_title">Jobs</span>
 <% end %>
 
+
+
+# Jobs: <%= Job.count %>
+<%= link_to('Delete all jobs', Job, method: :delete, data: { confirm: 'Are you sure?' }, class: :button) %>
+<br/>
+# Annotation jobs: <%= Job.where(dictionary_id:nil).count %>
+<%= link_to('Delete all annotation jobs', annotation_jobs_path, method: :delete, data: { confirm: 'Are you sure?' }, class: :button) %>
+
+<br/>
+
 <%=
   grid(@jobs_grid) do |g|
 
@@ -9,7 +19,7 @@
       [link_to(job.id, job), {style: 'text-align: right'}]
     end
 
-    g.column name: 'Dictionary' do |job|
+    g.column name: 'Dictionary', attribute: 'dictionary_id' do |job|
       if job.dictionary.nil?
         ['-',  {style: 'text-align: center'}]
       else
@@ -34,16 +44,20 @@
       [job.num_dones, {style: 'text-align: right'}]
     end
 
-    g.column name: 'registered_at' do |job|
+    g.column name: 'registered_at', attribute: 'registered_at' do |job|
       [job.registered_at, {style: 'text-align: right'}]
     end
 
-    g.column name: 'began_at' do |job|
+    g.column name: 'began_at', attribute: 'begun_at' do |job|
       [job.begun_at, {style: 'text-align: right'}]
     end
 
-    g.column name: 'end_at' do |job|
+    g.column name: 'end_at', attribute: 'ended_at' do |job|
       [job.ended_at, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'status' do |job|
+      [job.status, {style: 'text-align: center'}]
     end
 
     g.column name: 'ETP' do |job|
@@ -64,7 +78,5 @@
 
   end
 %>
-<br/>
-<%= link_to('Delete all', Job, method: :delete, data: { confirm: 'Are you sure?' }, class: :button) %>
 
 </section>

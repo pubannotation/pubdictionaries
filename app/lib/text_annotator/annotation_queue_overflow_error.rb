@@ -1,0 +1,1 @@
+class AnnotationQueueOverflowError < StandardError; end
