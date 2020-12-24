@@ -2,17 +2,18 @@ body {
   margin: 0;
   background-color: #fafafa;
   color: #666;
-  font-family: verdana, arial, helvetica, sans-serif;
-  font-size: 13px;
+  font-family: "Noto Sans", sans-serif;
+  font-size: 14px;
   font-weight: 400;
   line-height: 1.5;
 }
 
 .inner {
-  position:relative;
-  max-width:900px;
-  margin:0 auto;
+  position: relative;
+  max-width: 1000px;
+  margin: 0 auto;
   padding: 6px;
+  padding-top: 18px;
 }
 
 .header, .footer {
@@ -36,11 +37,12 @@ body {
 .header {
   .logo {
     display: inline-block;
+    margin-right: 10px;
   }
 
   .menu {
     display: inline-block;
-    margin: 0 8px;
+    font-size: 15px;
 
     ul {
       margin: 0;
@@ -54,8 +56,8 @@ body {
 
   .account {
     position: absolute;
-    right: 4px;
-    top: 2px;
+    right: 6px;
+    top: 8px;
     display: inline-block;
   }
 
