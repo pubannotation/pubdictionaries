@@ -4,4 +4,4 @@ require ::File.expand_path('../config/environment',  __FILE__)
 CleanFilesJob.schedule!
 CleanAnnotationJobsJob.schedule!
 
-run PubDictionaries::Application
+run Rails.application
