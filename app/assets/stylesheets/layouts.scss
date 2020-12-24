@@ -12,8 +12,7 @@ body {
   position: relative;
   max-width: 1000px;
   margin: 0 auto;
-  padding: 6px;
-  padding-top: 18px;
+  padding: 8px;
 }
 
 .header, .footer {
@@ -32,6 +31,10 @@ body {
     color: #ffffff;
     background-color: #34689b;
   }
+}
+
+.header {
+  padding-top: 10px;
 }
 
 .header {
@@ -57,8 +60,9 @@ body {
   .account {
     position: absolute;
     right: 6px;
-    top: 8px;
+    top: 0;
     display: inline-block;
+    font-size: 12px;
   }
 
 }
