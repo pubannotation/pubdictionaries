@@ -39,13 +39,11 @@
     </td>
     <% if @dictionary.editable?(current_user) %>
       <td style="text-align:center">
-        <%=
-          if entry.mode == 0
-            link_to('<i class="fa fa-minus-square" aria-hidden="true"></i>'.html_safe, dictionary_entry_path(@dictionary, entry), method: :delete, title: 'Delete')
-          else
-            link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Undo')
-          end
-        %>
+        <% if entry.mode == 0 %>
+          <input type="checkbox" name="entry_id[]" id="entry_id_<%= entry.id %>" class="chkbox" value="<%= entry.id %>">
+        <% else %>
+          <%= link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Undo') %>
+        <% end %>
       </td>
     <% end %>
   </tr>

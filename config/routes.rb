@@ -49,6 +49,7 @@ Rails.application.routes.draw do
       collection do
         put 'empty', to: 'dictionaries#empty'
         post 'tsv', to: 'entries#upload_tsv'
+        delete '/', to: 'entries#destroy_entries'
       end
 
       member do

@@ -20,13 +20,13 @@ table.entries {
   width: 100%;
   margin-top: 2px;
 
-  th.label {
+  .col_label {
     width: 60%;
   }
-  th.button_column {
-    width: 15px;
-  }
 
+  .col_button {
+    width: 30px;
+  }
 }
 
 .entries td {

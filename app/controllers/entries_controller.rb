@@ -87,6 +87,24 @@ class EntriesController < ApplicationController
 		end
 	end
 
+	def destroy_entries
+		begin
+			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
+			raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+
+			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
+
+			entries = params[:entry_id].collect{|id| Entry.find(id)}
+			entries.each{|entry| dictionary.create_deletion(entry)}
+		rescue => e
+			message = e.message
+		end
+
+		respond_to do |format|
+			format.html{ redirect_back fallback_location: root_path, notice: message }
+		end
+	end
+
 	def undo
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])

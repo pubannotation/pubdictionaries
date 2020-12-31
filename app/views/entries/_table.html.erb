@@ -16,10 +16,15 @@
   </table>
 <% end %>
 
-<table class="entries">
+<table class="entries" style="margin-bottom:0">
+  <colgroup>
+    <col class="col_label">
+    <col class="col_identifier">
+    <col class="col_button">
+  </colgroup>
   <thead>
     <tr>
-      <th class="label">
+      <th>
         Label
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
   	      <%= text_field_tag :label_search, params[:label_search], required: true -%>
@@ -27,7 +32,7 @@
     	    <%= submit_tag 'Search', class: 'button' -%>
     	  <% end -%>
       </th>
-      <th class="identifier">
+      <th>
         Id
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
         	<%= text_field_tag :id_search, params[:id_search], required: true -%>
@@ -36,12 +41,61 @@
     	  <% end -%>
       </th>
       <% if @dictionary.editable?(current_user) %>
-        <th class="button_column"></th>
+        <th></th>
       <% end %>
     </tr>
   </thead>
-  <%= render partial: "entries/entry", collection: @entries -%>
+</table>
 
+<%= form_tag(dictionary_entries_path(@dictionary), method: :delete, id: "delete_entries_form") do %>
+  <table class="entries" style="margin-top:0; margin-bottom:0">
+    <colgroup>
+      <col class="col_label">
+      <col class="col_identifier">
+      <col class="col_button">
+    </colgroup>
+    <%= render partial: "entries/entry", collection: @entries -%>
+    <tr>
+      <td style="border-style:none"></td>
+      <td style="border-style:none"></td>
+      <% if @dictionary.editable?(current_user) %>
+        <td style="text-align:center">
+          <a title="delete selected entries" href="javascript:{}" onclick="document.getElementById('delete_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
+        </td>
+      <% end %>
+    </tr>
+  </table>
+<% end %>
+
+<script>
+  $(document).ready(function() {
+    var $chkboxes = $('.chkbox');
+    var lastChecked = null;
+
+    $chkboxes.click(function(e) {
+      if (!lastChecked) {
+        lastChecked = this;
+        return;
+      }
+
+      if (e.shiftKey) {
+        var start = $chkboxes.index(this);
+        var end = $chkboxes.index(lastChecked);
+
+        $chkboxes.slice(Math.min(start,end), Math.max(start,end)+ 1).prop('checked', lastChecked.checked);
+      }
+
+      lastChecked = this;
+    });
+  });
+</script>
+
+<table class="entries" style="margin-top:2px">
+  <colgroup>
+    <col class="col_label">
+    <col class="col_identifier">
+    <col class="col_button">
+  </colgroup>
   <% if @dictionary.editable?(current_user) %>
     <%= form_tag(dictionary_entries_path(@dictionary), method: :post, id: "add_entry_form") do %>
       <tr>
