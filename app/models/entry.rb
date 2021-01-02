@@ -49,6 +49,10 @@ class Entry < ApplicationRecord
   validates :label, presence: true
   validates :identifier, presence: true
 
+  scope :added, -> {where(mode: Entry::MODE_ADDITION)}
+  scope :deleted, -> {where(mode: Entry::MODE_DELETION)}
+  scope :active, -> {where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION])}
+
   def as_json(options={})
     {
       id: identifier,

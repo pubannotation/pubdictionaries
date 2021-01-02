@@ -5,13 +5,19 @@
 <% if @dictionary.editable?(current_user) && (@addition_num > 0 || @deletion_num > 0) %>
   <table>
     <tr>
-      <% if @addition_num > 0 %>
-        <th style="background-color:#ffaaaa">#Added</th><td><%= @addition_num %></td>
-      <% end %>
-      <% if @deletion_num > 0 %>
-        <th style="background-color:#aaffaa">#Deleted</th><td><%= @deletion_num %></td>
-      <% end %>
-      <td style="font-style:italic; color:red"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> The dictionary is modified. You can use it as it is. However, for a faster lookup or annotation, you are recommended to compile it. Go to <%= link_to('settings <i class="fa fa-cog fa-lg"></i>'.html_safe, edit_dictionary_path(@dictionary.name)) %>.</td>
+      <th style="background-color:#ffaaaa"><%= link_to '#Active', params.permit(:mode).except(:mode) %></th>
+      <th style="background-color:#ffaaaa"><%= link_to_unless_current '#Additions', params.permit(:mode).merge(mode: Entry::MODE_ADDITION) %></th>
+      <th style="background-color:#aaffaa"><%= link_to_unless_current '#Deletions', params.permit(:mode).merge(mode: Entry::MODE_DELETION) %></th>
+      <td rowspan="2" style="font-style:italic; color:red">
+        <% if @addition_num > 0 || @deletion_num > 0 %>
+          <i class="fa fa-lightbulb-o" aria-hidden="true"></i> The dictionary is modified. You can use it as it is. However, for a faster lookup or annotation, you are recommended to compile it. Go to <%= link_to('settings <i class="fa fa-cog fa-lg"></i>'.html_safe, edit_dictionary_path(@dictionary.name)) %>.
+        <% end %>
+      </td>
+    </tr>
+    <tr>
+      <td style="text-align: right"><%= number_with_delimiter(@dictionary.entries_num, :delimiter => ',') %></td>
+      <td style="text-align: right"><%= @addition_num %></td>
+      <td style="text-align: right"><%= @deletion_num %></td>
     </tr>
   </table>
 <% end %>
