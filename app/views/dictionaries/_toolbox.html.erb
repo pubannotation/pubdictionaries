@@ -1,4 +1,4 @@
-<div class="toolbox">
-<%= link_to 'Find_IDs <i class="fa fa-caret-right"></i>'.html_safe, find_ids_dictionary_path(@dictionary.name) %><br/>
-<%= link_to 'Text_annotation <i class="fa fa-caret-right"></i>'.html_safe, text_annotation_dictionary_path(@dictionary.name) %>
-</div>
+<span class="toolbox">
+<%= link_to 'Find_IDs'.html_safe, find_ids_dictionary_path(@dictionary.name), class: :button %>
+<%= link_to 'Annotation'.html_safe, text_annotation_dictionary_path(@dictionary.name), class: :button %>
+</span>

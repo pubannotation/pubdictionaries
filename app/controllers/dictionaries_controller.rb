@@ -32,49 +32,86 @@ class DictionariesController < ApplicationController
 	end
 
 	def show
-		begin
-			@dictionary = Dictionary.find_by_name(params[:id])
-			raise ArgumentError, "Could not find the dictionary: #{params[:id]}." if @dictionary.nil?
+		@dictionary = Dictionary.find_by_name(params[:id])
+		raise ArgumentError, "Could not find the dictionary: #{params[:id]}." if @dictionary.nil?
 
-			@entries = if params[:label_search]
-				params[:label_search].strip!
-				@dictionary.narrow_entries_by_label(params[:label_search], params[:page])
-			elsif params[:id_search]
-				params[:id_search].strip!
-				@dictionary.narrow_entries_by_identifier(params[:id_search], params[:page])
-			else
-				if params[:mode].present?
-					if params[:mode].to_i == Entry::MODE_ADDITION
-						@dictionary.entries.added.page(params[:page])
-					elsif params[:mode].to_i == Entry::MODE_DELETION
-						@dictionary.entries.deleted.page(params[:page])
-					else
-						@dictionary.entries.active.page(params[:page])
-					end
+		respond_to do |format|
+			format.html {
+				@entries, @type_entries = if params[:label_search]
+					params[:label_search].strip!
+					[@dictionary.narrow_entries_by_label(params[:label_search], params[:page]), "Active"]
+				elsif params[:id_search]
+					params[:id_search].strip!
+					[@dictionary.narrow_entries_by_identifier(params[:id_search], params[:page]), "Active"]
 				else
-					@dictionary.entries.active.page(params[:page])
+					if params[:mode].present?
+						case params[:mode].to_i
+						when Entry::MODE_WHITE
+							[@dictionary.entries.white.page(params[:page]), "White"]
+						when Entry::MODE_BLACK
+							[@dictionary.entries.black.page(params[:page]), "Black"]
+						when Entry::MODE_GRAY
+							[@dictionary.entries.gray.page(params[:page]), "Gray"]
+						when Entry::MODE_ACTIVE
+							[@dictionary.entries.active.page(params[:page]), "Active"]
+						when Entry::MODE_CUSTOM
+							[@dictionary.entries.custom.page(params[:page]), "Custom"]
+						else
+							[@dictionary.entries.active.page(params[:page]), "Active"]
+						end
+					else
+						[@dictionary.entries.active.page(params[:page]), "Active"]
+					end
 				end
-			end
+			}
+			format.tsv  {
+				entries, suffix = if params[:label_search]
+					params[:label_search].strip!
+					[@dictionary.narrow_entries_by_label(params[:label_search]), "label_search_#{params[:label_search]}"]
+				elsif params[:id_search]
+					params[:id_search].strip!
+					[@dictionary.narrow_entries_by_identifier(params[:id_search]), "id_search_#{params[:id_search]}"]
+				else
+					if params[:mode].present?
+						case params[:mode].to_i
+						when Entry::MODE_WHITE
+							[@dictionary.entries.added, "white"]
+						when Entry::MODE_BLACK
+							[@dictionary.entries.deleted, "black"]
+						when Entry::MODE_GRAY
+							[@dictionary.entries.gray, "gray"]
+						when Entry::MODE_ACTIVE
+							[@dictionary.entries.active, nil]
+						when Entry::MODE_CUSTOM
+							[@dictionary.entries.custom, "custom"]
+						else
+							[@dictionary.entries.active, nil]
+						end
+					else
+						[@dictionary.entries.active, nil]
+					end
+				end
 
-			@addition_num = @dictionary.num_addition
-			@deletion_num = @dictionary.num_deletion
+				filename = @dictionary.name
+				filename += '_' + suffix if suffix
+				if params[:mode].to_i == Entry::MODE_CUSTOM
+					send_data entries.as_tsv_v,  filename: "#{filename}.tsv", type: :tsv
+				else
+					send_data entries.as_tsv,  filename: "#{filename}.tsv", type: :tsv
+				end
+			}
+		end
 
-			respond_to do |format|
-				format.html
-				format.json { render json: @dictionary.as_json }
-				format.tsv  { send_data @dictionary.entries.as_tsv,  filename: "#{@dictionary.name}.tsv",  type: :tsv  }
-			end
-		rescue ArgumentError => e
-			respond_to do |format|
-				format.html {redirect_to dictionaries_path, notice: e.message}
-				format.any  {render json: {message:e.message}, status: :bad_request}
-			end
-		rescue => e
-			respond_to do |format|
-				format.html { redirect_to dictionaries_url, notice: e.message }
-				format.json { head :unprocessable_entity }
-				format.tsv  { head :unprocessable_entity }
-			end
+	rescue ArgumentError => e
+		respond_to do |format|
+			format.html {redirect_to dictionaries_path, notice: e.message}
+			format.any  {render json: {message:e.message}, status: :bad_request}
+		end
+	rescue => e
+		respond_to do |format|
+			format.html { redirect_to dictionaries_url, notice: e.message }
+			format.json { head :unprocessable_entity }
+			format.tsv  { head :unprocessable_entity }
 		end
 	end
 
@@ -205,8 +242,11 @@ class DictionariesController < ApplicationController
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
 			raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
-			delayed_job = Delayed::Job.enqueue CompileJob.new(dictionary), queue: :general
-			Job.create({name:"Compile entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+			delayed_job = CompileJob.new(dictionary)
+			delayed_job.perform
+
+			# delayed_job = Delayed::Job.enqueue CompileJob.new(dictionary), queue: :general
+			# Job.create({name:"Compile entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
 
 			respond_to do |format|
 				format.html{ redirect_back fallback_location: root_path }

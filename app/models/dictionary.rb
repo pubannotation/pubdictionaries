@@ -133,60 +133,60 @@ class Dictionary < ApplicationRecord
 		user && (user.admin? || user_id == user.id)
 	end
 
-	def create_addition(label, id)
-		increment!(:entries_num) if create_additional_entry(id, label)
-		update_tmp_sim_string_db
-	end
-
-	def create_deletion(entry)
-		entry.be_deletion!
-		decrement!(:entries_num)
-	end
-
 	def undo_entry(entry)
-		if entry.addition?
+		if entry.is_white?
 			entry.delete
 			decrement!(:entries_num)
-		elsif entry.deletion?
-			entry.be_normal!
+		elsif entry.is_black?
+			entry.be_gray!
 			increment!(:entries_num)
 		end
 
 		update_tmp_sim_string_db
 	end
 
-	def num_addition
-		entries.where(mode:Entry::MODE_ADDITION).count
+	def num_gray
+		entries.where(mode:Entry::MODE_GRAY).count
 	end
 
-	def num_deletion
-		entries.where(mode:Entry::MODE_DELETION).count
+	def num_white
+		entries.where(mode:Entry::MODE_WHITE).count
 	end
 
-	def add_entries(pairs, normalizer = nil)
+	def num_black
+		entries.where(mode:Entry::MODE_BLACK).count
+	end
+
+	def create_a_black_entry(entry)
+		entry.be_black!
+		decrement!(:entries_num)
+	end
+
+	def add_entries(hentries, normalizer = nil)
+		black_count = hentries.count{|e| e[2] == Entry::MODE_BLACK}
 		transaction do
-			new_entries = pairs.map {|label, identifier| new_entry_params(id, label, identifier, normalizer)}
+			new_entries = hentries.map {|label, identifier, mode| new_entry(label, identifier, normalizer, mode)}
 
 			r = Entry.ar_import new_entries, validate: false
 			raise "Import error" unless r.failed_instances.empty?
 
-			increment!(:entries_num, new_entries.length)
+			increment!(:entries_num, new_entries.length - black_count)
 		end
 	end
 
-	def new_entry_params(dictionary_id, label, id, normalizer)
+	def new_entry(label, identifier, normalizer = nil, mode = Entry::MODE_GRAY, dirty = false)
 		norm1 = normalize1(label, normalizer)
 		norm2 = normalize2(label, normalizer)
-		Entry.new(label: label, identifier: id, norm1: norm1, norm2: norm2, label_length: label.length, dictionary_id: dictionary_id)
+		Entry.new(label:label, identifier:identifier, norm1:norm1, norm2:norm2, label_length:label.length, mode:mode, dirty:dirty, dictionary_id: self.id)
 	rescue => e
-		raise ArgumentError, "The entry, [#{label}, #{id}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
+		raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
 	end
 
 	def empty_entries
 		transaction do
-			# Generate to one delete SQL statement for performance
 			entries.delete_all
 			update_attribute(:entries_num, 0)
+			clean_sim_string_db
 		end
 	end
 
@@ -199,34 +199,24 @@ class Dictionary < ApplicationRecord
 	end
 
 	def compilable?
-		num_addition > 0 || num_deletion > 0
+		entries.where(dirty:true).exists?
 	end
 
-	def compile
-		FileUtils.mkdir_p(sim_string_db_dir) unless Dir.exist?(sim_string_db_dir)
+	def compile!
+		# Update sim string db to remove black entries and to add (dirty) white entries.
+		# which is sufficient to speed up the search
+		update_sim_string_db
 
-		ngram_order = case language
-		when 'kor'
-			2
-		when 'jpn'
-			1
-		else
-			3
-		end
+		# commented: do NOT delete black entries
+		# Entry.delete(Entry.where(dictionary_id: self.id, mode:Entry::MODE_BLACK).pluck(:id))
 
-		db = Simstring::Writer.new sim_string_db_path, ngram_order, false, true
+		# commented: do NOT change white entries to gray ones
+		# entries.where(mode:Entry::MODE_WHITE).update_all(mode: Entry::MODE_GRAY)
 
-		entries
-			.where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION])
-			.pluck(:norm2)
-			.uniq
-			.each{|norm2| db.insert norm2}
+		update_stop_words
+	end
 
-		# Generate to one delete SQL statement for performance
-		Entry.delete(Entry.where(dictionary_id: self.id, mode:Entry::MODE_DELETION).pluck(:id))
-		entries.where(mode:Entry::MODE_ADDITION).update_all(mode: Entry::MODE_NORMAL)
-		db.close
-
+	def update_stop_words
 		mlabels = entries.pluck(:label).map{|l| l.downcase.split}
 		count_no_term_words = mlabels.map{|ml| ml & NO_TERM_WORDS}.select{|i| i.present?}.reduce([], :+).uniq
 		count_no_begin_words = mlabels.map{|ml| ml[0, 1] & NO_BEGIN_WORDS}.select{|i| i.present?}.reduce([], :+).uniq
@@ -335,7 +325,7 @@ class Dictionary < ApplicationRecord
 		norm2s = ssdb.retrieve(norm2)
 
 		norm2s.each do |n2|
-			results += ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND norm2=$2 AND mode=0", 'SQL', [[nil, id], [nil, n2]], prepare:true).to_a.each{|r| r.symbolize_keys!}
+			results += ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND norm2=$2 AND mode!=2", 'SQL', [[nil, id], [nil, n2]], prepare:true).to_a.each{|r| r.symbolize_keys!}
 		end
 
 		results.uniq!
@@ -349,20 +339,42 @@ class Dictionary < ApplicationRecord
 
 	private
 
-	def create_additional_entry(id, label)
-		e = entries.find_by_label_and_identifier(label, id)
-		return unless e.nil?
+	def ngram_order
+		case language
+		when 'kor'
+			2
+		when 'jpn'
+			1
+		else
+			3
+		end
+	end
 
-		norm1 = normalize1(label)
-		norm2 = normalize2(label)
-		entries.create({label: label, identifier: id, norm1: norm1, norm2: norm2, label_length: label.length, mode: Entry::MODE_ADDITION})
-		true
+	def clean_sim_string_db
+		FileUtils.rm_rf Dir.glob("#{sim_string_db_dir}/*")
+	end
+
+	def update_sim_string_db
+		FileUtils.mkdir_p(sim_string_db_dir) unless Dir.exist?(sim_string_db_dir)
+		clean_sim_string_db
+
+		db = Simstring::Writer.new sim_string_db_path, ngram_order, false, true
+
+		entries
+			.active
+			.pluck(:norm2)
+			.uniq
+			.each{|norm2| db.insert norm2}
+
+		db.close
+
+		entries.white.update_all(dirty: false)
 	end
 
 	def update_tmp_sim_string_db
 		FileUtils.mkdir_p(sim_string_db_dir) unless Dir.exist?(sim_string_db_dir)
 		db = Simstring::Writer.new tmp_sim_string_db_path, 3, false, true
-		self.entries.where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
+		self.entries.where(mode: [Entry::MODE_GRAY, Entry::MODE_WHITE]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
 		db.close
 	end
 

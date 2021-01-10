@@ -1,6 +1,5 @@
 <% content_for :page_title do %>
 	<%= render partial: 'title' %>
 <% end %>
-<%= render partial: 'control' %>
 <%= render partial: 'dashboard' %>
-<%= render partial: 'entries/table' -%>
+<%= render partial: 'entries/table', locals:{type:@type_entries} -%>

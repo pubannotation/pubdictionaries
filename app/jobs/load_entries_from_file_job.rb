@@ -8,7 +8,7 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
       # file preprocessing
       # TODO: at the moment, it is hard-coded. It should be improved.
       `/usr/bin/dos2unix #{filename}`
-      `/usr/bin/cut -f1,2 #{filename} | sort -u -o #{filename}`
+      `/usr/bin/cut -f1-3 #{filename} | sort -u -o #{filename}`
 
       num_entries = File.read(filename).each_line.count
       if @job
@@ -24,15 +24,23 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
         post: Net::HTTP::Post.new(analyzer_url.request_uri, 'Content-Type' => 'application/json')
       }
 
-      dictionary_empty = dictionary.entries.empty?
       new_entries = []
       File.foreach(filename).with_index do |line, i|
-        label, id = Entry.read_entry_line(line)
-        if label.nil?
-          # invalid entry line detected.
-          # output an error message or just ignore it.
-        elsif dictionary_empty || dictionary.entries.find_by_label_and_identifier(label, id).nil?
-          new_entries << [label, id]
+        label, id, operator = Entry.read_entry_line(line)
+        next if label.nil?
+
+        mode = case operator
+        when '-'
+          Entry::MODE_BLACK
+        when '+'
+          Entry::MODE_WHITE
+        else
+          Entry::MODE_GRAY
+        end
+
+        matched = dictionary.entries.find_by_label_and_identifier(label, id)
+        if matched.nil?
+          new_entries << [label, id, mode]
           if new_entries.length >= transaction_size
             dictionary.add_entries(new_entries, analyzer)
             new_entries.clear
@@ -40,14 +48,26 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
               @job.update_attribute(:num_dones, i + 1)
             end
           end
+        else
+          case mode
+          when Entry::MODE_BLACK
+            unless matched.mode == Entry::MODE_BLACK
+              matched.be_black!
+              dictionary.decrement!(:entries_num)
+            end
+          when Entry::MODE_WHITE
+            matched.be_white!
+          end
+
+          if @job
+            @job.increment!(:num_dones)
+          end
         end
       end
-      dictionary.add_entries(new_entries, analyzer) unless new_entries.empty?
-      if @job
-        @job.update_attribute(:num_dones, num_entries)
-      end
 
-      dictionary.compile
+      dictionary.add_entries(new_entries, analyzer) unless new_entries.empty?
+
+      dictionary.compile!
     rescue => e
       Delayed::Worker.logger.debug e.message + e.backtrace.join("\n")
       if @job

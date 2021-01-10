@@ -1,50 +1,48 @@
-<% if @dictionary.editable?(current_user) || entry.mode != Entry::MODE_DELETION %>
-  <%
-    if @dictionary.editable?(current_user)
-      label_class = case entry.mode
-        when Entry::MODE_ADDITION then "label addition"
-        when Entry::MODE_DELETION then "label deletion"
-        else "label"
-      end
-
-      id_class = case entry.mode
-        when Entry::MODE_ADDITION then "id addition"
-        when Entry::MODE_DELETION then "id deletion"
-        else "id"
-      end
-
-      tr_class = case entry.mode
-        when Entry::MODE_ADDITION then "addition"
-        when Entry::MODE_DELETION then "deletion"
-        else "entry"
-      end
+<%
+  tr_class = if @dictionary.editable?(current_user)
+    case entry.mode
+      when Entry::MODE_GRAY then "entry gray"
+      when Entry::MODE_WHITE then "entry white"
+      when Entry::MODE_BLACK then "entry black"
+      else "entry"
     end
-  %>
+  else
+    "entry"
+  end
+%>
 
-  <tr class="<%= tr_class %>">
-    <td>
-      <%= content_tag(:span, entry.label, class: label_class, title: entry.label) -%>
+<tr class="<%= tr_class %>">
+  <td>
+    <span title="<%= entry.label%>">
+      <%= entry.label %>
+      <% if entry.dirty %>
+        &#149;
+      <% end %>
+    </span>
+  </td>
+  <td style="border-right-style: none">
+    <%=
+      if is_url?(entry.identifier)
+        link_to(entry.identifier, entry.identifier, title: entry.identifier)
+      else
+        content_tag(:span, entry.identifier, title: entry.identifier)
+      end
+    -%>
+  </td>
+  <td style="border-left-style: none">
+     <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'search') -%>
+  </td>
+  <% if @dictionary.editable?(current_user) %>
+    <td style="text-align:center">
+      <% case entry.mode %>
+      <% when Entry::MODE_GRAY %>
+        <input type="checkbox" name="entry_id[]" id="entry_id_<%= entry.id %>" class="chkbox" value="<%= entry.id %>">
+      <% when Entry::MODE_WHITE %>
+        <%= link_to('<i class="fa fa-trash-o" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Remove') %>
+      <% when Entry::MODE_BLACK %>
+        <%= link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Back to gray') %>
+      <% else %>
+      <% end %>
     </td>
-    <td style="position:relative">
-      <%=
-        if is_url?(entry.identifier)
-          link_to(entry.identifier, entry.identifier, class: id_class, title: entry.identifier)
-        else
-          content_tag(:span, entry.identifier, class: id_class, title: entry.identifier)
-        end
-      -%>
-      <span style='position:absolute; right: 5px'>
-        <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'search') -%>
-      </span>
-    </td>
-    <% if @dictionary.editable?(current_user) %>
-      <td style="text-align:center">
-        <% if entry.mode == 0 %>
-          <input type="checkbox" name="entry_id[]" id="entry_id_<%= entry.id %>" class="chkbox" value="<%= entry.id %>">
-        <% else %>
-          <%= link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Undo') %>
-        <% end %>
-      </td>
-    <% end %>
-  </tr>
-<% end %>
+  <% end %>
+</tr>

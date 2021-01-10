@@ -22,7 +22,7 @@ table {
   border: 1px solid gray;
 
   tr {
-    border: 1px solid gray;
+    border-style: none;
 
     th, td {
       border: 1px solid gray;
@@ -38,6 +38,16 @@ table {
       text-align: left;
     }
 
+  }
+}
+
+table.entries{
+  th, td {
+    padding: 0;
+    span, a {
+      display: block;
+      padding: 4px;
+    }
   }
 }
 

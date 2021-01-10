@@ -23,12 +23,6 @@
   .description {
     text-align: left;
   }
-
-  .toolbox {
-    width: 100%;
-    text-align: right;
-    white-space: nowrap;
-  }
 }
 
 .dictionary-table {
@@ -85,3 +79,25 @@ fieldset .message {
 .owner {
   background-color: #e7e7ff;
 }
+
+.toolbox {
+  display: inline-block;
+  margin: 0 10px 0 10px;
+  padding: 0 2px;
+  font-size: 0.6em;
+}
+
+
+table.counts {
+  width: 100%;
+  border-style: none;
+
+  th, td {
+    border: 1px solid gray;
+  }
+}
+
+.count_entries {
+  width: 33.3%;
+}
+

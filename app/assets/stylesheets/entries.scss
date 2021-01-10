@@ -40,31 +40,48 @@ table.entries {
 	overflow: visible;
 }
 
-tr.addition {
-  background-color: #bbffbb;
-}
-
-tr.addition:hover {
-  background-color: #ccffcc;
-}
-
-
-span.addition {
+span.white {
   font-style: italic;
 }
 
-tr.deletion {
-  background-color: #ffbbbb;
-}
-
-tr.deletion:hover {
-  background-color: #ffcccc;
-}
-
-span.deletion {
-  text-decoration: line-through;
+tr.entry {
+  opacity: 0.8;
 }
 
 tr.entry:hover {
-  background-color: #fdf;
+  opacity: 1;
 }
+
+.gray {
+  background-color: #ddd;
+}
+
+.white {
+  background-color: #f8f8f8;
+}
+
+.black {
+  background-color: #555;
+  color: #eef;
+
+  a {
+    color: #eef;
+    text-decoration: none;
+
+    &:visited {
+      color: #eef;
+    }
+    &:hover {
+      color: #eef;
+    }
+  }
+}
+
+.active {
+  background-color: #aaf;
+}
+
+.custom {
+  background-color: #faa;
+}
+

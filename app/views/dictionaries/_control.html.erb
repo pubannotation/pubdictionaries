@@ -1,4 +1,4 @@
-<div class="control">
+<span class="toolbox">
 	<% if @dictionary.editable?(current_user) %>
 		<%= link_to(
 			'<i class="fa fa-cog fa-lg"></i>'.html_safe,
@@ -6,4 +6,4 @@
 			title: 'Settings'
 		) %>
 	<% end %>
-</div>
+</span>

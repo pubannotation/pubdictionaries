@@ -3,7 +3,7 @@ class CompileJob < Struct.new(:dictionary)
 
 	def perform
 		begin
-			dictionary.compile
+			dictionary.compile!
 		rescue => e
 			@job.message = e.message
 		end

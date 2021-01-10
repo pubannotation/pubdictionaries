@@ -1,31 +1,34 @@
-<div class="tab-bar">
-<!--%= link_to 'TSV',  params.merge(controller: :dictionaries, action: :show, format: :tsv),  :class => 'tab' -%-->
-</div>
+<% if @dictionary.editable?(current_user) %>
+  <%
+    title_entry_type = case @type_entries
+    when 'Gray'
+      t('title.gray')
+    when 'White'
+      t('title.white')
+    when 'Black'
+      t('title.black')
+    when 'Active'
+      t('title.active')
+    when 'Custom'
+      t('title.custom')
+    end
+  %>
 
-<% if @dictionary.editable?(current_user) && (@addition_num > 0 || @deletion_num > 0) %>
-  <table>
-    <tr>
-      <th style="background-color:#ffaaaa"><%= link_to '#Active', params.permit(:mode).except(:mode) %></th>
-      <th style="background-color:#ffaaaa"><%= link_to_unless_current '#Additions', params.permit(:mode).merge(mode: Entry::MODE_ADDITION) %></th>
-      <th style="background-color:#aaffaa"><%= link_to_unless_current '#Deletions', params.permit(:mode).merge(mode: Entry::MODE_DELETION) %></th>
-      <td rowspan="2" style="font-style:italic; color:red">
-        <% if @addition_num > 0 || @deletion_num > 0 %>
-          <i class="fa fa-lightbulb-o" aria-hidden="true"></i> The dictionary is modified. You can use it as it is. However, for a faster lookup or annotation, you are recommended to compile it. Go to <%= link_to('settings <i class="fa fa-cog fa-lg"></i>'.html_safe, edit_dictionary_path(@dictionary.name)) %>.
-        <% end %>
-      </td>
-    </tr>
-    <tr>
-      <td style="text-align: right"><%= number_with_delimiter(@dictionary.entries_num, :delimiter => ',') %></td>
-      <td style="text-align: right"><%= @addition_num %></td>
-      <td style="text-align: right"><%= @deletion_num %></td>
-    </tr>
-  </table>
+  <h2 style="margin-bottom:0">
+    <span title="<%= title_entry_type %>"><%= @type_entries %> entries</span>
+    <% if params[:label_search] || params[:id_search] -%>
+      (search result
+      <%= link_to('<i class="fa fa-times" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary), class: 'button', title: 'Cancel') %>
+      )
+    <% end %>
+  </h2>
 <% end %>
 
-<table class="entries" style="margin-bottom:0">
+<table class="entries" style="margin-bottom:0; border-bottom-style:none">
   <colgroup>
     <col class="col_label">
     <col class="col_identifier">
+    <col class="col_button">
     <col class="col_button">
   </colgroup>
   <thead>
@@ -34,15 +37,13 @@
         Label
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
   	      <%= text_field_tag :label_search, params[:label_search], required: true -%>
-          <%= link_to('<i class="fa fa-times" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary), class: 'button', title: 'Cancel') if params[:label_search] -%>
     	    <%= submit_tag 'Search', class: 'button' -%>
     	  <% end -%>
       </th>
-      <th>
+      <th colspan="2">
         Id
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
         	<%= text_field_tag :id_search, params[:id_search], required: true -%>
-          <%= link_to('<i class="fa fa-times" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary), class: 'button', title: 'Cancel') if params[:id_search] -%>
         	<%= submit_tag 'Search', class: 'button' -%>
     	  <% end -%>
       </th>
@@ -59,17 +60,20 @@
       <col class="col_label">
       <col class="col_identifier">
       <col class="col_button">
+      <col class="col_button">
     </colgroup>
     <%= render partial: "entries/entry", collection: @entries -%>
-    <tr>
-      <td style="border-style:none"></td>
-      <td style="border-style:none"></td>
-      <% if @dictionary.editable?(current_user) %>
+
+    <% if @dictionary.editable?(current_user) && ['Gray', 'Active'].include?(@type_entries) %>
+      <tr>
+        <td style="border-style:none"></td>
+        <td colspan="2" style="border-style:none"></td>
         <td style="text-align:center">
-          <a title="delete selected entries" href="javascript:{}" onclick="document.getElementById('delete_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
+          <a title="remove selected entries" href="javascript:{}" onclick="document.getElementById('delete_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
         </td>
-      <% end %>
-    </tr>
+      </tr>
+    <% end %>
+
   </table>
 <% end %>
 
@@ -106,10 +110,10 @@
     <%= form_tag(dictionary_entries_path(@dictionary), method: :post, id: "add_entry_form") do %>
       <tr>
         <td>
-          <%= text_field_tag :label, nil, required: true, style: "width:90%" -%>
+          <span><%= text_field_tag :label, nil, required: true, style: "box-sizing:content-box; width:90%" -%></span>
         </td>
         <td>
-          <%= text_field_tag :identifier, nil, required: true, style: "width:90%" -%>
+          <span><%= text_field_tag :identifier, nil, required: true, style: "box-sizing:content-box; width:90%" -%></span>
         </td>
         <td style="text-align:center">
           <a title="add" href="javascript:{}" onclick="document.getElementById('add_entry_form').submit(); return false;"><i class="fa fa-plus-square" aria-hidden="true"></i></a>

@@ -21,14 +21,8 @@
       </div>
     <% end %>
 
-    <% if @dictionary.compilable? %>
-      <%= file_field_tag :file, required: true, disabled: true %><br/>
-      <%= submit_tag 'Upload', class: "button disabled", disabled: true %>
-      <span class="message">Uploading is diabled because the dictionary is modified. You need to compile it before uploading additional entries.</span>
-    <% else %>
-      <%= file_field_tag :file, required: true %><br/>
-      <%= submit_tag 'Upload', class: "button" %>
-    <% end %>
+    <%= file_field_tag :file, required: true %><br/>
+    <%= submit_tag 'Upload', class: "button" %>
   <% end %>
 </fieldset>
 

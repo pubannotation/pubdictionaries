@@ -1,7 +1,9 @@
 class Entry < ApplicationRecord
-  MODE_NORMAL   = 0
-  MODE_ADDITION = 1
-  MODE_DELETION = 2
+  MODE_GRAY   = 0
+  MODE_WHITE = 1
+  MODE_BLACK = 2
+  MODE_ACTIVE = 3 # gray + white (for downloading)
+  MODE_CUSTOM = 4 # white + black (for downloading)
 
   include Elasticsearch::Model
 
@@ -49,9 +51,11 @@ class Entry < ApplicationRecord
   validates :label, presence: true
   validates :identifier, presence: true
 
-  scope :added, -> {where(mode: Entry::MODE_ADDITION)}
-  scope :deleted, -> {where(mode: Entry::MODE_DELETION)}
-  scope :active, -> {where(mode: [Entry::MODE_NORMAL, Entry::MODE_ADDITION])}
+  scope :gray, -> {where(mode: Entry::MODE_GRAY)}
+  scope :white, -> {where(mode: Entry::MODE_WHITE)}
+  scope :black, -> {where(mode: Entry::MODE_BLACK)}
+  scope :custom, -> {where(mode: [Entry::MODE_WHITE, Entry::MODE_BLACK])}
+  scope :active, -> {where(mode: [Entry::MODE_GRAY, Entry::MODE_WHITE])}
 
   def as_json(options={})
     {
@@ -62,9 +66,24 @@ class Entry < ApplicationRecord
 
   def self.as_tsv
     CSV.generate(col_sep: "\t") do |tsv|
-      tsv << [:label, :id]
+      tsv << ['#label', :id]
       all.each do |entry|
         tsv << [entry.label, entry.identifier]
+      end
+    end
+  end
+
+  def self.as_tsv_v
+    CSV.generate(col_sep: "\t") do |tsv|
+      tsv << ['#label', :id, :operator]
+      all.each do |entry|
+        operator = case entry.mode
+        when MODE_WHITE
+          '+'
+        when MODE_BLACK
+          '-'
+        end
+        tsv << [entry.label, entry.identifier, operator]
       end
     end
   end
@@ -82,27 +101,32 @@ class Entry < ApplicationRecord
 
     return nil if items[1].length > 255
 
-    [items[0], items[1]]
+    operator = ['+', '-'].include?(items[2]) ? items[2] : nil
+    [items[0], items[1], operator].compact
   end
 
   def self.decapitalize(text)
     text.gsub(/(^| )[A-Z][a-z ]/, &:downcase)
   end
 
-  def be_normal!
-    update_attribute(:mode, Entry::MODE_NORMAL)
+  def be_gray!
+    update_attribute(:mode, Entry::MODE_GRAY)
   end
 
-  def be_deletion!
-    update_attribute(:mode, Entry::MODE_DELETION)
+  def be_white!
+    update_attribute(:mode, Entry::MODE_WHITE)
   end
 
-  def addition?
-    mode == Entry::MODE_ADDITION
+  def be_black!
+    update_attribute(:mode, Entry::MODE_BLACK)
   end
 
-  def deletion?
-    mode == Entry::MODE_DELETION
+  def is_white?
+    mode == Entry::MODE_WHITE
+  end
+
+  def is_black?
+    mode == Entry::MODE_BLACK
   end
 
   def self.normalize(text, normalizer, analyzer = nil)

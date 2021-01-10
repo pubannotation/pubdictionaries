@@ -5,7 +5,7 @@ class EntriesController < ApplicationController
 	# GET /dictionaries/dic1/entries?page=1&per_page=20
 	def index
 		dictionary = Dictionary.find_by_name(params[:dictionary_id])
-		raise ArgumentError, "Unknown dictionary: #{params[:dictionary_id]}." if dictionary.nil?
+		raise ArgumentError, "Couldnot find the dictionary: #{params[:dictionary_id]}." if dictionary.nil?
 
 		entries = dictionary.entries.order("mode DESC").order(:label).page(params[:page]).per(params[:per_page])
 
@@ -28,17 +28,32 @@ class EntriesController < ApplicationController
 	def create
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
+			raise ArgumentError, "Could not find the dictionary, #{params[:dictionary_id]}." if dictionary.nil?
 
-			raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}." if dictionary.nil?
+			label = params[:label].strip
+			raise ArgumentError, "A label should be supplied." unless label.present?
 
-			dictionary.create_addition(params[:label].strip, params[:identifier].strip)
+			identifier = params[:identifier].strip
+			raise ArgumentError, "An identifier should be supplied." unless identifier.present?
 
-		rescue => e
-			message = e.message
+			entry = dictionary.entries.where(label:label, id:identifier).first
+			raise ArgumentError, "The label and identifier already exist in the dictionary." unless entry.nil?
+
+			entry = dictionary.new_entry(label, identifier, nil, Entry::MODE_WHITE, true)
+
+			message = if entry.save
+				dictionary.increment!(:entries_num)
+				# dictionary.update_tmp_sim_string_db
+				"A white entry was created."
+			else
+				"A white entry could not been created."
+			end
+		# rescue => e
+		# 	message = e.message
 		end
 
 		respond_to do |format|
-			format.html { redirect_back fallback_location: root_path, notice: message }
+			format.html { redirect_back fallback_location: root_path, notice: message}
 		end
 	end
 
@@ -46,7 +61,7 @@ class EntriesController < ApplicationController
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
 
-			raise ArgumentError, "Cannot find the dictionary, #{params[:dictionary_id]}." if dictionary.nil?
+			raise ArgumentError, "Could not find the dictionary, #{params[:dictionary_id]}." if dictionary.nil?
 			raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 
 			source_filepath = params[:file].tempfile.path
@@ -72,12 +87,13 @@ class EntriesController < ApplicationController
 	def destroy
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
-			raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+			raise ArgumentError, "Could not find the dictionary" if dictionary.nil?
 
 			entry = Entry.find(params[:id])
-			raise ArgumentError, "Cannot find the entry" if entry.nil?
+			raise ArgumentError, "Could not find the entry" if entry.nil?
 
-			dictionary.create_deletion(entry)
+			entry.be_black!
+			dictionary.decrement!(:entries_num)
 		rescue => e
 			message = e.message
 		end
@@ -90,12 +106,13 @@ class EntriesController < ApplicationController
 	def destroy_entries
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
-			raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+			raise ArgumentError, "Could not find the dictionary" if dictionary.nil?
 
 			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
 
 			entries = params[:entry_id].collect{|id| Entry.find(id)}
-			entries.each{|entry| dictionary.create_deletion(entry)}
+			entries.each{|entry| entry.be_black!}
+			dictionary.update_attribute(:entries_num, dictionary.entries_num - entries.count)
 		rescue => e
 			message = e.message
 		end
