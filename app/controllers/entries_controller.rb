@@ -136,7 +136,13 @@ class EntriesController < ApplicationController
 		end
 
 		respond_to do |format|
-			format.html{ redirect_back fallback_location: root_path, notice: message }
+			format.html{
+				if dictionary.entries.white.exists? || dictionary.entries.black.exists?
+					redirect_back fallback_location: root_path, notice: message
+				else
+					redirect_to dictionary
+				end
+			}
 		end
 	end
 end
