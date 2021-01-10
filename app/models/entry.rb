@@ -57,6 +57,11 @@ class Entry < ApplicationRecord
   scope :custom, -> {where(mode: [Entry::MODE_WHITE, Entry::MODE_BLACK])}
   scope :active, -> {where(mode: [Entry::MODE_GRAY, Entry::MODE_WHITE])}
 
+  scope :simple_paginate, -> (page = 1, per = 15) {
+    offset = (page - 1) * per
+    offset(offset).limit(per)
+  }
+
   def as_json(options={})
     {
       id: identifier,

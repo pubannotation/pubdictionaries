@@ -124,10 +124,5 @@
 </table>
 
 <div class="table-control">
-<% if @labels.present? %>
-  <%= paginate @labels %>
-<% elsif @identifier.present? %>
-<% elsif @entries.present? %>
-  <%= paginate @entries %>
-<% end %>
+  <%= simple_paginate -%>
 </div>

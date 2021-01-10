@@ -267,12 +267,20 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
-	def narrow_entries_by_identifier(str, page = 0)
-		entries.where("identifier ILIKE ?", "%#{str}%").page(page)
+	def narrow_entries_by_identifier(str, page = 0, per = nil)
+		if per.nil?
+			entries.where("identifier ILIKE ?", "%#{str}%").page(page)
+		else
+			entries.where("identifier ILIKE ?", "%#{str}%").page(page).per(per)
+		end
 	end
 
-	def self.narrow_entries_by_identifier(str, page = 0)
-		Entry.where("identifier ILIKE ?", "%#{str}%").page(page)
+	def self.narrow_entries_by_identifier(str, page = 0, per = nil)
+		if per.nil?
+			Entry.where("identifier ILIKE ?", "%#{str}%").page(page)
+		else
+			Entry.where("identifier ILIKE ?", "%#{str}%").page(page).per(per)
+		end
 	end
 
 	def self.narrow_entries_by_label(str, page = 0)

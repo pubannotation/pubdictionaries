@@ -36,31 +36,34 @@ class DictionariesController < ApplicationController
 		raise ArgumentError, "Could not find the dictionary: #{params[:id]}." if @dictionary.nil?
 
 		respond_to do |format|
+			page = (params[:page].presence || 1).to_i
+			per  = (params[:per].presence || 15).to_i
+
 			format.html {
 				@entries, @type_entries = if params[:label_search]
 					params[:label_search].strip!
-					[@dictionary.narrow_entries_by_label(params[:label_search], params[:page]), "Active"]
+					[@dictionary.narrow_entries_by_label(params[:label_search], page, per), "Active"]
 				elsif params[:id_search]
 					params[:id_search].strip!
-					[@dictionary.narrow_entries_by_identifier(params[:id_search], params[:page]), "Active"]
+					[@dictionary.narrow_entries_by_identifier(params[:id_search], page, per), "Active"]
 				else
 					if params[:mode].present?
 						case params[:mode].to_i
 						when Entry::MODE_WHITE
-							[@dictionary.entries.white.page(params[:page]), "White"]
+							[@dictionary.entries.white.simple_paginate(page, per), "White"]
 						when Entry::MODE_BLACK
-							[@dictionary.entries.black.page(params[:page]), "Black"]
+							[@dictionary.entries.black.simple_paginate(page, per), "Black"]
 						when Entry::MODE_GRAY
-							[@dictionary.entries.gray.page(params[:page]), "Gray"]
+							[@dictionary.entries.gray.simple_paginate(page, per), "Gray"]
 						when Entry::MODE_ACTIVE
-							[@dictionary.entries.active.page(params[:page]), "Active"]
+							[@dictionary.entries.active.simple_paginate(page, per), "Active"]
 						when Entry::MODE_CUSTOM
-							[@dictionary.entries.custom.page(params[:page]), "Custom"]
+							[@dictionary.entries.custom.simple_paginate(page, per), "Custom"]
 						else
-							[@dictionary.entries.active.page(params[:page]), "Active"]
+							[@dictionary.entries.active.simple_paginate(page, per), "Active"]
 						end
 					else
-						[@dictionary.entries.active.page(params[:page]), "Active"]
+						[@dictionary.entries.active.simple_paginate(page, per), "Active"]
 					end
 				end
 			}
