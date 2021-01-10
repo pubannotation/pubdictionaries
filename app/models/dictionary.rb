@@ -141,8 +141,6 @@ class Dictionary < ApplicationRecord
 			entry.be_gray!
 			increment!(:entries_num)
 		end
-
-		update_tmp_sim_string_db
 	end
 
 	def num_gray
