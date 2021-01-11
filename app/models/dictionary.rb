@@ -144,7 +144,7 @@ class Dictionary < ApplicationRecord
 	end
 
 	def num_gray
-		entries.where(mode:Entry::MODE_GRAY).count
+		entries_num - num_white
 	end
 
 	def num_white
