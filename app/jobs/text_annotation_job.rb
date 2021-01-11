@@ -16,7 +16,7 @@ class TextAnnotationJob < Struct.new(:target, :dictionaries, :options)
         @job.update_attribute(:num_dones, 0)
       end
 
-      dictionaries.each{|dictionary| dictionary.compile! if dictinary.compilable?}
+      dictionaries.each{|dictionary| dictionary.compile! if dictionary.compilable?}
 
       annotator = TextAnnotator.new(dictionaries, options)
 
