@@ -21,6 +21,7 @@ class User < ApplicationRecord
     if user.save
       user
     else
+      Rails.logger.debug user.errors.full_messages
       "username(#{auth.info.name}) is invalid."
     end
   end
