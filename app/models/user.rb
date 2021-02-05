@@ -11,7 +11,7 @@ class User < ApplicationRecord
   has_many :associated_dictionaries, through: :associations, source: :dictionary
 
   validates :username, :presence => true, :length => {:minimum => 5, :maximum => 20}, uniqueness: true
-  validates_format_of :username, :with => /\A[a-z0-9][a-z0-9_-]+\z/i
+  validates_format_of :username, :with => /\A[a-z0-9][ a-z0-9_-]+\z/i
 
   def self.from_omniauth(auth)
     user = User.find_by_email(auth.info.email)
