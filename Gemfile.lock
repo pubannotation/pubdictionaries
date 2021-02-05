@@ -339,7 +339,7 @@ DEPENDENCIES
   kaminari
   language_list (~> 1.2, >= 1.2.1)
   net-http-persistent
-  omniauth
+  omniauth (~> 1.9.1)
   omniauth-google-oauth2
   pg
   rack-cors
