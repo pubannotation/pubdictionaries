@@ -6,7 +6,7 @@
 
 <fieldset>
 	<legend>Demo</legend>
-	<%= form_tag '/text_annotation', id: 'text_annotation', method: :get do -%>
+	<%= form_tag '/text_annotation', id: 'text_annotation', method: :post do -%>
 		<%= text_area_tag :text, params[:text], required: true, placeholder: 'text', style: "height:50px" %>
 
 		<table class="options">
