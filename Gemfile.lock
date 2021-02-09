@@ -1,3 +1,13 @@
+GIT
+  remote: git://github.com/kreintjes/wice_grid.git
+  revision: 5737939524032678963ff4ed254e1ed35a075a50
+  branch: fix/all
+  specs:
+    wice_grid (4.1.0)
+      coffee-rails (> 3.2)
+      kaminari (~> 1.1)
+      rails (>= 5.0, < 7)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -156,9 +166,18 @@ GEM
     jquery-ui-rails (6.0.1)
       railties (>= 3.2.16)
     jwt (2.2.2)
-    kaminari (0.17.0)
-      actionpack (>= 3.0.0)
-      activesupport (>= 3.0.0)
+    kaminari (1.2.1)
+      activesupport (>= 4.1.0)
+      kaminari-actionview (= 1.2.1)
+      kaminari-activerecord (= 1.2.1)
+      kaminari-core (= 1.2.1)
+    kaminari-actionview (1.2.1)
+      actionview
+      kaminari-core (= 1.2.1)
+    kaminari-activerecord (1.2.1)
+      activerecord
+      kaminari-core (= 1.2.1)
+    kaminari-core (1.2.1)
     kgio (2.11.3)
     language_list (1.2.1)
     listen (3.4.1)
@@ -318,10 +337,6 @@ GEM
     websocket-driver (0.7.3)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
-    wice_grid (3.6.2)
-      activerecord (> 3.2)
-      coffee-rails (> 3.2)
-      kaminari (~> 0.16)
     zeitwerk (2.4.2)
 
 PLATFORMS
@@ -364,7 +379,7 @@ DEPENDENCIES
   unicorn
   validate_url
   web-console (~> 2.0)
-  wice_grid
+  wice_grid (~> 4.1)!
 
 RUBY VERSION
    ruby 2.6.4p104
