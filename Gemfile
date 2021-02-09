@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 ruby '2.6.4'
 
-gem 'rails', '5.2.2'
+gem 'rails', '5.2.4'
 gem 'activerecord-import'
 
 gem 'pg'
@@ -10,7 +10,7 @@ gem 'font-awesome-sass', '~> 4.7.0'
 gem 'jquery-rails'
 gem 'jquery-ui-rails'
 gem 'devise'
-gem 'omniauth'
+gem 'omniauth' , '~> 1.9.1'
 gem 'omniauth-google-oauth2'
 gem 'net-http-persistent'
 gem 'ruby-stemmer'
