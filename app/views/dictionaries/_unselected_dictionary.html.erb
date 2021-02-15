@@ -1,4 +1,4 @@
-<%= content_tag :div, id: 'dictionary_' + unselected_dictionary, class: 'dictionary', name: unselected_dictionary, selected: false do -%>
+<%= content_tag :div, id: "dictionary_#{unselected_dictionary.gsub(/ /, '^')}", class: 'dictionary', name: unselected_dictionary, selected: false do -%>
 	<%= link_to unselected_dictionary, dictionary_path(unselected_dictionary), class: 'name' %>
 	<%= content_tag :i, '', class:"fa fa-plus-circle", title: "select" %>
 <% end -%>
