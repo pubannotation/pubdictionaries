@@ -77,15 +77,17 @@
 	}
 
 	function selectDictionary(dicname) {
-		$('#unselected_dictionaries > #dictionary_' + dicname).hide();
-		$('#unselected_dictionaries > #dictionary_' + dicname).attr('selected', true);
-		$('#selected_dictionaries > #dictionary_' + dicname).show();
+		var convertedDicname = dicname.replace(/ /g, '\\^');
+		$('#unselected_dictionaries > #dictionary_' + convertedDicname).hide();
+		$('#unselected_dictionaries > #dictionary_' + convertedDicname).attr('selected', true);
+		$('#selected_dictionaries > #dictionary_' + convertedDicname).show();
 	}
 
 	function unselectDictionary(dicname) {
-		$('#selected_dictionaries > #dictionary_' + dicname).hide();
-		$('#unselected_dictionaries > #dictionary_' + dicname).show();
-		$('#unselected_dictionaries > #dictionary_' + dicname).attr('selected', false);
+		var convertedDicname = dicname.replace(/ /g, '\\^');
+		$('#selected_dictionaries > #dictionary_' + convertedDicname).hide();
+		$('#unselected_dictionaries > #dictionary_' + convertedDicname).show();
+		$('#unselected_dictionaries > #dictionary_' + convertedDicname).attr('selected', false);
 	}
 
 	function setParamDics() {
