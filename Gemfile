@@ -1,11 +1,11 @@
 source 'https://rubygems.org'
 ruby '2.6.4'
 
-gem 'rails', '5.2.4'
+gem 'rails', '6.0.3'
 gem 'activerecord-import'
 
 gem 'pg'
-gem 'wice_grid'              # Grid viewer for tab-separated data view.
+gem 'wice_grid', '~> 4.1', github: 'kreintjes/wice_grid', branch: 'fix/all' # Grid viewer for tab-separated data view.
 gem 'font-awesome-sass', '~> 4.7.0'
 gem 'jquery-rails'
 gem 'jquery-ui-rails'
