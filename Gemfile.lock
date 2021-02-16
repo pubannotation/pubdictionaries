@@ -334,6 +334,7 @@ GEM
       binding_of_caller (>= 0.7.2)
       railties (>= 4.0)
       sprockets-rails (>= 2.0, < 4.0)
+    webrick (1.7.0)
     websocket-driver (0.7.3)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
@@ -379,6 +380,7 @@ DEPENDENCIES
   unicorn
   validate_url
   web-console (~> 2.0)
+  webrick
   wice_grid (~> 4.1)!
 
 RUBY VERSION
