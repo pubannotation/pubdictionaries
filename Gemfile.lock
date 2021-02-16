@@ -1,5 +1,5 @@
 GIT
-  remote: git://github.com/kreintjes/wice_grid.git
+  remote: https://github.com/kreintjes/wice_grid.git
   revision: 5737939524032678963ff4ed254e1ed35a075a50
   branch: fix/all
   specs:
@@ -382,7 +382,7 @@ DEPENDENCIES
   wice_grid (~> 4.1)!
 
 RUBY VERSION
-   ruby 2.6.4p104
+   ruby 3.0.0p0
 
 BUNDLED WITH
-   1.17.3
+   2.2.10
