@@ -39,7 +39,7 @@ group :development do
   gem 'guard-livereload', require: false
   gem 'faker'
   gem 'rails-erd'
-  gem 'web-console', '~> 2.0'
+  gem 'web-console'
 end
 
 group :test do
