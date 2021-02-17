@@ -1,5 +1,5 @@
 GIT
-  remote: git://github.com/kreintjes/wice_grid.git
+  remote: https://github.com/kreintjes/wice_grid.git
   revision: 5737939524032678963ff4ed254e1ed35a075a50
   branch: fix/all
   specs:
@@ -334,6 +334,7 @@ GEM
       binding_of_caller (>= 0.7.2)
       railties (>= 4.0)
       sprockets-rails (>= 2.0, < 4.0)
+    webrick (1.7.0)
     websocket-driver (0.7.3)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
@@ -379,10 +380,11 @@ DEPENDENCIES
   unicorn
   validate_url
   web-console (~> 2.0)
+  webrick
   wice_grid (~> 4.1)!
 
 RUBY VERSION
-   ruby 2.6.4p104
+   ruby 3.0.0p0
 
 BUNDLED WITH
-   1.17.3
+   2.2.10

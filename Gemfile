@@ -1,5 +1,5 @@
 source 'https://rubygems.org'
-ruby '2.6.4'
+ruby '3.0.0'
 
 gem 'rails', '6.0.3'
 gem 'activerecord-import'
@@ -32,6 +32,7 @@ gem 'uglifier'
 gem 'bootsnap'
 gem 'language_list', '~> 1.2', '>= 1.2.1'
 gem 'string-similarity', '~> 2.1'
+gem 'webrick'
 
 group :development do
   gem 'dotenv-rails'
