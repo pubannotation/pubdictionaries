@@ -175,7 +175,7 @@ class DictionariesController < ApplicationController
 			end
 
 			db_loc_old = @dictionary.sim_string_db_dir
-			if @dictionary.update_attributes(dictionary_params)
+			if @dictionary.update(dictionary_params)
 				db_loc_new = @dictionary.sim_string_db_dir
 				FileUtils.mv db_loc_old, db_loc_new unless db_loc_new == db_loc_old
 			end
