@@ -245,11 +245,10 @@ class DictionariesController < ApplicationController
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
 			raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
-			delayed_job = CompileJob.new(dictionary)
-			delayed_job.perform
+			# CompileJob.perform_now(dictionary)
 
-			# delayed_job = Delayed::Job.enqueue CompileJob.new(dictionary), queue: :general
-			# Job.create({name:"Compile entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+			active_job = CompileJob.perform_later(dictionary)
+			active_job.create_job_record("Compile entries")
 
 			respond_to do |format|
 				format.html{ redirect_back fallback_location: root_path }
