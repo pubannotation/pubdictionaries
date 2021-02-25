@@ -68,11 +68,10 @@ class EntriesController < ApplicationController
 			target_filepath = File.join('tmp', "upload-#{dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
 			FileUtils.cp source_filepath, target_filepath
 
-			# delayed_job = LoadEntriesFromFileJob.new(target_filepath, dictionary)
-			# delayed_job.perform
+			# LoadEntriesFromFileJob.perform_now(dictionary, target_filepath)
 
-			delayed_job = Delayed::Job.enqueue LoadEntriesFromFileJob.new(target_filepath, dictionary), queue: :upload
-			Job.create({name:"Upload dictionary entries", dictionary_id:dictionary.id, delayed_job_id:delayed_job.id})
+			active_job = LoadEntriesFromFileJob.perform_later(dictionary, target_filepath)
+			active_job.create_job_record("Upload dictionary entries")
 			message = ''
 
 		rescue => e
