@@ -36,7 +36,7 @@ class AnnotationController < ApplicationController
   def annotation_request
     targets = get_targets_from_json_body
     raise ArgumentError, "No text was supplied." unless targets.present?
-    raise AnnotationQueueOverflowError unless Job.number_of_tasks_to_go(:annotation) < 8
+    raise TextAnnotator::AnnotationQueueOverflowError unless Job.number_of_tasks_to_go(:annotation) < 8
 
     delayed_job = enqueue_job(targets)
     time_for_annotation = calc_time_for_annotation(targets)
@@ -50,7 +50,7 @@ class AnnotationController < ApplicationController
     respond_to do |format|
       format.any {render json: {message:e.message}, status: :bad_request}
     end
-  rescue AnnotationQueueOverflowError => e
+  rescue TextAnnotator::AnnotationQueueOverflowError => e
     respond_to do |format|
       format.any {render json: {message:"The annotation queue is full"}, status: :service_unavailable}
     end
@@ -65,7 +65,7 @@ class AnnotationController < ApplicationController
     target = get_target
 
     raise ArgumentError, "No text was supplied." unless target.present?
-    raise AnnotationQueueOverflowError unless Job.number_of_tasks_to_go(:annotation) < 8
+    raise TextAnnotator::AnnotationQueueOverflowError unless Job.number_of_tasks_to_go(:annotation) < 8
 
     delayed_job = enqueue_job(target)
     time_for_annotation = calc_time_for_annotation(target)
@@ -83,7 +83,7 @@ class AnnotationController < ApplicationController
     respond_to do |format|
       format.any {render json: {message:e.message}, status: :bad_request}
     end
-  rescue AnnotationQueueOverflowError => e
+  rescue TextAnnotator::AnnotationQueueOverflowError => e
     respond_to do |format|
       format.any {render json: {message:"The annotation queue is full"}, status: :service_unavailable}
     end
