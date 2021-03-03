@@ -1,1 +1,3 @@
-class AnnotationQueueOverflowError < StandardError; end
+class TextAnnotator
+  class AnnotationQueueOverflowError < StandardError; end
+end
