@@ -84,27 +84,6 @@ class Job < ApplicationRecord
     end
   end
 
-  def scan
-    dj = begin
-      Delayed::Job.find(self.delayed_job_id)
-    rescue
-      nil
-    end
-    @job.update_attribute(:ended_at, Time.now) if dj.nil?
-  end
-
-  def stop
-    if running?
-      dj = begin
-        Delayed::Job.find(self.delayed_job_id)
-      rescue
-        nil
-      end
-      /pid:(<pid>\d+)/ =~ dj.locked_by
-      # TODO
-    end
-  end
-
   def etr(queue_name = :annotation)
     if begun_at.nil?
       number_of_annotation_workers = 4
