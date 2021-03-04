@@ -15,7 +15,7 @@ class Job < ApplicationRecord
   end
 
   def self.number_of_tasks_to_go(queue_name)
-    Delayed::Job.where(queue: queue_name, attempts: 0).count
+    Job.where(queue_name: queue_name, begun_at: nil).count
   end
 
   def description_csv(host = nil)
