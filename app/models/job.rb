@@ -11,7 +11,7 @@ class Job < ApplicationRecord
   scope :to_delete, -> {where("name = 'Text annotation' AND ended_at < NOW() - INTERVAL '1 day'")}
 
   def self.time_for_tasks_to_go(queue_name)
-    Job.joins("JOIN delayed_jobs on jobs.delayed_job_id = delayed_jobs.id").where('delayed_jobs.queue' => queue_name, begun_at: nil).sum(:time)
+    Job.where(queue_name: queue_name, begun_at: nil).sum(:time)
   end
 
   def self.number_of_tasks_to_go(queue_name)
