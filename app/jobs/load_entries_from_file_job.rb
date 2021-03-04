@@ -1,7 +1,7 @@
-class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
-	include StateManagement
+class LoadEntriesFromFileJob < ApplicationJob
+  queue_as :upload
 
-	def perform
+  def perform(dictionary, filename)
     begin
       transaction_size = 1000
 
@@ -78,5 +78,14 @@ class LoadEntriesFromFileJob < Struct.new(:filename, :dictionary)
 
     analyzer && analyzer[:http] && analyzer[:http].shutdown
     File.delete(filename)
-	end
+  end
+
+  before_perform do |active_job|
+    set_job(active_job)
+    set_begun_at
+  end
+
+  after_perform do
+    set_ended_at
+  end
 end

@@ -38,9 +38,8 @@ class AnnotationController < ApplicationController
     raise ArgumentError, "No text was supplied." unless targets.present?
     raise TextAnnotator::AnnotationQueueOverflowError unless Job.number_of_tasks_to_go(:annotation) < 8
 
-    delayed_job = enqueue_job(targets)
     time_for_annotation = calc_time_for_annotation(targets)
-    job = Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, num_items:targets.length, time: time_for_annotation, registered_at:delayed_job.created_at})
+    job = enqueue_job(targets, targets.length, time_for_annotation)
     result_name = TextAnnotator::BatchResult.new(nil, job.id).filename
 
     respond_to do |format|
@@ -67,10 +66,9 @@ class AnnotationController < ApplicationController
     raise ArgumentError, "No text was supplied." unless target.present?
     raise TextAnnotator::AnnotationQueueOverflowError unless Job.number_of_tasks_to_go(:annotation) < 8
 
-    delayed_job = enqueue_job(target)
     time_for_annotation = calc_time_for_annotation(target)
     num_items = target.class == Array ? target.length : 1
-    job = Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, num_items:num_items, time: time_for_annotation, registered_at:delayed_job.created_at})
+    job = enqueue_job(target, num_items, time_for_annotation)
 
     respond_to do |format|
       format.any  {render json: job.description(request.host_with_port), status: :created, location: annotation_task_show_url(job), content_type: 'application/json'}
@@ -169,14 +167,15 @@ class AnnotationController < ApplicationController
     r
   end
 
-  def enqueue_job(target)
+  def enqueue_job(target, num_items, time_for_annotation)
     dictionaries = Dictionary.find_dictionaries_from_params(params)
     options = get_options_from_params
 
     # job = TextAnnotationJob.new(target, dictionaries, options)
     # job.perform()
 
-    Delayed::Job.enqueue TextAnnotationJob.new(target, dictionaries, options), queue: :annotation
+    active_job = TextAnnotationJob.perform_later(target, dictionaries, options)
+    active_job.create_job_record("Text annotation", num_items, time_for_annotation)
   end
 
   def calc_time_for_annotation(target)

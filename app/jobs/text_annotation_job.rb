@@ -1,7 +1,7 @@
-class TextAnnotationJob < Struct.new(:target, :dictionaries, :options)
-  include StateManagement
+class TextAnnotationJob < ApplicationJob
+  queue_as :annotation
 
-	def perform
+  def perform(target, dictionaries, options)
     begin
       single_target = false
       targets = if target.class == Array
@@ -60,5 +60,34 @@ class TextAnnotationJob < Struct.new(:target, :dictionaries, :options)
         @job.update_attribute(:message, e.message)
       end
     end
-	end
+  end
+
+  def create_job_record(name, num_items, time)
+    delayed_job = Delayed::Job.find(self.provider_job_id)
+    Job.create({name: name, active_job_id: self.job_id, delayed_job_id: delayed_job.id,
+                registered_at: delayed_job.created_at, num_items: num_items, time: time})
+  end
+
+  before_perform do |active_job|
+    set_job(active_job)
+    set_begun_at
+  end
+
+  after_perform do
+    set_ended_at
+    clean_annotation_jobs
+    clean_files
+  end
+
+  private
+
+  def clean_annotation_jobs
+    jobs_to_delete = Job.to_delete
+    jobs_to_delete.each{|j| j.destroy_if_not_running}
+  end
+
+  def clean_files
+    to_delete = TextAnnotator::BatchResult.older_files 1.day
+    File.delete(*to_delete)
+  end
 end
