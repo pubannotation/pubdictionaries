@@ -29,12 +29,6 @@ class Job < ApplicationRecord
   end
 
   def description(host = nil)
-    dj = begin
-      Delayed::Job.find(self.delayed_job_id)
-    rescue
-      {message: "The job does not exist."}
-    end
-
     d = {status: status.to_s.upcase}
     d.merge!({submitted_at: registered_at})
     d.merge!({started_at: begun_at}) unless begun_at.nil?
