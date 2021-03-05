@@ -54,9 +54,6 @@ class TextAnnotationJob < ApplicationJob
       end
       TextAnnotator::BatchResult.new(nil, @job.id).save!(annotation_result)
     end
-    if @job
-      @job.update_attribute(:message, e.message)
-    end
   end
 
   def create_job_record(name, num_items, time)
