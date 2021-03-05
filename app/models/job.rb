@@ -29,12 +29,6 @@ class Job < ApplicationRecord
   end
 
   def description(host = nil)
-    dj = begin
-      Delayed::Job.find(self.delayed_job_id)
-    rescue
-      {message: "The job does not exist."}
-    end
-
     d = {status: status.to_s.upcase}
     d.merge!({submitted_at: registered_at})
     d.merge!({started_at: begun_at}) unless begun_at.nil?
@@ -87,27 +81,6 @@ class Job < ApplicationRecord
 
       update_attribute(:begun_at, Time.now)
       self.destroy
-    end
-  end
-
-  def scan
-    dj = begin
-      Delayed::Job.find(self.delayed_job_id)
-    rescue
-      nil
-    end
-    @job.update_attribute(:ended_at, Time.now) if dj.nil?
-  end
-
-  def stop
-    if running?
-      dj = begin
-        Delayed::Job.find(self.delayed_job_id)
-      rescue
-        nil
-      end
-      /pid:(<pid>\d+)/ =~ dj.locked_by
-      # TODO
     end
   end
 
