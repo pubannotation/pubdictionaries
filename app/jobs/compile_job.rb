@@ -2,11 +2,7 @@ class CompileJob < ApplicationJob
   queue_as :general
 
   def perform(dictionary)
-    begin
-      dictionary.compile!
-    rescue => e
-      @job.message = e.message
-    end
+    dictionary.compile!
   end
 
   before_perform do |active_job|
