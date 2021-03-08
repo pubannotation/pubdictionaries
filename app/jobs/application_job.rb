@@ -7,7 +7,8 @@ class ApplicationJob < ActiveJob::Base
 
   rescue_from(StandardError) do |exception|
     if @job
-      @job.message = "'" + exception.message + "'\n" + exception.backtrace.join("\n")
+      message = "'" + exception.message + "'\n" + exception.backtrace.join("\n")
+      @job.update(message: message, ended_at: Time.now)
     else
       raise exception
     end
