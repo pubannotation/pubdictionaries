@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2021_03_09_025257) do
+ActiveRecord::Schema.define(version: 2021_03_09_061752) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
@@ -84,7 +84,6 @@ ActiveRecord::Schema.define(version: 2021_03_09_025257) do
   create_table "jobs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name"
     t.bigint "dictionary_id"
-    t.bigint "delayed_job_id"
     t.text "message"
     t.integer "num_items"
     t.integer "num_dones"
@@ -94,7 +93,6 @@ ActiveRecord::Schema.define(version: 2021_03_09_025257) do
     t.integer "time"
     t.string "active_job_id"
     t.string "queue_name"
-    t.index ["delayed_job_id"], name: "index_jobs_on_delayed_job_id"
     t.index ["dictionary_id"], name: "index_jobs_on_dictionary_id"
   end
 
