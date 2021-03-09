@@ -33,6 +33,7 @@ gem 'bootsnap'
 gem 'language_list', '~> 1.2', '>= 1.2.1'
 gem 'string-similarity', '~> 2.1'
 gem 'webrick'
+gem 'activejob-cancel'
 
 group :development do
   gem 'dotenv-rails'

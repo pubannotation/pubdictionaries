@@ -70,17 +70,14 @@ class Job < ApplicationRecord
   end
 
   def destroy_if_not_running
-    unless running?
-      dj = begin
-        Delayed::Job.find(self.delayed_job_id)
-      rescue
-        nil
-      end
-      update_attribute(:delayed_job_id, nil)
-      dj.delete unless dj.nil?
-
-      update_attribute(:begun_at, Time.now)
-      self.destroy
+    case status
+    when :in_queue
+      ApplicationJob.cancel_adapter_class.new.cancel(active_job_id, queue_name)
+      destroy
+    when :error, :done
+      destroy
+    when :in_progress
+      # do nothing
     end
   end
 

@@ -1,7 +1,7 @@
 class ApplicationJob < ActiveJob::Base
   def create_job_record(name)
     delayed_job = Delayed::Job.find(self.provider_job_id)
-    Job.create({name: name, dictionary_id: self.arguments[0].id, active_job_id: self.job_id, delayed_job_id: delayed_job.id,
+    Job.create({name: name, queue_name: self.queue_name, dictionary_id: self.arguments[0].id, active_job_id: self.job_id, delayed_job_id: delayed_job.id,
                 registered_at: delayed_job.created_at})
   end
 
