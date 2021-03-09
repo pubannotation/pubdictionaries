@@ -57,9 +57,7 @@ class TextAnnotationJob < ApplicationJob
   end
 
   def create_job_record(name, num_items, time)
-    delayed_job = Delayed::Job.find(self.provider_job_id)
-    Job.create({name: name, queue_name: self.queue_name, active_job_id: self.job_id, delayed_job_id: delayed_job.id,
-                registered_at: delayed_job.created_at, num_items: num_items, time: time})
+    Job.create({name: name, queue_name: self.queue_name, active_job_id: self.job_id, registered_at: Time.current, num_items: num_items, time: time})
   end
 
   before_perform do |active_job|
