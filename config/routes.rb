@@ -12,7 +12,6 @@ Rails.application.routes.draw do
   get  "text_annotation", to: "annotation#text_annotation"
   post "text_annotation", to: "annotation#text_annotation"
   post "annotation_request", to: "annotation#annotation_request"
-  post "annotation_job", to: "annotation#annotation_job"
   post "annotation_tasks", to: "annotation#annotation_task"
   get "annotation_tasks/:id", to: "jobs#show", as: "annotation_task_show"
 
