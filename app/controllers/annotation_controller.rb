@@ -117,38 +117,6 @@ class AnnotationController < ApplicationController
     end
   end
 
-  # POST
-  def annotation_job
-    targets = get_targets_from_params
-    raise ArgumentError, "No text was supplied." unless targets.present?
-
-    raise RuntimeError, "The queue of annotation tasks is full" unless Job.number_of_tasks_to_go(:annotation) < 50
-
-    result_name = TextAnnotator::BatchResult.new.name
-    delayed_job = enqueue_job(targets, result_name)
-    etr = calc_time_for_annotation(targets)
-    job = Job.create({name:"Text annotation", dictionary_id:nil, delayed_job_id:delayed_job.id, time: etr})
-
-    respond_to do |format|
-      # retry_after = calc_retry_after(time_for_annotation)
-      format.any  {send_data job.description_csv, type: :csv, dispotition: :inline, status: :created, location: job_url(job) }
-      format.csv  {send_data job.description_csv, type: :csv, dispotition: :inline, status: :created, location: job_url(job) }
-      format.json {render json: job.description, status: :created, location: job_url(job)}
-    end
-  rescue ArgumentError => e
-    respond_to do |format|
-      format.any {render json: {message:e.message}, status: :bad_request}
-    end
-  rescue RuntimeError => e
-    respond_to do |format|
-      format.any {render json: {message:e.message}, status: :service_unavailable}
-    end
-  rescue => e
-    respond_to do |format|
-      format.any {render json: {message:e.message}, status: :internal_server_error}
-    end
-  end
-
   private
 
   def filename
