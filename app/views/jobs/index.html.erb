@@ -2,8 +2,6 @@
     <span class="page_title">Jobs</span>
 <% end %>
 
-
-
 # Jobs: <%= Job.count %>
 <%= link_to('Delete all jobs', Job, method: :delete, data: { confirm: 'Are you sure?' }, class: :button) %>
 <br/>
@@ -27,13 +25,8 @@
       end
     end
 
-
     g.column name: 'Name', attribute: 'name' do |job|
       job.name
-    end
-
-    g.column name: 'd._job', attribute: 'delayed_job_id' do |job|
-      [job.delayed_job_id, {style: 'text-align: right'}]
     end
 
     g.column name: '# items' do |job|
@@ -75,8 +68,5 @@
         link_to('Delete', job, method: :delete, data: { confirm: 'Are you sure?' }, class: :button)
       end
     end
-
   end
 %>
-
-</section>
