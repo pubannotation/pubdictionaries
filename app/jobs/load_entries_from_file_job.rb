@@ -29,13 +29,13 @@ class LoadEntriesFromFileJob < ApplicationJob
       next if label.nil?
 
       mode = case operator
-      when '-'
-        Entry::MODE_BLACK
-      when '+'
-        Entry::MODE_WHITE
-      else
-        Entry::MODE_GRAY
-      end
+             when '-'
+               Entry::MODE_BLACK
+             when '+'
+               Entry::MODE_WHITE
+             else
+               Entry::MODE_GRAY
+             end
 
       matched = dictionary.entries.find_by_label_and_identifier(label, id)
       if matched.nil?
@@ -56,6 +56,8 @@ class LoadEntriesFromFileJob < ApplicationJob
           end
         when Entry::MODE_WHITE
           matched.be_white!
+        when Entry::MODE_GRAY
+          # do nothing
         end
 
         if @job
@@ -65,6 +67,7 @@ class LoadEntriesFromFileJob < ApplicationJob
     end
 
     dictionary.add_entries(new_entries, analyzer) unless new_entries.empty?
+    @job.update_attribute(:num_dones, num_entries)
 
     dictionary.compile!
 
