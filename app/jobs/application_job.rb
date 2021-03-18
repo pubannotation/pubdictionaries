@@ -18,6 +18,7 @@ class ApplicationJob < ActiveJob::Base
     @job = Job.find_by(active_job_id: active_job.job_id)
     if @job.nil?
       sleep(0.1)
+      ActiveRecord::Base.connection.clear_query_cache
       @job = Job.find_by(active_job_id: active_job.job_id)
     end
     raise "Could not find its job object" if @job.nil?
