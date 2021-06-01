@@ -1,15 +1,16 @@
-development:
+default: &default
   adapter: postgresql
   encoding: utf8
-  database: pubdictionaries_development
+  pool: 5
+
+development:
+  <<: *default
+  database: pubdictionaries_dev
 
 test:
-  adapter: postgresql
-  encoding: utf8
+  <<: *default
   database: pubdictionaries_test
 
 production:
-  adapter: postgresql
-  encoding: utf8
+  <<: *default
   database: pubdictionaries
-

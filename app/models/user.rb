@@ -1,32 +1,28 @@
-class User < ActiveRecord::Base
+class User < ApplicationRecord
   # Include default devise modules. Others available are:
   # :token_authenticatable, :confirmable,
   # :lockable, :timeoutable and :omniauthable
-  devise :database_authenticatable, :registerable,
+  devise :database_authenticatable, :registerable, :confirmable,
          :recoverable, :rememberable, :trackable, :validatable,
-         :token_authenticatable
-
-  # Setup accessible (or protected) attributes for your model
-  attr_accessible :email, :password, :password_confirmation, :remember_me
+         :omniauthable, :omniauth_providers => [:google_oauth2]
 
   has_many :dictionaries, dependent: :destroy
-  has_many :user_dictionaries, dependent: :destroy
+  has_many :associations
+  has_many :associated_dictionaries, through: :associations, source: :dictionary
 
-  # Get the user ID for the given email/password pair.
-  def self.get_user_id(params)
-    if params.nil? or params["email"] == nil or params["email"] == ""
-      return nil
+  validates :username, :presence => true, :length => {:minimum => 5, :maximum => 20}, uniqueness: true
+  validates_format_of :username, :with => /\A[a-z0-9][ a-z0-9_-]+\z/i
+
+  def self.from_omniauth(auth)
+    user = User.find_by_email(auth.info.email)
+    return user if user and user.confirmed?
+
+    user = User.new(email: auth.info.email, username: auth.info.name, password: Devise.friendly_token[0,20])
+    if user.save
+      user
     else
-      # Find the user that first matches to the condition.
-      user = User.find_by_email(params["email"])     
-
-      if user and user.valid_password?(params["password"])
-        return user.id
-      else
-        return :invalid
-      end
+      Rails.logger.debug user.errors.full_messages
+      "username(#{auth.info.name}) is invalid."
     end
   end
-
-  
 end

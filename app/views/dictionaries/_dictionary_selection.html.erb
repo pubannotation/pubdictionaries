@@ -1,0 +1,103 @@
+<!-- It updates the value of the input element, 'dictionaries' which should be defined outside of this partial -->
+
+<table class="dictionary_selection">
+	<tr>
+		<th class="pane selected">Selected</th>
+		<td></td>
+		<th class="pane unselected">
+			Unselected
+			&nbsp;
+			<%= text_field_tag :filter, nil, placeholder: "filter" %>
+		</th>
+	</tr>
+	<tr>
+		<td class="pane">
+			<div class="pane_box" id='selected_dictionaries'>
+				<%= render partial: 'dictionaries/selected_dictionary', collection: @dictionary_names_all -%>
+			</div>
+		</td>
+
+		<td style="text-align: center"><%= content_tag :i, '', class:"fa fa-exchange" %></td>
+
+		<td class="pane">
+			<div class="pane_box" id='unselected_dictionaries'>
+				<%= render partial: 'dictionaries/unselected_dictionary', collection: @dictionary_names_all -%>
+			</div>
+		</td>
+	</tr>
+</table>
+<ul class="note warning" id="dictionary_selection_note">
+	<li>At least one dictionary has to be selected.</li>
+</ul>
+
+
+<script>
+  function dictionarySelectionInit() {
+    $("#selected_dictionaries > .dictionary > i").on("click", unselectDictionaryClick);
+    $("#selected_dictionaries > .dictionary > i").hover(function(){$(this).parent().css("border-style", "inset")});
+    $("#selected_dictionaries > .dictionary > i").mouseleave(function(){$(this).parent().css("border-style", "solid")});
+
+    $("#unselected_dictionaries > .dictionary > i").on("click", selectDictionaryClick);
+    $("#unselected_dictionaries > .dictionary > i").hover(function(){$(this).parent().css("border-style", "inset")});
+    $("#unselected_dictionaries > .dictionary > i").mouseleave(function(){$(this).parent().css("border-style", "solid")});
+
+    $.each(<%= raw @dictionary_names_selected %>, function(i, v){selectDictionary(v)});
+		setParamDics();
+  }
+
+  function dictionarySelectionReset() {
+    $('#selected_dictionaries > .dictionary').hide();
+    $('#unselected_dictionaries > .dictionary').show();
+		$('#unselected_dictionaries > .dictionary').attr('selected', false);
+    $.each(<%= raw @dictionary_names_selected %>, function(i, v){selectDictionary(v)});
+		setParamDics();
+  }
+
+	$('#filter').on('keyup', function(){
+		var filter = $('#filter').val().toLowerCase();
+    $("#unselected_dictionaries > .dictionary:not([selected])").filter(function(){return $(this).text().toLowerCase().indexOf(filter) > -1}).show();
+    $("#unselected_dictionaries > .dictionary:not([selected])").filter(function(){return $(this).text().toLowerCase().indexOf(filter) < 0}).hide();
+	});
+
+	$('#associated_managers').on('mouseleave', '.remove_icon', function() {
+		$(this).parent().css("border-style", "solid");
+	});
+
+
+	function selectDictionaryClick() {
+		var dicname = $(this).parent().attr("name");
+		selectDictionary(dicname);
+		setParamDics();
+	}
+
+	function unselectDictionaryClick() {
+		var dicname = $(this).parent().attr("name");
+		unselectDictionary(dicname);
+		setParamDics();
+	}
+
+	function selectDictionary(dicname) {
+		var convertedDicname = dicname.replace(/ /g, '\\^');
+		$('#unselected_dictionaries > #dictionary_' + convertedDicname).hide();
+		$('#unselected_dictionaries > #dictionary_' + convertedDicname).attr('selected', true);
+		$('#selected_dictionaries > #dictionary_' + convertedDicname).show();
+	}
+
+	function unselectDictionary(dicname) {
+		var convertedDicname = dicname.replace(/ /g, '\\^');
+		$('#selected_dictionaries > #dictionary_' + convertedDicname).hide();
+		$('#unselected_dictionaries > #dictionary_' + convertedDicname).show();
+		$('#unselected_dictionaries > #dictionary_' + convertedDicname).attr('selected', false);
+	}
+
+	function setParamDics() {
+		var dics = $('#selected_dictionaries > .dictionary:visible').map(function(i, v){return $(v).find(".name").text()}).toArray();
+		$('#dictionaries').text(dics.join(','));
+		if (dics.length == 0) {
+			$('#dictionary_selection_note').show();
+		} else {
+			$('#dictionary_selection_note').hide();
+		}
+		$('#dictionaries').trigger('change');
+	}
+</script>

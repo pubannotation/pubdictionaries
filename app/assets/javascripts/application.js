@@ -12,10 +12,8 @@
 //
 //= require jquery
 //= require jquery_ujs
-//= require jquery.ui.all
-//= require jquery.ui.datepicker
+//= require jquery-ui
+//= require autocomplete-rails
 //= require wice_grid
-//= require colorbox-rails
-//= require zeroclipboard
+//= require clipboard
 //= require_tree .
-

@@ -1,49 +1,23 @@
 module DictionariesHelper
-  def is_nil_or_empty?(value)
-  	if value.nil? or value == ""
-  	  return true
-  	else
-  	  return false
-  	end
-  end
+	def language_object(abbreviation)
+		l = LanguageList::LanguageInfo.find(abbreviation)
+		if l.nil?
+			"unrecognizable: #{abbreviation}"
+		else
+			content_tag :div, id: 'language-' + abbreviation, class: 'language_object', title: "#{l.name} (ISO 639-1: #{l.iso_639_1}, ISO 639-3: #{l.iso_639_3})" do
+				abbreviation
+			end
+		end
+	end
 
-  # Check if an entry is marked as disabled or not.
-  def disabled?(user_dictionary, entry)
-  	# Rails.logger.debug entry.inspect
-  	if user_dictionary
-	  disabled_entries = user_dictionary.removed_entries
-      if disabled_entries and disabled_entries.where(entry_id: entry.id).first 
-        return true
-      end
-    end
-    return false
-  end
+	def simple_paginate
+		current_page = params[:page].nil? ? 1 : params[:page].to_i
+		nav = ''
+		nav += link_to(content_tag(:i, '', class: "fa fa-angle-double-left", "aria-hidden" => "true"), params.permit(:mode, :controller, :action, :id, :label_search, :id_search, :page, :per).except(:page), title: "First", class: 'page') if current_page > 2
+		nav += link_to(content_tag(:i, '', class: "fa fa-angle-left", "aria-hidden" => "true"), params.permit(:mode, :controller, :action, :id, :label_search, :id_search, :page, :per).merge(page: current_page - 1), title: "Previous", class: 'page') if current_page > 1
+		nav += content_tag(:span, "Page #{current_page}", class: 'page')
+		nav += link_to(content_tag(:i, '', class: "fa fa-angle-right", "aria-hidden" => "true"), params.permit(:mode, :controller, :action, :id, :label_search, :id_search, :page, :per).merge(page: current_page + 1), title: "Next", class: 'page') unless params[:last_page]
+		content_tag(:nav, nav.html_safe, class: 'pagination')
+	end
 
-  def format_dic_names(diclist_json)
-    if diclist_json.nil?
-      return ""
-    else
-      diclist = JSON.parse(diclist_json)
-      ret_value = ""
-      diclist.each do |dic_name|
-        if ret_value == ""
-          ret_value = dic_name
-        else
-          ret_value += "\n#{dic_name}"
-        end
-      end
-      return ret_value
-    end
-  end
-
-  def dictionary_status(dictionary)
-    if dictionary.unfinished?
-      css_class = 'unfinished_icon'
-      title = 'Unfinished'
-    else
-      css_class = 'finished_icon'
-      title = 'Finished'
-    end
-    content_tag :span, nil, class: css_class, title: title
-  end
 end

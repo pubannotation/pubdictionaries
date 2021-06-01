@@ -1,0 +1,36 @@
+<% content_for :page_title do %>
+  <span class="page_title"><%= @user.username %></span>
+<% end %>
+
+<section>
+  <section>
+    <% if @user == current_user %>
+      <div style="margin: 4px 0">
+      <table>
+      <tr>
+      <th>E-mail</th>
+      <td><%= @user.email -%></td>
+      </tr>
+      <tr>
+      <th>Last login</th>
+      <td><%= @user.last_sign_in_at -%></td>
+      </tr>
+      </table>
+      </div>
+      <% if @user == current_user %>
+        <%= link_to 'Edit', edit_user_registration_path, :class => :button %>
+      <% end %>
+    <% end %>
+  </section>
+
+  <section>
+    <h2>Dictionaries</h2>
+
+    <%= render partial: 'dictionaries/list' -%>
+
+    <% if @user == current_user %>
+      <%= link_to t('views.shared.create'), new_dictionary_path, :class => :button %>
+    <% end %>
+  </section>
+
+</section>

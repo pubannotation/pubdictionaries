@@ -1,0 +1,103 @@
+// Place all the styles related to the Dictionaries controller here.
+// They will automatically be included in application.css.
+// You can use Sass (SCSS) here: http://sass-lang.com/
+
+.dashboard {
+  width: 100%;
+  border-style: hidden;
+  th, td {
+    border-style: hidden;
+  }
+
+  div {
+    display: inline-block;
+  }
+
+  .infobox {
+    th, td {
+      border-style: solid;
+      white-space: nowrap;
+    }
+  }
+
+  .description {
+    text-align: left;
+  }
+}
+
+.dictionary-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  border: none;
+
+  tr, th, td, tfoot {
+    border: none;
+  }
+
+  tr.even {
+    background-color: #eef
+  }
+
+  tr:hover {
+    background-color: #eee
+  }
+
+  thead, tbody {
+    border: 1px solid #aaaaff;
+  }
+}
+
+.wice-grid-title-row {
+  th:last-of-type {
+    width: 1.5em;
+  }
+}
+
+fieldset .message {
+  background-color: #ffeeee;
+  color: #ff0000;
+  font-style: italic;
+  text-decoration: blink;
+
+  &:before {
+    content: "* ";
+  }
+
+}
+
+.user_object, .language_object {
+  display: inline-block;
+  margin: 1px;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  padding: 0 2px;
+  background-color: #fafafa;
+  box-shadow: 1px 1px 1px #555555
+}
+
+.owner {
+  background-color: #e7e7ff;
+}
+
+.toolbox {
+  display: inline-block;
+  margin: 0 10px 0 10px;
+  padding: 0 2px;
+  font-size: 0.6em;
+}
+
+
+table.counts {
+  width: 100%;
+  border-style: none;
+
+  th, td {
+    border: 1px solid gray;
+  }
+}
+
+.count_entries {
+  width: 33.3%;
+}
+

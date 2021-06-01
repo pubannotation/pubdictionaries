@@ -1,0 +1,28 @@
+version: '3'
+services:
+  elasticsearch:
+    build: ./elasticsearch
+
+  db:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: password
+      PGPASSWORD: password
+
+  delayed_job:
+    build: .
+    command: bundle exec rake jobs:work
+    volumes:
+      - .:/myapp
+
+  web:
+    build: .
+    command: rails s -b '0.0.0.0'
+    volumes:
+      - .:/myapp
+    depends_on:
+      - db
+      - delayed_job
+      - elasticsearch
+    ports:
+      - 80:3000

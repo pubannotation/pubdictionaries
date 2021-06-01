@@ -1,0 +1,224 @@
+<%
+	default_threshold = '0.85'
+	default_superfluous = 'false'
+	default_verbose = 'false'
+%>
+
+<% content_for :page_title do %>
+	<span class="page_title">Find IDs</span>
+<% end %>
+
+<fieldset>
+	<legend>Demo</legend>
+	<%= form_tag 'find_ids', id: 'find_ids', method: :get do -%>
+		<%= text_area_tag :labels, params[:labels], required: true, placeholder: "List of labels (Tab-, newline-, or vertical bar('|')-delimited)" %>
+		<div class="center-align">
+			<table class="option">
+			<tr>
+			<th>
+				<%= label_tag :threshold, nil, title: "The output will include only the terms whose matching score is above the threshold." %>
+				<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
+			</th>
+			<td><%= text_field_tag :threshold, nil, type: :number, min:0.5, max:1, step:0.01 %></td>
+			</tr>
+			</table>
+
+			<table class="option">
+			<tr>
+			<th><%= label_tag :superfluous, "Superfluous", title: "Superfluous annotation: the output will include the entries with a higher score than the threshold, while, in the default mode, it will include only the ones with the highest score." %></th>
+			<td><%= check_box_tag :superfluous, true, (params[:superfluous] ? params[:superfluous] : default_superfluous) == 'true' %></td>
+			</tr>
+			</table>
+
+			<table class="option">
+			<tr>
+			<th><%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include information for debugging." %></th>
+			<td><%= check_box_tag :verbose, true, (params[:verbose] ? params[:verbose] : default_verbose) == 'true' %></td>
+			</tr>
+			</table>
+
+		</div>
+
+		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>
+
+		<div class="center-align">
+			<%= submit_tag 'Submit', class: :button %>
+			<%= button_tag 'Reset', type: :reset, id: :reset, class: :button %>
+		</div>
+	<% end %>
+
+	<% unless @result.nil? || @result.empty? %>
+		<h2>Result</h2>
+		<pre style="border: 1px solid black"><%= JSON.pretty_generate @result %></pre>
+	<% end %>
+</fieldset>
+
+<fieldset>
+	<legend>Dictionary Selection</legend>
+	<%= render partial: 'dictionaries/dictionary_selection' %>
+</fieldset>
+
+<fieldset>
+	<legend>REST API for lookup</legend>
+
+	<table>
+	<tr>
+	<td><span class='http_method'>GET</span>|<span class='http_method'>POST</span></td>
+	<td><div id="rest_url"></div></td>
+	<td>
+	<button class="btn" id="clip-btn-url" data-clipboard-action="copy" data-clipboard-target="#rest_url">
+		<%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard', title: 'Copy to clipboard' %>
+	</button>
+	</td>
+	</tr>
+	</table>
+
+	<h2>Example cURL command</h2>
+	<table>
+	<tr>
+	<th>1</th>
+	<td style="text-align:center"><span class='http_method'>GET</span></td>
+	<td><div id="curl_command_get"></div></td>
+	<td>
+		<button class="btn" id="clip-btn-get" data-clipboard-action="copy" data-clipboard-target="#curl_command_get">
+			<%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard' %>
+		</button>
+	</td>
+	</tr>
+
+	<tr>
+	<th>2</th>
+	<td><span class='http_method'>POST</span></td>
+	<td><div id="curl_command_post1"></div></td>
+	<td>
+		<button class="btn" id="clip-btn-post1" data-clipboard-action="copy" data-clipboard-target="#curl_command_post1">
+			<%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard' %>
+		</button>
+	</td>
+	</tr>
+
+	<tr>
+	<th>3</th>
+	<td><span class='http_method'>POST</span></td>
+	<td><div id="curl_command_post2"></div></td>
+	<td>
+		<button class="btn" id="clip-btn-post2" data-clipboard-action="copy" data-clipboard-target="#curl_command_post2">
+			<%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard' %>
+		</button>
+	</td>
+	</tr>
+
+	<tr>
+	<th>4</th>
+	<td><span class='http_method'>POST</span></td>
+	<td><div id="curl_command_post3"></div></td>
+	<td>
+		<button class="btn" id="clip-btn-post3" data-clipboard-action="copy" data-clipboard-target="#curl_command_post3">
+			<%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard' %>
+		</button>
+	</td>
+	</tr>
+
+	<tr>
+	<th>5</th>
+	<td><span class='http_method'>POST</span></td>
+	<td><div id="curl_command_post4"></div></td>
+	<td>
+		<button class="btn" id="clip-btn-post4" data-clipboard-action="copy" data-clipboard-target="#curl_command_post4">
+			<%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard' %>
+		</button>
+	</td>
+	</tr>
+
+	</table>
+
+	<ul class="note">
+		<li>In the case of 1, 2 and 4, either the <i>Tab</i>, or <i>vertical bar</i> ('|') letter can be used to delimit multiple labels.</li>
+		<li>In the case of 5, the <i>newline</i> letter also can be used to delimit multiple labels, which is convenient to read labels from a file. For a more detail, you are recommended to read the manual of curl.</li>
+	</ul>
+</fieldset>
+
+<script type="text/javascript">
+	$(function() {
+		dictionarySelectionInit();
+		set_url();
+
+		var clipboard_url   = new Clipboard('#clip-btn-url');
+		var clipboard_get   = new Clipboard('#clip-btn-get');
+		var clipboard_post1 = new Clipboard('#clip-btn-post1');
+		var clipboard_post2 = new Clipboard('#clip-btn-post2');
+		var clipboard_post3 = new Clipboard('#clip-btn-post3');
+		var clipboard_post4 = new Clipboard('#clip-btn-post4');
+	});
+
+	$('#dictionaries').change(function() {
+		set_url();
+	});
+
+	$('#threshold').change(function() {
+		set_url();
+	});
+
+	$("#superfluous").change(function() {
+		set_url();
+	});
+
+	$("#verbose").change(function() {
+		set_url();
+	});
+
+	$('#find_ids').on('reset', function(e)
+	{
+		setTimeout(function() {
+			dictionarySelectionReset();
+			set_url();
+		}, 0);
+	});
+
+	function set_url() {
+		var params = [];
+
+		var dictionaries = $('#dictionaries').text();
+		if (dictionaries) {
+			var param_dics = 'dictionary=' + dictionaries;
+			params.push(param_dics);
+		}
+
+		var threshold = $('#threshold').val();
+		var default_threshold = <%= default_threshold %>;
+		if (threshold != <%= default_threshold %>) {
+			var param = 'threshold=' + threshold;
+			params.push(param);
+		}
+
+		var superfluous = $('#superfluous').is(':checked');
+		var default_superfluous = <%= default_superfluous == 'true' %>;
+		if (superfluous != default_superfluous) {
+			var param = 'superfluous=' + superfluous;
+			params.push(param);
+		}
+
+		var verbose = $('#verbose').is(':checked');
+		var default_verbose = <%= default_verbose == 'true' %>;
+		if (verbose != default_verbose) {
+			var param = 'verbose=' + verbose;
+			params.push(param);
+		}
+
+		var url = '<%= root_url %>find_ids.json';
+		if (params.length > 0) {url += '?' + params.join('&')}
+		$('#rest_url').text(url);
+
+		var command_get   = 'curl -G --data-urlencode labels="label1|label2" "' + url + '"';
+		var command_post1 = 'curl -d labels="label1|label2" "' + url + '"';
+		var command_post2 = 'curl -H "content-type:application/json" -d \'["label1", "label2"]\' "' + url + '"';
+		var command_post3 = 'curl -H "content-type:text/plain" -d "label1|label2" "' + url + '"';
+		var command_post4 = 'curl -H "content-type:text/plain" --data-binary @filename "' + url + '"';
+
+		$('#curl_command_get').text(command_get);
+		$('#curl_command_post1').text(command_post1);
+		$('#curl_command_post2').text(command_post2);
+		$('#curl_command_post3').text(command_post3);
+		$('#curl_command_post4').text(command_post4);
+	}
+</script>

@@ -3,98 +3,76 @@
 
 <head>
   <title>PubDictionaries</title>
-  <%= stylesheet_link_tag    "application", :media => "all" %>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%= stylesheet_link_tag "application", :media => "all" %>
+  <%= yield :css -%>
   <%= javascript_include_tag "application" %>
+  <%= yield :javascript -%>
   <%= csrf_meta_tags %>
-  <script type="text/javascript" charset="utf-8">
-    // Keep the root URL for javascript functions.
-    var ROOT_PATH = '<%= root_url %>';
-    
-    // Keep updating the waiting list of creating dictionaries.
-    refresh_delayed_job_diclist();
-    // var delayed_job_diclist = setInterval(function(){refresh_delayed_job_diclist()}, 5000);
-  </script>
 </head>
 
-<body class="pubdictionaries">
-  <div class="banner">
-    <div class="logo">
-  	  <%= link_to image_tag("logo.png", { border: "0", alt: "Logo" }), root_path %>
-    </div>
-    <div class="page_title">
-  	  <%= @page_title || "PubDictionaries" %>
-    </div>
-  </div>
-
-  <div class="authentication_information">
-    <% if user_signed_in? %>
-      You are logged in as <i><%= current_user.email %></i> | 
-      <%= link_to "Edit profile", edit_user_registration_path %> | 
-      <%= link_to "Logout", destroy_user_session_path, method: :delete %>
-    <% else %>
-      Please login first | 
-      <%= link_to "Sign up", new_user_registration_path %>
-      <%= link_to "Login", new_user_session_path %>
-    <% end %>    
-  </div>
-
-  <div class="columns">
-    <div class="menu_wrap">
-      <div id='cssmenu'>
+<body>
+<!--
+  <script
+    type="text/javascript"
+    src="https://dbcls.rois.ac.jp/DBCLS-common-header-footer/v2/script/common-header-and-footer.js"
+    style="display: block"
+    id="common-header-and-footer__script"
+    data-width="1000"
+    data-header-menu-type="deployed"
+    data-color="mono"
+  ></script>
+ -->
+  <div class="header">
+    <div class="inner">
+      <div class="logo">
+        <%= link_to image_tag("logo.png", { alt: "Logo" }), root_path %>
+      </div>
+      <div class="menu">
         <ul>
-          <li class='active'><%= link_to "<span>About</span>".html_safe, about_index_path %></li>
-          <li class='has-sub'><a href='#'><span>Dictionaries</span></a>
-            <ul>
-              <li class='odd'><%= link_to '<span>All Dictionaries</span>'.html_safe, dictionaries_path %></li>
-              <% if user_signed_in? %>
-              <li class='even'><%= link_to '<span>My Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "my_dic") %></li>
-              <% end %>
-              <!-- <li class='odd'><%= link_to '<span>Working Dictionaries</span>'.html_safe, dictionaries_path(dictionary_type: "working_dic") %></li> -->
-            </ul>
-          </li>
-          <li class='has-sub'><a href='#'><span>REST API</span></a>
-            <ul>
-              <li class='odd'><%= link_to '<span>Term to Id</span>'.html_safe, term_to_id_mapping_index_path %></li>
-              <li class='even'><%= link_to '<span>Id to Label</span>'.html_safe, id_to_label_mapping_index_path %></li>
-              <li class='odd'><%= link_to '<span>Text Annotation</span>'.html_safe, text_annotation_mapping_index_path %></li>
-            </ul>
-          <li class='has-sub'><a href='#'><span>Guides</span></a>
-            <ul>
-              <li class='odd'><%= link_to '<span>Sharing Dictionaries</span>'.html_safe, manual_basic_path %></li>
-              <li class='even'><%= link_to '<span>Curating Dictionaries</span>'.html_safe, manual_advanced_path %></li>
-              <!-- <li class='odd'><%= link_to '<span>Annotating with PubAnnotation</span>'.html_safe, manual_pubann_path %></li> -->
-              <!-- <li class='even'><%= link_to '<span>Annotating with REST-APIs</span>'.html_safe, web_services_index_path %></li> -->
-            </ul>
-          </li>
-          <!-- <li class='last'><a href='mailto:pubdictionaries@gmail.com'><span>Contact</span></a></li> -->
+          <li><%= link_to 'Dictionaries', dictionaries_path %></li>
+          <li><%= link_to 'Find IDs', find_ids_path %></li>
+          <li><%= link_to 'Annotation', text_annotation_path %></li>
+          <li><%= link_to 'Documentation', "http://docs.pubdictionaries.org" %></li>
         </ul>
       </div>
-
-      <!-- Show a list of unfinished delayed jobs of creating dictionaries. -->
-      <br />
-      <!--
-      <div class="delayed_job_queue">
-        <% if current_user %>
-          <div class="title">Waiting List 
-            <span title="Dictionaries that are currently being uploaded will be shown in this list">
-              <%= image_tag("question_mark.jpg", { border: "0", size: "12x12", alt: "qmark" }) %>
-            </span>
-          </div>
-          <div class="job_list_box">
-            <div id="delayed_job_diclist"><br/></div>
-          </div>
+      <div class="account menu">
+        <% if user_signed_in? %>
+          <ul>
+            <li><%= link_to current_user.username, show_user_path(current_user.username) %></li>
+            <li><%= link_to "Logout", destroy_user_session_path, method: :delete %></li>
+          </ul>
+        <% else %>
+          <ul>
+            <li><%= link_to "Sign up", new_user_registration_path %></li>
+            <li><%= link_to "Login", new_user_session_path %></li>
+          </ul>
         <% end %>
       </div>
-      -->
     </div>
-
-    <div class="main">
-      <% if notice %><p><%= flash[:notice] %></p><% end %>
-      <% if alert %><p><%= alert %></p><% end %>
-
+  </div>
+  <div class="title_area">
+    <div class="inner">
+      <%= yield :page_title%>
+    </div>
+  </div>
+  <div class="main">
+    <div class="inner">
+      <% if notice %><div class='message'><span class='notice'><%= flash[:notice] %></span></div><% end %>
+      <% if alert %><div class='message'><span class='alert'><%= alert %></span></div><% end %>
       <%= yield %>
     </div>
   </div>
-</body>
 
+  <div class="footer">
+    <div class="inner">
+      <div class="credit">
+        This service is developed and maintained by
+        <%= link_to 'DBCLS', 'http://dbcls.rois.ac.jp' %>,
+        </div>
+      <div class="contact">We appreciate your any comments to <%= mail_to 'admin@pubdictionaries.org' %></div>
+    </div>
+  </div>
+  <%= yield :bottom_js -%>
+</body>
 </html>

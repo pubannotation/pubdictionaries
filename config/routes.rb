@@ -1,136 +1,67 @@
-PubDictionaries::Application.routes.draw do
+Rails.application.routes.draw do
+  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
+  get "home/about", as: "about"
 
-  resources :mapping do
-    collection do
-      get  "term_to_id"
-      post "term_to_id", to: "mapping#term_to_id_post"
+  get  "find_ids", to: "lookup#find_ids"
+  post "find_ids", to: "lookup#find_ids"
+  get  "find_terms", to: "lookup#find_terms"
+  get  "prefix_completion", to: "lookup#prefix_completion"
+  get  "substring_completion", to: "lookup#substring_completion"
+  get  "mixed_completion", to: "lookup#mixed_completion"
 
-      get  "id_to_label"
-      post "id_to_label", to: "mapping#id_to_label_post"
+  get  "text_annotation", to: "annotation#text_annotation"
+  post "text_annotation", to: "annotation#text_annotation"
+  post "annotation_request", to: "annotation#annotation_request"
+  post "annotation_tasks", to: "annotation#annotation_task"
+  get "annotation_tasks/:id", to: "jobs#show", as: "annotation_task_show"
 
-      get  "text_annotation"
-      post "text_annotation", to: "mapping#text_annotation_post"
+  get  'annotation_results/:filename', to: 'annotation#annotation_result', as: 'annotation_result'
 
-      get  'select_dictionaries', to: 'mapping#select_dictionaries'
-    end
-  end
-
-  # devise_for :users
-  devise_for :users
-  
-  get "welcome/index"
-
-  get "about/index"
-
-  get "manual/basic"
-  get "manual/advanced"
-  get "manual/pubann"
-  
-  get "web_services/index"
-  get "web_services/annotation_with_single_dic"
-  get "web_services/annotation_with_multiple_dic"
-  get "web_services/ids_to_labels"
-  get "web_services/terms_to_idlists"
-
-  resources :users do
-    resources :dictionaries
-    resources :user_dictionaries
-  end
+  devise_for :users, controllers: {
+    :omniauth_callbacks => 'callbacks',
+    :confirmations => 'confirmations'
+  }
+  get '/users/:name' => 'users#show', :as => 'show_user'
 
   resources :dictionaries do
-    resources :entries
-
     # Add routes for a collection route, /dictionaries/...
     collection do
-      #   get 'multiple_new'
-      #   post 'multiple_create'
-      get  'text_annotation', to: 'dictionaries#text_annotation_with_multiple_dic_readme'
-      get  'select_dictionaries_for_text_annotation', to: 'dictionaries#select_dictionaries_for_text_annotation'
-      post 'text_annotation', to: 'dictionaries#text_annotation_with_multiple_dic'
-      get  'id_mapping', to: 'dictionaries#id_mapping_with_multiple_dic_readme'
-      get  'select_dictionaries_for_id_mapping', to: 'dictionaries#select_dictionaries_for_id_mapping'
-      post 'id_mapping', to: 'dictionaries#id_mapping'
-      get  'label_mapping', to: 'dictionaries#label_mapping_with_multiple_dic_readme'
-      get  'select_dictionaries_for_label_mapping', to: 'dictionaries#select_dictionaries_for_label_mapping'
-      post 'label_mapping', to: 'dictionaries#label_mapping'
-      get  'get_delayed_job_diclist'
-    end  
+      get :autocomplete_user_username
+    end
 
     # Add routes as a member, /dictionary/:id/...
     member do
-      post 'disable_entries'
-      post 'remove_entries'
-      get  'text_annotation', to: 'dictionaries#text_annotation_with_single_dic_readme'
-      post 'text_annotation', to: 'dictionaries#text_annotation_with_single_dic'
+      get  'find_ids', to: "lookup#find_ids"
+      post 'find_ids', to: "lookup#find_ids"
+      get  'find_terms', to: "lookup#find_terms"
+      get  'text_annotation', to: 'annotation#text_annotation'
+      post 'text_annotation', to: 'annotation#text_annotation'
+      get  'prefix_completion', to: 'lookup#prefix_completion'
+      get  'substring_completion', to: 'lookup#substring_completion'
+      get  'mixed_completion', to: 'lookup#mixed_completion'
+      get 'compile'
+      post 'managers', to: 'dictionaries#add_manager'
+      delete 'managers/:username', to: 'dictionaries#remove_manager', as: 'manager'
     end
+
+    resources :entries do
+      collection do
+        put 'empty', to: 'dictionaries#empty'
+        post 'tsv', to: 'entries#upload_tsv'
+        delete '/', to: 'entries#destroy_entries'
+      end
+
+      member do
+        put 'undo', to: "entries#undo"
+      end
+    end
+
+    resources :jobs, only: [:show, :destroy]
   end
 
-  resources :user_dictionaries do
-    resources :new_entries
-    resources :removed_entries
+  resources :jobs, only: [:index, :show, :destroy]
+  delete 'jobs', to: "jobs#destroy_all"
+  delete 'annotation_jobs', to: "jobs#destroy_all_annotation_jobs"
 
-    collection do
-      get 'index_for_owner'
-    end
-  end
-
-  
-  # The priority is based upon order of creation:
-  # first created -> highest priority.
-
-  # Sample of regular route:
-  #   match 'products/:id' => 'catalog#view'
-  # Keep in mind you can assign values other than :controller and :action
-
-  # Sample of named route:
-  #   match 'products/:id/purchase' => 'catalog#purchase', :as => :purchase
-  # This route can be invoked with purchase_url(:id => product.id)
-
-  # Sample resource route (maps HTTP verbs to controller actions automatically):
-  #   resources :products
-
-  # Sample resource route with options:
-  #   resources :products do
-  #     member do
-  #       get 'short'
-  #       post 'toggle'
-  #     end
-  #
-  #     collection do
-  #       get 'sold'
-  #     end
-  #   end
-
-  # Sample resource route with sub-resources:
-  #   resources :products do
-  #     resources :comments, :sales
-  #     resource :seller
-  #   end
-
-  # Sample resource route with more complex sub-resources
-  #   resources :products do
-  #     resources :comments
-  #     resources :sales do
-  #       get 'recent', :on => :collection
-  #     end
-  #   end
-
-  # Sample resource route within a namespace:
-  #   namespace :admin do
-  #     # Directs /admin/products/* to Admin::ProductsController
-  #     # (app/controllers/admin/products_controller.rb)
-  #     resources :products
-  #   end
-
-  # You can have the root of your site routed with "root"
-  # just remember to delete public/index.html.
-  # root :to => 'welcome#index'
-  # root :to => 'dictionaries#index', as: 'dictionaries'  --> it causes "/dictionaries#create" triggers "/create"
-  root :to => 'welcome#index'
-
-  # See how all your routes lay out with "rake routes"
-
-  # This is a legacy wild controller route that's not recommended for RESTful applications.
-  # Note: This route will make all actions in every controller accessible via GET requests.
-  # match ':controller(/:action(/:id))(.:format)'
+  root :to => 'home#index'
 end

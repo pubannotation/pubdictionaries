@@ -1,0 +1,140 @@
+body {
+  margin: 0;
+  background-color: #fafafa;
+  color: #666;
+  font-family: "Noto Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.inner {
+  position: relative;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 8px;
+}
+
+.header, .footer {
+  background: #336699;
+  color: #cfcfcf;
+
+  a {
+    color: #cccccc;
+  }
+
+  a:visited {
+    color: #cccccc;
+  }
+
+  a:hover {
+    color: #ffffff;
+    background-color: #34689b;
+  }
+}
+
+.header {
+  padding-top: 10px;
+}
+
+.header {
+  .logo {
+    display: inline-block;
+    margin-right: 10px;
+  }
+
+  .menu {
+    display: inline-block;
+    font-size: 15px;
+
+    ul {
+      margin: 0;
+      padding: 0;
+      li {
+        display:inline-block;
+        margin: 0 5px;
+      }
+    }
+  }
+
+  .account {
+    position: absolute;
+    right: 6px;
+    top: 0;
+    display: inline-block;
+    font-size: 12px;
+  }
+
+}
+
+.title_area {
+  background-color: #eef;
+  font-size: 1.8em;
+  font-weight: bold;
+
+  .page_title {
+    border-left: 15px solid #336699;
+    padding: 0 5px;
+  }
+}
+
+
+.message {
+  margin: 2px 0;
+  padding: 4px;
+  font-style: italic;
+
+  .notice {
+    background-color: #eef;
+    color: #d22;
+  }
+
+  .alert {
+    background-color: #fee;
+    color: #d22;
+  }
+}
+
+
+.main {
+  position: relative;
+  margin: 0;
+  
+  .control {
+    position: absolute;
+    right: 5px;
+    top: 9px;
+  }
+
+  .dictionaries_page .entry_list .ui-tabs-nav {
+    height: 2.4em;    // To avoid large background.
+  }
+}
+
+.footer {
+
+  .alert {
+    color: #ff7777;
+
+    a {
+      color: #ffaaaa;
+    }
+
+    a:visited {
+      color: #ffaaaa;
+    }
+
+    a:hover {
+      color: #ffcccc;
+    }
+  }
+
+  .credit {
+    display: block;
+  }
+
+  .contact {
+    display: block;
+  }
+}
+

@@ -1,31 +1,45 @@
-<h2>Edit <%= resource_name.to_s.humanize %></h2>
+<% content_for :page_title do %>
+  <span class="page_title">Edit <%= resource_name.to_s.humanize %></span>
+<% end %>
 
 <%= form_for(resource, :as => resource_name, :url => registration_path(resource_name), :html => { :method => :put }) do |f| %>
-  <%= devise_error_messages! %>
+  <%= render "devise/shared/error_messages", resource: resource %>
 
-  <div><%= f.label :email %><br />
-  <%= f.email_field :email, :autofocus => true %></div>
+  <table>
+    <tr>
+      <th><%= f.label :username %></th>
+      <td><%= f.text_field :username, disabled: true %></td>
+    </tr>
+    <tr>
+      <th><%= f.label :email %></th>
+      <td><%= f.email_field :email, :autofocus => true %></td>
+    </tr>
+    <% if devise_mapping.confirmable? && resource.pending_reconfirmation? %>
+      <tr>
+        <th>Currently waiting confirmation for</th>
+        <td><%= resource.unconfirmed_email %></td>
+      </tr>
+    <% end %>
+    <tr>
+      <th><%= f.label :password %></th>
+      <td><%= f.password_field :password, :autocomplete => "off" %></td>
+    </tr>
 
-  <% if devise_mapping.confirmable? && resource.pending_reconfirmation? %>
-    <div>Currently waiting confirmation for: <%= resource.unconfirmed_email %></div>
-  <% end %>
+    <tr>
+      <th><%= f.label :password_confirmation %></th>
+      <td><%= f.password_field :password_confirmation %></td>
+    </tr>
 
-  <div><%= f.label :password %> <i>(leave blank if you don't want to change it)</i><br />
-  <%= f.password_field :password, :autocomplete => "off" %></div>
-
-  <div><%= f.label :password_confirmation %><br />
-  <%= f.password_field :password_confirmation %></div>
-
-  <div><%= f.label :current_password %> <i>(we need your current password to confirm your changes)</i><br />
-  <%= f.password_field :current_password %></div>
-
-  <br />
-  <div><%= f.submit "Update" %></div>
+    <tr>
+      <th><%= f.label :current_password %>
+      <td><%= f.password_field :current_password %></td>
+    </tr>
+    <tr>
+      <th colspan="2"><%= f.submit "Update" %></th>
+    </tr>
+  </table>
 <% end %>
 <br />
-
-<h3>Cancel my account</h3>
-
-<p>Unhappy? <%= button_to "Cancel my account", registration_path(resource_name), :data => { :confirm => "Are you sure?" }, :method => :delete %></p>
-
-<%= link_to "Back", :back %>
+<!--
+<p><%= button_to "Delete my account", registration_path(resource_name), :data => { :confirm => "Are you sure? Your dictionaries will be all deleted." }, :method => :delete %></p>
+ -->

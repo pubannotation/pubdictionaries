@@ -1,0 +1,101 @@
+// Place all the styles related to the mapping controller here.
+// They will automatically be included in application.css.
+// You can use Sass (SCSS) here: http://sass-lang.com/
+
+fieldset {
+	background-color: #f2ffff;
+	margin: 0 0 10px 0;
+	legend {
+	  margin: 15px 0 5px 0;
+	  font-size: 1.2em;
+	  font-weight: bold;
+	}
+}
+
+fieldset:hover {
+	background-color: #fff2ff;
+}
+
+.center-align {
+	text-align:center;
+}
+
+table.options {
+	margin: 4px auto;
+	border-width: 2px;
+	text-align:center;
+	th {
+		border-width: 2px;
+		width: 7em;
+	}
+	td {
+		input {
+			text-align: right;
+		}
+	}
+}
+
+table.dictionary_selection {
+	width: 100%;
+	border-collapse: collapse;
+
+	th, td {
+		border-top-style: hidden;
+		border-bottom-style: hidden;
+	}
+
+	th.pane, td.pane {
+		border: 1px solid black;
+		padding: 5px;
+
+		input {
+			padding: 2px;
+			width: 5em;
+			border-radius: 4px;
+		}
+	}
+
+	th.pane {
+		background-color: #ccccff;
+	}
+
+	.pane_box {
+		height: 60px;
+		overflow-y: auto;
+	}
+
+	.pane.selected {
+		width: 33%;
+	}
+
+	.pane.unselected {
+		width: 63%;
+	}
+}
+
+.dictionary {
+  display: inline-block;
+  margin: 2px;
+  padding: 1px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fafafa;
+  box-shadow: 1px 1px 1px #555555;
+}
+
+textarea {
+	width: 100%;
+}
+
+.textae-editor {
+	padding: 4px;
+}
+
+.http_method {
+	margin: 1px;
+	border: 1px solid blue;
+	border-radius: 3px;
+	padding: 1px 2px;
+	background-color: #58f;
+	color: white;
+}

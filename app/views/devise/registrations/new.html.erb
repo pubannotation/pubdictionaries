@@ -1,20 +1,47 @@
-<h2>Sign up</h2>
-
-<%= form_for(resource, :as => resource_name, :url => registration_path(resource_name)) do |f| %>
-  <%= devise_error_messages! %>
-
-  <div><%= f.label :email %><br />
-  <%= f.email_field :email, :autofocus => true %></div>
-
-  <div><%= f.label :password %><br />
-  <%= f.password_field :password %></div>
-
-  <div><%= f.label :password_confirmation %><br />
-  <%= f.password_field :password_confirmation %></div>
-
-  <br />
-  <div><%= f.submit "Sign up" %></div>
+<% content_for :page_title do %>
+  <span class="page_title">Sign up</span>
 <% end %>
 
-<br />
+<%= form_for(resource, :as => resource_name, :url => registration_path(resource_name)) do |f| %>
+  <%= render "devise/shared/error_messages", resource: resource %>
+
+  <table>
+	  <tr>
+		  <th><%= f.label :username %></th>
+		  <td><%= f.text_field :username, :autofocus => true %></td>
+		</tr>
+
+		<tr>
+		  <th><%= f.label :email %></th>
+		  <td><%= f.email_field :email %></td>
+		</tr>
+
+		<tr>
+		  <th><%= f.label :password %></th>
+		  <td><%= f.password_field :password %></td>
+		</tr>
+
+		<tr>
+		  <th><%= f.label :password_confirmation %></th>
+		  <td><%= f.password_field :password_confirmation %></td>
+		</tr>
+		<tr>
+			<th colspan="2"><%= f.submit "Sign up", class: :button %></th>
+		</tr>
+	</table>
+<% end %>
+<div>
+<h3>Note</h3>
+<p>Your <b>username</b> will become a part of the URL to your user page.</p>
+<p>It may include
+  <ul>
+    <li>lowercase letters (a - z),</li>
+    <li>decimal digits (0 - 9),</li>
+    <li>hyphen ('-'), and underscore ('_').</li>
+  </ul>
+</p>
+<p>However, it must not begin with a hyphen or a underscore.</p>
+</div>
+
+<br/>
 <%= render "devise/shared/links" %>

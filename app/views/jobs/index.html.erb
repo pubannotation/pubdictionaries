@@ -1,0 +1,72 @@
+<% content_for :page_title do %>
+    <span class="page_title">Jobs</span>
+<% end %>
+
+# Jobs: <%= Job.count %>
+<%= link_to('Delete all jobs', Job, method: :delete, data: { confirm: 'Are you sure?' }, class: :button) %>
+<br/>
+# Annotation jobs: <%= Job.where(dictionary_id:nil).count %>
+<%= link_to('Delete all annotation jobs', annotation_jobs_path, method: :delete, data: { confirm: 'Are you sure?' }, class: :button) %>
+
+<br/>
+
+<%=
+  grid(@jobs_grid) do |g|
+
+    g.column name: 'ID' do |job|
+      [link_to(job.id, job), {style: 'text-align: right'}]
+    end
+
+    g.column name: 'Dictionary', attribute: 'dictionary_id' do |job|
+      if job.dictionary.nil?
+        ['-',  {style: 'text-align: center'}]
+      else
+        [link_to(job.dictionary.name, job.dictionary), {style: 'text-align: right'}]
+      end
+    end
+
+    g.column name: 'Name', attribute: 'name' do |job|
+      job.name
+    end
+
+    g.column name: '# items' do |job|
+      [job.num_items, {style: 'text-align: right'}]
+    end
+
+    g.column name: '# dones' do |job|
+      [job.num_dones, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'registered_at', attribute: 'registered_at' do |job|
+      [job.registered_at, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'began_at', attribute: 'begun_at' do |job|
+      [job.begun_at, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'end_at', attribute: 'ended_at' do |job|
+      [job.ended_at, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'status' do |job|
+      [job.status, {style: 'text-align: center'}]
+    end
+
+    g.column name: 'ETP' do |job|
+      [job.time, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'ETR' do |job|
+      [job.etr, {style: 'text-align: right'}]
+    end
+
+    g.column name: 'delete' do |job|
+      if job.running?
+        ['running', {style: :italic}]
+      else
+        link_to('Delete', job, method: :delete, data: { confirm: 'Are you sure?' }, class: :button)
+      end
+    end
+  end
+%>

@@ -1,0 +1,12 @@
+<% if @dictionary.compilable? %>
+	<fieldset class="dialog">
+		<legend>Compile</legend>
+
+		<p class="note">There are entries which are not yet fully indexed. You can compile the dictionary to make searching it fast.</p>
+		<%= link_to(
+			'Compile',
+			compile_dictionary_path(@dictionary.name),
+			class: "button"
+		) %>
+	</fieldset>
+<% end %>

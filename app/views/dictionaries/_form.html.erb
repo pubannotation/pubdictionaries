@@ -13,73 +13,156 @@
     </div>
   <% end %>
 
-  <div class="field">
-    <%= f.label :title, "Dictionary name:" %><br />
-    <%= f.text_field :title %>
-  </div>
-  
-  <div class="field">
-    <%= f.label :creator, "Creator:" %><br />
-    <%= f.text_field :creator, readonly: true %>
-  </div>
+  <table style="width:100%">
+    <tr>
+      <th colspan="2" class="section">Properties</th>
+    </tr>
 
-  <div class="field">
-    <%= f.label :public, "Status:" %>
-    <%= f.select :public, [['Public','true'],['Private','false']] %>
-  </div>
+    <tr>
+      <th><%= f.label :name, "Name*" %></th>
+      <td>
+        <p class="note" style="margin-top:0">Please give it a descriptive name, which begins with an alphabet or underscore, and contains alphanumeric letters, underscore, hyphen, space, or round brackets.</p>
+        <%= f.text_field :name, required: true, style: "box-sizing: border-box; width:15em" %></td>
+    </tr>
 
-  <div class="field">
-    Options for dictionary search:
-    <table>
-      <tr>
-        <td width="20"></td>
-        <td><%= f.label :lowercased, "1. Use case-insensitive search" %></td>
-        <td><%= f.check_box :lowercased, {:checked => true }%></td>
-      </tr>
-      <tr>
-        <td width="20"></td>
-        <td><%= f.label :hyphen_replaced, "2. Replace a hyphen with a space" %></td>
-        <td><%= f.check_box :hyphen_replaced, {:checked => true }%></td>
-      </tr>
-      <tr>
-        <td width="20"></td>
-        <td><%= f.label :stemmed, "3. Perform stemming using Porter stemmer" %></td>
-        <td><%= f.check_box :stemmed, {:checked => true }%></td>
-      </tr>
-    </table>
-  </div>
-  
-  <div class="field">
-    <%= f.label :description, "Description of this dictionary:" %><br />
-    <%= f.text_area :description %>
-  </div>
+    <tr>
+      <th><%= f.label :description, "Description*" %></th>
+      <td>
+        <p class="note" style="margin-top:0">Please describe the dictionary in detail, e.g., how it is developed, the source of the terms, etc.</p>
+        <%= f.text_area :description, required: true, rows: 5, style: "box-sizing: border-box; width:100%" %></td>
+    </tr>
 
-  <div>
-    <pre>
--- Upload a dictionary file --
+    <tr>
+      <th><%= f.label :description, "Language" %></th>
+      <td>
+        <p class="note" style="margin-top:0">Please specify the language of the dictionary, which is important for correct analysis and annotation.</p>
+        <%= f.text_field :language, style: "box-sizing: border-box; width:15em" %> <span class="note">(default: English)</span>
+        <p class="caution" style="margin-bottom: 0">Once it is changed, the dictionary needs to be re-compiled.</p>
+      </td>
+    </tr>
 
-  A dictionary file is a plan text file in which every row represents a different entry. An entry consists of two mandatory elements, <b>1) entry name</b> and <b>2) ID</b>, and one optional element, <b>3) label</b>, where these elements are separated by a tab or a comma (depending on the element separator chosen below). 
+    <tr>
+      <th>Public?</th>
+      <td><%= f.check_box :public %>Yes, I want this dictionary to appear in the public list.</td>
+    </tr>
 
-  <b>Be careful that a selected separator should not be used as a part of entry name, label, nor ID.</b>
-    </pre>
+    <tr>
+      <th>Lisence</th>
+      <td>
+        <p class="note" style="margin-top:0">Please specify the license condition, which is important for proper and comfortable use of the dictionary. <a href="https://creativecommons.org/">Creative Commons</a> is a good source of various license conditions.</p>
+        <table>
+          <tr>
+            <th>Name</th>
+            <td><%= f.text_field :license, placeholder: "e.g., CC BY 4.0", style: "box-sizing: border-box; width:25em" %></td>
+          </tr>
+          <tr>
+            <th>URL</th>
+            <td><%= f.text_field :license_url, placeholder: "e.g., https://creativecommons.org/licenses/by/4.0/", style: "box-sizing: border-box; width:25em" %></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <br />
-    <div class="field">
-      <%= f.label :separator, "Separator:" %>
-      <%= f.radio_button :separator, "\t", {checked: true} %> Tab, 
-      <%= f.radio_button :separator, "," %> Comma
-    </div>
+  <% if params[:action] == 'edit' %>
 
-    <div class="field">
-      <%= f.label :file, "Dictionary File:" %>
-      <%= f.file_field :file %>
-    </div>
-    <br/>
-  </div>
+  <table style="width:100%">
+    <tr>
+      <th colspan="2" class="section">Advanced setting <span class="note">(Leave them to default if you don't know what they mean)</span></th>
+    </tr>
 
-  <div class="actions">
-    <%= f.submit "Create", {:class =>"customized_button"} %>
-  </div>
+    <tr>
+      <th style="width:6em">Params for Annotation</th>
+      <td>
+        <p class="note" style="margin-top:0">Use the paramaters below to precisly control the text annotation using the dictionary.</p>
+        <table>
+          <tr>
+            <th>Min length</th>
+            <td><%= f.text_field :tokens_len_min, type: :number, min:1, max:3, step:1, style: "box-sizing: border-box; width:5em; text-align:right" %> <span class="note">The minimum length (number of words) of a string to be matched (default: 1)</span></td>
+          </tr>
+
+          <tr>
+            <th>Max length</th>
+            <td><%= f.text_field :tokens_len_max, type: :number, min:3, max:30, step:1, style: "box-sizing: border-box; width:5em; text-align:right" %> <span class="note">The maximum length (number of words) of a string to be matched (default: 6)</span></td>
+          </tr>
+
+          <tr>
+            <th>Threshold</th>
+            <td><%= f.text_field :threshold, type: :number, min:0.5, max:1, step:0.01, style: "box-sizing: border-box; width:5em; text-align:right" %> <span class="note">The lower it is, the softer the string matching will be (default: 0.85)</span></td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+
+    <tr>
+      <th>Stopwords</th>
+      <td>
+        <p class="note" style="margin-top:0">The stopwords are calculated based on the entries of the dictionary, and currently they cannot be manually changed. Please use them to figure out potentially unusual entires in the dicitonary.</p>
+        <table>
+
+          <tr>
+            <th title="The words that will not appear in a term">No term words</th>
+            <td>
+              <% if @dictionary.no_term_words.empty? %>
+                <i>compile to update or use the default</i>
+              <% else %>
+                <%= content_tag(:span, 'Default', title: Dictionary::NO_TERM_WORDS.sort.join(', ')) %>
+                <%=
+                  count_no_term_words = Dictionary::NO_TERM_WORDS - @dictionary.no_term_words
+                  if count_no_term_words.present?
+                    "- #{count_no_term_words}"
+                  end
+                %>
+              <% end %>
+            </td>
+          </tr>
+
+          <tr>
+            <th title="The words that will not appear in the beginning of a term">No begin words</th>
+            <td>
+              <% if @dictionary.no_begin_words.empty? %>
+                <i>compile to update or use the default</i>
+              <% else %>
+                <%= content_tag(:span, 'Default', title: Dictionary::NO_BEGIN_WORDS.sort.join(', ')) %>
+                <%=
+                  count_no_begin_words = Dictionary::NO_BEGIN_WORDS - @dictionary.no_begin_words
+                  if count_no_begin_words.present?
+                    "- #{count_no_begin_words}"
+                  end
+                %>
+              <% end %>
+            </td>
+          </tr>
+
+          <tr>
+            <th title="The words that will not appear in the end of a term">No end words</th>
+            <td>
+              <% if @dictionary.no_end_words.empty? %>
+                <i>compile to update for use the default</i>
+              <% else %>
+                <%= content_tag(:span, 'Default', title: Dictionary::NO_END_WORDS.sort.join(', ')) %>
+                <%=
+                  count_no_end_words = Dictionary::NO_END_WORDS - @dictionary.no_end_words
+                  if count_no_end_words.present?
+                    "- #{count_no_end_words}"
+                  end
+                %>
+              <% end %>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+
+    <% end %>
+
+    <tr>
+      <td colspan="2"><%= f.submit @submit_text, {:class =>"button", style: "box-sizing: border-box; width: 100%"} %></td>
+    </tr>
+
+  </table>
 
 <% end %>
 

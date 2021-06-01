@@ -1,324 +1,444 @@
-#
-# Define the Dictionary model.
-#
-require File.join( Rails.root, 'lib/simstring/swig/ruby/simstring')
+require 'simstring'
 
-class Dictionary < ActiveRecord::Base
-  include StringManipulator
+class Dictionary < ApplicationRecord
+	include StringManipulator
 
-  attr_accessor :file, :separator, :sort
-  attr_accessible :title, :creator, :description, :lowercased, :stemmed, :hyphen_replaced,
-    :user_id, :public, :created_by_delayed_job, :confirmed_error_messages, :error_messages,
-    :file, :separator, :sort
+	belongs_to :user
+	has_many :associations
+	has_many :associated_managers, through: :associations, source: :user
+	has_many :entries, :dependent => :destroy
+	has_many :jobs, :dependent => :destroy
 
-  belongs_to :user
+	validates :name, presence:true, uniqueness: true
+	validates :user_id, presence: true 
+	validates :description, presence: true
+	validates :license_url, url: {allow_blank: true}
+	validates :name, length: {minimum: 3}
+	validates_format_of :name,                              # because of to_param overriding.
+											:with => /\A[a-zA-Z_][a-zA-Z0-9_\- ()]*\z/,
+											:message => "should begin with an alphabet or underscore, and only contain alphanumeric letters, underscore, hyphen, space, or round brackets!"
 
-  has_many :entries, :dependent => :destroy
-  has_many :user_dictionaries, :dependent => :destroy
+	SIM_STRING_DB_DIR = "db/simstring/"
 
-  validates :creator, :description, :title, :presence => true
-  validates :file, presence: true,  on: :create 
-  validates :title, uniqueness: true
-  validates_inclusion_of :public, :in => [true, false]     # :presence fails when the value is false.
-  validates_format_of :title,                              # because of to_param overriding.
-                      :with => /^[^\.]*$/,
-                      :message => "should not contain dot!"
+	# The terms which will never be included in terms
+	NO_TERM_WORDS = %w(are am be was were do did does had has have what which when where who how if whether an the this that these those is it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g)
 
-  
-  def to_param
-    # Override the original to_param so that it returns title, not ID, for constructing URLs. 
-    # Use Model#find_by_title() instead of Model.find() in controllers.
-    title
-  end
+	# terms will never begin or end with these words, mostly prepositions
+	NO_BEGIN_WORDS = %w(a am an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite do except excepting excluding for from had has have i in inside into if is it like my me of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during what which when where who how whether)
+
+	NO_END_WORDS = %w(a am an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite do except excepting excluding for from had has have i in inside into if is it like my me of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during what which when where who how whether)
 
 
-  # Return a list of dictionaries.
-  def self.get_showables(user = nil, dic_type = nil)
-    if user == nil
-      # Get a list of publicly available dictionaries.
-      lst = where('public = ? AND confirmed_error_messages = ?', true, true)
-      order = 'created_at'
-      order_direction = 'desc'
+	scope :mine, -> (user) {
+		if user.nil?
+			none
+		else
+			includes(:associations)
+				.where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
+				.references(:associations)
+		end
+	}
 
-    else
-      if dic_type == 'my_dic'
-        # Get a list of dictionaries of the current user.
-        lst = where('user_id = ? AND created_by_delayed_job = ?', user.id, true)
-        order = 'created_at'
-        order_direction = 'desc'
+	scope :editable, -> (user) {
+		if user.nil?
+			none
+		elsif user.admin?
+		else
+			includes(:associations)
+				.where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
+				.references(:associations)
+		end
+	}
 
-      elsif dic_type == 'working_dic'
-        dic_ids = UserDictionary.get_dictionary_ids_by_user_id(user.id)
+	scope :administrable, -> (user) {
+		if user.nil?
+			none
+		elsif user.admin?
+		else
+			where('user_id = ?', user.id)
+		end
+	}
 
-        # Get a list of working dictionaries. Dictionaries, which are not confirmed, will
-        #   be shown if those are created by the current user, whereas only confirmed 
-        #   dictionaries will be shown if they are created by other users.
-        lst = Dictionary.joins(:user_dictionaries).
-                where('dictionaries.id IN (?)', dic_ids).
-                where('(dictionaries.user_id = ? AND created_by_delayed_job = ?)
-                  OR (dictionaries.user_id != ? AND confirmed_error_messages = ?)',
-                  user.id, true, user.id, true)
-        order = 'user_dictionaries.updated_at'
-        order_direction = 'desc'
+	class << self
+		def find_dictionaries_from_params(params)
+			dic_names = if params.has_key?(:dictionaries)
+									 params[:dictionaries]
+								 elsif params.has_key?(:dictionary)
+									 params[:dictionary]
+								 elsif params.has_key?(:id)
+									 params[:id]
+								 end
+			return [] unless dic_names.present?
 
-      else
-        # Get a list of all dictionaries.
-        lst = where('(user_id != ? AND public = ? AND confirmed_error_messages = ?) OR (user_id = ?)',
-                user.id, true, true, user.id)
-        order = 'created_at'
-        order_direction = 'desc'
-      end
-    end
+			dictionaries = dic_names.split(/[,|]/).collect{|d| [d.strip, Dictionary.find_by_name(d.strip)]}
+			unknown = dictionaries.select{|d| d[1].nil?}.collect{|d| d[0]}
+			raise ArgumentError, "unknown dictionary: #{unknown.join(', ')}." unless unknown.empty?
 
-    return lst, order, order_direction
-  end
+			dictionaries.collect{|d| d[1]}
+		end
 
+		def find_ids_by_labels(labels, dictionaries = [], threshold = nil, superfluous = false, verbose = false)
+			sim_string_dbs = dictionaries.inject({}) do |h, dic|
+				h[dic.name] = begin
+					Simstring::Reader.new(dic.sim_string_db_path)
+				rescue
+					nil
+				end
+				if h[dic.name]
+					h[dic.name].measure = Simstring::Jaccard
+					h[dic.name].threshold = threshold || dic.threshold
+				end
+				h
+			end
 
-  # Find a dictionary by its title.
-  # @return
-  #   dictionary instance - a dictionary foundnil - 'title' dictionary does not 
-  #   exist or not showable. nil if it does not exist or showable dictionary by its title.
-  def self.find_showable_by_title(title, user = nil)
-    if user.nil?
-      where(:title => title).where('public = ?', true).where(:created_by_delayed_job => true).first
-    else
-      where(:title => title).where('public = ? OR user_id = ?', true, user.id).where(:created_by_delayed_job => true).first
-    end
-  end
+			search_method = superfluous ? Dictionary.method(:search_term_order) : Dictionary.method(:search_term_top)
 
+			r = labels.inject({}) do |h, label|
+				h[label] = search_method.call(dictionaries, sim_string_dbs, threshold, label)
+				h[label].map!{|entry| entry[:identifier]} unless verbose
+				h
+			end
 
-  # Return a list of latest showable dictionaries.
-  def self.get_latest_dictionaries(n=10)
-    where('public = ? AND confirmed_error_messages = ?', true, true).order('created_at desc').limit(n)
-  end
+			sim_string_dbs.each{|name, db| db.close if db}
 
-  # Get a list of unfinished work.
-  def self.get_unfinished_dictionaries(user)
-    where(user_id: user.id).where(created_by_delayed_job: false)
-  end
+			r
+		end
 
-  def unfinished?
-    created_by_delayed_job == false
-  end
+		def find_labels_by_ids(ids, dictionaries = [], verbose = false)
+			entries = if dictionaries.present?
+				Entry.where(identifier: ids, dictionary_id: dictionaries)
+			else
+				Entry.where(identifier: ids)
+			end
 
+			entries.inject({}) do |h, entry|
+				h[entry.identifier] = [] unless h.has_key? entry.identifier
+				h[entry.identifier] << {label: entry.label, dictionary: entry.dictionary.name}
+				h
+			end
+		end
+	end
 
-  # true if the given base dictionary is destroyable; otherwise, false.
-  def is_destroyable?(current_user)
-    if self.user_id != current_user.id
-      return false, "Current user is not the owner of the dictionary."
-    elsif used_by_other_users?(current_user)
-      return false, "The dictionary is used by other users."
-    else
-      return true, "The dictionary is successfully deleted."
-    end
-  end
+	# Override the original to_param so that it returns name, not ID, for constructing URLs.
+	# Use Model#find_by_name() instead of Model.find() in controllers.
+	def to_param
+		name
+	end
 
+	def editable?(user)
+		user && (user.admin? || user_id == user.id || associated_managers.include?(user))
+	end
 
-  # Refactored as a method for delayed_job
-  def import_entries_and_create_simstring_db(file, separator)
-    # 1. Import entries.
-    if import_entries(file, separator) == false
-      Entry.delete_all  ["dictionary_id = ?", self.id]
-      return false
-    end
-    
-    # 2. Create a SimString DB.
-    if create_ssdb == false
-      delete_ssdb
-      return false
-    end
+	def administrable?(user)
+		user && (user.admin? || user_id == user.id)
+	end
 
-    File.delete file
+	def undo_entry(entry)
+		if entry.is_white?
+			entry.delete
+			decrement!(:entries_num)
+		elsif entry.is_black?
+			entry.be_gray!
+			increment!(:entries_num)
+		end
+	end
 
-    # 3. Check that this job is done!
-    self.created_by_delayed_job = true
-    save
-  end
+	def num_gray
+		entries_num - num_white
+	end
 
+	def num_white
+		entries.where(mode:Entry::MODE_WHITE).count
+	end
 
-  # Clean-up entries, user_dictionaries, and simstring db in a fast way.
-  def destroy_entries_and_simstring_db
-    # 1. Delete the entries of a base dictionary.
-    #    - Use "delete_all" instead of "destroy" to speed up.
-    #
-    Entry.delete_all  ["dictionary_id = ?", self.id]
+	def num_black
+		entries.where(mode:Entry::MODE_BLACK).count
+	end
 
-    # 2. Delete user dictionaries associated with the base dictionary, 
-    #   and their entries.
-    self.user_dictionaries.each do |user_dic|
-      NewEntry.delete_all  ["user_dictionary_id = ?", user_dic.id]
-      RemovedEntry.delete_all  ["user_dictionary_id = ?", user_dic.id]
+	def create_a_black_entry(entry)
+		entry.be_black!
+		decrement!(:entries_num)
+	end
 
-      user_dic.destroy
-    end
+	def add_entries(hentries, normalizer = nil)
+		black_count = hentries.count{|e| e[2] == Entry::MODE_BLACK}
+		transaction do
+			new_entries = hentries.map {|label, identifier, mode| new_entry(label, identifier, normalizer, mode)}
 
-    # 3. Delete the associated SimString DB.
-    delete_ssdb
+			r = Entry.ar_import new_entries, validate: false
+			raise "Import error" unless r.failed_instances.empty?
 
-    return true
-  end
+			increment!(:entries_num, new_entries.length - black_count)
+		end
+	end
 
+	def new_entry(label, identifier, normalizer = nil, mode = Entry::MODE_GRAY, dirty = false)
+		norm1 = normalize1(label, normalizer)
+		norm2 = normalize2(label, normalizer)
+		Entry.new(label:label, identifier:identifier, norm1:norm1, norm2:norm2, label_length:label.length, mode:mode, dirty:dirty, dictionary_id: self.id)
+	rescue => e
+		raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
+	end
 
-  #######
-  private
-  #######
+	def empty_entries
+		transaction do
+			entries.delete_all
+			update_attribute(:entries_num, 0)
+			clean_sim_string_db
+		end
+	end
 
-  # true if other users are using this base dictionary (new entries or disabled entries exist).
-  def used_by_other_users?(current_user)
-    self.user_dictionaries.each do |user_dic|
-      if user_dic.user_id != current_user.id 
-        if not user_dic.new_entries.empty? or not user_dic.removed_entries.empty?
-          return true
-        end
-      end
-    end
-    return false
-  end
+	def sim_string_db_path
+		Rails.root.join(sim_string_db_dir, "simstring.db").to_s
+	end
 
+	def tmp_sim_string_db_path
+		Rails.root.join(sim_string_db_dir, "tmp_entries.db").to_s
+	end
 
-  ########################################################
-  #####     Codes for creating a new dictionary.     #####
-  ########################################################
+	def compilable?
+		entries.where(dirty:true).exists?
+	end
 
-  # Import entries.
-  def import_entries(file, sep)
-    if file.nil?
-      self.error_messages += "File stream is nil!\n"
-      return false
-    else
-      # "textmode: true" option automatically converts all newline variants to \n
-      fp = File.open(file, textmode: true)
-      kline = 0
+	def compile!
+		# Update sim string db to remove black entries and to add (dirty) white entries.
+		# which is sufficient to speed up the search
+		update_sim_string_db
 
-      while (tmp_entries = read_entries(fp, sep, 1000, kline)) != [] do
-        self.entries.import tmp_entries
-      end
-      fp.close()
-      return true
-    end
-  end
+		# commented: do NOT delete black entries
+		# Entry.delete(Entry.where(dictionary_id: self.id, mode:Entry::MODE_BLACK).pluck(:id))
 
-  def read_entries(fp, sep, max, kline)
-    entries = []
+		# commented: do NOT change white entries to gray ones
+		# entries.where(mode:Entry::MODE_WHITE).update_all(mode: Entry::MODE_GRAY)
 
-    while entries.size < max and not fp.eof?
-      line = fp.readline.strip!     # This can't handle "\r" (OSX) newline!
+		update_stop_words
+	end
 
-      if is_proper_raw_entry? line, sep, kline
-        title, uri, label = parse_raw_entry_from  line, sep
-        entries << assemble_entry_from(title, uri, label)        
-      end
+	def update_stop_words
+		mlabels = entries.pluck(:label).map{|l| l.downcase.split}
+		count_no_term_words = mlabels.map{|ml| ml & NO_TERM_WORDS}.select{|i| i.present?}.reduce([], :+).uniq
+		count_no_begin_words = mlabels.map{|ml| ml[0, 1] & NO_BEGIN_WORDS}.select{|i| i.present?}.reduce([], :+).uniq
+		count_no_end_words = mlabels.map{|ml| ml[-1, 1] & NO_END_WORDS}.select{|i| i.present?}.reduce([], :+).uniq
+		self.no_term_words = NO_TERM_WORDS - count_no_term_words
+		self.no_begin_words = NO_BEGIN_WORDS - count_no_begin_words
+		self.no_end_words = NO_END_WORDS - count_no_end_words
+		self.save!
+	end
 
-      kline += 1
-    end
+	def simstring_method
+		@simstring_method ||= case language
+		when 'kor'
+			Simstring::Cosine
+		when 'jpn'
+			Simstring::Cosine
+		else
+			Simstring::Jaccard
+		end
+	end
 
-    return entries
-  end
+	def narrow_entries_by_label(str, page = 0, per = nil)
+		norm1 = normalize1(str)
+		if per.nil?
+			entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page)
+		else
+			entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page).per(per)
+		end
+	end
 
-  # Do sanity checks on raw input line.
-  def is_proper_raw_entry?(line, sep, kline)
-    
-    # Line check.
-    if line == ""
-      # Silently ignore blank lines.
-      return false
-    end
+	def narrow_entries_by_label_prefix(str, page = 0, per = nil)
+		norm1 = normalize1(str)
+		if per.nil?
+			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
+		else
+			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page).per(per)
+		end
+	end
 
-    # Field-wise check.
-    items = line.split sep
-    
-    items.each do |item|
-      if item.length > 255
-        # Max length is 255 since all Entry fields are string type.
-        self.error_messages += "#{kline}-th line has a field that is longer than 255!\n"
-        return false
-      end
-    end
+	def narrow_entries_by_label_prefix_and_substring(str, page = 0, per = nil)
+		norm1 = normalize1(str)
+		if per.nil?
+			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page) +
+			entries.where("norm1 LIKE ?", "_%#{norm1}%").order(:label_length).page(page)
+		else
+			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page).per(per) +
+			entries.where("norm1 LIKE ?", "_%#{norm1}%").order(:label_length).page(page).per(per)
+		end
+	end
 
-    if items.size < 2 or items.size > 3
-      self.error_messages += "#{kline}-th line consists of less than 2 or more than 3 fields!\n"
-      return false
-    end
+	def narrow_entries_by_identifier(str, page = 0, per = nil)
+		if per.nil?
+			entries.where("identifier ILIKE ?", "%#{str}%").page(page)
+		else
+			entries.where("identifier ILIKE ?", "%#{str}%").page(page).per(per)
+		end
+	end
 
-    return true
-  end
+	def self.narrow_entries_by_identifier(str, page = 0, per = nil)
+		if per.nil?
+			Entry.where("identifier ILIKE ?", "%#{str}%").page(page)
+		else
+			Entry.where("identifier ILIKE ?", "%#{str}%").page(page).per(per)
+		end
+	end
 
-  def parse_raw_entry_from(line, sep)
-    items = line.split sep
+	def self.narrow_entries_by_label(str, page = 0)
+		norm1 = normalize1(str)
+		Entry.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
+	end
 
-    if items.size == 2
-      return items[0], items[1], ""
-    else
-      return items[0], items[1], items[2]
-    end
-  end
+	def self.narrow_entries_by_label_prefix(str, page = 0)
+		norm1 = normalize1(str)
+		Entry.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
+	end
 
-  def assemble_entry_from(title, uri, label)
-    e = Entry.new
+	def self.search_term_order(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
+		return [] if term.empty?
 
-    e.dictionary_id = self.id
-    e.view_title    = title
-    e.search_title  = normalize_str( title, 
-      {lowercased: self.lowercased, hyphen_replaced: self.hyphen_replaced, stemmed: self.stemmed}
-    )
-    e.uri           = uri
-    e.label         = label
+		entries = dictionaries.inject([]) do |sum, dic|
+			sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold)
+		end
 
-    return e
-  end
+		entries.sort_by{|e| e[:score]}.reverse
+	end
 
+	def self.search_term_top(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
+		return [] if term.empty?
 
-  # Create a SimString DB.
-  def create_ssdb
-    dbfile_path = Rails.root.join('public/simstring_dbs', self.title).to_s
+		entries = dictionaries.inject([]) do |sum, dic|
+			sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold)
+		end
 
-    begin
-      # Simstring::Writer.new(db_filename, n-gram, begin/end marker, unicode)
-      db = Simstring::Writer.new  dbfile_path, 3, true, true     
-    rescue => e
-      logger.error "Failed to create a SimString DB: #{e}"
-      return false
-    end
-    
-    # @dictionary.entries.each do |entry|     # This is too slow. 
-    # Entry.where(dictionary_id: @dictionary.id).pluck(:search_title).uniq.each do |search_title|
-    self.entries.pluck(:search_title).uniq.each do |search_title|
-      db.insert  search_title
-    end
+		return [] if entries.empty?
 
-    db.close
+		max_score = entries.max{|a, b| a[:score] <=> b[:score]}[:score]
+		entries.delete_if{|e| e[:score] < max_score}
+	end
 
-    return true
-  end
-  
+	def additional_entries
+		@additional_entries ||= ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND mode=1 AND dirty=true", 'SQL', [[nil, id]], prepare:true).to_a.each{|r| r.symbolize_keys!}
+	end
 
-  ######################################################
-  #####     Codes for destroying a dictionary.     #####
-  ######################################################
+	def search_term(ssdb, term, norm1 = nil, norm2 = nil, threshold = nil)
+		return [] if term.empty?
+		raise "no ssdb for the dictionry #{name}." unless ssdb.present?
 
-  def delete_ssdb
-    dbfile_path = Rails.root.join('public/simstring_dbs', self.title).to_s
-    
-    # Remove the main db file
-    begin
-      File.delete  dbfile_path
-    rescue => e
-      Rails.logger.debug "Failed to delete a simstring DB: #{e}"
-    end
+		norm1 ||= normalize1(term)
+		norm2 ||= normalize2(term)
+		threshold ||= self.threshold
 
-    # Remove auxiliary db files
-    pattern = dbfile_path + ".[0-9]+.cdb"
-    Dir.glob(dbfile_path + '.*.cdb').each do |aux_file|
-      if /#{pattern}/.match(aux_file) 
-        begin
-          File.delete  aux_file
-        rescue
-          # Silently ignore the error
-        end
-      end
-    end
-  end
+		results = additional_entries.collect{|e| e.dup}
 
- 
+		norm2s = ssdb.retrieve(norm2)
+
+		norm2s.each do |n2|
+			results += ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND norm2=$2 AND mode!=2", 'SQL', [[nil, id], [nil, n2]], prepare:true).to_a.each{|r| r.symbolize_keys!}
+		end
+
+		results.uniq!
+		results.each{|e| e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]))}
+		results.delete_if{|e| e[:score] < threshold}
+	end
+
+	def sim_string_db_dir
+		Dictionary::SIM_STRING_DB_DIR + self.name
+	end
+
+	private
+
+	def ngram_order
+		case language
+		when 'kor'
+			2
+		when 'jpn'
+			1
+		else
+			3
+		end
+	end
+
+	def clean_sim_string_db
+		FileUtils.rm_rf Dir.glob("#{sim_string_db_dir}/*")
+	end
+
+	def update_sim_string_db
+		FileUtils.mkdir_p(sim_string_db_dir) unless Dir.exist?(sim_string_db_dir)
+		clean_sim_string_db
+
+		db = Simstring::Writer.new sim_string_db_path, ngram_order, false, true
+
+		entries
+			.active
+			.pluck(:norm2)
+			.uniq
+			.each{|norm2| db.insert norm2}
+
+		db.close
+
+		entries.white.update_all(dirty: false)
+	end
+
+	def update_tmp_sim_string_db
+		FileUtils.mkdir_p(sim_string_db_dir) unless Dir.exist?(sim_string_db_dir)
+		db = Simstring::Writer.new tmp_sim_string_db_path, 3, false, true
+		self.entries.where(mode: [Entry::MODE_GRAY, Entry::MODE_WHITE]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
+		db.close
+	end
+
+	# Get typographic normalization of an input text using an analyzer of ElasticSearch.
+	#
+	# * (string) text  - Input text.
+	#
+	def normalize1(text, analyzer = nil)
+		Entry.normalize(text, normalizer1, analyzer)
+	end
+
+	def self.normalize1(text, analyzer = nil)
+		Entry.normalize(text, 'normalizer1', analyzer)
+	end
+
+	# Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
+	#
+	# * (string) text  - Input text.
+	#
+	def normalize2(text, analyzer = nil)
+		Entry.normalize(text, normalizer2, analyzer)
+	end
+
+	def self.normalize2(text, analyzer = nil)
+		Entry.normalize(text, 'normalizer2', analyzer)
+	end
+
+	def normalizer1
+		@normalizer1 ||= 'normalizer1' + language_suffix
+	end
+
+	def normalizer2
+		@normalizer2 ||= 'normalizer2' + language_suffix
+	end
+
+	def language_suffix
+		@language_suffix ||= if language.present?
+			case language
+			when 'kor'
+				'_ko'
+			when 'jpn'
+				'_ja'
+			else
+				''
+			end
+		else
+			''
+		end
+	end
+
+	def str_sim
+		@str_sim ||= case language
+		when 'kor'
+			Entry.method(:str_sim_jaccard_2gram)
+		when 'jpn'
+			Entry.method(:str_sim_jp)
+		else
+			Entry.method(:str_sim_jaccard_3gram)
+		end
+	end
 end
-

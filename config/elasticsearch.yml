@@ -1,0 +1,16 @@
+default: &default
+  host: http://localhost:9200
+  transport_options:
+    request:
+      timeout: 5
+
+development:
+  <<: *default
+#  host: 'http://host.docker.internal:9200'
+  host: http://elasticsearch:9200
+
+test:
+  <<: *default
+
+production:
+  <<: *default

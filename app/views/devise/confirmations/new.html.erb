@@ -1,7 +1,9 @@
-<h2>Resend confirmation instructions</h2>
+<% content_for :page_title do %>
+  <span class="page_title">Resend confirmation instructions</span>
+<% end %>
 
 <%= form_for(resource, :as => resource_name, :url => confirmation_path(resource_name), :html => { :method => :post }) do |f| %>
-  <%= devise_error_messages! %>
+  <%= render "devise/shared/error_messages", resource: resource %>
 
   <div><%= f.label :email %><br />
   <%= f.email_field :email, :autofocus => true %></div>

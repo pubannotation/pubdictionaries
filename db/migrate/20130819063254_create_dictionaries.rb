@@ -1,15 +1,12 @@
-class CreateDictionaries < ActiveRecord::Migration
-  def self.up
+class CreateDictionaries < ActiveRecord::Migration[5.2]
+  def change
     create_table :dictionaries do |t|
-      t.string :title
-      t.string :creator
-      t.text :description
-
+      t.string :name
+      t.text :description, default: ''
+      t.references :user
+      t.integer :entries_num, default:0
       t.timestamps
     end
-  end
 
-  def self.down
-    drop_table :dictionaries 
   end
 end

@@ -1,0 +1,38 @@
+<% if @dictionary.editable?(current_user) && (@dictionary.num_white > 0 || @dictionary.num_black > 0) %>
+  <table class="counts">
+    <colgroup>
+      <col class="count_entries">
+      <col class="count_entries">
+      <col class="count_entries">
+    </colgroup>
+    <tr>
+      <th colspan="2" class="active" style="border-style:none" title="<%= t('title.active') %>">
+        <%= link_to 'Active', params.permit(:mode).merge(mode: Entry::MODE_ACTIVE) %>
+        <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: Entry::MODE_ACTIVE, format: :tsv), title: "Download") %>
+      </th>
+    </tr>
+    <tr>
+      <td style="border-style:none"></td>
+      <th colspan="2" class="custom" style="border-style:none" title="<%= t('title.custom') %>">
+        <%= link_to 'Custom', params.permit(:mode).merge(mode: Entry::MODE_CUSTOM) %>
+        <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: Entry::MODE_CUSTOM, format: :tsv), title: "Download") %>
+      </th>
+    </tr>
+    <tr>
+      <th class="gray" title="<%= t('title.gray') %>">
+        <%= link_to_unless_current '# Gray', params.permit(:mode).except(:mode).merge(mode: Entry::MODE_GRAY) %>
+      </th>
+      <th class="white" title="<%= t('title.white') %>">
+        <%= link_to_unless_current '# White', params.permit(:mode).merge(mode: Entry::MODE_WHITE) %>
+      </th>
+      <th class="black" title="<%= t('title.black') %>">
+        <%= link_to_unless_current '# Black', params.permit(:mode).merge(mode: Entry::MODE_BLACK) %>
+      </th>
+    </tr>
+    <tr>
+      <td style="text-align: right"><%= number_with_delimiter(@dictionary.num_gray, :delimiter => ',') %></td>
+      <td style="text-align: right"><%= @dictionary.num_white %></td>
+      <td style="text-align: right"><%= @dictionary.num_black %></td>
+    </tr>
+  </table>
+<% end %>

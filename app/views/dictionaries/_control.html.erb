@@ -1,0 +1,9 @@
+<span class="toolbox">
+	<% if @dictionary.editable?(current_user) %>
+		<%= link_to(
+			'<i class="fa fa-cog fa-lg"></i>'.html_safe,
+			edit_dictionary_path(@dictionary.name),
+			title: 'Settings'
+		) %>
+	<% end %>
+</span>

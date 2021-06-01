@@ -1,0 +1,30 @@
+<div class="infobox">
+<% collaborators = @dictionary.associated_managers.pluck(:username) %>
+<table style="border:2px solid">
+<tr>
+	<th><%= collaborators.empty? ? 'manager' : 'managers' %></th>
+	<td>
+		<%= user_object(@dictionary.user.username, 'owner') %>
+		<%= collaborators.map{|u| user_object(u, 'manager')}.join('').html_safe %>
+	</td>
+</tr>
+
+<tr>
+	<th>language</th>
+	<td><%= @dictionary.language.present? ? language_object(@dictionary.language) : '-' %></td>
+</tr>
+
+<tr>
+<th>license</th>
+<td><%= @dictionary.license.present? ? (@dictionary.license_url.present? ? link_to(@dictionary.license, @dictionary.license_url) : @dictionary.license) : '-' %></td>
+</tr>
+<tr>
+<th>created at</th>
+<td><%= @dictionary.created_at %></td>
+</tr>
+<tr>
+<th>updated at</th>
+<td><%= @dictionary.updated_at %></td>
+</tr>
+</table>
+</div>

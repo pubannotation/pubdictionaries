@@ -8,11 +8,11 @@
 
 # Bundler config
 .bundle
-vendor/bundle
+vendor/*
 
 # Database.
 db/*.sqlite3
-public/simstring_dbs/*
+db/simstring/*
 
 # All logfiles and tempfiles.
 *.pid
@@ -20,11 +20,13 @@ public/simstring_dbs/*
 
 # Temporary files #
 ###################
+log/
 tmp/
 *.swp
 public/tempfiles/
 public/assets/
 vendor/cache/
+public/results/
 
 
 # OS generated files #
@@ -37,5 +39,7 @@ vendor/cache/
 ehthumbs.db
 Thumbs.db
 
-# coverage reports
-coverage
+.idea
+
+# Ignore all files for rvm
+.env
