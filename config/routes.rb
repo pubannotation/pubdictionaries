@@ -1,6 +1,11 @@
 Rails.application.routes.draw do
-require 'sidekiq/web'
-mount Sidekiq::Web => '/sidekiq'
+
+  require 'sidekiq/web'
+  devise_scope :user do
+    authenticate :user, ->(user) {user.admin} do
+      mount Sidekiq::Web => '/sidekiq'
+    end
+  end
 
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
   get "home/about", as: "about"

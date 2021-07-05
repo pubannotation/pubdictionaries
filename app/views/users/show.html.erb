@@ -33,4 +33,11 @@
     <% end %>
   </section>
 
+  <% if current_user.admin && @user == current_user %>
+    <section>
+      <h2>Jobs</h2>
+      <%= link_to 'sidekiq monitor', sidekiq_web_path, :class => :button %>
+    </section>
+  <% end %>
+
 </section>
