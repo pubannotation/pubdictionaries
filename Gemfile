@@ -1,5 +1,5 @@
 source 'https://rubygems.org'
-ruby '3.0.0'
+ruby '3.0.1'
 
 gem 'rails', '6.1.3.1'
 gem 'activerecord-import'
@@ -32,7 +32,7 @@ gem 'language_list', '~> 1.2', '>= 1.2.1'
 gem 'string-similarity', '~> 2.1'
 gem 'webrick'
 gem 'activejob-cancel'
-gem 'sidekiq'
+gem 'sidekiq', '6.2.1'
 
 group :development do
   gem 'dotenv-rails'
