@@ -16,7 +16,10 @@ class ApplicationJob < ActiveJob::Base
 
   def set_job(active_job)
     @job = Job.find_by(active_job_id: active_job.job_id)
-    if @job.nil?
+    count = 0
+    while @job.nil?
+      count += 1
+      break if count > 5
       sleep(0.1)
       ActiveRecord::Base.connection.clear_query_cache
       @job = Job.find_by(active_job_id: active_job.job_id)
