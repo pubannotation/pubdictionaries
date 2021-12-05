@@ -56,8 +56,8 @@ class TextAnnotator
     @sub_string_dbs = @dictionaries.inject({}) do |h, dic|
       simstring_db = begin
         Simstring::Reader.new(dic.sim_string_db_path)
-      rescue
-        raise "Simstring DB is missing for #{dic.name}"
+      rescue => e
+        raise "Error during opening the Simstring DB for '#{dic.name}': #{e.message}"
       end
 
       simstring_db.measure = dic.simstring_method
@@ -70,8 +70,8 @@ class TextAnnotator
     @sub_string_dbs_overlap = @dictionaries.inject({}) do |h, dic|
       simstring_db = begin
         Simstring::Reader.new(dic.sim_string_db_path)
-      rescue
-        raise "Simstring DB is missing for #{dic.name}"
+      rescue => e
+        raise "Error during opening the Simstring DB for '#{dic.name}': #{e.message}"
       end
 
       simstring_db.measure = Simstring::Overlap
@@ -84,8 +84,8 @@ class TextAnnotator
     @tmp_sub_string_dbs_overlap = @dictionaries.inject({}) do |h, dic|
       simstring_db = begin
         Simstring::Reader.new(dic.sim_string_db_path)
-      rescue
-        raise "Simstring DB is missing for #{dic.name}"
+      rescue => e
+        raise "Error during opening the Simstring DB for '#{dic.name}': #{e.message}"
       end
 
       simstring_db.measure = Simstring::Overlap
@@ -304,14 +304,7 @@ class TextAnnotator
         norm2 = norm2s[idx_token_begin, tlen].join
         next unless norm2.present?
 
-        if span.length > 2 # It seems SimString require the string to be longer than 2 for Overlap matching
-          lookup = @dictionaries.inject([]) do |col, dic|
-            col += @sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @sub_string_dbs_overlap[dic.name].nil?
-            col += @tmp_sub_string_dbs_overlap[dic.name].retrieve(norm2) unless @tmp_sub_string_dbs_overlap[dic.name].nil?
-            col
-          end
-          break if lookup.empty?
-        end
+        ## A rough checking for early break was attempted here but abandoned because it turned out the overhead was too big
 
         # to find terms
         entries = @cache_span_search[span]
