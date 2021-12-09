@@ -36,7 +36,7 @@ class EntriesController < ApplicationController
 			identifier = params[:identifier].strip
 			raise ArgumentError, "An identifier should be supplied." unless identifier.present?
 
-			entry = dictionary.entries.where(label:label, id:identifier).first
+			entry = dictionary.entries.where(label:label, identifier:identifier).first
 			raise ArgumentError, "The entry ('#{label}', '#{identifier}') already exists in the dictionary." unless entry.nil?
 
 			entry = dictionary.new_entry(label, identifier, nil, Entry::MODE_WHITE, true)
