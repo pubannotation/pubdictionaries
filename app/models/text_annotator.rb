@@ -56,52 +56,24 @@ class TextAnnotator
     @cache_span_search = {}
 
     @sub_string_dbs = @dictionaries.inject({}) do |h, dic|
-      simstring_db = begin
-        Simstring::Reader.new(dic.sim_string_db_path)
-      rescue => e
-        raise "Error during opening the Simstring DB for '#{dic.name}': #{e.message}"
+      sdb = if dic.entries_num > 0
+        begin
+          simstring_db = Simstring::Reader.new(dic.sim_string_db_path)
+          simstring_db.measure = dic.simstring_method
+          simstring_db.threshold = (@threshold || dic.threshold)
+          simstring_db
+        rescue => e
+          raise "Error during opening the Simstring DB for '#{dic.name}': #{e.message}"
+        end
+      else
+        nil
       end
-
-      simstring_db.measure = dic.simstring_method
-      simstring_db.threshold = (@threshold || dic.threshold)
-
-      h[dic.name] = simstring_db
-      h
-    end
-
-    @sub_string_dbs_overlap = @dictionaries.inject({}) do |h, dic|
-      simstring_db = begin
-        Simstring::Reader.new(dic.sim_string_db_path)
-      rescue => e
-        raise "Error during opening the Simstring DB for '#{dic.name}': #{e.message}"
-      end
-
-      simstring_db.measure = Simstring::Overlap
-      simstring_db.threshold = (@threshold || dic.threshold) * 0.8
-
-      h[dic.name] = simstring_db
-      h
-    end
-
-    @tmp_sub_string_dbs_overlap = @dictionaries.inject({}) do |h, dic|
-      simstring_db = begin
-        Simstring::Reader.new(dic.sim_string_db_path)
-      rescue => e
-        raise "Error during opening the Simstring DB for '#{dic.name}': #{e.message}"
-      end
-
-      simstring_db.measure = Simstring::Overlap
-      simstring_db.threshold = (@threshold || dic.threshold) * 0.8
-
-      h[dic.name] = simstring_db
-      h
+      h.merge({dic.name => sdb})
     end
   end
 
   def dispose
     @sub_string_dbs.each{|name, db| db.close if db}
-    @sub_string_dbs_overlap.each{|name, db| db.close if db}
-    @tmp_sub_string_dbs_overlap.each{|name, db| db.close if db}
   end
 
   def annotate_batch(anns_col)
@@ -252,41 +224,41 @@ class TextAnnotator
   private
 
   def pattern_based_annotation(anns, denotations = [], idx_position_abbreviation_candidates = {}, idx_span_positions = {})
-    unless @patterns.empty?
-      text = anns[:text]
+    return [denotations, idx_position_abbreviation_candidates, idx_span_positions] if @patterns.empty?
 
-      denotations = @patterns.map do |pattern|
-        matches = text.scan_offset(/#{pattern.expression}/)
-        matches.map do |m|
-          mbeg, mend = m.offset(0)[0, 2]
-          span = {begin:mbeg, end:mend}
+    text = anns[:text]
 
-          str = text[mbeg ... mend]
-          idx_span_positions[str] = [] unless idx_span_positions.has_key? str
-          idx_span_positions[str] << span
+    denotations = @patterns.map do |pattern|
+      matches = text.scan_offset(/#{pattern.expression}/)
+      matches.map do |m|
+        mbeg, mend = m.offset(0)[0, 2]
+        span = {begin:mbeg, end:mend}
 
-          # to find abbreviation definitions
-          if @abbreviation
-            pos = mend
-            pos += 1 while text[pos] =~ /\s/
-            if text[pos] == '('
-              pos += 1
-              abeg = pos
-              pos += 1 while text[pos] != ')' && pos - abeg < 10
-              aend = pos if text[pos] == ')'
-            end
+        str = text[mbeg ... mend]
+        idx_span_positions[str] = [] unless idx_span_positions.has_key? str
+        idx_span_positions[str] << span
 
-            if aend.present? && aend > abeg + 1
-              abbr_str = text[abeg ... aend]
-              abbreviation_type = determine_abbreviation(abbr_str, str)
-              idx_position_abbreviation_candidates[mend] = {span:abbr_str, obj:pattern.identifier, type: abbreviation_type} unless abbreviation_type.nil?
-            end
+        # to find abbreviation definitions
+        if @abbreviation
+          pos = mend
+          pos += 1 while text[pos] =~ /\s/
+          if text[pos] == '('
+            pos += 1
+            abeg = pos
+            pos += 1 while text[pos] != ')' && pos - abeg < 10
+            aend = pos if text[pos] == ')'
           end
 
-          {span:span, obj:pattern.identifier, score:1, string:str}
-       end
-      end.reduce(:union)
-    end
+          if aend.present? && aend > abeg + 1
+            abbr_str = text[abeg ... aend]
+            abbreviation_type = determine_abbreviation(abbr_str, str)
+            idx_position_abbreviation_candidates[mend] = {span:abbr_str, obj:pattern.identifier, type: abbreviation_type} unless abbreviation_type.nil?
+          end
+        end
+
+        {span:span, obj:pattern.identifier, score:1, string:str}
+      end
+    end.reduce(:union)
 
     [denotations, idx_position_abbreviation_candidates, idx_span_positions]
   end

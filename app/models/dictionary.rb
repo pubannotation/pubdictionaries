@@ -333,7 +333,7 @@ class Dictionary < ApplicationRecord
 	end
 
 	def search_term(ssdb, term, norm1 = nil, norm2 = nil, threshold = nil)
-		return [] if term.empty?
+		return [] if term.empty? || entries_num == 0
 		raise "no ssdb for the dictionry #{name}." unless ssdb.present?
 
 		norm1 ||= normalize1(term)
