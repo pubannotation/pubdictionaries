@@ -37,16 +37,16 @@ class EntriesController < ApplicationController
 			raise ArgumentError, "An identifier should be supplied." unless identifier.present?
 
 			entry = dictionary.entries.where(label:label, identifier:identifier).first
-			raise ArgumentError, "The entry ('#{label}', '#{identifier}') already exists in the dictionary." unless entry.nil?
+			raise ArgumentError, "The entry #{entry} already exists in the dictionary." unless entry.nil?
 
 			entry = dictionary.new_entry(label, identifier, nil, Entry::MODE_WHITE, true)
 
 			message = if entry.save
 				dictionary.increment!(:entries_num)
 				# dictionary.update_tmp_sim_string_db
-				"A white entry was created."
+				"The white entry #{entry} was created."
 			else
-				"A white entry could not be created."
+				"The white entry #{entry} could not be created."
 			end
 		rescue => e
 			message = e.message

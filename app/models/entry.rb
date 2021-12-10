@@ -62,6 +62,10 @@ class Entry < ApplicationRecord
     offset(offset).limit(per)
   }
 
+  def to_s
+    "('#{label}', '#{identifier}')"
+  end
+
   def as_json(options={})
     {
       id: identifier,
