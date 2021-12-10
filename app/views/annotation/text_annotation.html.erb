@@ -6,7 +6,7 @@
 
 <fieldset>
 	<legend>Demo</legend>
-	<%= form_tag '/text_annotation', id: 'text_annotation', method: :post do -%>
+	<%= form_tag '/text_annotation', id: 'text_annotation', method: :get do -%>
 		<%= text_area_tag :text, params[:text], required: true, placeholder: 'text', style: "height:50px" %>
 
 		<table class="options">
@@ -42,9 +42,18 @@
 		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>
 
 		<div class="center-align">
-			<%= submit_tag 'Submit', class: :button %>
-			<%= button_tag 'Reset', type: :reset, id: :reset, class: :button %>
+			<%= button_tag 'Reset', type: :reset, id: :reset, class: :button, style: 'width: 10em' %>
+			<%= submit_tag 'Submit', class: :button, style: 'width: 18em' %>
+			<%= button_tag 'Submit (POST)', id: :get_text_annotation, type: :button, class: :button, style: 'width: 10em', onclick: 'submit_get_text_annotation()', title: 'Use it for long text. The result cannot be bookmarked.' %>
 		</div>
+
+		<script type="text/javascript">
+			function submit_get_text_annotation() {
+				var form = document.getElementById('text_annotation');
+				form.method = 'post';
+				form.submit()
+			}
+		</script>
 
 		<% unless @result.nil? || @result.empty? %>
 			<h2>Result in <%= link_to 'TextAE', 'https://textae.pubannotation.org' %></h2>
