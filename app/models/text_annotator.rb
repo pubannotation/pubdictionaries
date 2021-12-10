@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 require 'simstring'
+using StringScanOffset
 
 # Provide functionalities for text annotation.
 class TextAnnotator
@@ -28,16 +29,17 @@ class TextAnnotator
 #  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, abbreviation = true, longest = false, superfluous = false, verbose=false)
   def initialize(dictionaries, options = {})
     @dictionaries = dictionaries
+    @patterns = dictionaries.map{|d| d.patterns.active}.reduce(:union)
     @no_term_words = dictionaries.collect{|d| d.no_term_words || OPTIONS_DEFAULT[:no_term_words]}.reduce(:+).uniq
     @no_begin_words = dictionaries.collect{|d| d.no_begin_words || OPTIONS_DEFAULT[:no_begin_words]}.reduce(:+).uniq
     @no_end_words = dictionaries.collect{|d| d.no_end_words || OPTIONS_DEFAULT[:no_end_words]}.reduce(:+).uniq
     @tokens_len_min = options[:tokens_len_min] || dictionaries.collect{|d| d.tokens_len_min}.min
     @tokens_len_max = options[:tokens_len_max] || dictionaries.collect{|d| d.tokens_len_max}.max
     @threshold = options[:threshold]
-    @abbreviation = options[:abbreviation] || OPTIONS_DEFAULT[:abbreviation]
-    @longest = options[:longest] || OPTIONS_DEFAULT[:longest]
-    @superfluous = options[:superfluous] || OPTIONS_DEFAULT[:superfluous]
-    @verbose = options[:verbose] || OPTIONS_DEFAULT[:verbose]
+    @abbreviation = options.has_key?(:abbreviation) ? options[:abbreviation] : OPTIONS_DEFAULT[:abbreviation]
+    @longest = options.has_key?(:longest) ? options[:longest] : OPTIONS_DEFAULT[:longest]
+    @superfluous = options.has_key?(:superfluous) ? options[:superfluous] : OPTIONS_DEFAULT[:superfluous]
+    @verbose = options.has_key?(:verbose) ? options[:verbose] : OPTIONS_DEFAULT[:verbose]
 
     @es_connection = Net::HTTP::Persistent.new
 
@@ -114,8 +116,16 @@ class TextAnnotator
 
     # To remove redundant denotations
     anns_col.each do |anns|
+      denotations = []
+      idx_span_positions = {}
+      idx_position_abbreviation_candidates = {}
+
+      ## Beginning of pattern-based annotation
+      denotations, idx_position_abbreviation_candidates, idx_span_positions = pattern_based_annotation(anns, denotations, idx_position_abbreviation_candidates, idx_span_positions)
+
+      ## Beginning of dictionary-based annotation
       # find denotation candidates
-      denotations, idx_position_abbreviation_candidates, idx_span_positions = candidate_denotations(anns)
+      denotations, idx_position_abbreviation_candidates, idx_span_positions = candidate_denotations(anns, denotations, idx_position_abbreviation_candidates, idx_span_positions)
 
       next if denotations.empty?
 
@@ -241,9 +251,47 @@ class TextAnnotator
 
   private
 
-  def candidate_denotations(anns)
-    denotations = []
+  def pattern_based_annotation(anns, denotations = [], idx_position_abbreviation_candidates = {}, idx_span_positions = {})
+    unless @patterns.empty?
+      text = anns[:text]
 
+      denotations = @patterns.map do |pattern|
+        matches = text.scan_offset(/#{pattern.expression}/)
+        matches.map do |m|
+          mbeg, mend = m.offset(0)[0, 2]
+          span = {begin:mbeg, end:mend}
+
+          str = text[mbeg ... mend]
+          idx_span_positions[str] = [] unless idx_span_positions.has_key? str
+          idx_span_positions[str] << span
+
+          # to find abbreviation definitions
+          if @abbreviation
+            pos = mend
+            pos += 1 while text[pos] =~ /\s/
+            if text[pos] == '('
+              pos += 1
+              abeg = pos
+              pos += 1 while text[pos] != ')' && pos - abeg < 10
+              aend = pos if text[pos] == ')'
+            end
+
+            if aend.present? && aend > abeg + 1
+              abbr_str = text[abeg ... aend]
+              abbreviation_type = determine_abbreviation(abbr_str, str)
+              idx_position_abbreviation_candidates[mend] = {span:abbr_str, obj:pattern.identifier, type: abbreviation_type} unless abbreviation_type.nil?
+            end
+          end
+
+          {span:span, obj:pattern.identifier, score:1, string:str}
+       end
+      end.reduce(:union)
+    end
+
+    [denotations, idx_position_abbreviation_candidates, idx_span_positions]
+  end
+
+  def candidate_denotations(anns, denotations = [], idx_position_abbreviation_candidates = {}, idx_span_positions = {})
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
     text = anns[:text]
@@ -255,8 +303,6 @@ class TextAnnotator
     sbreaks = sentence_break(text)
     add_pars_info!(tokens, text, sbreaks)
 
-    idx_span_positions = {}
-    idx_position_abbreviation_candidates = {}
     (0 ... tokens.length - @tokens_len_min + 1).each do |idx_token_begin|
       token_begin = tokens[idx_token_begin]
 

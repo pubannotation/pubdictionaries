@@ -1,0 +1,29 @@
+<tr>
+	<td>
+		<span title="<%= pattern.expression%>"><%= pattern.expression %></span>
+	</td>
+	<td style="border-right-style: none">
+		<%=
+			if is_url?(pattern.identifier)
+				link_to(pattern.identifier, pattern.identifier, title: pattern.identifier)
+			else
+				content_tag(:span, pattern.identifier, title: pattern.identifier)
+			end
+		-%>
+	</td>
+	<td style="border-left-style: none">
+		 <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:pattern.identifier), title: 'search') -%>
+	</td>
+	<% if @dictionary.editable?(current_user) %>
+		<td class='for_button'>
+			<% if pattern.active %>
+				<%= link_to('<i class="fa fa-toggle-on" aria-hidden="true"></i>'.html_safe, toggle_dictionary_pattern_path(@dictionary, pattern), method: :put, title: 'This pattern is active') %>
+			<% else %>
+				<%= link_to('<i class="fa fa-toggle-off" aria-hidden="true"></i>'.html_safe, toggle_dictionary_pattern_path(@dictionary, pattern), method: :put, title: 'This pattern is not active') %>
+			<% end %>
+		</td>
+		<td class='for_button'>
+			<%= link_to('<i class="fa fa-trash-o" aria-hidden="true"></i>'.html_safe, dictionary_pattern_path(@dictionary, pattern), method: :delete, title: 'Remove') %>
+		</td>
+	<% end %>
+</tr>

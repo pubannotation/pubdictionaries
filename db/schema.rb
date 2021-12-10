@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2021_03_18_024758) do
+ActiveRecord::Schema.define(version: 2021_12_09_125220) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
@@ -42,6 +42,7 @@ ActiveRecord::Schema.define(version: 2021_03_18_024758) do
     t.integer "tokens_len_max", default: 6
     t.float "threshold", default: 0.85
     t.string "language"
+    t.integer "patterns_num", default: 0
     t.index ["user_id"], name: "index_dictionaries_on_user_id"
   end
 
@@ -81,6 +82,16 @@ ActiveRecord::Schema.define(version: 2021_03_18_024758) do
     t.index ["dictionary_id"], name: "index_jobs_on_dictionary_id"
   end
 
+  create_table "patterns", force: :cascade do |t|
+    t.string "expression"
+    t.string "identifier"
+    t.boolean "active", default: true
+    t.bigint "dictionary_id", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["dictionary_id"], name: "index_patterns_on_dictionary_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.text "username", default: "", null: false
     t.string "email", default: "", null: false
@@ -106,4 +117,5 @@ ActiveRecord::Schema.define(version: 2021_03_18_024758) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  add_foreign_key "patterns", "dictionaries"
 end

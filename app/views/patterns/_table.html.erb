@@ -1,0 +1,82 @@
+<% if @dictionary.editable?(current_user) %>
+	<h2 style="margin-bottom:0">
+		Pattern entries
+		(<%= @dictionary.patterns.count %>)
+	</h2>
+<% end %>
+
+<table class="entries" style="margin-bottom:0; border-bottom-style:none">
+	<colgroup>
+		<col class="col_label">
+		<col class="col_identifier">
+		<col class="col_button">
+		<col class="col_button">
+		<col class="col_button">
+	</colgroup>
+	<thead>
+		<tr>
+			<th>
+				Pattern
+				<%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
+					<%= text_field_tag :pattern_search, params[:pattern_search], required: true -%>
+					<%= submit_tag 'Search', class: 'button' -%>
+				<% end -%>
+			</th>
+			<th colspan="2">
+				Id
+				<%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
+					<%= text_field_tag :id_search, params[:id_search], required: true -%>
+					<%= submit_tag 'Search', class: 'button' -%>
+				<% end -%>
+			</th>
+			<% if @dictionary.editable?(current_user) %>
+				<th></th>
+				<th>
+					<% if (params.has_key? :pattern_search) || (params.has_key? :id_search) -%>
+						<%= link_to('<i class="fa fa-window-close" aria-hidden="true"></i>'.html_safe, show_patterns_dictionary_path(@dictionary), title: 'Reset search') %>
+					<% end -%>
+				</th>
+			<% end %>
+		</tr>
+	</thead>
+</table>
+
+<table class="entries" style="margin-top:0; margin-bottom:0">
+	<colgroup>
+		<col class="col_label">
+		<col class="col_identifier">
+		<col class="col_button">
+		<col class="col_button">
+		<col class="col_button">
+	</colgroup>
+
+	<%= render partial: "patterns/pattern", collection: @patterns -%>
+
+</table>
+
+<table class="entries" style="margin-top:2px">
+	<colgroup>
+		<col class="col_label">
+		<col class="col_identifier">
+		<col class="col_button">
+	</colgroup>
+	<% if @dictionary.editable?(current_user) %>
+		<%= form_tag(dictionary_patterns_path(@dictionary), method: :post, id: "add_pattern_form") do %>
+			<tr>
+				<td>
+					<span><%= text_field_tag :expression, nil, required: true, style: "box-sizing:content-box; width:90%" -%></span>
+				</td>
+				<td>
+					<span><%= text_field_tag :identifier, nil, required: true, style: "box-sizing:content-box; width:90%" -%></span>
+				</td>
+				<td class="for_button">
+					<a title="add" href="javascript:{}" onclick="document.getElementById('add_pattern_form').submit(); return false;"><i class="fa fa-plus-square" aria-hidden="true"></i></a>
+				</td>
+			</tr>
+		<% end %>
+	<% end %>  
+</table>
+
+<div class="table-control">
+	<%= simple_paginate -%>
+</div>

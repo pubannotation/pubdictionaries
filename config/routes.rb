@@ -39,6 +39,7 @@ Rails.application.routes.draw do
 
     # Add routes as a member, /dictionary/:id/...
     member do
+      get  'show_patterns'
       get  'find_ids', to: "lookup#find_ids"
       post 'find_ids', to: "lookup#find_ids"
       get  'find_terms', to: "lookup#find_terms"
@@ -61,6 +62,12 @@ Rails.application.routes.draw do
 
       member do
         put 'undo', to: "entries#undo"
+      end
+    end
+
+    resources :patterns do
+      member do
+        put 'toggle'
       end
     end
 

@@ -20,4 +20,14 @@ module DictionariesHelper
 		content_tag(:nav, nav.html_safe, class: 'pagination')
 	end
 
+	def link_to_patterns
+		count = @dictionary.patterns.count
+		message = if count > 1
+			"There are #{count} pattern entries."
+		else
+			"There is #{count} pattern entry."
+		end
+		link_to(content_tag(:p, message, class: 'page_link'), show_patterns_dictionary_path(@dictionary))
+	end
+
 end

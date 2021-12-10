@@ -118,6 +118,59 @@ class DictionariesController < ApplicationController
 		end
 	end
 
+	def show_patterns
+		@dictionary = Dictionary.find_by_name(params[:id])
+		raise ArgumentError, "Could not find the dictionary: #{params[:id]}." if @dictionary.nil?
+
+		respond_to do |format|
+			page = (params[:page].presence || 1).to_i
+			per  = (params[:per].presence || 15).to_i
+
+			format.html {
+				@patterns = if params.has_key? 'pattern_search'
+					target = params[:pattern_search].strip
+					@dictionary.patterns.where("expression ILIKE :target", target: target).simple_paginate(page, per)
+				elsif params.has_key? :id_search
+					target = params[:id_search].strip
+					@dictionary.patterns.where("identifier ILIKE :target", target: target).simple_paginate(page, per)
+				else
+					@dictionary.patterns.simple_paginate(page, per)
+				end
+			}
+			format.tsv  {
+				patterns, suffix = if params[:pattern_search]
+					params[:pattern_search].strip!
+					[@dictionary.narrow_entries_by_label(params[:label_search]), "pattern_search_#{params[:label_search]}"]
+				elsif params[:id_search]
+					params[:id_search].strip!
+					[@dictionary.narrow_entries_by_identifier(params[:id_search]), "id_search_#{params[:id_search]}"]
+				else
+					[@dictionary.patterns, nil]
+				end
+
+				filename = @dictionary.name
+				filename += '_' + suffix if suffix
+				if params[:mode].to_i == Entry::MODE_CUSTOM
+					send_data patterns.as_tsv_v,  filename: "#{filename}.tsv", type: :tsv
+				else
+					send_data patterns.as_tsv,  filename: "#{filename}.tsv", type: :tsv
+				end
+			}
+		end
+
+	rescue ArgumentError => e
+		respond_to do |format|
+			format.html {redirect_to dictionaries_path, notice: e.message}
+			format.any  {render json: {message:e.message}, status: :bad_request}
+		end
+	rescue => e
+		respond_to do |format|
+			format.html { redirect_to dictionaries_url, notice: e.message }
+			format.json { head :unprocessable_entity }
+			format.tsv  { head :unprocessable_entity }
+		end
+	end
+
 	def new
 		@dictionary = Dictionary.new
 		@dictionary.user = current_user    # set the creator with the user name

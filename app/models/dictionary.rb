@@ -7,6 +7,7 @@ class Dictionary < ApplicationRecord
 	has_many :associations
 	has_many :associated_managers, through: :associations, source: :user
 	has_many :entries, :dependent => :destroy
+	has_many :patterns, :dependent => :destroy
 	has_many :jobs, :dependent => :destroy
 
 	validates :name, presence:true, uniqueness: true
@@ -185,6 +186,19 @@ class Dictionary < ApplicationRecord
 			entries.delete_all
 			update_attribute(:entries_num, 0)
 			clean_sim_string_db
+		end
+	end
+
+	def new_pattern(expression, identifier)
+		Pattern.new(expression:expression, identifier:identifier, dictionary_id: self.id)
+	rescue => e
+		raise ArgumentError, "The pattern, [#{expression}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
+	end
+
+	def empty_patterns
+		transaction do
+			patterns.delete_all
+			update_attribute(:patterns_num, 0)
 		end
 	end
 
