@@ -30,4 +30,17 @@ module DictionariesHelper
 		link_to(content_tag(:p, message, class: 'page_link'), show_patterns_dictionary_path(@dictionary))
 	end
 
+	def downloadable_helper
+		if @dictionary.large?
+			if @dictionary.creating_downloadable?
+				content_tag(:i, '', class:"fa fa-hourglass", title: "Downloadable under preparation")
+			elsif @dictionary.downloadable_updatable?
+				link_to(content_tag(:i, '', class:"fa fa-download"), create_downloadable_dictionary_path(@dictionary), method: :post, title: "Download 2")
+			else
+				link_to(content_tag(:i, '', class:"fa fa-download"), downloadable_dictionary_path(@dictionary), title: "Download 3")
+			end
+		else
+			link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: Entry::MODE_ACTIVE, format: :tsv), title: "Download 4")
+		end
+	end
 end

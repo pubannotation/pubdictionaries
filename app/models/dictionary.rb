@@ -1,4 +1,7 @@
+require 'fileutils'
 require 'simstring'
+require 'rubygems'
+require 'zip'
 
 class Dictionary < ApplicationRecord
 	include StringManipulator
@@ -19,6 +22,8 @@ class Dictionary < ApplicationRecord
 											:with => /\A[a-zA-Z_][a-zA-Z0-9_\- ()]*\z/,
 											:message => "should begin with an alphabet or underscore, and only contain alphanumeric letters, underscore, hyphen, space, or round brackets!"
 
+	DOWNLOADABLES_DIR = 'db/downloadables/'
+
 	SIM_STRING_DB_DIR = "db/simstring/"
 
 	# The terms which will never be included in terms
@@ -29,6 +34,9 @@ class Dictionary < ApplicationRecord
 
 	NO_END_WORDS = %w(a am an and are as about above across after against along amid among around at been before behind below beneath beside besides between beyond by concerning considering despite do except excepting excluding for from had has have i in inside into if is it like my me of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during what which when where who how whether)
 
+	def filename
+		@filename ||= name.gsub(/\s+/, '_')
+	end
 
 	scope :mine, -> (user) {
 		if user.nil?
@@ -355,6 +363,39 @@ class Dictionary < ApplicationRecord
 
 	def sim_string_db_dir
 		Dictionary::SIM_STRING_DB_DIR + self.name
+	end
+
+	def downloadable_zip_path
+		@downloadable_path ||= DOWNLOADABLES_DIR + filename + '.zip'
+	end
+
+	def large?
+		entries_num > 10000
+	end
+
+	def creating_downloadable?
+		jobs.any?{|job| job.name == 'Create downloadable'}
+	end
+
+	def downloadable_updatable?
+		if File.exists?(downloadable_zip_path)
+			updated_at > File.mtime(downloadable_zip_path)
+		else
+			true
+		end
+	end
+
+	def create_downloadable!
+		FileUtils.mkdir_p(DOWNLOADABLES_DIR) unless Dir.exist?(DOWNLOADABLES_DIR)
+
+		buffer = Zip::OutputStream.write_buffer do |out|
+			out.put_next_entry(self.name + '.csv')
+			out.write entries.as_tsv
+		end
+
+		File.open(downloadable_zip_path, 'wb') do |f|
+			f.write(buffer.string)
+		end
 	end
 
 	private

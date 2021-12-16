@@ -34,4 +34,8 @@ class ApplicationJob < ActiveJob::Base
   def set_ended_at
     @job.update_attribute(:ended_at, Time.now)
   end
+
+  def destroy_job_record
+    @job.destroy
+  end
 end

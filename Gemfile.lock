@@ -284,6 +284,7 @@ GEM
       rexml
     ruby-stemmer (3.0.0)
     ruby2_keywords (0.0.4)
+    rubyzip (2.3.2)
     sass (3.7.4)
       sass-listen (~> 4.0.0)
     sass-listen (4.0.0)
@@ -371,6 +372,7 @@ DEPENDENCIES
   rails-jquery-autocomplete
   rails3-jquery-autocomplete
   ruby-stemmer
+  rubyzip
   sass-rails
   sidekiq (= 6.2.1)
   string-similarity (~> 2.1)

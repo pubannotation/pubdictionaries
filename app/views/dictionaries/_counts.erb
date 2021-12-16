@@ -8,7 +8,7 @@
     <tr>
       <th colspan="2" class="active" style="border-style:none" title="<%= t('title.active') %>">
         <%= link_to 'Active', params.permit(:mode).merge(mode: Entry::MODE_ACTIVE) %>
-        <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: Entry::MODE_ACTIVE, format: :tsv), title: "Download") %>
+        <%= downloadable_helper %>
       </th>
     </tr>
     <tr>

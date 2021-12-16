@@ -239,6 +239,35 @@ class DictionariesController < ApplicationController
 		end
 	end
 
+	def downloadable
+		dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
+		raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+
+		send_file dictionary.downloadable_zip_path, type: 'application/zip'
+	rescue => e
+		respond_to do |format|
+			format.html {redirect_to dictionary_path(dictionary), notice: e.message}
+			format.json {head :no_content}
+		end
+	end
+
+	def create_downloadable
+		dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
+		raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+
+		active_job = CreateDownloadableJob.perform_later(dictionary)
+		active_job.create_job_record("Create downloadable")
+
+		respond_to do |format|
+			format.html{ redirect_back fallback_location: root_path }
+		end
+	rescue => e
+		respond_to do |format|
+			format.html {redirect_to dictionary_path(dictionary), notice: e.message}
+			format.json {head :no_content}
+		end
+	end
+
 	def add_manager
 		begin
 			@dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
