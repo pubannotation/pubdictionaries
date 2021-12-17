@@ -73,7 +73,11 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :jobs, only: [:show, :destroy]
+    resources :jobs, only: [:show, :destroy] do
+      member do
+        put 'stop'
+      end
+    end
   end
 
   resources :jobs, only: [:index, :show, :destroy]

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2021_12_09_125220) do
+ActiveRecord::Schema.define(version: 2021_12_14_151810) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
@@ -79,6 +79,7 @@ ActiveRecord::Schema.define(version: 2021_12_09_125220) do
     t.integer "time"
     t.string "active_job_id"
     t.string "queue_name"
+    t.boolean "suspend_flag", default: false
     t.index ["dictionary_id"], name: "index_jobs_on_dictionary_id"
   end
 

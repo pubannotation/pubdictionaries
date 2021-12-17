@@ -61,12 +61,26 @@ class Job < ApplicationRecord
     message.present?
   end
 
+  def waiting?
+    begun_at.nil?
+  end
+
   def running?
     !begun_at.nil? && ended_at.nil?
   end
 
   def finished?
     !ended_at.nil?
+  end
+
+  def suspended?
+    running? && suspend_flag == true
+  end
+
+  def stop_if_running
+    if running?
+      update(suspend_flag: true)
+    end
   end
 
   def destroy_if_not_running

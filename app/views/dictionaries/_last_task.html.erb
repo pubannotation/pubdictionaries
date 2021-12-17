@@ -9,9 +9,14 @@
 		<span class="message blink">Dismiss <i class="fa fa-arrow-up" aria-hidden="true"></i> this task for other settings.</span>
 	<% end %>
 
-	<p>"<%= job.name %>"</p>
+	<p>
+		"<%= job.name %>"
+		&nbsp;
+		<%= link_to('Cancel', job, :method => :delete, data: { confirm: 'Are you sure?' }, :class => "button") if job.waiting? %>
+		<%= job_stop_helper(job) %>
+	</p>
   <ul>
-	  <% if job.begun_at.nil? %>
+	  <% if job.waiting? %>
 			<li>waiting for a worker to take care of it</li>
 	  <% else %>
 		  <li>started at <%= job.begun_at %></li>

@@ -43,4 +43,11 @@ module DictionariesHelper
 			link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: Entry::MODE_ACTIVE, format: :tsv), title: "Download")
 		end
 	end
+
+	def job_stop_helper(job)
+		if job.running?
+			button_to('Stop', stop_dictionary_job_path(@dictionary.name, job.id), :method => :put, data: { confirm: 'Are you sure?' }, class: :button, disabled: job.suspended?)
+		end
+	end
+
 end

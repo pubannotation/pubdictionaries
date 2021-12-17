@@ -20,6 +20,17 @@ class JobsController < ApplicationController
     end
   end
 
+  # PUT dictionaries/:dictionary_id/jobs/1
+  def stop
+    job = Job.find(params[:id])
+    job.stop_if_running
+
+    respond_to do |format|
+      format.html { redirect_back fallback_location: root_path }
+      format.json { head :no_content }
+    end
+  end
+
   # DELETE /jobs/1
   # DELETE /jobs/1.json
   def destroy

@@ -64,6 +64,7 @@ class LoadEntriesFromFileJob < ApplicationJob
           @job.increment!(:num_dones)
         end
       end
+      check_suspend_flag
     end
 
     dictionary.add_entries(new_entries, analyzer) unless new_entries.empty?

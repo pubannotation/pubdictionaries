@@ -5,8 +5,8 @@ class ApplicationJob < ActiveJob::Base
 
   rescue_from(StandardError) do |exception|
     if @job
-      message = "'#{exception.message}'\n#{exception.backtrace.join("\n")}"
-      @job.update(message: message, ended_at: Time.now)
+      # message = "'#{exception.message}'\n#{exception.backtrace.join("\n")}"
+      @job.update(message: exception.message, ended_at: Time.now)
     else
       raise exception
     end
@@ -33,6 +33,16 @@ class ApplicationJob < ActiveJob::Base
 
   def set_ended_at
     @job.update_attribute(:ended_at, Time.now)
+  end
+
+  def check_suspend_flag
+    if suspended?
+      raise Exceptions::JobSuspendError
+    end
+  end
+
+  def suspended?
+    Job.find(@job.id)&.suspended?
   end
 
   def destroy_job_record
