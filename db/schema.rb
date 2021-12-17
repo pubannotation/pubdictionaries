@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2021_12_14_151810) do
+ActiveRecord::Schema.define(version: 2021_12_17_063316) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
@@ -57,6 +57,7 @@ ActiveRecord::Schema.define(version: 2021_12_14_151810) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "dirty", default: false
+    t.index ["dictionary_id", "label", "identifier"], name: "index_entries_on_dictionary_id_and_label_and_identifier"
     t.index ["dictionary_id"], name: "index_entries_on_dictionary_id"
     t.index ["dirty"], name: "index_entries_on_dirty"
     t.index ["identifier"], name: "index_entries_on_identifier"
