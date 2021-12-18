@@ -6,10 +6,19 @@ class Pattern < ApplicationRecord
 		offset(offset).limit(per)
 	}
 
-  scope :active, -> {where(active: true)}
+	scope :active, -> {where(active: true)}
 
 	def to_s
 		"('#{expression}', '#{identifier}')"
+	end
+
+	def self.as_tsv
+		CSV.generate(col_sep: "\t") do |tsv|
+			tsv << ['#label', :id]
+			all.each do |pattern|
+				tsv << [pattern.expression, pattern.identifier]
+			end
+		end
 	end
 
 	def toggle!

@@ -68,6 +68,10 @@ Rails.application.routes.draw do
     end
 
     resources :patterns do
+      collection do
+        put 'empty', to: 'dictionaries#empty'
+      end
+
       member do
         put 'toggle'
       end

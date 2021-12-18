@@ -60,8 +60,8 @@ GEM
     activerecord (6.1.3.1)
       activemodel (= 6.1.3.1)
       activesupport (= 6.1.3.1)
-    activerecord-import (1.0.8)
-      activerecord (>= 3.2)
+    activerecord-import (1.3.0)
+      activerecord (>= 4.2)
     activestorage (6.1.3.1)
       actionpack (= 6.1.3.1)
       activejob (= 6.1.3.1)
@@ -90,7 +90,7 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.12.2)
-    concurrent-ruby (1.1.8)
+    concurrent-ruby (1.1.9)
     connection_pool (2.2.3)
     crass (1.0.6)
     daemons (1.3.1)
@@ -153,7 +153,7 @@ GEM
       multi_json (~> 1.8)
     hashie (4.1.0)
     http_parser.rb (0.6.0)
-    i18n (1.8.9)
+    i18n (1.8.11)
       concurrent-ruby (~> 1.0)
     i18n_data (0.13.0)
     jquery-rails (4.4.0)
@@ -190,7 +190,7 @@ GEM
     method_source (1.0.0)
     mini_mime (1.0.3)
     mini_portile2 (2.5.0)
-    minitest (5.14.4)
+    minitest (5.15.0)
     msgpack (1.4.2)
     multi_json (1.15.0)
     multi_xml (0.6.0)
@@ -338,7 +338,7 @@ GEM
     websocket-driver (0.7.3)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
-    zeitwerk (2.4.2)
+    zeitwerk (2.5.1)
 
 PLATFORMS
   ruby

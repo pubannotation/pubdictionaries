@@ -1,9 +1,10 @@
 class Entry < ApplicationRecord
-  MODE_GRAY   = 0
+  MODE_GRAY  = 0
   MODE_WHITE = 1
   MODE_BLACK = 2
   MODE_ACTIVE = 3 # gray + white (for downloading)
   MODE_CUSTOM = 4 # white + black (for downloading)
+  MODE_PATTERN = 5 # patterns (regular expressions)
 
   include Elasticsearch::Model
 
@@ -110,8 +111,18 @@ class Entry < ApplicationRecord
 
     return nil if items[1].length > 255
 
-    operator = ['+', '-'].include?(items[2]) ? items[2] : nil
-    [items[0], items[1], operator].compact
+    mode = case items[2]
+    when '+'
+      Entry::MODE_WHITE
+    when '-'
+      Entry::MODE_BLACK
+    when '/'
+      Entry::MODE_PATTERN
+    else
+      Entry::MODE_GRAY
+    end
+
+    [items[0], items[1], mode]
   end
 
   def self.decapitalize(text)

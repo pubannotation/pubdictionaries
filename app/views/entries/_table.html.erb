@@ -29,7 +29,9 @@
     <col class="col_label">
     <col class="col_identifier">
     <col class="col_button">
-    <col class="col_button">
+    <% if @dictionary.editable?(current_user) %>
+      <col class="col_button">
+    <% end %>
   </colgroup>
   <thead>
     <tr>
@@ -60,7 +62,9 @@
       <col class="col_label">
       <col class="col_identifier">
       <col class="col_button">
-      <col class="col_button">
+      <% if @dictionary.editable?(current_user) %>
+        <col class="col_button">
+      <% end %>
     </colgroup>
     <%= render partial: "entries/entry", collection: @entries -%>
 

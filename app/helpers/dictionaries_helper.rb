@@ -50,4 +50,27 @@ module DictionariesHelper
 		end
 	end
 
+	def delete_entries_helper(mode = nil)
+		mode_to_s = mode.nil? ? '' : ['gray', 'white', 'black', 'pattern'][mode]
+
+		title = if mode == Entry::MODE_BLACK
+			"Turn all the black entries to gray"
+		else
+			"Delete all the #{mode_to_s} entries"
+		end
+
+		confirm = if mode == Entry::MODE_BLACK
+			"Are you sure to turn all the black entries to gray?"
+		else
+			"Are you sure to delete all the #{mode_to_s} entries?"
+		end
+
+		link_to(
+			content_tag(:i, '', class:"fa fa-trash-o fa-lg"),
+			empty_dictionary_entries_path(@dictionary, mode:mode),
+			title: title,
+			method: :put,
+			data: {confirm: confirm}
+		)
+	end
 end

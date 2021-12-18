@@ -2,5 +2,20 @@
 	<%= render partial: 'title' %>
 <% end %>
 
+<div style="text-align:right">
+  <%= link_to(content_tag(:i, '', class:"fa fa-download"), show_patterns_dictionary_path(@dictionary, format: :tsv), title: "Download all the patterns") %>
+	<% if @dictionary.editable?(current_user) %>
+		<%=
+			link_to(
+				content_tag(:i, '', class:"fa fa-trash-o fa-lg"),
+				empty_dictionary_patterns_path(@dictionary, mode:Entry::MODE_PATTERN),
+				title: 'Delete all the patterns',
+				method: :put,
+				data: {confirm: 'Are you sure to delete all the patterns?'}
+			)
+		%>
+	<% end %>
+</div>
+
 <p class='note'>The functions around pattern entries are still beta features and error-prone. Your error reports will be much appreciated.</p>
 <%= render partial: 'patterns/table' -%>

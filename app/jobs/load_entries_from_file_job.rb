@@ -1,13 +1,102 @@
 class LoadEntriesFromFileJob < ApplicationJob
   queue_as :upload
 
-  def perform(dictionary, filename)
-    transaction_size = 1000
+  class BufferToStore
+    BUFFER_SIZE = 10000
 
+    def initialize(dictionary)
+      @dictionary = dictionary
+
+      @entries = []
+      @patterns = []
+
+      analyzer_url = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
+      @analyzer = {
+        uri: analyzer_url,
+        http: Net::HTTP::Persistent.new,
+        post: Net::HTTP::Post.new(analyzer_url.request_uri, 'Content-Type' => 'application/json')
+      }
+
+      @num_skipped_entries = 0
+      @num_skipped_patterns = 0
+    end
+
+    def add_entry(label, identifier, mode)
+      case mode
+      when Entry::MODE_PATTERN
+        buffer_pattern(label, identifier)
+      else
+        buffer_entry(label, identifier, mode)
+      end
+    end
+
+    def finalize
+      flush_entries unless @entries.empty?
+      flush_patterns unless @patterns.empty?
+      @analyzer && @analyzer[:http] && @analyzer[:http].shutdown
+    end
+
+    def result
+      [@num_skipped_entries, @num_skipped_patterns]
+    end
+
+    private
+
+    def buffer_entry(label, identifier, mode)
+      matched = entries_any? && @dictionary.entries.where(label:label, identifier:identifier)&.first
+      if matched
+        case mode
+        when Entry::MODE_GRAY
+          @num_skipped_entries += 1
+        when Entry::MODE_WHITE
+          matched.be_white!
+        when Entry::MODE_BLACK
+          matched.be_black!
+        else
+          raise ArgumentError, "Unexpected mode: #{mode}"
+        end
+      else
+        @entries << [label, identifier, mode]
+      end
+      flush_entries if @entries.length >= BUFFER_SIZE
+    end
+
+    def buffer_pattern(expression, identifier)
+      matched = patterns_any? && @dictionary.patterns.where(expression:expression, identifier:identifier)&.first
+      if matched
+        @num_skipped_patterns += 1
+      else
+        @patterns << [expression, identifier]
+      end
+      flush_patterns if @patterns.length >= BUFFER_SIZE
+    end
+
+    def flush_entries
+      @dictionary.add_entries(@entries, @analyzer)
+      @entries.clear
+    end
+
+    def flush_patterns
+      @dictionary.add_patterns(@patterns)
+      @patterns.clear
+    end
+
+    # It is supposed to memorize whether the entries of the dictionary are empty when the class is initialized.
+    def entries_any?
+      @entries_any_p ||= !@dictionary.entries.empty?
+    end
+
+    # It is supposed to memorize whether the patterns of the dictionary are empty when the class is initialized.
+    def patterns_any?
+      @patterns_any_p ||= !@dictionary.patterns.empty?
+    end
+  end
+
+  def perform(dictionary, filename)
     # file preprocessing
     # TODO: at the moment, it is hard-coded. It should be improved.
     `/usr/bin/dos2unix #{filename}`
-    `/usr/bin/cut -f1-3 #{filename} | sort -u -o #{filename}`
+    `/usr/bin/cut -f1-3 #{filename} | sort -u | sort -k3 -o #{filename}`
 
     num_entries = File.read(filename).each_line.count
     if @job
@@ -15,64 +104,28 @@ class LoadEntriesFromFileJob < ApplicationJob
       @job.update_attribute(:num_dones, 0)
     end
 
-    analyzer_url = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
+    buffer = BufferToStore.new(dictionary)
 
-    analyzer = {
-      uri: analyzer_url,
-      http: Net::HTTP::Persistent.new,
-      post: Net::HTTP::Post.new(analyzer_url.request_uri, 'Content-Type' => 'application/json')
-    }
+    File.open(filename, 'r') do |f|
+      f.each_line do |line|
+        label, id, mode = Entry.read_entry_line(line)
+        next if label.nil?
 
-    new_entries = []
-    File.foreach(filename).with_index do |line, i|
-      label, id, operator = Entry.read_entry_line(line)
-      next if label.nil?
+        buffer.add_entry(label, id, mode)
 
-      mode = case operator
-             when '-'
-               Entry::MODE_BLACK
-             when '+'
-               Entry::MODE_WHITE
-             else
-               Entry::MODE_GRAY
-             end
+        @job.increment!(:num_dones) if @job
 
-      matched = dictionary.entries.find_by_label_and_identifier(label, id)
-      if matched.nil?
-        new_entries << [label, id, mode]
-        if new_entries.length >= transaction_size
-          dictionary.add_entries(new_entries, analyzer)
-          new_entries.clear
-          if @job
-            @job.update_attribute(:num_dones, i + 1)
-          end
-        end
-      else
-        case mode
-        when Entry::MODE_BLACK
-          unless matched.mode == Entry::MODE_BLACK
-            matched.be_black!
-            dictionary.decrement!(:entries_num)
-          end
-        when Entry::MODE_WHITE
-          matched.be_white!
-        when Entry::MODE_GRAY
-          # do nothing
-        end
-
-        if @job
-          @job.increment!(:num_dones)
+        if suspended?
+          buffer.finalize
+          dictionary.compile!
+          File.delete(filename)
+          raise Exceptions::JobSuspendError
         end
       end
-      check_suspend_flag
     end
 
-    dictionary.add_entries(new_entries, analyzer) unless new_entries.empty?
-    @job.update_attribute(:num_dones, num_entries)
-
+    buffer.finalize
     dictionary.compile!
-
-    analyzer && analyzer[:http] && analyzer[:http].shutdown
     File.delete(filename)
   end
 

@@ -164,21 +164,55 @@ class Dictionary < ApplicationRecord
 		entries.where(mode:Entry::MODE_BLACK).count
 	end
 
-	def create_a_black_entry(entry)
+	# turn a gray entry to white
+	def turn_to_white(entry)
+		raise "Only a gray entry can be turned to white" unless entry.mode == Entry::MODE_GRAY
+		entry.be_white!
+	end
+
+	# turn a gray entry to black
+	def turn_to_black(entry)
+		raise "Only a gray entry can be turned to black" unless entry.mode == Entry::MODE_GRAY
 		entry.be_black!
 		decrement!(:entries_num)
 	end
 
-	def add_entries(hentries, normalizer = nil)
-		black_count = hentries.count{|e| e[2] == Entry::MODE_BLACK}
-		transaction do
-			new_entries = hentries.map {|label, identifier, mode| new_entry(label, identifier, normalizer, mode)}
+	# cancel a black entry to gray
+	def cancel_black(entry)
+		raise "Ony a black entry can be canceled to gray" unless entry.mode == Entry::MODE_BLACK
+		entry.be_gray!
+		increment!(:entries_num)
+	end
 
-			r = Entry.ar_import new_entries, validate: false
+	def add_patterns(patterns)
+		transaction do
+			columns = [:expression, :identifier, :dictionary_id]
+			r = Pattern.bulk_import columns, patterns.map{|p| p << id}, validate: false
 			raise "Import error" unless r.failed_instances.empty?
 
-			increment!(:entries_num, new_entries.length - black_count)
+			increment!(:patterns_num, patterns.length)
 		end
+	end
+
+	def add_entries(raw_entries, normalizer = nil)
+		black_count = raw_entries.count{|e| e[2] == Entry::MODE_BLACK}
+		transaction do
+			# enrich entries
+			entries = raw_entries.map {|label, identifier, mode| get_enriched_entry(label, identifier, normalizer, mode)}
+			columns = [:label, :identifier, :norm1, :norm2, :label_length, :mode, :dirty, :dictionary_id]
+			r = Entry.bulk_import columns, entries, validate: true
+			raise "Import error" unless r.failed_instances.empty?
+
+			increment!(:entries_num, entries.length - black_count)
+		end
+	end
+
+	def get_enriched_entry(label, identifier, normalizer = nil, mode = Entry::MODE_GRAY, dirty = false)
+		norm1 = normalize1(label, normalizer)
+		norm2 = normalize2(label, normalizer)
+		[label, identifier, norm1, norm2, label.length, mode, dirty, self.id]
+	rescue => e
+		raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
 	end
 
 	def new_entry(label, identifier, normalizer = nil, mode = Entry::MODE_GRAY, dirty = false)
@@ -189,11 +223,39 @@ class Dictionary < ApplicationRecord
 		raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
 	end
 
-	def empty_entries
+	def empty_entries(mode = nil)
+		case mode
+		when nil
+			transaction do
+				entries.delete_all
+				update_attribute(:entries_num, 0)
+				clean_sim_string_db
+			end
+		when Entry::MODE_GRAY
+			_num_white = num_white
+			transaction do
+				entries.gray.delete_all
+				update_attribute(:entries_num, _num_white)
+			end
+		when Entry::MODE_WHITE
+			_num_gray = num_gray
+			transaction do
+				entries.white.delete_all
+				update_attribute(:entries_num, _num_gray)
+			end
+		when Entry::MODE_BLACK
+			transaction do
+				entries.black.each{|e| cancel_black(e)}
+			end
+		else
+			raise ArgumentError, "Unexpected mode: #{mode}"
+		end
+	end
+
+	def empty_patterns
 		transaction do
-			entries.delete_all
-			update_attribute(:entries_num, 0)
-			clean_sim_string_db
+			patterns.delete_all
+			update_attribute(:patterns_num, 0)
 		end
 	end
 

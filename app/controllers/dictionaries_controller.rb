@@ -6,8 +6,9 @@ require 'pp'
 class DictionariesController < ApplicationController
 	# Require authentication for all actions except :index, :show, and some others.
 	before_action :authenticate_user!, except: [
-		:index, :show,
+		:index, :show, :show_patterns,
 		:find_ids, :text_annotation,
+		:downloadable, :create_downloadable
 	]
 
 	# Disable CSRF check for REST-API actions.
@@ -138,23 +139,8 @@ class DictionariesController < ApplicationController
 				end
 			}
 			format.tsv  {
-				patterns, suffix = if params[:pattern_search]
-					params[:pattern_search].strip!
-					[@dictionary.narrow_entries_by_label(params[:label_search]), "pattern_search_#{params[:label_search]}"]
-				elsif params[:id_search]
-					params[:id_search].strip!
-					[@dictionary.narrow_entries_by_identifier(params[:id_search]), "id_search_#{params[:id_search]}"]
-				else
-					[@dictionary.patterns, nil]
-				end
-
-				filename = @dictionary.name
-				filename += '_' + suffix if suffix
-				if params[:mode].to_i == Entry::MODE_CUSTOM
-					send_data patterns.as_tsv_v,  filename: "#{filename}.tsv", type: :tsv
-				else
-					send_data patterns.as_tsv,  filename: "#{filename}.tsv", type: :tsv
-				end
+				filename = @dictionary.filename + '_patterns.tsv'
+				send_data @dictionary.patterns.as_tsv, filename: filename, type: :tsv
 			}
 		end
 
@@ -240,7 +226,7 @@ class DictionariesController < ApplicationController
 	end
 
 	def downloadable
-		dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
+		dictionary = Dictionary.find_by_name(params[:id])
 		raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
 		send_file dictionary.downloadable_zip_path, type: 'application/zip'
@@ -252,7 +238,7 @@ class DictionariesController < ApplicationController
 	end
 
 	def create_downloadable
-		dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
+		dictionary = Dictionary.find_by_name(params[:id])
 		raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
 		active_job = CreateDownloadableJob.perform_later(dictionary)
@@ -310,7 +296,13 @@ class DictionariesController < ApplicationController
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
 			raise ArgumentError, "Cannot find the dictionary." if dictionary.nil?
 
-			dictionary.empty_entries
+			mode = params[:mode]&.to_i
+
+			if mode == Entry::MODE_PATTERN
+				dictionary.empty_patterns
+			else
+				dictionary.empty_entries(mode)
+			end
 
 			respond_to do |format|
 				format.html{ redirect_back fallback_location: root_path }
