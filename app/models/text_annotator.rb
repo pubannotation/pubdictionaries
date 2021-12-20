@@ -16,7 +16,7 @@ class TextAnnotator
     tokens_len_min: 1,
     tokens_len_max: 6,
     threshold: 0.85,
-    abbreviation: true,
+    abbreviation: false,
     longest: false,
     superfluous: false,
     verbose: false
