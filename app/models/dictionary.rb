@@ -48,6 +48,17 @@ class Dictionary < ApplicationRecord
 		end
 	}
 
+	scope :visible, -> (user) {
+		if user.nil?
+			where(public: true)
+		elsif user.admin?
+		else
+			includes(:associations)
+				.where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
+				.references(:associations)
+		end
+	}
+
 	scope :editable, -> (user) {
 		if user.nil?
 			none
@@ -200,7 +211,7 @@ class Dictionary < ApplicationRecord
 			# enrich entries
 			entries = raw_entries.map {|label, identifier, mode| get_enriched_entry(label, identifier, normalizer, mode)}
 			columns = [:label, :identifier, :norm1, :norm2, :label_length, :mode, :dirty, :dictionary_id]
-			r = Entry.bulk_import columns, entries, validate: true
+			r = Entry.bulk_import columns, entries, validate: false
 			raise "Import error" unless r.failed_instances.empty?
 
 			increment!(:entries_num, entries.length - black_count)
@@ -249,13 +260,6 @@ class Dictionary < ApplicationRecord
 			end
 		else
 			raise ArgumentError, "Unexpected mode: #{mode}"
-		end
-	end
-
-	def empty_patterns
-		transaction do
-			patterns.delete_all
-			update_attribute(:patterns_num, 0)
 		end
 	end
 

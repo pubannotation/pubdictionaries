@@ -25,4 +25,8 @@ class User < ApplicationRecord
       "username(#{auth.info.name}) is invalid."
     end
   end
+
+  def editable?(user)
+    user && (user.admin? || id == user.id)
+  end
 end

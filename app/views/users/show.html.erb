@@ -4,7 +4,7 @@
 
 <section>
   <section>
-    <% if @user == current_user %>
+    <% if @user.editable?(current_user) %>
       <div style="margin: 4px 0">
       <table>
       <tr>
@@ -17,9 +17,7 @@
       </tr>
       </table>
       </div>
-      <% if @user == current_user %>
-        <%= link_to 'Edit', edit_user_registration_path, :class => :button %>
-      <% end %>
+      <%= link_to 'Edit', edit_user_registration_path, :class => :button %>
     <% end %>
   </section>
 
@@ -28,12 +26,12 @@
 
     <%= render partial: 'dictionaries/list' -%>
 
-    <% if @user == current_user %>
+    <% if @user.editable?(current_user) %>
       <%= link_to t('views.shared.create'), new_dictionary_path, :class => :button %>
     <% end %>
   </section>
 
-  <% if current_user.admin && @user == current_user %>
+  <% if current_user && current_user.admin %>
     <section>
       <h2>Jobs</h2>
       <%= link_to 'sidekiq monitor', sidekiq_web_path, :class => :button %>
