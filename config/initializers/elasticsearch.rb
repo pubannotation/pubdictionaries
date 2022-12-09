@@ -1,6 +1,3 @@
-# To use the Hash#deep_symbolize_keys under the Rails 3.2
-require 'i18n/core_ext/hash'
-
 module PubDictionaries
   # Read settings per RAILS_ENV from a YAML file.
   # Set the setting values to the Rails.configuration so that it can be referred from application code.
