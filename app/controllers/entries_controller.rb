@@ -53,7 +53,7 @@ class EntriesController < ApplicationController
 		end
 
 		respond_to do |format|
-			format.html { redirect_back fallback_location: root_path, notice: message}
+			format.html { redirect_back fallback_location: root_path, notice: message.slice(0, 1000)}
 		end
 	end
 
