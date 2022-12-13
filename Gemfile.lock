@@ -345,6 +345,7 @@ GEM
       rack (~> 2.0)
       redis (>= 4.2.0)
     simple_po_parser (1.1.6)
+    simstring_pure (1.1.2)
     snaky_hash (2.0.1)
       hashie
       version_gem (~> 1.1, >= 1.1.1)
@@ -420,6 +421,7 @@ DEPENDENCIES
   rubyzip
   sass-rails
   sidekiq (= 6.2.1)
+  simstring_pure (~> 1.1)
   string-similarity (~> 2.1)
   test-unit
   uglifier
