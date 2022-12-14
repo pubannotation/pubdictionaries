@@ -22,6 +22,9 @@ services:
       - redis
     environment:
       REDIS_URL: redis://redis:6379/0
+      DB_HOST: db
+      DB_USERNAME: postgres
+      DB_PASSWORD: password
 
   web:
     build: .
@@ -34,3 +37,7 @@ services:
       - elasticsearch
     ports:
       - 80:3000
+    environment:
+      DB_HOST: db
+      DB_USERNAME: postgres
+      DB_PASSWORD: password
