@@ -33,7 +33,7 @@ gem 'string-similarity', '~> 2.1'
 gem 'rubyzip'
 gem 'webrick'
 gem 'activejob-cancel'
-gem 'sidekiq', '6.2.1'
+gem 'sidekiq', '6.5.8'
 
 group :development do
   gem 'dotenv-rails'
