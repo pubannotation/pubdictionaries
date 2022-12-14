@@ -49,6 +49,7 @@ class EntriesController < ApplicationController
 				"The white entry #{entry} could not be created."
 			end
 		rescue => e
+			raise if Rails.env.development?
 			message = e.message
 		end
 
