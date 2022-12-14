@@ -22,7 +22,7 @@ COPY Gemfile /myapp
 COPY Gemfile.lock /myapp
 
 RUN bundle config build.nokogiri --use-system-libraries && \
-    bundle install --jobs=4 --retry=10 --clean
+    bundle install --jobs=4 --retry=10
 
 COPY docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]
