@@ -6,7 +6,7 @@ gem 'activerecord-import'
 
 gem 'pg'
 gem 'wice_grid', '~> 4.1', github: 'kreintjes/wice_grid', branch: 'fix/all' # Grid viewer for tab-separated data view.
-gem 'font-awesome-sass', '~> 4.7.0'
+gem 'font-awesome-sass', '~> 6.2'
 gem 'jquery-rails'
 gem 'jquery-ui-rails'
 gem 'devise'

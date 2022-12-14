@@ -150,8 +150,8 @@ GEM
     faraday-rack (1.0.0)
     faraday-retry (1.0.3)
     ffi (1.15.5)
-    font-awesome-sass (4.7.0)
-      sass (>= 3.2)
+    font-awesome-sass (6.2.1)
+      sassc (~> 2.0)
     formatador (1.1.0)
     globalid (1.0.0)
       activesupport (>= 5.0)
@@ -322,11 +322,6 @@ GEM
     ruby-stemmer (3.0.0)
     ruby2_keywords (0.0.5)
     rubyzip (2.3.2)
-    sass (3.7.4)
-      sass-listen (~> 4.0.0)
-    sass-listen (4.0.0)
-      rb-fsevent (~> 0.9, >= 0.9.4)
-      rb-inotify (~> 0.9, >= 0.9.7)
     sass-rails (6.0.0)
       sassc-rails (~> 2.1, >= 2.1.1)
     sassc (2.4.0)
@@ -338,11 +333,11 @@ GEM
       sprockets-rails
       tilt
     shellany (0.0.1)
-    sidekiq (7.0.1)
+    sidekiq (7.0.2)
       concurrent-ruby (< 2)
       connection_pool (>= 2.3.0)
       rack (>= 2.2.4)
-      redis-client (>= 0.9.0)
+      redis-client (>= 0.11.0)
     simple_po_parser (1.1.6)
     simstring_pure (1.1.2)
     snaky_hash (2.0.1)
@@ -400,7 +395,7 @@ DEPENDENCIES
   elasticsearch-model
   elasticsearch-rails
   faker
-  font-awesome-sass (~> 4.7.0)
+  font-awesome-sass (~> 6.2)
   guard-livereload
   i18n_data
   jquery-rails
@@ -419,7 +414,7 @@ DEPENDENCIES
   ruby-stemmer
   rubyzip
   sass-rails
-  sidekiq (= 7.0.1)
+  sidekiq (= 7.0.2)
   simstring_pure (~> 1.1)
   string-similarity (~> 2.1)
   test-unit
