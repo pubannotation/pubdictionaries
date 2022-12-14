@@ -94,7 +94,7 @@ GEM
     connection_pool (2.3.0)
     crass (1.0.6)
     daemons (1.4.1)
-    date (3.3.0)
+    date (3.3.1)
     devise (4.8.1)
       bcrypt (~> 3.0)
       orm_adapter (~> 0.1)
