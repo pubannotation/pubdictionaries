@@ -9,11 +9,19 @@ services:
       POSTGRES_PASSWORD: password
       PGPASSWORD: password
 
-  delayed_job:
+  redis:
+    image: redis
+
+  sidekiq:
     build: .
-    command: bundle exec rake jobs:work
+    command: bundle exec sidekiq -C config/sidekiq.yml
     volumes:
       - .:/myapp
+    depends_on:
+      - db
+      - redis
+    environment:
+      REDIS_URL: redis://redis:6379/0
 
   web:
     build: .
@@ -22,7 +30,7 @@ services:
       - .:/myapp
     depends_on:
       - db
-      - delayed_job
+      - sidekiq
       - elasticsearch
     ports:
       - 80:3000
