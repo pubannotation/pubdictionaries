@@ -1,5 +1,4 @@
 require 'fileutils'
-require 'simstring_pure'
 require 'rubygems'
 require 'zip'
 

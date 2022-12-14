@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-require 'simstring'
 using StringScanOffset
 
 # Provide functionalities for text annotation.
