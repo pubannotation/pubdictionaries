@@ -17,7 +17,7 @@ PubDictionaries aims to provide a platform in which users can easily share their
 1. bundle
 1. rake db:create
 1. rake db:migrate
-1. echo "Entry.\__elasticsearch__.create_index!  force:true" | rails console
+1. bin/rails runner script/create_index.rb
 
 ### Launch
 rails s
