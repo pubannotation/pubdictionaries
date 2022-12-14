@@ -14,17 +14,6 @@ RUN apk update && \
     $RUBY_PACKAGES && \
     mkdir -p /myapp
 
-RUN git clone https://github.com/pubannotation/simstring.git && \
-    cd simstring/ && \
-    ./configure && \
-    cd swig/ruby/ && \
-    ./prepare.sh && \
-    ruby extconf.rb && \
-    make && \
-    make install && \
-    cd ../../../ && \
-    rm -rf simstring
-
 # Copy the app into the working directory. This assumes your Gemfile
 # is in the root directory and includes your version of Rails that you
 # want to run.
