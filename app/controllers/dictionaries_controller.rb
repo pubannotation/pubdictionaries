@@ -197,8 +197,7 @@ class DictionariesController < ApplicationController
 	end
 
 	def edit
-		@dictionary = Dictionary.editable(current_user).find_by(name: params[:id])
-		raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
+		@dictionary = Dictionary.editable(current_user).find_by!(name: params[:id])
 		@submit_text = 'Update'
 	end
 	
