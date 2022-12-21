@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 using StringScanOffset
 
+require 'simstring'
+
 # Provide functionalities for text annotation.
 class TextAnnotator
   OPTIONS_DEFAULT = {
