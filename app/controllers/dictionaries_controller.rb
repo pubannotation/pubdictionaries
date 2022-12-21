@@ -33,7 +33,7 @@ class DictionariesController < ApplicationController
 	end
 
 	def show
-		@dictionary = Dictionary.find_by_name(params[:id])
+		@dictionary = Dictionary.find_by(name: params[:id])
 		raise ArgumentError, "Could not find the dictionary: #{params[:id]}." if @dictionary.nil?
 
 		respond_to do |format|
