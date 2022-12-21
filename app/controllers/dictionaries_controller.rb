@@ -33,8 +33,7 @@ class DictionariesController < ApplicationController
 	end
 
 	def show
-		@dictionary = Dictionary.find_by(name: params[:id])
-		raise ArgumentError, "Could not find the dictionary: #{params[:id]}." if @dictionary.nil?
+		@dictionary = Dictionary.find_by!(name: params[:id])
 
 		respond_to do |format|
 			page = (params[:page].presence || 1).to_i
@@ -106,10 +105,11 @@ class DictionariesController < ApplicationController
 			}
 		end
 
-	rescue ArgumentError => e
+	rescue ActiveRecord::RecordNotFound
 		respond_to do |format|
-			format.html {redirect_to dictionaries_path, notice: e.message}
-			format.any  {render json: {message:e.message}, status: :bad_request}
+			message = "Could not find the dictionary: #{params[:id]}."
+			format.html {redirect_to dictionaries_path, notice: message}
+			format.any  {render json: {message: message}, status: :bad_request}
 		end
 	rescue => e
 		respond_to do |format|
