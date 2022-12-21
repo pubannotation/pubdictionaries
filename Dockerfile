@@ -1,14 +1,14 @@
-FROM ruby:3.0.1-alpine
+FROM ruby:3.0.1
 
-ENV BUILD_PACKAGES="curl-dev ruby-dev build-base bash less linux-headers" \
-    DEV_PACKAGES="zlib-dev libxml2-dev libxslt-dev tzdata yaml-dev postgresql-dev" \
-    RUBY_PACKAGES="ruby-json nodejs yaml git"
+ENV BUILD_PACKAGES="ruby-dev bash less" \
+    DEV_PACKAGES="libxml2-dev libxslt-dev tzdata" \
+    RUBY_PACKAGES="ruby-json nodejs git"
 
 # Update and install base packages and nokogiri gem that requires a
 # native compilation
-RUN apk update && \
-    apk upgrade && \
-    apk add --no-cache --update\
+RUN apt-get update
+RUN apt-get upgrade -y
+RUN apt-get install -y \
     $BUILD_PACKAGES \
     $DEV_PACKAGES \
     $RUBY_PACKAGES && \
