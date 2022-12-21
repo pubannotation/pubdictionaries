@@ -1,4 +1,4 @@
-FROM ruby:3.0.5
+FROM ruby:3.1.3
 
 ENV BUILD_PACKAGES="ruby-dev bash less" \
     DEV_PACKAGES="libxml2-dev libxslt-dev tzdata swig" \
