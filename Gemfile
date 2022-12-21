@@ -50,5 +50,3 @@ end
 group :production do
  gem 'unicorn'
 end
-
-gem "simstring_pure", "~> 1.1"
