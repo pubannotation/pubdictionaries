@@ -19,7 +19,6 @@ class TextAnnotationJob < ApplicationJob
 
     annotator = TextAnnotator.new(dictionaries, options)
 
-    i = 0
     annotation_result = []
     buffer = []
     buffer_size = 0
