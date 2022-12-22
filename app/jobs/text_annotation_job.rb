@@ -25,7 +25,14 @@ class TextAnnotationJob < ApplicationJob
     targets.each_with_index do |t, i|
       t_size = t[:text].length
       if buffer.present? && (buffer_size + t_size > 100000)
-        annotation_result += annotator.annotate_batch(buffer)
+
+        r = Ractor.new do
+          annotator2, buffer2 = Ractor.recv
+          Racter.yeild annotator2.annotate_batch(buffer2)
+        end
+        r.send [annotator, buffer]
+        annotation_result += r.take
+
         @job.update_attribute(:num_dones, i) if @job
         buffer.clear
         buffer_size = 0
