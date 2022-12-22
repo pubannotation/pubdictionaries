@@ -63,7 +63,7 @@ class DictionariesController < ApplicationController
 							[@dictionary.entries.active.simple_paginate(page, per), "Active"]
 						end
 					else
-						[@dictionary.entries.active.simple_paginate(page, per), "Active"]
+						[@dictionary.entries.active.simple_paginate(page, per).laod_async, "Active"]
 					end
 				end
 			}
