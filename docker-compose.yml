@@ -2,6 +2,12 @@ version: '3'
 services:
   elasticsearch:
     build: ./elasticsearch
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9200/_cat/health" ]
+      interval: 3s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   db:
     image: postgres
@@ -32,9 +38,12 @@ services:
     volumes:
       - .:/myapp
     depends_on:
-      - db
-      - sidekiq
-      - elasticsearch
+      db:
+        condition: service_started
+      sidekiq:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
     ports:
       - 3000:3000
     environment:
