@@ -339,7 +339,7 @@ GEM
       sprockets-rails
       tilt
     shellany (0.0.1)
-    sidekiq (7.0.2)
+    sidekiq (7.0.3)
       concurrent-ruby (< 2)
       connection_pool (>= 2.3.0)
       rack (>= 2.2.4)
@@ -419,7 +419,7 @@ DEPENDENCIES
   ruby-stemmer
   rubyzip
   sass-rails
-  sidekiq (= 7.0.2)
+  sidekiq (= 7.0.3)
   string-similarity (~> 2.1)
   test-unit
   uglifier
