@@ -4,11 +4,12 @@
 PubDictionaries aims to provide a platform in which users can easily share their dictionaries and automatically annotate texts with those dictionaries.
 
 ## Requirements
-* Ruby v2.3.x
-* Rails v5.2.2
-* ElasticSearch v6.5.3
-  * [ICU Analysis Plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/6.5/analysis-icu.html)
-  * [Korean (nori) Analysis plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/6.5/analysis-nori.html)
+* Ruby v3.2.x
+* Rails v7.0.x
+* ElasticSearch v7.x.x
+  * [ICU Analysis Plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-icu.html)
+  * [Japanese (Kuromoji) Analysis plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-kuromoji.html)
+  * [Korean (nori) Analysis plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-nori.html)
 
 ## Without docker
 
