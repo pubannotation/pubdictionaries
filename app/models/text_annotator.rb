@@ -224,6 +224,8 @@ class TextAnnotator
 
   private
 
+  # find all the matching spans, store them in denotations, and make idx_span_positions
+  # if the abbreviation option is on, make idx_position_abbreviation_candidates
   def pattern_based_annotation(anns, denotations = [], idx_position_abbreviation_candidates = {}, idx_span_positions = {})
     return [denotations, idx_position_abbreviation_candidates, idx_span_positions] if @patterns.empty?
 
