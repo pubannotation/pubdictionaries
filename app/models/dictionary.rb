@@ -53,7 +53,7 @@ class Dictionary < ApplicationRecord
 		elsif user.admin?
 		else
 			includes(:associations)
-				.where('dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
+				.where('public = true OR dictionaries.user_id = ? OR associations.user_id = ?', user.id, user.id)
 				.references(:associations)
 		end
 	}
