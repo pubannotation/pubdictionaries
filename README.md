@@ -6,6 +6,9 @@ PubDictionaries aims to provide a platform in which users can easily share their
 ## Requirements
 * Ruby v3.2.x
 * Rails v7.0.x
+* SimString v1.0
+  * [original version with documentation](http://www.chokkan.org/software/simstring/)
+  * [modified version](https://github.com/pubannotation/simstring)
 * ElasticSearch v7.x.x
   * [ICU Analysis Plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-icu.html)
   * [Japanese (Kuromoji) Analysis plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-kuromoji.html)
