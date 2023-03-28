@@ -1,6 +1,7 @@
 require 'fileutils'
 require 'rubygems'
 require 'zip'
+require 'simstring'
 
 class Dictionary < ApplicationRecord
 	include StringManipulator
@@ -283,8 +284,12 @@ class Dictionary < ApplicationRecord
 		Rails.root.join(sim_string_db_dir, "tmp_entries.db").to_s
 	end
 
+	def sim_string_db_exist?
+		File.exist?(sim_string_db_path)
+	end
+
 	def compilable?
-		entries.where(dirty:true).exists?
+		entries.where(dirty:true).exists? || !sim_string_db_exist?
 	end
 
 	def compile!

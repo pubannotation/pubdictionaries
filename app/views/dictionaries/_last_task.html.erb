@@ -2,11 +2,11 @@
 <fieldset>
 	<legend>
 		Last task
-		<%= link_to('<i class="fa fa-check-square-o fa-lg"></i>'.html_safe, dictionary_job_path(@dictionary.name, job), method: :delete, title: 'Dismiss', class:'responsive') unless job.running? %>
+		<%= link_to('<i class="fa fa-check-square fa-lg"></i>'.html_safe, dictionary_job_path(@dictionary.name, job), method: :delete, title: 'Dismiss', class:'responsive') unless job.running? %>
 	</legend>
 
 	<% unless job.ended_at.nil? %>
-		<span class="message blink">Dismiss <i class="fa fa-arrow-up" aria-hidden="true"></i> this task for other settings.</span>
+		<span class="message blink">Dismiss it <i class="fa fa-arrow-up" aria-hidden="true"></i> for running another task.</span>
 	<% end %>
 
 	<p>
