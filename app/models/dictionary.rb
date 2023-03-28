@@ -443,7 +443,7 @@ class Dictionary < ApplicationRecord
 	end
 
 	def downloadable_updatable?
-		if File.exists?(downloadable_zip_path)
+		if File.exist?(downloadable_zip_path)
 			updated_at > File.mtime(downloadable_zip_path)
 		else
 			true
