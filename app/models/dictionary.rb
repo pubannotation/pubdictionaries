@@ -434,7 +434,7 @@ class Dictionary < ApplicationRecord
 		end
 
 		results.uniq!
-		results.each{|e| e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]))}
+		results.each{|e| e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]), dictionary: name)}
 		results.delete_if{|e| e[:score] < threshold}
 	end
 
