@@ -15,7 +15,7 @@ paths:
           schema:
             type: string
           required: true
-          description: terms represented as pipe-separated values.
+          description: terms represented as CSV.
         - in: query
           name: dictionary
           schema:
