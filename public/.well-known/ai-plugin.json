@@ -12,5 +12,6 @@
     "url": "https://pubdictionaries.org/openapi.yaml"
   },
   "logo_url": "https://pubdictionaries.org/logo.png",
-  "contact_email": "admin@pubannotation.org"
+  "contact_email": "admin@pubannotation.org",
+  "legal_info_url": "http://www.example.com/legal"
 }
