@@ -1,0 +1,32 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Chat GPT Plugin API
+servers:
+  - url: https://pubdictionaries.org
+paths:
+  /find_ids_api:
+    GET:
+      operationId: lookupDictionary
+      summary: Lookup a dictionary to find identifiers of natural language terms.
+      parameters:
+        - in: query
+          name: labels
+          schema:
+            type: string
+          required: true
+          description: terms represented as pipe-separated values.
+        - in: query
+          name: dictionary
+          schema:
+            type: string
+          required: true
+          description: The name of the dictionary to lookup.
+      responses:
+        '200':
+          description: OK!
+          content:
+            application/json:
+              schema:
+                type: string
+                description: a CSV string with the identifiers of the input terms

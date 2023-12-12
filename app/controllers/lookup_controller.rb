@@ -1,6 +1,17 @@
 require 'fileutils'
+require 'csv'
 
 class LookupController < ApplicationController
+	def find_ids_api
+		dictionary = Dictionary.find_by name:params[:dictionary]
+		labels = params[:labels].parse_csv
+		result = Dictionary.find_ids_by_labels(labels, [dictionary])
+
+		respond_to do |format|
+			format.any {render plain: result.values.collect{|v| v.first}.to_csv, content_type: 'text/csv'}
+		end
+	end
+
 	def find_ids
 		begin
 			dictionaries_selected = Dictionary.find_dictionaries_from_params(params)

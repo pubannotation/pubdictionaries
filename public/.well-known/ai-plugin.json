@@ -1,0 +1,16 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "PubDictionaries",
+  "name_for_model": "PubDictionaries",
+  "description_for_human": "Lookup a dictionary to find the identifiers of natural language terms.",
+  "description_for_model": "Lookup a dictionary to find the identifiers of natural language terms.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://pubdictionaries.org/openapi.yaml"
+  },
+  "logo_url": "https://pubdictionaries.org/logo.png",
+  "contact_email": "admin@pubannotation.org"
+}
