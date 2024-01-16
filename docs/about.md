@@ -21,7 +21,7 @@ PubDictionaries ...
 * Yue Wang ([DBCLS][DBCLS]): Software Test
 * Han-Cheol Cho: developer of the initial version
 
-[PubAnnotation]: http://pubannotation.org
-[DBCLS]: http://dbcls.rois.ac.jp "Database Center for Life Science"
-[NBDC]: http://https://biosciencedbc.jp "National Bioscience Database Center"
-[Digital Squad]: http://digital-squad.net/ "Digital Squad"
+[PubAnnotation]: https://pubannotation.org
+[DBCLS]: https://dbcls.rois.ac.jp "Database Center for Life Science"
+[NBDC]: https://https://biosciencedbc.jp "National Bioscience Database Center"
+[Digital Squad]: https://digital-squad.net/ "Digital Squad"
