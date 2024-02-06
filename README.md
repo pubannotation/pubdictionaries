@@ -17,23 +17,41 @@ PubDictionaries aims to provide a platform in which users can easily share their
 ## Without docker
 
 ### Install
-1. clone
-1. bundle
-1. bin/rails db:create
-1. bin/rails db:migrate
-1. bin/rails runner script/create_index.rb
+
+Git clone and:
+
+```shell
+bundle
+bin/rails db:create
+bin/rails db:migrate
+bin/rails runner script/create_index.rb
+```
 
 ### Launch
-rails s
+
+```shell
+bin/rails s
+```
 
 ## With docker
 
 ### Install
-1. clone
-1. docker compose build
+
+```sh
+docker compose build
+```
 
 ### Launch
-1. docker compose up
+
+```sh
+docker compose up
+```
+
+### Run tests
+
+```sh
+docker compose run --rm web bin/rails test
+```
 
 ## Deployment
 
