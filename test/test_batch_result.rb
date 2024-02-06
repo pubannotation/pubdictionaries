@@ -11,6 +11,10 @@ class TextAnnotator
       end
     end
 
+    setup do
+      Dir.mkdir BatchResult::PATH unless Dir.exist? BatchResult::PATH
+    end
+
     sub_test_case 'describe self.old_files' do
       setup do
         BatchResult.new
