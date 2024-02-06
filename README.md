@@ -19,8 +19,8 @@ PubDictionaries aims to provide a platform in which users can easily share their
 ### Install
 1. clone
 1. bundle
-1. rake db:create
-1. rake db:migrate
+1. bin/rails db:create
+1. bin/rails db:migrate
 1. bin/rails runner script/create_index.rb
 
 ### Launch
@@ -30,10 +30,10 @@ rails s
 
 ### Install
 1. clone
-1. docker-compose build
+1. docker compose build
 
 ### Launch
-1. docker-compose up
+1. docker compose up
 
 ## Deployment
 
