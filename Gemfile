@@ -41,6 +41,7 @@ gem 'faraday-net_http_persistent'
 
 group :development do
   gem 'dotenv-rails'
+  gem 'faker'
   gem 'web-console'
 end
 
