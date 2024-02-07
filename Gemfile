@@ -42,7 +42,6 @@ gem 'faraday-net_http_persistent'
 group :development do
   gem 'dotenv-rails'
   gem 'guard-livereload', require: false
-  gem 'faker'
   gem 'rails-erd'
   gem 'web-console'
 end
