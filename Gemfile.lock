@@ -281,11 +281,11 @@ GEM
       sprockets (> 3.0)
       sprockets-rails
       tilt
-    sidekiq (7.0.8)
+    sidekiq (7.2.1)
       concurrent-ruby (< 2)
       connection_pool (>= 2.3.0)
       rack (>= 2.2.4)
-      redis-client (>= 0.11.0)
+      redis-client (>= 0.19.0)
     simple_po_parser (1.1.6)
     snaky_hash (2.0.1)
       hashie
@@ -361,7 +361,7 @@ DEPENDENCIES
   ruby-stemmer
   rubyzip
   sass-rails
-  sidekiq (= 7.0.8)
+  sidekiq (~> 7.0)
   string-similarity (~> 2.1)
   test-unit
   uglifier

@@ -33,7 +33,7 @@ gem 'string-similarity', '~> 2.1'
 gem 'rubyzip'
 gem 'webrick'
 gem 'activejob-cancel'
-gem 'sidekiq', '7.0.8'
+gem 'sidekiq', '~> 7.0'
 
 # Faraday 2.0.0 and later require a separate adapter gem.
 # elasticsearch-transport requires faraday-net_http_persistent as a default adapter.
