@@ -3,6 +3,11 @@ default: &default
   transport_options:
     request:
       timeout: 5
+  # Explicitly specify default_adapter.
+  # When both elasticsearch-model and net-http-persistent are installed,
+  # elasticsearch-model tries to use faraday-net_http_persistent.
+  # This specification becomes unnecessary when elasticsearch-model is upgraded to version 8.
+  adapter: default_adapter
 
 development:
   <<: *default

@@ -131,9 +131,6 @@ GEM
       faraday-net_http (>= 2.0, < 3.2)
     faraday-net_http (3.1.0)
       net-http
-    faraday-net_http_persistent (2.1.0)
-      faraday (~> 2.5)
-      net-http-persistent (~> 4.0)
     ffi (1.16.3)
     font-awesome-sass (6.5.1)
       sassc (~> 2.0)
@@ -343,7 +340,6 @@ DEPENDENCIES
   elasticsearch-model
   elasticsearch-rails
   faker
-  faraday-net_http_persistent
   font-awesome-sass (~> 6.2)
   i18n_data
   jquery-rails

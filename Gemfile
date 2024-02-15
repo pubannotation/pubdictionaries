@@ -35,10 +35,6 @@ gem 'webrick'
 gem 'activejob-cancel'
 gem 'sidekiq', '~> 7.0'
 
-# Faraday 2.0.0 and later require a separate adapter gem.
-# elasticsearch-transport requires faraday-net_http_persistent as a default adapter.
-gem 'faraday-net_http_persistent'
-
 group :development do
   gem 'dotenv-rails'
   gem 'faker'
