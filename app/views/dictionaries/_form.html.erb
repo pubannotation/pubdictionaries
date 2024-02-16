@@ -19,7 +19,7 @@
     </tr>
 
     <tr>
-      <th><%= f.label :name, "Name*" %></th>
+      <th style="width: 6em;"><%= f.label :name, "Name*" %></th>
       <td>
         <p class="note" style="margin-top:0">Please give it a descriptive name, which begins with an alphabet or underscore, and contains alphanumeric letters, underscore, hyphen, space, or round brackets.</p>
         <%= f.text_field :name, required: true, style: "box-sizing: border-box; width:15em" %></td>
@@ -70,7 +70,7 @@
     </tr>
 
     <tr>
-      <th><%= f.label :tags, "Tags" %></th>
+      <th style="width: 6em;"><%= f.label :tags, "Tags" %></th>
       <td>
         <p class="note" style="margin-top:0">Enter the tags to be used for classifying entries to be registered in the dictionary. You may enter multiple tags separated by commas.</p>
         <%= text_area_tag 'tags', '', style: "box-sizing: border-box; width:25em" %>
