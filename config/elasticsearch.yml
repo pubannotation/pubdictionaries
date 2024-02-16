@@ -7,7 +7,7 @@ default: &default
   # When both elasticsearch-model and net-http-persistent are installed,
   # elasticsearch-model tries to use faraday-net_http_persistent.
   # This specification becomes unnecessary when elasticsearch-model is upgraded to version 8.
-  adapter: default_adapter
+  adapter: Faraday::Adapter::NetHttp
 
 development:
   <<: *default
