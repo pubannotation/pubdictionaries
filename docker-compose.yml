@@ -1,6 +1,7 @@
 version: '3'
 services:
   elasticsearch:
+    platform: linux/amd64
     build: ./elasticsearch
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9200/_cat/health" ]
@@ -8,8 +9,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    environment:
+      - discovery.type=single-node
 
   db:
+    platform: linux/amd64
     image: postgres
     environment:
       POSTGRES_PASSWORD: password
@@ -19,6 +23,7 @@ services:
     image: redis
 
   sidekiq:
+    platform: linux/amd64
     build: .
     command: bundle exec sidekiq -C config/sidekiq.yml
     volumes:
@@ -33,6 +38,7 @@ services:
       DB_PASSWORD: password
 
   web:
+    platform: linux/amd64
     build: .
     command: rails s -b '0.0.0.0'
     volumes:
