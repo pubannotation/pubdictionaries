@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2021_12_17_063316) do
+ActiveRecord::Schema[7.0].define(version: 2024_02_20_081827) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -67,6 +67,15 @@ ActiveRecord::Schema[7.0].define(version: 2021_12_17_063316) do
     t.index ["norm2"], name: "index_entries_on_norm2"
   end
 
+  create_table "entry_tags", force: :cascade do |t|
+    t.bigint "entry_id", null: false
+    t.bigint "tag_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entry_id"], name: "index_entry_tags_on_entry_id"
+    t.index ["tag_id"], name: "index_entry_tags_on_tag_id"
+  end
+
   create_table "jobs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name"
     t.bigint "dictionary_id"
@@ -91,6 +100,14 @@ ActiveRecord::Schema[7.0].define(version: 2021_12_17_063316) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["dictionary_id"], name: "index_patterns_on_dictionary_id"
+  end
+
+  create_table "tags", force: :cascade do |t|
+    t.string "value"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "dictionary_id", null: false
+    t.index ["dictionary_id"], name: "index_tags_on_dictionary_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -118,5 +135,8 @@ ActiveRecord::Schema[7.0].define(version: 2021_12_17_063316) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  add_foreign_key "entry_tags", "entries"
+  add_foreign_key "entry_tags", "tags"
   add_foreign_key "patterns", "dictionaries"
+  add_foreign_key "tags", "dictionaries"
 end

@@ -12,9 +12,10 @@ class Dictionary < ApplicationRecord
 	has_many :entries, :dependent => :destroy
 	has_many :patterns, :dependent => :destroy
 	has_many :jobs, :dependent => :destroy
+	has_many :tags, :dependent => :destroy
 
 	validates :name, presence:true, uniqueness: true
-	validates :user_id, presence: true 
+	validates :user_id, presence: true
 	validates :description, presence: true
 	validates :license_url, url: {allow_blank: true}
 	validates :name, length: {minimum: 3}
