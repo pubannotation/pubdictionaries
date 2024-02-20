@@ -48,6 +48,8 @@ class Entry < ApplicationRecord
   }
 
   belongs_to :dictionary
+  has_many :entry_tags
+  has_many :tags, through: :entry_tags
 
   validates :label, presence: true
   validates :identifier, presence: true
