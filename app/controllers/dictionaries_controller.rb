@@ -200,12 +200,14 @@ class DictionariesController < ApplicationController
 	def edit
 		@dictionary = Dictionary.editable(current_user).find_by!(name: params[:id])
 		@submit_text = 'Update'
+		@tag_list = @dictionary.tags.map(&:value).join(', ')
 	end
 
 	def update
 		begin
 			@dictionary = Dictionary.editable(current_user).find_by(name: params[:id])
 			raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
+			tag_list = params[:dictionary][:tag_values].delete(' ').split(',')
 
 			if dictionary_params[:language].present?
 				l = LanguageList::LanguageInfo.find(dictionary_params[:language])
@@ -217,6 +219,7 @@ class DictionariesController < ApplicationController
 			if @dictionary.update(dictionary_params)
 				db_loc_new = @dictionary.sim_string_db_dir
 				FileUtils.mv db_loc_old, db_loc_new unless db_loc_new == db_loc_old
+				@dictionary.update_tags(tag_list)
 			end
 
 			redirect_to @dictionary
