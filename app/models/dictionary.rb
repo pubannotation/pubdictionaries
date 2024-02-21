@@ -476,6 +476,27 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
+  def save_tags(tag_list)
+    tag_list.each do |tag|
+      self.tags.create!(value: tag)
+    end
+  end
+
+  def update_tags(tag_list)
+    current_tags = self.tags.pluck(:value)
+    tags_to_add = tag_list - current_tags
+    tags_to_remove = current_tags - tag_list
+
+    tags_to_add.each do |tag|
+      self.tags.create!(value: tag)
+    end
+
+    tags_to_remove.each do |tag|
+      tag = self.tags.find_by(value: tag)
+      self.tags.delete(tag) if tag
+    end
+  end
+
 	private
 
 	def ngram_order
