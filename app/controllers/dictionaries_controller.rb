@@ -170,7 +170,7 @@ class DictionariesController < ApplicationController
 
 	def create
 		@dictionary = current_user.dictionaries.new(dictionary_params)
-		tag_list = params[:dictionary][:tag_values].delete(' ').split(',')
+		tag_list = params[:dictionary][:tag_values].split(',').map(&:strip).uniq
 		if @dictionary.language.present?
 			l = LanguageList::LanguageInfo.find(@dictionary.language)
 			if l.nil?
@@ -207,7 +207,7 @@ class DictionariesController < ApplicationController
 		begin
 			@dictionary = Dictionary.editable(current_user).find_by(name: params[:id])
 			raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
-			tag_list = params[:dictionary][:tag_values].delete(' ').split(',')
+			tag_list = params[:dictionary][:tag_values].split(',').map(&:strip).uniq
 
 			if dictionary_params[:language].present?
 				l = LanguageList::LanguageInfo.find(dictionary_params[:language])
