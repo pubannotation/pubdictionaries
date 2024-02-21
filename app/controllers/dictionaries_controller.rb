@@ -170,7 +170,7 @@ class DictionariesController < ApplicationController
 
 	def create
 		@dictionary = current_user.dictionaries.new(dictionary_params)
-
+		tag_list = params[:dictionary][:tag_values].delete(' ').split(',')
 		if @dictionary.language.present?
 			l = LanguageList::LanguageInfo.find(@dictionary.language)
 			if l.nil?
@@ -189,6 +189,7 @@ class DictionariesController < ApplicationController
 			if @dictionary.save
 				format.html { redirect_to show_user_path(current_user.username), notice: message}
 				format.json { render json: {message:message}, status: :created, location: dictionary_url(@dictionary)}
+				@dictionary.save_tags(tag_list)
 			else
 				format.html { render action: "new" }
 				format.json { render json: {message:@dictionary.errors}, status: :bad_request}
@@ -200,7 +201,7 @@ class DictionariesController < ApplicationController
 		@dictionary = Dictionary.editable(current_user).find_by!(name: params[:id])
 		@submit_text = 'Update'
 	end
-	
+
 	def update
 		begin
 			@dictionary = Dictionary.editable(current_user).find_by(name: params[:id])

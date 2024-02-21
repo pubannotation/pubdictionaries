@@ -70,10 +70,10 @@
     </tr>
 
     <tr>
-      <th style="width: 6em;"><%= f.label :tags, "Tags" %></th>
+      <th style="width: 6em;"><%= f.label :tag_values, "Tags" %></th>
       <td>
         <p class="note" style="margin-top:0">Enter the tags to be used for classifying entries to be registered in the dictionary. You may enter multiple tags separated by commas.</p>
-        <%= text_area_tag 'tags', '', style: "box-sizing: border-box; width:25em" %>
+        <%= f.text_field :tag_values,  placeholder: 'e.g., tag1, tag2', style: "box-sizing: border-box; width:25em", value: @tag_list %>
       </td>
     </tr>
   </table>

@@ -476,6 +476,12 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
+  def save_tags(tag_list)
+    tag_list.each do |tag|
+      self.tags.create!(value: tag)
+    end
+  end
+
 	private
 
 	def ngram_order
