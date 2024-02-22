@@ -29,6 +29,8 @@
     <col class="col_label">
     <col class="col_identifier">
     <col class="col_button">
+    <col class="col_tags">
+    <col class="col_button">
     <% if @dictionary.editable?(current_user) %>
       <col class="col_button">
     <% end %>
@@ -49,6 +51,10 @@
         	<%= submit_tag 'Search', class: 'button' -%>
     	  <% end -%>
       </th>
+      <th colspan="2">
+        Tags
+        <%# TODO: add tag-search %>
+      </th>
       <% if @dictionary.editable?(current_user) %>
         <th></th>
       <% end %>
@@ -62,6 +68,8 @@
       <col class="col_label">
       <col class="col_identifier">
       <col class="col_button">
+      <col class="col_tags">
+      <col class="col_button">
       <% if @dictionary.editable?(current_user) %>
         <col class="col_button">
       <% end %>
@@ -72,12 +80,12 @@
       <tr>
         <td style="border-style:none"></td>
         <td colspan="2" style="border-style:none"></td>
+        <td colspan="2" style="border-style:none"></td>
         <td style="text-align:center">
           <a title="remove selected entries" href="javascript:{}" onclick="document.getElementById('delete_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
         </td>
       </tr>
     <% end %>
-
   </table>
 <% end %>
 
@@ -108,6 +116,7 @@
   <colgroup>
     <col class="col_label">
     <col class="col_identifier">
+    <col class="col_tags">
     <col class="col_button">
   </colgroup>
   <% if @dictionary.editable?(current_user) %>
@@ -119,12 +128,15 @@
         <td>
           <span><%= text_field_tag :identifier, nil, required: true, style: "box-sizing:content-box; width:90%" -%></span>
         </td>
+        <td>
+          <span><%= select_tag :tags, options_from_collection_for_select(Tag.where(dictionary_id: @dictionary.id), 'id', 'value'), multiple: true, class: 'js-searchable', style: "box-sizing:content-box; width:90%"  %></span>
+        </td>
         <td style="text-align:center">
           <a title="add" href="javascript:{}" onclick="document.getElementById('add_entry_form').submit(); return false;"><i class="fa fa-plus-square" aria-hidden="true"></i></a>
         </td>
       </tr>
     <% end %>
-  <% end %>  
+  <% end %>
 </table>
 
 <div class="table-control">
