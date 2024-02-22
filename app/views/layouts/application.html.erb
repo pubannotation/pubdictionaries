@@ -5,6 +5,9 @@
   <title>PubDictionaries</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <%= stylesheet_link_tag "application", :media => "all" %>
+  <!-- Styles for select2 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
   <%= yield :css -%>
   <%= javascript_include_tag "application" %>
   <%= yield :javascript -%>
@@ -22,7 +25,7 @@
     data-header-menu-type="deployed"
     data-color="mono"
   ></script>
- -->
+-->
   <div class="header">
     <div class="inner">
       <div class="logo">
@@ -74,5 +77,9 @@
     </div>
   </div>
   <%= yield :bottom_js -%>
+
+  <!-- Scripts for select2 -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.0/dist/jquery.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.full.min.js"></script>
 </body>
 </html>
