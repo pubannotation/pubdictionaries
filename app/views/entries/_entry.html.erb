@@ -28,11 +28,11 @@
     <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'search') -%>
   </td>
   <td style="border-right-style: none">
-    <%# TODO: add tag-search %>
+    <% entry.tags.each do |tag| %>
+      <%= tag.value %>
+    <% end %>
   </td>
-  <td style="border-left-style: none">
-    <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:'#'), title: 'search') -%>
-  </td>
+  <td style="border-left-style: none"></td>
   <% if @dictionary.editable?(current_user) %>
     <td style="text-align:center">
       <% case entry.mode %>
