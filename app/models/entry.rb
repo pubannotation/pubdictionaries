@@ -48,7 +48,7 @@ class Entry < ApplicationRecord
   }
 
   belongs_to :dictionary
-  has_many :entry_tags
+  has_many :entry_tags, dependent: :destroy
   has_many :tags, through: :entry_tags
 
   validates :label, presence: true
