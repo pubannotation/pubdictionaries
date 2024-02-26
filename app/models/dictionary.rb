@@ -366,6 +366,14 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
+	def narrow_entries_by_tag(tag_id, page = 0, per = nil)
+		if per.nil?
+			entries.joins(:tags).where(tags: { id: tag_id }).page(page)
+		else
+			entries.joins(:tags).where(tags: { id: tag_id }).page(page).per(per)
+		end
+	end
+
 	def self.narrow_entries_by_identifier(str, page = 0, per = nil)
 		if per.nil?
 			Entry.where("identifier ILIKE ?", "%#{str}%").page(page)
