@@ -22,7 +22,6 @@
 document.addEventListener("DOMContentLoaded", function() {
   $('.js-searchable').select2({
     width: '100%',
-    allowClear: true,
-    containerCssClass: ':all:'
+    allowClear: true
   });
 });
