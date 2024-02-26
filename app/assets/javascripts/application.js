@@ -22,6 +22,10 @@
 document.addEventListener("DOMContentLoaded", function() {
   $('.js-searchable').select2({
     width: '100%',
+    placeholder: {
+      id: "",
+      placeholder: ""
+    },
     allowClear: true
   });
 });
