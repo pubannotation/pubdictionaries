@@ -51,6 +51,20 @@ table.entries{
   }
 }
 
+.tag-search-container {
+  display: flex;
+  align-items: center;
+  text-align: center;
+}
+
+.tag-search-container .select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 15px !important;
+}
+
+.tag-search-container .select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 15px !important;
+}
+
 .title {
   margin: 0 10px 10px 10px;
   text-align: center;
