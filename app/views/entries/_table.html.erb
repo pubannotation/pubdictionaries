@@ -52,8 +52,17 @@
     	  <% end -%>
       </th>
       <th colspan="2">
-        Tags
-        <%# TODO: add tag-search %>
+          Tags
+          <%= form_tag '', method: :get, class: 'tag-search-container' do -%>
+            <%= select_tag :tag_search,
+              options_for_select(
+                Tag.where(dictionary_id: @dictionary.id).pluck(:value, :id),
+                selected: params[:tag_search]
+              ),
+              { include_blank: true, required: true, class: 'js-searchable' }
+            -%>
+            <%= submit_tag 'Search', class: 'button' -%>
+          <% end -%>
       </th>
       <% if @dictionary.editable?(current_user) %>
         <th></th>

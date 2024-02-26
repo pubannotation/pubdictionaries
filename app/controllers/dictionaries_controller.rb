@@ -46,6 +46,9 @@ class DictionariesController < ApplicationController
 				elsif params[:id_search]
 					params[:id_search].strip!
 					[@dictionary.narrow_entries_by_identifier(params[:id_search], page, per), "Active"]
+				elsif params[:tag_search]
+					tag_id = params[:tag_search].to_i
+					[@dictionary.narrow_entries_by_tag(tag_id, page, per), "Active"]
 				else
 					if params[:mode].present?
 						case params[:mode].to_i
@@ -74,6 +77,9 @@ class DictionariesController < ApplicationController
 				elsif params[:id_search]
 					params[:id_search].strip!
 					[@dictionary.narrow_entries_by_identifier(params[:id_search]), "id_search_#{params[:id_search]}"]
+				elsif params[:tag_search]
+					tag_id = params[:tag_search].to_i
+					[@dictionary.narrow_entries_by_tag(tag_id, page, per), "tag_search_#{params[:tag_search]}"]
 				else
 					if params[:mode].present?
 						case params[:mode].to_i
