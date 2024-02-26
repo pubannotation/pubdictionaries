@@ -41,6 +41,9 @@ class EntriesController < ApplicationController
 
 			entry = dictionary.new_entry(label, identifier, nil, Entry::MODE_WHITE, true)
 
+			tag_ids = params[:tags] || []
+			entry.tag_ids = tag_ids
+
 			message = if entry.save
 				dictionary.increment!(:entries_num)
 				# dictionary.update_tmp_sim_string_db

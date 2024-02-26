@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2024_02_20_081827) do
+ActiveRecord::Schema[7.0].define(version: 2024_02_26_041211) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -135,7 +135,7 @@ ActiveRecord::Schema[7.0].define(version: 2024_02_20_081827) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
-  add_foreign_key "entry_tags", "entries"
+  add_foreign_key "entry_tags", "entries", on_delete: :cascade
   add_foreign_key "entry_tags", "tags"
   add_foreign_key "patterns", "dictionaries"
   add_foreign_key "tags", "dictionaries"
