@@ -25,7 +25,13 @@
     -%>
   </td>
   <td style="border-left-style: none">
-     <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'search') -%>
+    <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'search') -%>
+  </td>
+  <td style="border-right-style: none">
+    <%# TODO: add tag-search %>
+  </td>
+  <td style="border-left-style: none">
+    <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:'#'), title: 'search') -%>
   </td>
   <% if @dictionary.editable?(current_user) %>
     <td style="text-align:center">

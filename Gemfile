@@ -34,6 +34,7 @@ gem 'rubyzip'
 gem 'webrick'
 gem 'activejob-cancel'
 gem 'sidekiq', '~> 7.0'
+gem 'select2-rails'
 
 group :development do
   gem 'dotenv-rails'

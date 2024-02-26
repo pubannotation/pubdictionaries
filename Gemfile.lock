@@ -278,6 +278,7 @@ GEM
       sprockets (> 3.0)
       sprockets-rails
       tilt
+    select2-rails (4.0.13)
     sidekiq (7.2.1)
       concurrent-ruby (< 2)
       connection_pool (>= 2.3.0)
@@ -357,6 +358,7 @@ DEPENDENCIES
   ruby-stemmer
   rubyzip
   sass-rails
+  select2-rails
   sidekiq (~> 7.0)
   string-similarity (~> 2.1)
   test-unit

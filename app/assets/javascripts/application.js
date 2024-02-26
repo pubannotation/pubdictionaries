@@ -17,3 +17,11 @@
 //= require wice_grid
 //= require clipboard
 //= require_tree .
+//= require select2
+
+document.addEventListener("DOMContentLoaded", function() {
+  $('.js-searchable').select2({
+    width: '100%',
+    allowClear: true
+  });
+});
