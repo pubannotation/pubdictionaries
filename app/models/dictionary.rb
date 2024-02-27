@@ -492,22 +492,20 @@ class Dictionary < ApplicationRecord
 
   def update_tags(tag_list)
     current_tags = self.tags.to_a
-    current_tag_values = current_tags.map(&:value)
 
-    tags_to_add = tag_list - current_tag_values
-    tags_to_remove = current_tag_values - tag_list
+    tags_to_add = tag_list.reject { |tag_value| current_tags.any? { |t| t.value == tag_value } }
+    tags_to_remove = current_tags.reject { |tag| tag_list.include?(tag.value) }
 
     tags_to_add.each do |tag|
       self.tags.create!(value: tag)
     end
 
     tags_in_use = []
-    tags_to_remove.each do |tag_value|
-      tag = current_tags.find { |t| t.value == tag_value }
+    tags_to_remove.each do |tag|
       if tag.used_in_entries?
-        tags_in_use << tag_value
+        tags_in_use << tag.value
       else
-        self.tags.delete(tag)
+        tag.destroy
       end
     end
 
