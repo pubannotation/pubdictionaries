@@ -510,7 +510,7 @@ class Dictionary < ApplicationRecord
     end
 
     if tags_in_use.any?
-      errors.add(:base, "The following tags #{format_tags_for_error(tags_in_use)} used. Please edit the entry before deleting.")
+      errors.add(:base, "The following tags #{tags_in_use.to_sentence} #{tags_in_use.length > 1 ? 'are' : 'is'} used. Please edit the entry before deleting.")
       return false
     end
 
@@ -615,14 +615,4 @@ class Dictionary < ApplicationRecord
 			Entry.method(:str_sim_jaccard_3gram)
 		end
 	end
-
-  def format_tags_for_error(tags_in_use)
-    if tags_in_use.length == 1
-      return "#{tags_in_use.first} is"
-    elsif tags_in_use.length == 2
-      return "#{tags_in_use.join(" and ")} are"
-    else
-      "#{tags_in_use[0..-2].join(", ")} and #{tags_in_use.last} are"
-    end
-  end
 end
