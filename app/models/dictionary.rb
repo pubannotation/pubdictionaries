@@ -491,18 +491,30 @@ class Dictionary < ApplicationRecord
   end
 
   def update_tags(tag_list)
-    current_tags = self.tags.pluck(:value)
-    tags_to_add = tag_list - current_tags
-    tags_to_remove = current_tags - tag_list
+    current_tags = self.tags.to_a
+
+    tags_to_add = tag_list.reject { |tag_value| current_tags.any? { |t| t.value == tag_value } }
+    tags_to_remove = current_tags.reject { |tag| tag_list.include?(tag.value) }
 
     tags_to_add.each do |tag|
       self.tags.create!(value: tag)
     end
 
+    tags_in_use = []
     tags_to_remove.each do |tag|
-      tag = self.tags.find_by(value: tag)
-      self.tags.delete(tag) if tag
+      if tag.used_in_entries?
+        tags_in_use << tag.value
+      else
+        tag.destroy
+      end
     end
+
+    if tags_in_use.any?
+      errors.add(:base, "The following tags #{tags_in_use.to_sentence} #{tags_in_use.length > 1 ? 'are' : 'is'} used. Please edit the entry before deleting.")
+      return false
+    end
+
+    true
   end
 
 	private
