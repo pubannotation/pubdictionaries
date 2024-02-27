@@ -502,10 +502,10 @@ class Dictionary < ApplicationRecord
     tags_in_use = []
     tags_to_remove.each do |tag_value|
       tag = self.tags.find_by(value: tag_value)
-      if tag && tag.used_in_entries?
+      if tag.used_in_entries?
         tags_in_use << tag_value
       else
-        self.tags.delete(tag) if tag
+        self.tags.delete(tag)
       end
     end
 
