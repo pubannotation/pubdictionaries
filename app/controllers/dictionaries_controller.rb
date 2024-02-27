@@ -225,10 +225,14 @@ class DictionariesController < ApplicationController
 			if @dictionary.update(dictionary_params)
 				db_loc_new = @dictionary.sim_string_db_dir
 				FileUtils.mv db_loc_old, db_loc_new unless db_loc_new == db_loc_old
-				@dictionary.update_tags(tag_list)
+				if @dictionary.update_tags(tag_list)
+					redirect_to @dictionary
+				else
+					flash[:alert] = @dictionary.errors.full_messages.to_sentence
+					redirect_back fallback_location: @dictionary
+				end
 			end
 
-			redirect_to @dictionary
 		rescue => e
 			redirect_back fallback_location: @dictionary, notice: e.message
 		end

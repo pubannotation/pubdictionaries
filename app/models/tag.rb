@@ -7,4 +7,8 @@ class Tag < ApplicationRecord
   validates_format_of :value, # because of to_param overriding.
                       :with => /\A[a-zA-Z_][a-zA-Z0-9_\- ()]*\z/,
                       :message => "should begin with an alphabet or underscore, and only contain alphanumeric letters, underscore, hyphen, space, or round brackets!"
+
+  def used_in_entries?
+    EntryTag.where(tag_id: self.id).exists?
+  end
 end

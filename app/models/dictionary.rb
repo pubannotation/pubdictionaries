@@ -499,10 +499,22 @@ class Dictionary < ApplicationRecord
       self.tags.create!(value: tag)
     end
 
-    tags_to_remove.each do |tag|
-      tag = self.tags.find_by(value: tag)
-      self.tags.delete(tag) if tag
-    end
+		tags_in_use = []
+		tags_to_remove.each do |tag_value|
+			tag = self.tags.find_by(value: tag_value)
+			if tag && tag.used_in_entries?
+				tags_in_use << tag_value
+			else
+				self.tags.delete(tag) if tag
+			end
+		end
+
+		if tags_in_use.any?
+			errors.add(:base, "The following tags #{format_tags_for_error(tags_in_use)} are used. Please edit the entry before deleting.")
+			return false
+		end
+
+		true
   end
 
 	private
@@ -602,5 +614,10 @@ class Dictionary < ApplicationRecord
 		else
 			Entry.method(:str_sim_jaccard_3gram)
 		end
+	end
+
+	def format_tags_for_error(tags_in_use)
+		return tags_in_use.join(" and ") if tags_in_use.length <= 2
+		"#{tags_in_use[0..-2].join(", ")} and #{tags_in_use.last}"
 	end
 end
