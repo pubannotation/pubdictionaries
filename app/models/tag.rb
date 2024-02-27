@@ -9,6 +9,6 @@ class Tag < ApplicationRecord
                       :message => "should begin with an alphabet or underscore, and only contain alphanumeric letters, underscore, hyphen, space, or round brackets!"
 
   def used_in_entries?
-    EntryTag.where(tag_id: self.id).exists?
+    entry_tags.exists?
   end
 end
