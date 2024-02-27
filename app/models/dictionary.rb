@@ -499,22 +499,22 @@ class Dictionary < ApplicationRecord
       self.tags.create!(value: tag)
     end
 
-		tags_in_use = []
-		tags_to_remove.each do |tag_value|
-			tag = self.tags.find_by(value: tag_value)
-			if tag && tag.used_in_entries?
-				tags_in_use << tag_value
-			else
-				self.tags.delete(tag) if tag
-			end
-		end
+    tags_in_use = []
+    tags_to_remove.each do |tag_value|
+      tag = self.tags.find_by(value: tag_value)
+      if tag && tag.used_in_entries?
+        tags_in_use << tag_value
+      else
+        self.tags.delete(tag) if tag
+      end
+    end
 
-		if tags_in_use.any?
-			errors.add(:base, "The following tags #{format_tags_for_error(tags_in_use)} used. Please edit the entry before deleting.")
-			return false
-		end
+    if tags_in_use.any?
+      errors.add(:base, "The following tags #{format_tags_for_error(tags_in_use)} used. Please edit the entry before deleting.")
+      return false
+    end
 
-		true
+    true
   end
 
 	private
@@ -616,13 +616,13 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
-	def format_tags_for_error(tags_in_use)
-		if tags_in_use.length == 1
-			return "#{tags_in_use.first} is"
-		elsif tags_in_use.length == 2
-			return "#{tags_in_use.join(" and ")} are"
-		else
-			"#{tags_in_use[0..-2].join(", ")} and #{tags_in_use.last} are"
-		end
-	end
+  def format_tags_for_error(tags_in_use)
+    if tags_in_use.length == 1
+      return "#{tags_in_use.first} is"
+    elsif tags_in_use.length == 2
+      return "#{tags_in_use.join(" and ")} are"
+    else
+      "#{tags_in_use[0..-2].join(", ")} and #{tags_in_use.last} are"
+    end
+  end
 end
