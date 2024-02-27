@@ -39,7 +39,7 @@
       <% when Entry::MODE_GRAY %>
         <input type="checkbox" name="entry_id[]" id="entry_id_<%= entry.id %>" class="chkbox" value="<%= entry.id %>">
       <% when Entry::MODE_WHITE %>
-        <%= link_to('<i class="fa fa-trash-o" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Remove') %>
+        <%= link_to('<i class="fa-regular fa-trash-can" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Remove') %>
       <% when Entry::MODE_BLACK %>
         <%= link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Back to gray') %>
       <% else %>

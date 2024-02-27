@@ -66,7 +66,7 @@ module DictionariesHelper
 		end
 
 		link_to(
-			content_tag(:i, '', class:"fa fa-trash-o fa-lg"),
+			content_tag(:i, '', class:"fa-regular fa-trash-can fa-lg"),
 			empty_dictionary_entries_path(@dictionary, mode:mode),
 			title: title,
 			method: :put,
