@@ -36,3 +36,4 @@ en:
     black: "Black entries: the entries that have been manually removed. These entries will not be used during annotation or lookup."
     active: "Active entries: gray entries + white entries. These entries will be used for annotation and lookup."
     custom: "Custom entries: white entries + black entries. These entries are those that have been manually added or removed."
+    auto_expanded: "Auto expanded entries: " # MUST: add description of auto_expanded entries

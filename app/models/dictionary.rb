@@ -164,17 +164,13 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
-	def num_gray
-		entries_num - num_white
-	end
+  def num_gray = entries_num - num_white
 
-	def num_white
-		entries.where(mode:Entry::MODE_WHITE).count
-	end
+  def num_white = entries.white.count
 
-	def num_black
-		entries.where(mode:Entry::MODE_BLACK).count
-	end
+  def num_black = entries.black.count
+
+  def num_auto_expanded = entries.auto_expanded.count
 
 	# turn a gray entry to white
 	def turn_to_white(entry)
