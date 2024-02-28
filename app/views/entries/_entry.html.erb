@@ -4,6 +4,7 @@
       when Entry::MODE_GRAY then "entry gray"
       when Entry::MODE_WHITE then "entry white"
       when Entry::MODE_BLACK then "entry black"
+      when Entry::MODE_AUTO_EXPANDED then "entry auto expanded"
       else "entry"
     end
   else
@@ -42,6 +43,9 @@
         <%= link_to('<i class="fa-regular fa-trash-can" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Remove') %>
       <% when Entry::MODE_BLACK %>
         <%= link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Back to gray') %>
+      <% when Entry::MODE_AUTO_EXPANDED %>
+        <%# MUST: set correct icon-button, link and title %>
+        <%= link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: '') %>
       <% else %>
       <% end %>
     </td>
