@@ -5,6 +5,7 @@ class Entry < ApplicationRecord
   MODE_ACTIVE = 3 # gray + white (for downloading)
   MODE_CUSTOM = 4 # white + black (for downloading)
   MODE_PATTERN = 5 # patterns (regular expressions)
+  MODE_AUTO_EXPANDED = 6
 
   include Elasticsearch::Model
 
@@ -59,6 +60,7 @@ class Entry < ApplicationRecord
   scope :black, -> {where(mode: Entry::MODE_BLACK)}
   scope :custom, -> {where(mode: [Entry::MODE_WHITE, Entry::MODE_BLACK])}
   scope :active, -> {where(mode: [Entry::MODE_GRAY, Entry::MODE_WHITE])}
+  scope :auto_expanded, -> {where(mode: Entry::MODE_AUTO_EXPANDED)}
 
   scope :simple_paginate, -> (page = 1, per = 15) {
     offset = (page - 1) * per

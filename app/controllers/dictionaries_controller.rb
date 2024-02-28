@@ -62,6 +62,8 @@ class DictionariesController < ApplicationController
 							[@dictionary.entries.active.simple_paginate(page, per), "Active"]
 						when Entry::MODE_CUSTOM
 							[@dictionary.entries.custom.simple_paginate(page, per), "Custom"]
+						when Entry::MODE_AUTO_EXPANDED
+							[@dictionary.entries.auto_expanded.simple_paginate(page, per), "Auto expanded"]
 						else
 							[@dictionary.entries.active.simple_paginate(page, per), "Active"]
 						end
@@ -93,6 +95,8 @@ class DictionariesController < ApplicationController
 							[@dictionary.entries.active, nil]
 						when Entry::MODE_CUSTOM
 							[@dictionary.entries.custom, "custom"]
+						when Entry::MODE_AUTO_EXPANDED
+							[@dictionary.entries.auto_expanded, "auto expanded"]
 						else
 							[@dictionary.entries.active, nil]
 						end

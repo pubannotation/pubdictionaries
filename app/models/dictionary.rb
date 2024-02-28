@@ -176,6 +176,10 @@ class Dictionary < ApplicationRecord
 		entries.where(mode:Entry::MODE_BLACK).count
 	end
 
+  def num_auto_expanded
+    entries.where(mode:Entry::MODE_AUTO_EXPANDED).count
+  end
+
 	# turn a gray entry to white
 	def turn_to_white(entry)
 		raise "Only a gray entry can be turned to white" unless entry.mode == Entry::MODE_GRAY
