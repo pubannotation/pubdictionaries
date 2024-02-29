@@ -18,7 +18,7 @@
 
   <h2 style="margin-bottom:0">
     <span title="<%= title_entry_type %>"><%= @type_entries %> entries</span>
-    <% if params[:label_search] || params[:id_search] -%>
+    <% if params[:label_search] || params[:id_search] || params[:tag_search] -%>
       (search result
       <%= link_to('<i class="fa fa-times" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary), class: 'button', title: 'Cancel') %>
       )
