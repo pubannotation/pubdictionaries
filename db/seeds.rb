@@ -12,7 +12,7 @@ dictionary = user.dictionaries.find_or_create_by(name: 'EntrezGene') do |diction
 end
 
 # add tags to dictionary
-seed_tags = ["Giraffe", "Tiger", "Elephant"].map do |tag_value|
+seed_tags = ['Giraffe', 'Tiger', 'Elephant'].map do |tag_value|
   dictionary.tags.find_or_create_by(value: tag_value)
 end
 
