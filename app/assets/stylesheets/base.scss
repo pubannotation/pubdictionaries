@@ -49,12 +49,21 @@ table.entries{
       padding: 4px;
     }
   }
+
+  th {
+    vertical-align: middle;
+  }
 }
 
 .tag-search-container {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   text-align: center;
+  width: auto;
+
+  .select2-container--default .selection, .select2-selection__arrow {
+    margin-top: 7px;
+  }
 
   .select2-container--default .select2-selection--single .select2-selection__rendered {
     line-height: 15px;

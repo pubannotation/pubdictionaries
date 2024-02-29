@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", function() {
       id: "",
       placeholder: ""
     },
-    allowClear: true
+    allowClear: true,
+    width: 'resolve'
   });
 });
