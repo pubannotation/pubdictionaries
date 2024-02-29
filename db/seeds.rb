@@ -1,26 +1,18 @@
 # user settings
-user = User.find_by(email: 'test@pubdictionaries.org')
-unless user
-  user = User.create!(
-            username: 'pub dic person',
-            email: 'test@pubdictionaries.org',
-            password: 'password',
-            confirmed_at: Time.now
-          )
+user = User.find_or_create_by(email: 'test@pubdictionaries.org') do |user|
+  user.username = 'pub dic person'
+  user.password = 'password'
+  user.confirmed_at = Time.now
 end
 
 # create dictionary
-dictionary = Dictionary.find_by(name: 'EntrezGene')
-unless dictionary
-  dictionary = user.dictionaries.create!(
-          name: 'EntrezGene',
-          description: 'EntrezGene dictionary',
-          public: true
-        )
+dictionary = user.dictionaries.find_or_create_by(name: 'EntrezGene') do |dictionary|
+  dictionary.description = 'EntrezGene dictionary'
+  dictionary.public = true
 
   # add tags to dictionary
   tags = ["Giraffe", "Tiger", "Elephant"].each do |tag_value|
-    Tag.create!(value: tag_value, dictionary: dictionary)
+    dictionary.tags.find_or_create_by(value: tag_value)
   end
 end
 
