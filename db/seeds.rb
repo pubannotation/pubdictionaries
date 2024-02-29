@@ -32,7 +32,6 @@ entry_items = [
   { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry3", identifier: "3", tag_ids: [1, 2, 3] }
 ]
 
-entries = []
 entry_items.each do |entry|
   created_entry = dictionary.entries.find_or_create_by!(
               label: entry[:label],
