@@ -9,16 +9,16 @@ end
 dictionary = user.dictionaries.find_or_create_by(name: 'EntrezGene') do |dictionary|
   dictionary.description = 'EntrezGene dictionary'
   dictionary.public = true
+end
 
-  # add tags to dictionary
-  tags = ["Giraffe", "Tiger", "Elephant"].each do |tag_value|
-    dictionary.tags.find_or_create_by(value: tag_value)
-  end
+# add tags to dictionary
+seed_tags = ["Giraffe", "Tiger", "Elephant"].map do |tag_value|
+  dictionary.tags.find_or_create_by(value: tag_value)
 end
 
 # create entries for each mode
 entry_items = [
-  { mode: Entry::MODE_GRAY, label: "Gray Mode Entry", identifier: "1", tag_ids: [1, 2, 3]},
+  { mode: Entry::MODE_GRAY, label: "Gray Mode Entry", identifier: "1", tag_ids: [1, 2, 3] },
   { mode: Entry::MODE_GRAY, label: "Gray Mode Entry2", identifier: "2", tag_ids: [1, 3] },
   { mode: Entry::MODE_WHITE, label: "White Mode Entry", identifier: "1", tag_ids: [1, 2, 3] },
   { mode: Entry::MODE_WHITE, label: "White Mode Entry2", identifier: "2", tag_ids: [1] },
@@ -39,9 +39,8 @@ entry_items.each do |entry_item|
               mode: entry_item[:mode],
             )
 
-  entry_item[:tag_ids].each do |tag_id|
-    entry.entry_tags.find_or_create_by!(tag_id: tag_id)
-  end
+  tag_objects = entry_item[:tag_ids].map { |id| seed_tags[id - 1] }
+  entry.tags = tag_objects
 end
 
 # set entries_num
