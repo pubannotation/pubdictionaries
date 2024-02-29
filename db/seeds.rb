@@ -32,17 +32,15 @@ entry_items = [
   { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry3", identifier: "3", tag_ids: [1, 2, 3] }
 ]
 
-entry_items.each do |entry|
-  created_entry = dictionary.entries.find_or_create_by!(
-              label: entry[:label],
-              identifier: entry[:identifier],
-              mode: entry[:mode],
+entry_items.each do |entry_item|
+  entry = dictionary.entries.find_or_create_by!(
+              label: entry_item[:label],
+              identifier: entry_item[:identifier],
+              mode: entry_item[:mode],
             )
 
-  if entry[:tag_ids].present?
-    entry[:tag_ids].each do |tag_id|
-      created_entry.entry_tags.find_or_create_by!(tag_id: tag_id)
-    end
+  entry_item[:tag_ids].each do |tag_id|
+    entry.entry_tags.find_or_create_by!(tag_id: tag_id)
   end
 end
 
