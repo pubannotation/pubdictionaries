@@ -32,14 +32,14 @@ entry_items = [
   { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry3", identifier: "3", tag_ids: seed_tags }
 ]
 
-entry_items.each do |entry_item|
+entry_items.each do |entry_def|
   entry = dictionary.entries.find_or_create_by!(
-              label: entry_item[:label],
-              identifier: entry_item[:identifier],
-              mode: entry_item[:mode],
-            )
+    label: entry_def[:label],
+    identifier: entry_def[:identifier],
+    mode: entry_def[:mode],
+  )
 
-  tag_ids = entry_item[:tag_ids].map(&:id)
+  tag_ids = entry_def[:tag_ids].map(&:id)
   entry.tag_ids = tag_ids
 end
 
