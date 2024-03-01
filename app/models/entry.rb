@@ -54,6 +54,7 @@ class Entry < ApplicationRecord
 
   validates :label, presence: true
   validates :identifier, presence: true
+  validates :score, numericality: { greater_than_or_equal_to: 0, less_than: 1 }, allow_nil: true
 
   scope :gray, -> {where(mode: Entry::MODE_GRAY)}
   scope :white, -> {where(mode: Entry::MODE_WHITE)}
