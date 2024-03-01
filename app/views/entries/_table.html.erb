@@ -18,7 +18,7 @@
 
   <h2 style="margin-bottom:0">
     <span title="<%= title_entry_type %>"><%= @type_entries %> entries</span>
-    <% if params[:label_search] || params[:id_search] -%>
+    <% if params[:label_search] || params[:id_search] || params[:tag_search] -%>
       (search result
       <%= link_to('<i class="fa fa-times" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary), class: 'button', title: 'Cancel') %>
       )
@@ -42,26 +42,26 @@
       <th>
         Label
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
-  	      <%= text_field_tag :label_search, params[:label_search], required: true -%>
-    	    <%= submit_tag 'Search', class: 'button' -%>
-    	  <% end -%>
+          <%= text_field_tag :label_search, params[:label_search], required: true -%>
+          <%= submit_tag 'Search', class: 'button' -%>
+        <% end -%>
       </th>
       <th colspan="2">
         Id
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
-        	<%= text_field_tag :id_search, params[:id_search], required: true -%>
-        	<%= submit_tag 'Search', class: 'button' -%>
-    	  <% end -%>
+          <%= text_field_tag :id_search, params[:id_search], required: true -%>
+          <%= submit_tag 'Search', class: 'button' -%>
+        <% end -%>
       </th>
       <th colspan="2">
-          Tags
           <%= form_tag '', method: :get, class: 'tag-search-container' do -%>
+            Tags
             <%= select_tag :tag_search,
               options_for_select(
                 Tag.where(dictionary_id: @dictionary.id).pluck(:value, :id),
                 selected: params[:tag_search]
               ),
-              { include_blank: true, required: true, class: 'js-searchable' }
+              { include_blank: true, required: true, class: 'js-searchable', style: "width: 150px;" }
             -%>
             <%= submit_tag 'Search', class: 'button' -%>
           <% end -%>
@@ -140,7 +140,7 @@
           <span><%= text_field_tag :identifier, nil, required: true, style: "box-sizing:content-box; width:90%" -%></span>
         </td>
         <td>
-          <span><%= select_tag :tags, options_from_collection_for_select(Tag.where(dictionary_id: @dictionary.id), 'id', 'value'), multiple: true, class: 'js-searchable', style: "box-sizing:content-box; width:90%"  %></span>
+          <span><%= select_tag :tags, options_from_collection_for_select(Tag.where(dictionary_id: @dictionary.id), 'id', 'value'), multiple: true, class: 'js-searchable', style: "box-sizing:content-box; width:100%"  %></span>
         </td>
         <td style="text-align:center">
           <a title="add" href="javascript:{}" onclick="document.getElementById('add_entry_form').submit(); return false;"><i class="fa fa-plus-square" aria-hidden="true"></i></a>
