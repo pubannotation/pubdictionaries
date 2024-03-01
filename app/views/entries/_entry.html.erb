@@ -34,6 +34,11 @@
     <% end %>
   </td>
   <td style="border-left-style: none"></td>
+  <% if entry.mode == Entry::MODE_AUTO_EXPANDED %>
+    <td style="border-right-style: none">
+      <%= entry.score %>
+    </td>
+  <% end %>
   <% if @dictionary.editable?(current_user) %>
     <td style="text-align:center">
       <% case entry.mode %>
