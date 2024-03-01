@@ -27,9 +27,9 @@ entry_items = [
   { mode: Entry::MODE_WHITE, label: "White Mode Entry5", identifier: "4", tags: [] },
   { mode: Entry::MODE_BLACK, label: "Black Mode Entry", identifier: "3", tags: [seed_tags.second, seed_tags.third] },
   { mode: Entry::MODE_BLACK, label: "Black Mode Entry2", identifier: "1", tags: [] },
-  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry", identifier: "1", tags: [seed_tags.second] },
-  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry2", identifier: "1", tags: [] },
-  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry3", identifier: "3", tags: seed_tags }
+  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry", identifier: "1", tags: [seed_tags.second], score: 0.5 },
+  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry2", identifier: "1", tags: [], score: 0.9999 },
+  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry3", identifier: "3", tags: seed_tags, score: 0 },
 ]
 
 entry_items.each do |entry_def|
@@ -37,6 +37,7 @@ entry_items.each do |entry_def|
     label: entry_def[:label],
     identifier: entry_def[:identifier],
     mode: entry_def[:mode],
+    score: entry_def[:score]
   )
 
   entry.tags = entry_def[:tags]
