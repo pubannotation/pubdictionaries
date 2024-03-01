@@ -61,12 +61,18 @@ table.entries{
   text-align: center;
   width: auto;
 
-  .select2-container--default .selection, .select2-selection__arrow {
-    margin-top: 7px;
-  }
+  .select2-container--default {
+    .selection {
+      margin-top: 7px;
+    }
 
-  .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: 15px;
+    .select2-selection__arrow {
+      margin-top: 10px;
+    }
+
+    .select2-selection__rendered {
+      line-height: 15px;
+    }
   }
 }
 
