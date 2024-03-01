@@ -18,18 +18,18 @@ end
 
 # create entries for each mode
 entry_items = [
-  { mode: Entry::MODE_GRAY, label: "Gray Mode Entry", identifier: "1", tag_ids: seed_tags },
-  { mode: Entry::MODE_GRAY, label: "Gray Mode Entry2", identifier: "2", tag_ids: [seed_tags.first, seed_tags.third] },
-  { mode: Entry::MODE_WHITE, label: "White Mode Entry", identifier: "1", tag_ids: seed_tags },
-  { mode: Entry::MODE_WHITE, label: "White Mode Entry2", identifier: "2", tag_ids: [seed_tags.third] },
-  { mode: Entry::MODE_WHITE, label: "White Mode Entry3", identifier: "2", tag_ids: [] },
-  { mode: Entry::MODE_WHITE, label: "White Mode Entry4", identifier: "3", tag_ids: [seed_tags.first, seed_tags.third] },
-  { mode: Entry::MODE_WHITE, label: "White Mode Entry5", identifier: "4", tag_ids: [] },
-  { mode: Entry::MODE_BLACK, label: "Black Mode Entry", identifier: "3", tag_ids: [seed_tags.second, seed_tags.third] },
-  { mode: Entry::MODE_BLACK, label: "Black Mode Entry2", identifier: "1", tag_ids: [] },
-  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry", identifier: "1", tag_ids: [seed_tags.second] },
-  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry2", identifier: "1", tag_ids: [] },
-  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry3", identifier: "3", tag_ids: seed_tags }
+  { mode: Entry::MODE_GRAY, label: "Gray Mode Entry", identifier: "1", tags: seed_tags },
+  { mode: Entry::MODE_GRAY, label: "Gray Mode Entry2", identifier: "2", tags: [seed_tags.first, seed_tags.third] },
+  { mode: Entry::MODE_WHITE, label: "White Mode Entry", identifier: "1", tags: seed_tags },
+  { mode: Entry::MODE_WHITE, label: "White Mode Entry2", identifier: "2", tags: [seed_tags.third] },
+  { mode: Entry::MODE_WHITE, label: "White Mode Entry3", identifier: "2", tags: [] },
+  { mode: Entry::MODE_WHITE, label: "White Mode Entry4", identifier: "3", tags: [seed_tags.first, seed_tags.third] },
+  { mode: Entry::MODE_WHITE, label: "White Mode Entry5", identifier: "4", tags: [] },
+  { mode: Entry::MODE_BLACK, label: "Black Mode Entry", identifier: "3", tags: [seed_tags.second, seed_tags.third] },
+  { mode: Entry::MODE_BLACK, label: "Black Mode Entry2", identifier: "1", tags: [] },
+  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry", identifier: "1", tags: [seed_tags.second] },
+  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry2", identifier: "1", tags: [] },
+  { mode: Entry::MODE_AUTO_EXPANDED, label: "Auto Expanded Mode Entry3", identifier: "3", tags: seed_tags }
 ]
 
 entry_items.each do |entry_def|
@@ -39,8 +39,7 @@ entry_items.each do |entry_def|
     mode: entry_def[:mode],
   )
 
-  tag_ids = entry_def[:tag_ids].map(&:id)
-  entry.tag_ids = tag_ids
+  entry.tags = entry_def[:tags]
 end
 
 # set entries_num
