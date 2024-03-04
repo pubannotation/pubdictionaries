@@ -99,7 +99,7 @@
         <% elsif ['Auto expanded'].include?(@type_entries) %>
           <td style="border-style:none"></td>
           <td style="text-align:center">
-            <a title="remove selected entries" href="javascript:{}" onclick="document.getElementById('delete_entries_form').submit(); return false;"><i class="fa fa-trash-can" aria-hidden="true"></i></a>
+            <a title="remove selected entries" href="javascript:{}" onclick="if(confirm('Are you sure to remove selected entries?')) { document.getElementById('delete_entries_form').submit(); } return false;"><i class="fa fa-trash-can" aria-hidden="true"></i></a>
           </td>
         <% end %>
       </tr>
