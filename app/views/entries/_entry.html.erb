@@ -49,8 +49,7 @@
       <% when Entry::MODE_BLACK %>
         <%= link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Back to gray') %>
       <% when Entry::MODE_AUTO_EXPANDED %>
-        <%# MUST: set correct icon-button, link and title %>
-        <%= link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: '') %>
+        <input type="checkbox" name="entry_id[]" id="entry_id_<%= entry.id %>" class="chkbox" value="<%= entry.id %>">
       <% else %>
       <% end %>
     </td>
