@@ -235,20 +235,20 @@ class Dictionary < ApplicationRecord
 		case mode
 		when nil
 			transaction do
-				entries.delete_all
+				entries.destroy_all
 				update_attribute(:entries_num, 0)
 				clean_sim_string_db
 			end
 		when Entry::MODE_GRAY
 			_num_white = num_white
 			transaction do
-				entries.gray.delete_all
+				entries.gray.destroy_all
 				update_attribute(:entries_num, _num_white)
 			end
 		when Entry::MODE_WHITE
 			_num_gray = num_gray
 			transaction do
-				entries.white.delete_all
+				entries.white.destroy_all
 				update_attribute(:entries_num, _num_gray)
 			end
 		when Entry::MODE_BLACK
@@ -257,7 +257,7 @@ class Dictionary < ApplicationRecord
 			end
 		when Entry::MODE_AUTO_EXPANDED
 			transaction do
-				entries.auto_expanded.delete_all
+				entries.auto_expanded.destroy_all
 			end
 		else
 			raise ArgumentError, "Unexpected mode: #{mode}"
