@@ -255,6 +255,10 @@ class Dictionary < ApplicationRecord
 			transaction do
 				entries.black.each{|e| cancel_black(e)}
 			end
+		when Entry::MODE_AUTO_EXPANDED
+			transaction do
+				entries.auto_expanded.delete_all
+			end
 		else
 			raise ArgumentError, "Unexpected mode: #{mode}"
 		end

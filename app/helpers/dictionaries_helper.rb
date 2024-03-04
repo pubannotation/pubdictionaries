@@ -51,7 +51,7 @@ module DictionariesHelper
 	end
 
 	def delete_entries_helper(mode = nil)
-		mode_to_s = mode.nil? ? '' : ['gray', 'white', 'black', 'pattern'][mode]
+		mode_to_s = mode.nil? ? '' : ['gray', 'white', 'black', 'pattern', 'auto expanded'][mode]
 
 		title = if mode == Entry::MODE_BLACK
 			"Turn all the black entries to gray"
