@@ -65,7 +65,6 @@ Rails.application.routes.draw do
       end
 
       member do
-        put 'switch', to: 'entries#switch_to_black'
         put 'undo', to: "entries#undo"
       end
     end
