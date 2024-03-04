@@ -79,6 +79,10 @@ class Entry < ApplicationRecord
     }
   end
 
+  def self.mode_to_s(mode)
+    mode.nil? ? '' : ['gray', 'white', 'black', 'active', 'custom', 'pattern', 'auto expanded'][mode]
+  end
+
   def self.as_tsv
     CSV.generate(col_sep: "\t") do |tsv|
       tsv << ['#label', :id]
