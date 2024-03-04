@@ -79,7 +79,7 @@
   </thead>
 </table>
 
-<%= form_tag(dictionary_entries_path(@dictionary), method: :delete, id: "delete_entries_form") do %>
+<%= form_tag(switch_entries_dictionary_entries_path(@dictionary), method: :put, id: "switch_entries_form") do %>
   <table class="entries" style="margin-top:0; margin-bottom:0">
     <colgroup>
       <col class="col_label">
@@ -102,7 +102,7 @@
         <td colspan="2" style="border-style:none"></td>
         <td colspan="2" style="border-style:none"></td>
         <td style="text-align:center">
-          <a title="remove selected entries" href="javascript:{}" onclick="document.getElementById('delete_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
+          <a title="switch selected entries to black" href="javascript:{}" onclick="document.getElementById('switch_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
         </td>
       </tr>
     <% end %>

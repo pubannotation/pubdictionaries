@@ -87,7 +87,7 @@ class EntriesController < ApplicationController
 		end
 	end
 
-	def destroy
+	def switch_to_black
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
 			raise ArgumentError, "Could not find the dictionary" if dictionary.nil?
@@ -106,7 +106,7 @@ class EntriesController < ApplicationController
 		end
 	end
 
-	def destroy_entries
+	def switch_to_black_entries
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
 			raise ArgumentError, "Could not find the dictionary" if dictionary.nil?

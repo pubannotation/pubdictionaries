@@ -60,10 +60,11 @@ Rails.application.routes.draw do
       collection do
         put 'empty', to: 'dictionaries#empty'
         post 'tsv', to: 'entries#upload_tsv'
-        delete '/', to: 'entries#destroy_entries'
+        put 'switch_entries', to: 'entries#switch_to_black_entries'
       end
 
       member do
+        put 'switch', to: 'entries#switch_to_black'
         put 'undo', to: "entries#undo"
       end
     end
