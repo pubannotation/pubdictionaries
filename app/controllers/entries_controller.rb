@@ -94,7 +94,7 @@ class EntriesController < ApplicationController
 
 			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
 
-			entries = params[:entry_id].collect{|id| Entry.find(id)}
+			entries = Entry.where(id: params[:entry_id])
 			entries.each{|entry| entry.be_black!}
 			dictionary.update_attribute(:entries_num, dictionary.entries_num - entries.count)
 		rescue => e
@@ -137,8 +137,8 @@ class EntriesController < ApplicationController
 
 			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
 
-			entries = params[:entry_id].collect{|id| Entry.find(id)}
-			entries.each{|entry| entry.destroy}
+			entries = Entry.where(id: params[:entry_id])
+			entries.destroy_all
 		rescue => e
 			message = e.message
 		end
