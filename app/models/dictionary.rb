@@ -515,6 +515,31 @@ class Dictionary < ApplicationRecord
     true
   end
 
+  def expand_synonym
+    identifiers = entries.pluck(:identifier).uniq
+
+    identifiers.each do |identifier|
+      synonyms = entries.where(identifier: identifier).pluck(:label)
+      expanded_synonyms = synonym_expansion(synonyms)
+
+      transaction do
+        expanded_synonyms.each do |expanded_synonym|
+          entries.create!(
+            label: expanded_synonym[:label],
+            identifier: identifier,
+            score: expanded_synonym[:score],
+            mode: EntryMode::AUTO_EXPANDED
+          )
+        end
+        update_entries_num
+      end
+    end
+  end
+
+  def synonym_expansion(synonyms)
+    # setting dummy method for next issue
+  end
+
 	private
 
 	def ngram_order
