@@ -8,7 +8,7 @@
 		<%=
 			link_to(
 				content_tag(:i, '', class:"fa-regular fa-trash-can fa-lg"),
-				empty_dictionary_patterns_path(@dictionary, mode:Entry::MODE_PATTERN),
+				empty_dictionary_patterns_path(@dictionary, mode:EntryMode::PATTERN),
 				title: 'Delete all the patterns',
 				method: :put,
 				data: {confirm: 'Are you sure to delete all the patterns?'}

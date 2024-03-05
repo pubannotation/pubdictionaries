@@ -9,29 +9,29 @@
       </colgroup>
       <tr>
         <th colspan="2" class="active" style="border-style:none" title="<%= t('title.active') %>">
-          <%= link_to 'Active', params.permit(:mode).merge(mode: Entry::MODE_ACTIVE) %>
+          <%= link_to 'Active', params.permit(:mode).merge(mode: EntryMode::ACTIVE) %>
           <%= downloadable_helper %>
         </th>
       </tr>
       <tr>
         <td style="border-style:none"></td>
         <th colspan="2" class="custom" style="border-style:none" title="<%= t('title.custom') %>">
-          <%= link_to 'Custom', params.permit(:mode).merge(mode: Entry::MODE_CUSTOM) %>
-          <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: Entry::MODE_CUSTOM, format: :tsv), title: "Download") %>
+          <%= link_to 'Custom', params.permit(:mode).merge(mode: EntryMode::CUSTOM) %>
+          <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::CUSTOM, format: :tsv), title: "Download") %>
         </th>
       </tr>
       <tr>
         <th class="gray" title="<%= t('title.gray') %>">
-          <%= link_to_unless_current '# Gray', params.permit(:mode).except(:mode).merge(mode: Entry::MODE_GRAY) %>
+          <%= link_to_unless_current '# Gray', params.permit(:mode).except(:mode).merge(mode: EntryMode::GRAY) %>
         </th>
         <th class="white" title="<%= t('title.white') %>">
-          <%= link_to_unless_current '# White', params.permit(:mode).merge(mode: Entry::MODE_WHITE) %>
+          <%= link_to_unless_current '# White', params.permit(:mode).merge(mode: EntryMode::WHITE) %>
         </th>
         <th class="black" title="<%= t('title.black') %>">
-          <%= link_to_unless_current '# Black', params.permit(:mode).merge(mode: Entry::MODE_BLACK) %>
+          <%= link_to_unless_current '# Black', params.permit(:mode).merge(mode: EntryMode::BLACK) %>
         </th>
         <th class="auto_expanded" title="<%= t('title.auto_expanded') %>">
-          <%= link_to_unless_current '# Auto expanded', params.permit(:mode).merge(mode: Entry::MODE_AUTO_EXPANDED) %>
+          <%= link_to_unless_current '# Auto expanded', params.permit(:mode).merge(mode: EntryMode::AUTO_EXPANDED) %>
         </th>
       </tr>
       <tr>
@@ -41,10 +41,10 @@
         <td style="text-align: right"><%= @dictionary.num_auto_expanded %></td>
       </tr>
       <tr>
-        <th><%= delete_entries_helper(Entry::MODE_GRAY) %></th>
-        <th><%= delete_entries_helper(Entry::MODE_WHITE) %></th>
-        <th><%= delete_entries_helper(Entry::MODE_BLACK) %></th>
-        <th><%= delete_entries_helper(Entry::MODE_AUTO_EXPANDED) %></th>
+        <th><%= delete_entries_helper(EntryMode::GRAY) %></th>
+        <th><%= delete_entries_helper(EntryMode::WHITE) %></th>
+        <th><%= delete_entries_helper(EntryMode::BLACK) %></th>
+        <th><%= delete_entries_helper(EntryMode::AUTO_EXPANDED) %></th>
       </tr>
     </table>
   <% else %>

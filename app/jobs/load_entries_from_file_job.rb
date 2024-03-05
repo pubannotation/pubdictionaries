@@ -23,7 +23,7 @@ class LoadEntriesFromFileJob < ApplicationJob
 
     def add_entry(label, identifier, mode)
       case mode
-      when Entry::MODE_PATTERN
+      when EntryMode::PATTERN
         buffer_pattern(label, identifier)
       else
         buffer_entry(label, identifier, mode)
@@ -46,11 +46,11 @@ class LoadEntriesFromFileJob < ApplicationJob
       matched = entries_any? && @dictionary.entries.where(label:label, identifier:identifier)&.first
       if matched
         case mode
-        when Entry::MODE_GRAY
+        when EntryMode::GRAY
           @num_skipped_entries += 1
-        when Entry::MODE_WHITE
+        when EntryMode::WHITE
           matched.be_white!
-        when Entry::MODE_BLACK
+        when EntryMode::BLACK
           matched.be_black!
         else
           raise ArgumentError, "Unexpected mode: #{mode}"
