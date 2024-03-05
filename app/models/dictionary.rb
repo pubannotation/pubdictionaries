@@ -236,32 +236,24 @@ class Dictionary < ApplicationRecord
 	end
 
 	def empty_entries(mode = nil)
-		case mode
-		when nil
-			transaction do
+		transaction do
+			case mode
+			when nil
 				entries.destroy_all
 				clean_sim_string_db
-			end
-		when Entry::MODE_GRAY
-			transaction do
+			when Entry::MODE_GRAY
 				entries.gray.destroy_all
-			end
-		when Entry::MODE_WHITE
-			transaction do
+			when Entry::MODE_WHITE
 				entries.white.destroy_all
-			end
-		when Entry::MODE_BLACK
-			transaction do
+			when Entry::MODE_BLACK
 				entries.black.each{|e| cancel_black(e)}
-			end
-		when Entry::MODE_AUTO_EXPANDED
-			transaction do
+			when Entry::MODE_AUTO_EXPANDED
 				entries.auto_expanded.destroy_all
+			else
+				raise ArgumentError, "Unexpected mode: #{mode}"
 			end
-		else
-			raise ArgumentError, "Unexpected mode: #{mode}"
+			update_entries_num
 		end
-		update_entries_num
 	end
 
 	def new_pattern(expression, identifier)
