@@ -87,33 +87,14 @@ class EntriesController < ApplicationController
 		end
 	end
 
-	def destroy
-		begin
-			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
-			raise ArgumentError, "Could not find the dictionary" if dictionary.nil?
-
-			entry = Entry.find(params[:id])
-			raise ArgumentError, "Could not find the entry" if entry.nil?
-
-			entry.be_black!
-			dictionary.decrement!(:entries_num)
-		rescue => e
-			message = e.message
-		end
-
-		respond_to do |format|
-			format.html{ redirect_back fallback_location: root_path, notice: message }
-		end
-	end
-
-	def destroy_entries
+	def switch_to_black_entries
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
 			raise ArgumentError, "Could not find the dictionary" if dictionary.nil?
 
 			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
 
-			entries = params[:entry_id].collect{|id| Entry.find(id)}
+			entries = Entry.where(id: params[:entry_id])
 			entries.each{|entry| entry.be_black!}
 			dictionary.update_attribute(:entries_num, dictionary.entries_num - entries.count)
 		rescue => e
@@ -146,6 +127,23 @@ class EntriesController < ApplicationController
 					redirect_to dictionary
 				end
 			}
+		end
+	end
+
+	def destroy_entries
+		begin
+			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
+			raise ArgumentError, "Could not find the dictionary" if dictionary.nil?
+
+			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
+
+			Entry.where(id: params[:entry_id]).destroy_all
+		rescue => e
+			message = e.message
+		end
+
+		respond_to do |format|
+			format.html{ redirect_back fallback_location: root_path, notice: message }
 		end
 	end
 end

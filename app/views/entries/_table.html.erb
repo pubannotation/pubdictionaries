@@ -79,33 +79,36 @@
   </thead>
 </table>
 
-<%= form_tag(dictionary_entries_path(@dictionary), method: :delete, id: "delete_entries_form") do %>
-  <table class="entries" style="margin-top:0; margin-bottom:0">
-    <colgroup>
-      <col class="col_label">
-      <col class="col_identifier">
-      <col class="col_button">
-      <col class="col_tags">
-      <col class="col_button">
-      <% if @type_entries == 'Auto expanded' %>
-        <col class="col_score">
-      <% end %>
-      <% if @dictionary.editable?(current_user) %>
-        <col class="col_button">
-      <% end %>
-    </colgroup>
-    <%= render partial: "entries/entry", collection: @entries -%>
+<% if @dictionary.editable?(current_user) %>
+  <% form_action_path = ['Gray', 'Active'].include?(@type_entries) ? switch_entries_dictionary_entries_path(@dictionary) : dictionary_entries_path(@dictionary) %>
+  <% form_method = ['Gray', 'Active'].include?(@type_entries) ? :put : :delete %>
+  <%= form_tag(form_action_path, method: form_method, id: "#{form_method == :put ? 'switch_entries_form' : 'delete_entries_form'}") do %>
 
-    <% if @dictionary.editable?(current_user) && ['Gray', 'Active'].include?(@type_entries) %>
+    <table class="entries" style="margin-top:0; margin-bottom:0">
+      <%= render 'entries/colgroup', type_entries: @type_entries, dictionary: @dictionary %>
+      <%= render partial: "entries/entry", collection: @entries -%>
+
       <tr>
         <td style="border-style:none"></td>
         <td colspan="2" style="border-style:none"></td>
         <td colspan="2" style="border-style:none"></td>
-        <td style="text-align:center">
-          <a title="remove selected entries" href="javascript:{}" onclick="document.getElementById('delete_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
-        </td>
+        <% if ['Gray', 'Active'].include?(@type_entries) %>
+          <td style="text-align:center">
+            <a title="switch selected entries to black" href="javascript:{}" onclick="document.getElementById('switch_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
+          </td>
+        <% elsif ['Auto expanded'].include?(@type_entries) %>
+          <td style="border-style:none"></td>
+          <td style="text-align:center">
+            <a title="remove selected entries" href="javascript:{}" onclick="if(confirm('Are you sure to remove selected entries?')) { document.getElementById('delete_entries_form').submit(); } return false;"><i class="fa fa-trash-can" aria-hidden="true"></i></a>
+          </td>
+        <% end %>
       </tr>
-    <% end %>
+    </table>
+  <% end %>
+<% else %>
+  <table class="entries" style="margin-top:0; margin-bottom:0">
+    <%= render 'entries/colgroup', type_entries: @type_entries, dictionary: @dictionary %>
+    <%= render partial: "entries/entry", collection: @entries -%>
   </table>
 <% end %>
 

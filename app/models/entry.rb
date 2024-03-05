@@ -61,7 +61,7 @@ class Entry < ApplicationRecord
   scope :black, -> {where(mode: Entry::MODE_BLACK)}
   scope :custom, -> {where(mode: [Entry::MODE_WHITE, Entry::MODE_BLACK])}
   scope :active, -> {where(mode: [Entry::MODE_GRAY, Entry::MODE_WHITE])}
-  scope :auto_expanded, -> {where(mode: Entry::MODE_AUTO_EXPANDED)}
+  scope :auto_expanded, -> {where(mode: Entry::MODE_AUTO_EXPANDED).order(score: :desc)}
 
   scope :simple_paginate, -> (page = 1, per = 15) {
     offset = (page - 1) * per
@@ -77,6 +77,10 @@ class Entry < ApplicationRecord
       id: identifier,
       label: label
     }
+  end
+
+  def self.mode_to_s(mode)
+    mode.nil? ? '' : ['gray', 'white', 'black', 'active', 'custom', 'pattern', 'auto expanded'][mode]
   end
 
   def self.as_tsv
