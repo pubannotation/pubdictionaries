@@ -164,7 +164,12 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
-  def num_gray = entries_num - num_white
+  def update_entries_num
+		non_black_num = entries.where.not(mode: Entry::MODE_BLACK).count
+		update(entries_num: non_black_num)
+  end
+
+  def num_gray = entries.gray.count
 
   def num_white = entries.white.count
 
