@@ -44,6 +44,4 @@ entry_items.each do |entry_def|
 end
 
 # set entries_num
-num_gray = dictionary.entries.where(mode: Entry::MODE_GRAY).count
-num_white = dictionary.entries.where(mode: Entry::MODE_WHITE).count
-dictionary.update(entries_num: (num_gray + num_white))
+dictionary.update_entries_num

@@ -45,7 +45,7 @@ class EntriesController < ApplicationController
 			entry.tag_ids = tag_ids
 
 			message = if entry.save
-				dictionary.increment!(:entries_num)
+				dictionary.update_entries_num
 				# dictionary.update_tmp_sim_string_db
 				"The white entry #{entry} was created."
 			else
@@ -96,7 +96,7 @@ class EntriesController < ApplicationController
 
 			entries = Entry.where(id: params[:entry_id])
 			entries.each{|entry| entry.be_black!}
-			dictionary.update_attribute(:entries_num, dictionary.entries_num - entries.count)
+			dictionary.update_entries_num
 		rescue => e
 			message = e.message
 		end
@@ -138,6 +138,7 @@ class EntriesController < ApplicationController
 			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
 
 			Entry.where(id: params[:entry_id]).destroy_all
+			dictionary.update_entries_num
 		rescue => e
 			message = e.message
 		end

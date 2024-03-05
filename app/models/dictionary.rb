@@ -157,14 +157,18 @@ class Dictionary < ApplicationRecord
 	def undo_entry(entry)
 		if entry.is_white?
 			entry.delete
-			decrement!(:entries_num)
 		elsif entry.is_black?
 			entry.be_gray!
-			increment!(:entries_num)
 		end
+		update_entries_num
 	end
 
-  def num_gray = entries_num - num_white
+  def update_entries_num
+		non_black_num = entries.where.not(mode: Entry::MODE_BLACK).count
+		update(entries_num: non_black_num)
+  end
+
+  def num_gray = entries.gray.count
 
   def num_white = entries.white.count
 
@@ -182,14 +186,14 @@ class Dictionary < ApplicationRecord
 	def turn_to_black(entry)
 		raise "Only a gray entry can be turned to black" unless entry.mode == Entry::MODE_GRAY
 		entry.be_black!
-		decrement!(:entries_num)
+		update_entries_num
 	end
 
 	# cancel a black entry to gray
 	def cancel_black(entry)
 		raise "Ony a black entry can be canceled to gray" unless entry.mode == Entry::MODE_BLACK
 		entry.be_gray!
-		increment!(:entries_num)
+		update_entries_num
 	end
 
 	def add_patterns(patterns)
@@ -211,7 +215,7 @@ class Dictionary < ApplicationRecord
 			r = Entry.bulk_import columns, entries, validate: false
 			raise "Import error" unless r.failed_instances.empty?
 
-			increment!(:entries_num, entries.length - black_count)
+			entries.first.dictionary.update_entries_num if entries.any?
 		end
 	end
 
@@ -232,35 +236,23 @@ class Dictionary < ApplicationRecord
 	end
 
 	def empty_entries(mode = nil)
-		case mode
-		when nil
-			transaction do
+		transaction do
+			case mode
+			when nil
 				entries.destroy_all
-				update_attribute(:entries_num, 0)
 				clean_sim_string_db
-			end
-		when Entry::MODE_GRAY
-			_num_white = num_white
-			transaction do
+			when Entry::MODE_GRAY
 				entries.gray.destroy_all
-				update_attribute(:entries_num, _num_white)
-			end
-		when Entry::MODE_WHITE
-			_num_gray = num_gray
-			transaction do
+			when Entry::MODE_WHITE
 				entries.white.destroy_all
-				update_attribute(:entries_num, _num_gray)
-			end
-		when Entry::MODE_BLACK
-			transaction do
+			when Entry::MODE_BLACK
 				entries.black.each{|e| cancel_black(e)}
-			end
-		when Entry::MODE_AUTO_EXPANDED
-			transaction do
+			when Entry::MODE_AUTO_EXPANDED
 				entries.auto_expanded.destroy_all
+			else
+				raise ArgumentError, "Unexpected mode: #{mode}"
 			end
-		else
-			raise ArgumentError, "Unexpected mode: #{mode}"
+			update_entries_num
 		end
 	end
 
