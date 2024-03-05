@@ -137,8 +137,7 @@ class EntriesController < ApplicationController
 
 			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
 
-			entries = Entry.where(id: params[:entry_id])
-			entries.destroy_all
+			Entry.where(id: params[:entry_id]).destroy_all
 		rescue => e
 			message = e.message
 		end
