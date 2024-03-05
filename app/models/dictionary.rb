@@ -522,16 +522,16 @@ class Dictionary < ApplicationRecord
       synonyms = entries.where(identifier: identifier).pluck(:label)
       expanded_synonyms = synonym_expansion(synonyms)
 
-      expanded_synonyms.each do |expanded_synonym|
-        transaction do
+      transaction do
+        expanded_synonyms.each do |expanded_synonym|
           entries.create!(
             label: expanded_synonym[:label],
             identifier: identifier,
             score: expanded_synonym[:score],
             mode: EntryMode::AUTO_EXPANDED
           )
-          update_entries_num
         end
+        update_entries_num
       end
     end
   end
