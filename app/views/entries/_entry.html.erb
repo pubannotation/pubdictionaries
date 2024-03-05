@@ -1,10 +1,10 @@
 <%
   tr_class = if @dictionary.editable?(current_user)
     case entry.mode
-      when Entry::MODE_GRAY then "entry gray"
-      when Entry::MODE_WHITE then "entry white"
-      when Entry::MODE_BLACK then "entry black"
-      when Entry::MODE_AUTO_EXPANDED then "entry auto expanded"
+      when EntryMode::GRAY then "entry gray"
+      when EntryMode::WHITE then "entry white"
+      when EntryMode::BLACK then "entry black"
+      when EntryMode::AUTO_EXPANDED then "entry auto expanded"
       else "entry"
     end
   else
@@ -34,7 +34,7 @@
     <% end %>
   </td>
   <td style="border-left-style: none"></td>
-  <% if entry.mode == Entry::MODE_AUTO_EXPANDED %>
+  <% if entry.mode == EntryMode::AUTO_EXPANDED %>
     <td style="border-right-style: none">
       <%= entry.score %>
     </td>
@@ -42,13 +42,13 @@
   <% if @dictionary.editable?(current_user) %>
     <td style="text-align:center">
       <% case entry.mode %>
-      <% when Entry::MODE_GRAY %>
+      <% when EntryMode::GRAY %>
         <input type="checkbox" name="entry_id[]" id="entry_id_<%= entry.id %>" class="chkbox" value="<%= entry.id %>">
-      <% when Entry::MODE_WHITE %>
+      <% when EntryMode::WHITE %>
         <%= link_to('<i class="fa-regular fa-trash-can" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Remove') %>
-      <% when Entry::MODE_BLACK %>
+      <% when EntryMode::BLACK %>
         <%= link_to('<i class="fa fa-undo" aria-hidden="true"></i>'.html_safe, undo_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Back to gray') %>
-      <% when Entry::MODE_AUTO_EXPANDED %>
+      <% when EntryMode::AUTO_EXPANDED %>
         <input type="checkbox" name="entry_id[]" id="entry_id_<%= entry.id %>" class="chkbox" value="<%= entry.id %>">
       <% else %>
       <% end %>

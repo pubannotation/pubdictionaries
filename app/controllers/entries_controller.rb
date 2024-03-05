@@ -39,7 +39,7 @@ class EntriesController < ApplicationController
 			entry = dictionary.entries.where(label:label, identifier:identifier).first
 			raise ArgumentError, "The entry #{entry} already exists in the dictionary." unless entry.nil?
 
-			entry = dictionary.new_entry(label, identifier, nil, Entry::MODE_WHITE, true)
+			entry = dictionary.new_entry(label, identifier, nil, EntryMode::WHITE, true)
 
 			tag_ids = params[:tags] || []
 			entry.tag_ids = tag_ids

@@ -1,12 +1,4 @@
 class Entry < ApplicationRecord
-  MODE_GRAY  = 0
-  MODE_WHITE = 1
-  MODE_BLACK = 2
-  MODE_ACTIVE = 3 # gray + white (for downloading)
-  MODE_CUSTOM = 4 # white + black (for downloading)
-  MODE_PATTERN = 5 # patterns (regular expressions)
-  MODE_AUTO_EXPANDED = 6
-
   include Elasticsearch::Model
 
   settings index: {
@@ -56,12 +48,12 @@ class Entry < ApplicationRecord
   validates :identifier, presence: true
   validates :score, numericality: { greater_than_or_equal_to: 0, less_than: 1 }, allow_nil: true
 
-  scope :gray, -> {where(mode: Entry::MODE_GRAY)}
-  scope :white, -> {where(mode: Entry::MODE_WHITE)}
-  scope :black, -> {where(mode: Entry::MODE_BLACK)}
-  scope :custom, -> {where(mode: [Entry::MODE_WHITE, Entry::MODE_BLACK])}
-  scope :active, -> {where(mode: [Entry::MODE_GRAY, Entry::MODE_WHITE])}
-  scope :auto_expanded, -> {where(mode: Entry::MODE_AUTO_EXPANDED).order(score: :desc)}
+  scope :gray, -> {where(mode: EntryMode::GRAY)}
+  scope :white, -> {where(mode: EntryMode::WHITE)}
+  scope :black, -> {where(mode: EntryMode::BLACK)}
+  scope :custom, -> {where(mode: [EntryMode::WHITE, EntryMode::BLACK])}
+  scope :active, -> {where(mode: [EntryMode::GRAY, EntryMode::WHITE])}
+  scope :auto_expanded, -> {where(mode: EntryMode::AUTO_EXPANDED).order(score: :desc)}
 
   scope :simple_paginate, -> (page = 1, per = 15) {
     offset = (page - 1) * per
@@ -79,10 +71,6 @@ class Entry < ApplicationRecord
     }
   end
 
-  def self.mode_to_s(mode)
-    mode.nil? ? '' : ['gray', 'white', 'black', 'active', 'custom', 'pattern', 'auto expanded'][mode]
-  end
-
   def self.as_tsv
     CSV.generate(col_sep: "\t") do |tsv|
       tsv << ['#label', :id]
@@ -97,9 +85,9 @@ class Entry < ApplicationRecord
       tsv << ['#label', :id, :operator]
       all.each do |entry|
         operator = case entry.mode
-        when MODE_WHITE
+        when EntryMode::WHITE
           '+'
-        when MODE_BLACK
+        when EntryMode::BLACK
           '-'
         end
         tsv << [entry.label, entry.identifier, operator]
@@ -122,13 +110,13 @@ class Entry < ApplicationRecord
 
     mode = case items[2]
     when '+'
-      Entry::MODE_WHITE
+      EntryMode::WHITE
     when '-'
-      Entry::MODE_BLACK
+      EntryMode::BLACK
     when '/'
-      Entry::MODE_PATTERN
+      EntryMode::PATTERN
     else
-      Entry::MODE_GRAY
+      EntryMode::GRAY
     end
 
     [items[0], items[1], mode]
@@ -139,23 +127,23 @@ class Entry < ApplicationRecord
   end
 
   def be_gray!
-    update_attribute(:mode, Entry::MODE_GRAY)
+    update_attribute(:mode, EntryMode::GRAY)
   end
 
   def be_white!
-    update_attribute(:mode, Entry::MODE_WHITE)
+    update_attribute(:mode, EntryMode::WHITE)
   end
 
   def be_black!
-    update_attribute(:mode, Entry::MODE_BLACK)
+    update_attribute(:mode, EntryMode::BLACK)
   end
 
   def is_white?
-    mode == Entry::MODE_WHITE
+    mode == EntryMode::WHITE
   end
 
   def is_black?
-    mode == Entry::MODE_BLACK
+    mode == EntryMode::BLACK
   end
 
   def self.normalize(text, normalizer, analyzer = nil)

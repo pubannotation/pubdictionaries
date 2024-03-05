@@ -164,7 +164,7 @@ class Dictionary < ApplicationRecord
 	end
 
   def update_entries_num
-		non_black_num = entries.where.not(mode: Entry::MODE_BLACK).count
+		non_black_num = entries.where.not(mode: EntryMode::BLACK).count
 		update(entries_num: non_black_num)
   end
 
@@ -178,20 +178,20 @@ class Dictionary < ApplicationRecord
 
 	# turn a gray entry to white
 	def turn_to_white(entry)
-		raise "Only a gray entry can be turned to white" unless entry.mode == Entry::MODE_GRAY
+		raise "Only a gray entry can be turned to white" unless entry.mode == EntryMode::GRAY
 		entry.be_white!
 	end
 
 	# turn a gray entry to black
 	def turn_to_black(entry)
-		raise "Only a gray entry can be turned to black" unless entry.mode == Entry::MODE_GRAY
+		raise "Only a gray entry can be turned to black" unless entry.mode == EntryMode::GRAY
 		entry.be_black!
 		update_entries_num
 	end
 
 	# cancel a black entry to gray
 	def cancel_black(entry)
-		raise "Ony a black entry can be canceled to gray" unless entry.mode == Entry::MODE_BLACK
+		raise "Ony a black entry can be canceled to gray" unless entry.mode == EntryMode::BLACK
 		entry.be_gray!
 		update_entries_num
 	end
@@ -207,7 +207,7 @@ class Dictionary < ApplicationRecord
 	end
 
 	def add_entries(raw_entries, normalizer = nil)
-		black_count = raw_entries.count{|e| e[2] == Entry::MODE_BLACK}
+		black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
 		transaction do
 			# enrich entries
 			entries = raw_entries.map {|label, identifier, mode| get_enriched_entry(label, identifier, normalizer, mode)}
@@ -219,7 +219,7 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
-	def get_enriched_entry(label, identifier, normalizer = nil, mode = Entry::MODE_GRAY, dirty = false)
+	def get_enriched_entry(label, identifier, normalizer = nil, mode = EntryMode::GRAY, dirty = false)
 		norm1 = normalize1(label, normalizer)
 		norm2 = normalize2(label, normalizer)
 		[label, identifier, norm1, norm2, label.length, mode, dirty, self.id]
@@ -227,7 +227,7 @@ class Dictionary < ApplicationRecord
 		raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
 	end
 
-	def new_entry(label, identifier, normalizer = nil, mode = Entry::MODE_GRAY, dirty = false)
+	def new_entry(label, identifier, normalizer = nil, mode = EntryMode::GRAY, dirty = false)
 		norm1 = normalize1(label, normalizer)
 		norm2 = normalize2(label, normalizer)
 		Entry.new(label:label, identifier:identifier, norm1:norm1, norm2:norm2, label_length:label.length, mode:mode, dirty:dirty, dictionary_id: self.id)
@@ -241,13 +241,13 @@ class Dictionary < ApplicationRecord
 			when nil
 				entries.destroy_all
 				clean_sim_string_db
-			when Entry::MODE_GRAY
+			when EntryMode::GRAY
 				entries.gray.destroy_all
-			when Entry::MODE_WHITE
+			when EntryMode::WHITE
 				entries.white.destroy_all
-			when Entry::MODE_BLACK
+			when EntryMode::BLACK
 				entries.black.each{|e| cancel_black(e)}
-			when Entry::MODE_AUTO_EXPANDED
+			when EntryMode::AUTO_EXPANDED
 				entries.auto_expanded.destroy_all
 			else
 				raise ArgumentError, "Unexpected mode: #{mode}"
@@ -291,10 +291,10 @@ class Dictionary < ApplicationRecord
 		update_sim_string_db
 
 		# commented: do NOT delete black entries
-		# Entry.delete(Entry.where(dictionary_id: self.id, mode:Entry::MODE_BLACK).pluck(:id))
+		# Entry.delete(Entry.where(dictionary_id: self.id, mode:EntryMode::BLACK).pluck(:id))
 
 		# commented: do NOT change white entries to gray ones
-		# entries.where(mode:Entry::MODE_WHITE).update_all(mode: Entry::MODE_GRAY)
+		# entries.where(mode:EntryMode::WHITE).update_all(mode: EntryMode::GRAY)
 
 		update_stop_words
 	end
@@ -546,7 +546,7 @@ class Dictionary < ApplicationRecord
 	def update_tmp_sim_string_db
 		FileUtils.mkdir_p(sim_string_db_dir) unless Dir.exist?(sim_string_db_dir)
 		db = Simstring::Writer.new tmp_sim_string_db_path, 3, false, true
-		self.entries.where(mode: [Entry::MODE_GRAY, Entry::MODE_WHITE]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
+		self.entries.where(mode: [EntryMode::GRAY, EntryMode::WHITE]).pluck(:norm2).uniq.each{|norm2| db.insert norm2}
 		db.close
 	end
 

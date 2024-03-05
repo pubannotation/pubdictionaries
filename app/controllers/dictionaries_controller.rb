@@ -52,17 +52,17 @@ class DictionariesController < ApplicationController
 				else
 					if params[:mode].present?
 						case params[:mode].to_i
-						when Entry::MODE_WHITE
+						when EntryMode::WHITE
 							[@dictionary.entries.white.simple_paginate(page, per), "White"]
-						when Entry::MODE_BLACK
+						when EntryMode::BLACK
 							[@dictionary.entries.black.simple_paginate(page, per), "Black"]
-						when Entry::MODE_GRAY
+						when EntryMode::GRAY
 							[@dictionary.entries.gray.simple_paginate(page, per), "Gray"]
-						when Entry::MODE_ACTIVE
+						when EntryMode::ACTIVE
 							[@dictionary.entries.active.simple_paginate(page, per), "Active"]
-						when Entry::MODE_CUSTOM
+						when EntryMode::CUSTOM
 							[@dictionary.entries.custom.simple_paginate(page, per), "Custom"]
-						when Entry::MODE_AUTO_EXPANDED
+						when EntryMode::AUTO_EXPANDED
 							[@dictionary.entries.auto_expanded.simple_paginate(page, per), "Auto expanded"]
 						else
 							[@dictionary.entries.active.simple_paginate(page, per), "Active"]
@@ -85,17 +85,17 @@ class DictionariesController < ApplicationController
 				else
 					if params[:mode].present?
 						case params[:mode].to_i
-						when Entry::MODE_WHITE
+						when EntryMode::WHITE
 							[@dictionary.entries.added, "white"]
-						when Entry::MODE_BLACK
+						when EntryMode::BLACK
 							[@dictionary.entries.deleted, "black"]
-						when Entry::MODE_GRAY
+						when EntryMode::GRAY
 							[@dictionary.entries.gray, "gray"]
-						when Entry::MODE_ACTIVE
+						when EntryMode::ACTIVE
 							[@dictionary.entries.active, nil]
-						when Entry::MODE_CUSTOM
+						when EntryMode::CUSTOM
 							[@dictionary.entries.custom, "custom"]
-						when Entry::MODE_AUTO_EXPANDED
+						when EntryMode::AUTO_EXPANDED
 							[@dictionary.entries.auto_expanded, "auto expanded"]
 						else
 							[@dictionary.entries.active, nil]
@@ -107,7 +107,7 @@ class DictionariesController < ApplicationController
 
 				filename = @dictionary.name
 				filename += '_' + suffix if suffix
-				if params[:mode].to_i == Entry::MODE_CUSTOM
+				if params[:mode].to_i == EntryMode::CUSTOM
 					send_data entries.as_tsv_v,  filename: "#{filename}.tsv", type: :tsv
 				else
 					send_data entries.as_tsv,  filename: "#{filename}.tsv", type: :tsv
@@ -315,7 +315,7 @@ class DictionariesController < ApplicationController
 
 			mode = params[:mode]&.to_i
 
-			if mode == Entry::MODE_PATTERN
+			if mode == EntryMode::PATTERN
 				dictionary.empty_patterns
 			else
 				dictionary.empty_entries(mode)

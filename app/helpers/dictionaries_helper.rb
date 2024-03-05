@@ -40,7 +40,7 @@ module DictionariesHelper
 				link_to(content_tag(:i, '', class:"fa fa-download"), downloadable_dictionary_path(@dictionary), title: "Download")
 			end
 		else
-			link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: Entry::MODE_ACTIVE, format: :tsv), title: "Download")
+			link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::ACTIVE, format: :tsv), title: "Download")
 		end
 	end
 
@@ -51,15 +51,15 @@ module DictionariesHelper
 	end
 
 	def delete_entries_helper(mode = nil)
-		mode_to_s = Entry.mode_to_s(mode)
+		mode_to_s = EntryMode.to_s(mode)
 
-		title = if mode == Entry::MODE_BLACK
+		title = if mode == EntryMode::BLACK
 			"Turn all the black entries to gray"
 		else
 			"Delete all the #{mode_to_s} entries"
 		end
 
-		confirm = if mode == Entry::MODE_BLACK
+		confirm = if mode == EntryMode::BLACK
 			"Are you sure to turn all the black entries to gray?"
 		else
 			"Are you sure to delete all the #{mode_to_s} entries?"
