@@ -85,9 +85,9 @@ class Entry < ApplicationRecord
       tsv << ['#label', :id, :operator]
       all.each do |entry|
         operator = case entry.mode
-        when MODE_WHITE
+        when EntryMode::WHITE
           '+'
-        when MODE_BLACK
+        when EntryMode::BLACK
           '-'
         end
         tsv << [entry.label, entry.identifier, operator]
