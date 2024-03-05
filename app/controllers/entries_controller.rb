@@ -39,6 +39,7 @@ class EntriesController < ApplicationController
 			entry = dictionary.entries.where(label:label, identifier:identifier).first
 			raise ArgumentError, "The entry #{entry} already exists in the dictionary." unless entry.nil?
 
+			message = nil
 			ActiveRecord::Base.transaction do
 				entry = dictionary.new_entry(label, identifier, nil, EntryMode::WHITE, true)
 
