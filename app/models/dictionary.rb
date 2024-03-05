@@ -155,12 +155,14 @@ class Dictionary < ApplicationRecord
 	end
 
 	def undo_entry(entry)
-		if entry.is_white?
-			entry.delete
-		elsif entry.is_black?
-			entry.be_gray!
+		transaction do
+			if entry.is_white?
+				entry.delete
+			elsif entry.is_black?
+				entry.be_gray!
+			end
+			update_entries_num
 		end
-		update_entries_num
 	end
 
   def update_entries_num
@@ -185,15 +187,19 @@ class Dictionary < ApplicationRecord
 	# turn a gray entry to black
 	def turn_to_black(entry)
 		raise "Only a gray entry can be turned to black" unless entry.mode == EntryMode::GRAY
-		entry.be_black!
-		update_entries_num
+		transaction do
+			entry.be_black!
+			update_entries_num
+		end
 	end
 
 	# cancel a black entry to gray
 	def cancel_black(entry)
 		raise "Ony a black entry can be canceled to gray" unless entry.mode == EntryMode::BLACK
-		entry.be_gray!
-		update_entries_num
+		transaction do
+			entry.be_gray!
+			update_entries_num
+		end
 	end
 
 	def add_patterns(patterns)
