@@ -80,7 +80,7 @@ class Entry < ApplicationRecord
   end
 
   def self.mode_to_s(mode)
-    mode.nil? ? '' : ['gray', 'white', 'black', 'active', 'custom', 'pattern', 'auto expanded'][mode]
+    EntryMode.to_s(mode)
   end
 
   def self.as_tsv
