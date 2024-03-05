@@ -39,17 +39,19 @@ class EntriesController < ApplicationController
 			entry = dictionary.entries.where(label:label, identifier:identifier).first
 			raise ArgumentError, "The entry #{entry} already exists in the dictionary." unless entry.nil?
 
-			entry = dictionary.new_entry(label, identifier, nil, EntryMode::WHITE, true)
+			ActiveRecord::Base.transaction do
+				entry = dictionary.new_entry(label, identifier, nil, EntryMode::WHITE, true)
 
-			tag_ids = params[:tags] || []
-			entry.tag_ids = tag_ids
+				tag_ids = params[:tags] || []
+				entry.tag_ids = tag_ids
 
-			message = if entry.save
-				dictionary.update_entries_num
-				# dictionary.update_tmp_sim_string_db
-				"The white entry #{entry} was created."
-			else
-				"The white entry #{entry} could not be created."
+				message = if entry.save
+					dictionary.update_entries_num
+					# dictionary.update_tmp_sim_string_db
+					"The white entry #{entry} was created."
+				else
+					"The white entry #{entry} could not be created."
+				end
 			end
 		rescue => e
 			raise if Rails.env.development?
@@ -94,9 +96,11 @@ class EntriesController < ApplicationController
 
 			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
 
-			entries = Entry.where(id: params[:entry_id])
-			entries.each{|entry| entry.be_black!}
-			dictionary.update_entries_num
+			ActiveRecord::Base.transaction do
+				entries = Entry.where(id: params[:entry_id])
+				entries.each{|entry| entry.be_black!}
+				dictionary.update_entries_num
+			end
 		rescue => e
 			message = e.message
 		end
@@ -137,8 +141,10 @@ class EntriesController < ApplicationController
 
 			raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
 
-			Entry.where(id: params[:entry_id]).destroy_all
-			dictionary.update_entries_num
+			ActiveRecord::Base.transaction do
+				Entry.where(id: params[:entry_id]).destroy_all
+				dictionary.update_entries_num
+			end
 		rescue => e
 			message = e.message
 		end
