@@ -519,7 +519,7 @@ class Dictionary < ApplicationRecord
     identifiers = entries.pluck(:identifier).uniq
 
     identifiers.each do |identifier|
-      synonyms = entries.where(identifier: identifier).pluck(:label)
+      synonyms = entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).pluck(:label)
       expanded_synonyms = synonym_expansion(synonyms)
 
       transaction do
