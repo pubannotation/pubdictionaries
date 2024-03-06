@@ -34,7 +34,7 @@
     <% end %>
   </td>
   <td style="border-left-style: none"></td>
-  <% if entry.mode == EntryMode::AUTO_EXPANDED %>
+  <% if @type_entries == 'Auto expanded' %>
     <td style="border-right-style: none">
       <%= entry.score %>
     </td>

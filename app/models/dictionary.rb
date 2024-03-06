@@ -519,7 +519,7 @@ class Dictionary < ApplicationRecord
     identifiers = entries.pluck(:identifier).uniq
 
     identifiers.each do |identifier|
-      synonyms = entries.where(identifier: identifier).pluck(:label)
+      synonyms = entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).pluck(:label)
       expanded_synonyms = synonym_expansion(synonyms)
 
       transaction do
@@ -537,7 +537,11 @@ class Dictionary < ApplicationRecord
   end
 
   def synonym_expansion(synonyms)
-    # setting dummy method for next issue
+    synonyms.map.with_index do |label, i|
+      expanded_label = "#{label}--dummy-synonym-#{i + 1}"
+      score = rand.round(4)
+      { label: expanded_label, score:  }
+    end
   end
 
 	private
