@@ -1,0 +1,9 @@
+<fieldset class="dialog">
+  <legend>Automatically expand synonyms</legend>
+
+  <p class="note">You can automatically expand synonyms for entries.</p>
+
+  <%= form_with url: expand_synonym_jobs_path(@dictionary), method: :post do |f| %>
+    <%= f.submit 'Expand Synonym', class: 'button' %>
+  <% end %>
+</fieldset>
