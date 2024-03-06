@@ -50,11 +50,11 @@ Rails.application.routes.draw do
       get  'substring_completion', to: 'lookup#substring_completion'
       get  'mixed_completion', to: 'lookup#mixed_completion'
       get 'compile'
-      post 'expand_synonym'
       get 'downloadable'
       post 'downloadable', to: 'dictionaries#create_downloadable', as: 'create_downloadable'
       post 'managers', to: 'dictionaries#add_manager'
       delete 'managers/:username', to: 'dictionaries#remove_manager', as: 'manager'
+      resources :expand_synonym_jobs, only: :create
     end
 
     resources :entries do
