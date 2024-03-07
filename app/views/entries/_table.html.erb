@@ -162,7 +162,7 @@
           <span><%= select_tag :tags, options_from_collection_for_select(Tag.where(dictionary_id: @dictionary.id), 'id', 'value'), multiple: true, class: 'js-searchable', style: "box-sizing:content-box; width:100%"  %></span>
         </td>
         <% if @type_entries == 'Auto expanded' %>
-          <td style="border-right-style: none"></td><td style="border-left-style: none"></td>
+          <td colspan="2"></td>
         <% end %>
         <td style="text-align:center">
           <a title="add" href="javascript:{}" onclick="document.getElementById('add_entry_form').submit(); return false;"><i class="fa fa-plus-square" aria-hidden="true"></i></a>
