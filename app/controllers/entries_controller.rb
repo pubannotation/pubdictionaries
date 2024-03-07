@@ -144,18 +144,24 @@ class EntriesController < ApplicationController
 			raise ArgumentError, "Cannot find the entry" if entry.nil?
 
 			dictionary.confirm_entry(entry)
-		rescue => e
-			message = e.message
-		end
 
-		respond_to do |format|
-			format.html{
-				if dictionary.entries.auto_expanded.exists?
-					redirect_back fallback_location: root_path, notice: message
-				else
-					redirect_to dictionary
-				end
-			}
+			respond_to do |format|
+				format.html{
+					if dictionary.entries.auto_expanded.exists?
+						redirect_back fallback_location: root_path
+					else
+						redirect_to dictionary
+					end
+				}
+			end
+		rescue ArgumentError => e
+			respond_to do |format|
+				format.html {flash.now[:notice] = e.message}
+			end
+		rescue => e
+			respond_to do |format|
+				format.html { redirect_to dictionary, notice: e.message }
+			end
 		end
 	end
 
