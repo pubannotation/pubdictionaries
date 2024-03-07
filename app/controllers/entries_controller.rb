@@ -150,7 +150,7 @@ class EntriesController < ApplicationController
 
 		respond_to do |format|
 			format.html{
-				if dictionary.entries.white.exists? || dictionary.entries.auto_expanded.exists?
+				if dictionary.entries.auto_expanded.exists?
 					redirect_back fallback_location: root_path, notice: message
 				else
 					redirect_to dictionary
