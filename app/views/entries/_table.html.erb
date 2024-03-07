@@ -35,6 +35,7 @@
     <col class="col_button">
     <% if @type_entries == 'Auto expanded' %>
       <col class="col_score">
+      <col class="col_button">
     <% end %>
     <% if @dictionary.editable?(current_user) %>
       <col class="col_button">
@@ -71,9 +72,10 @@
       </th>
       <% if @type_entries == 'Auto expanded' %>
         <th>Score</th>
+        <th style="border-right-style: none"></th>
       <% end %>
       <% if @dictionary.editable?(current_user) %>
-        <th></th>
+        <th style="border-left-style: none"></th>
       <% end %>
     </tr>
   </thead>
@@ -97,6 +99,7 @@
             <a title="switch selected entries to black" href="javascript:{}" onclick="document.getElementById('switch_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
           </td>
         <% elsif ['Auto expanded'].include?(@type_entries) %>
+          <td style="border-style:none"></td>
           <td style="border-style:none"></td>
           <td style="text-align:center">
             <a title="remove selected entries" href="javascript:{}" onclick="if(confirm('Are you sure to remove selected entries?')) { document.getElementById('delete_entries_form').submit(); } return false;"><i class="fa fa-trash-can" aria-hidden="true"></i></a>
@@ -142,6 +145,7 @@
     <col class="col_tags">
     <% if @type_entries == 'Auto expanded' %>
       <col class="col_score">
+      <col class="col_button">
     <% end %>
     <col class="col_button">
   </colgroup>
@@ -158,7 +162,7 @@
           <span><%= select_tag :tags, options_from_collection_for_select(Tag.where(dictionary_id: @dictionary.id), 'id', 'value'), multiple: true, class: 'js-searchable', style: "box-sizing:content-box; width:100%"  %></span>
         </td>
         <% if @type_entries == 'Auto expanded' %>
-          <td></td>
+          <td style="border-right-style: none"></td><td style="border-left-style: none"></td>
         <% end %>
         <td style="text-align:center">
           <a title="add" href="javascript:{}" onclick="document.getElementById('add_entry_form').submit(); return false;"><i class="fa fa-plus-square" aria-hidden="true"></i></a>
