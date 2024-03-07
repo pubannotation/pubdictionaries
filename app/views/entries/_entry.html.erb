@@ -39,7 +39,7 @@
       <%= entry.score %>
     </td>
     <td style="border-right-style: none; text-align: center">
-      <%= link_to('<i class="fa-regular fa-circle-check"></i>'.html_safe, '#_path(@dictionary, entry)', method: :put, title: 'Auto expanded to white') %>
+      <%= link_to('<i class="fa-regular fa-circle-check"></i>'.html_safe, confirm_dictionary_entry_path(@dictionary, entry), method: :put, title: 'Auto expanded to white') %>
     </td>
   <% end %>
   <% if @dictionary.editable?(current_user) %>

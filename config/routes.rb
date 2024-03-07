@@ -67,6 +67,7 @@ Rails.application.routes.draw do
 
       member do
         put 'undo', to: "entries#undo"
+        put 'confirm', to: "entries#confirm_to_white"
       end
     end
 

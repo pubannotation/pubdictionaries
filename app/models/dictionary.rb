@@ -165,6 +165,13 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
+	def confirm_entry(entry)
+		transaction do
+			entry.be_white!
+			update_entries_num
+		end
+	end
+
   def update_entries_num
 		non_black_num = entries.where.not(mode: EntryMode::BLACK).count
 		update(entries_num: non_black_num)

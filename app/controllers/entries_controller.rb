@@ -135,6 +135,30 @@ class EntriesController < ApplicationController
 		end
 	end
 
+	def confirm_to_white
+		begin
+			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
+			raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+
+			entry = Entry.find(params[:id])
+			raise ArgumentError, "Cannot find the entry" if entry.nil?
+
+			dictionary.confirm_entry(entry)
+		rescue => e
+			message = e.message
+		end
+
+		respond_to do |format|
+			format.html{
+				if dictionary.entries.white.exists? || dictionary.entries.auto_expanded.exists?
+					redirect_back fallback_location: root_path, notice: message
+				else
+					redirect_to dictionary
+				end
+			}
+		end
+	end
+
 	def destroy_entries
 		begin
 			dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
