@@ -42,66 +42,66 @@ class DictionariesController < ApplicationController
 			format.html {
 				@entries, @type_entries = if params[:label_search]
 					params[:label_search].strip!
-					[@dictionary.narrow_entries_by_label(params[:label_search], page, per), "Active"]
+					[@dictionary.narrow_entries_by_label(params[:label_search], page, per).includes(:tags), "Active"]
 				elsif params[:id_search]
 					params[:id_search].strip!
-					[@dictionary.narrow_entries_by_identifier(params[:id_search], page, per), "Active"]
+					[@dictionary.narrow_entries_by_identifier(params[:id_search], page, per).includes(:tags), "Active"]
 				elsif params[:tag_search]
 					tag_id = params[:tag_search].to_i
-					[@dictionary.narrow_entries_by_tag(tag_id, page, per), "Active"]
+					[@dictionary.narrow_entries_by_tag(tag_id, page, per).includes(:tags), "Active"]
 				else
 					if params[:mode].present?
 						case params[:mode].to_i
 						when EntryMode::WHITE
-							[@dictionary.entries.white.simple_paginate(page, per), "White"]
+							[@dictionary.entries.white.simple_paginate(page, per).includes(:tags), "White"]
 						when EntryMode::BLACK
-							[@dictionary.entries.black.simple_paginate(page, per), "Black"]
+							[@dictionary.entries.black.simple_paginate(page, per).includes(:tags), "Black"]
 						when EntryMode::GRAY
-							[@dictionary.entries.gray.simple_paginate(page, per), "Gray"]
+							[@dictionary.entries.gray.simple_paginate(page, per).includes(:tags), "Gray"]
 						when EntryMode::ACTIVE
-							[@dictionary.entries.active.simple_paginate(page, per), "Active"]
+							[@dictionary.entries.active.simple_paginate(page, per).includes(:tags), "Active"]
 						when EntryMode::CUSTOM
-							[@dictionary.entries.custom.simple_paginate(page, per), "Custom"]
+							[@dictionary.entries.custom.simple_paginate(page, per).includes(:tags), "Custom"]
 						when EntryMode::AUTO_EXPANDED
-							[@dictionary.entries.auto_expanded.simple_paginate(page, per), "Auto expanded"]
+							[@dictionary.entries.auto_expanded.simple_paginate(page, per).includes(:tags), "Auto expanded"]
 						else
-							[@dictionary.entries.active.simple_paginate(page, per), "Active"]
+							[@dictionary.entries.active.simple_paginate(page, per).includes(:tags), "Active"]
 						end
 					else
-						[@dictionary.entries.active.simple_paginate(page, per).load_async, "Active"]
+						[@dictionary.entries.active.simple_paginate(page, per).load_async.includes(:tags), "Active"]
 					end
 				end
 			}
 			format.tsv  {
 				entries, suffix = if params[:label_search]
 					params[:label_search].strip!
-					[@dictionary.narrow_entries_by_label(params[:label_search]), "label_search_#{params[:label_search]}"]
+					[@dictionary.narrow_entries_by_label(params[:label_search]).includes(:tags), "label_search_#{params[:label_search]}"]
 				elsif params[:id_search]
 					params[:id_search].strip!
-					[@dictionary.narrow_entries_by_identifier(params[:id_search]), "id_search_#{params[:id_search]}"]
+					[@dictionary.narrow_entries_by_identifier(params[:id_search]).includes(:tags), "id_search_#{params[:id_search]}"]
 				elsif params[:tag_search]
 					tag_id = params[:tag_search].to_i
-					[@dictionary.narrow_entries_by_tag(tag_id, page, per), "tag_search_#{params[:tag_search]}"]
+					[@dictionary.narrow_entries_by_tag(tag_id, page, per).includes(:tags), "tag_search_#{params[:tag_search]}"]
 				else
 					if params[:mode].present?
 						case params[:mode].to_i
 						when EntryMode::WHITE
-							[@dictionary.entries.added, "white"]
+							[@dictionary.entries.added.includes(:tags), "white"]
 						when EntryMode::BLACK
-							[@dictionary.entries.deleted, "black"]
+							[@dictionary.entries.deleted.includes(:tags), "black"]
 						when EntryMode::GRAY
-							[@dictionary.entries.gray, "gray"]
+							[@dictionary.entries.gray.includes(:tags), "gray"]
 						when EntryMode::ACTIVE
-							[@dictionary.entries.active, nil]
+							[@dictionary.entries.active.includes(:tags), nil]
 						when EntryMode::CUSTOM
-							[@dictionary.entries.custom, "custom"]
+							[@dictionary.entries.custom.includes(:tags), "custom"]
 						when EntryMode::AUTO_EXPANDED
-							[@dictionary.entries.auto_expanded, "auto expanded"]
+							[@dictionary.entries.auto_expanded.includes(:tags), "auto expanded"]
 						else
-							[@dictionary.entries.active, nil]
+							[@dictionary.entries.active.includes(:tags), nil]
 						end
 					else
-						[@dictionary.entries.active, nil]
+						[@dictionary.entries.active.includes(:tags), nil]
 					end
 				end
 
