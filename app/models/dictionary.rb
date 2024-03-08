@@ -523,22 +523,23 @@ class Dictionary < ApplicationRecord
   end
 
   def expand_synonym
-    identifiers = entries.pluck(:identifier).uniq
+    entries.pluck(:identifier).uniq.each_slice(1000) do |identifiers|
+      identifiers.each do |identifier|
+        entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).pluck(:label).each_slice(1000) do |synonyms|
+          expanded_synonyms = synonym_expansion(synonyms)
 
-    identifiers.each do |identifier|
-      synonyms = entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).pluck(:label)
-      expanded_synonyms = synonym_expansion(synonyms)
-
-      transaction do
-        expanded_synonyms.each do |expanded_synonym|
-          entries.create!(
-            label: expanded_synonym[:label],
-            identifier: identifier,
-            score: expanded_synonym[:score],
-            mode: EntryMode::AUTO_EXPANDED
-          )
+          transaction do
+            expanded_synonyms.each do |expanded_synonym|
+              entries.create!(
+                label: expanded_synonym[:label],
+                identifier: identifier,
+                score: expanded_synonym[:score],
+                mode: EntryMode::AUTO_EXPANDED
+              )
+            end
+            update_entries_num
+          end
         end
-        update_entries_num
       end
     end
   end
