@@ -529,7 +529,7 @@ class Dictionary < ApplicationRecord
     unique_identifiers = Set.new
     entries_without_black = entries.where.not(mode: EntryMode::BLACK)
 
-    loop do
+    while last_id < max_id do
       current_batch = entries_without_black.where("id > ?", last_id).order(:id).limit(batch_size)
       break if current_batch.empty?
 
