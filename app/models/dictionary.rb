@@ -526,13 +526,13 @@ class Dictionary < ApplicationRecord
     last_id = 0
     max_id = entries.maximum(:id)
     batch_size = 1000
-    nique_identifiers = Set.new
+    unique_identifiers = Set.new
     identifier_batches = []
 
     # create unique identifier batches
     loop do
       current_batch = entries.where("id > ?", last_id).order(:id).limit(batch_size)
-      reak if current_batch.empty?
+      break if current_batch.empty?
 
       current_identifiers = current_batch.pluck(:identifier).filter do |identifier|
         new_identifier = !unique_identifiers.include?(identifier)
