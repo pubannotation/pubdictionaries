@@ -523,13 +523,21 @@ class Dictionary < ApplicationRecord
   end
 
   def expand_synonym
-    last_id = 0
     max_id = entries.maximum(:id)
     batch_size = 1000
     unique_identifiers = Set.new
 
-    while last_id < max_id do
-      current_batch = entries.without_black.where("id > ?", last_id).order(:id).limit(batch_size)
+    entries_count =  entries.without_black.count
+    batch_count = entries_count / batch_size
+
+    0.upto(batch_count) do |i|
+      current_batch = entries.without_black
+                              .select(:identifier)
+                              .distinct
+                              .order(:identifier)
+                              .offset(i * batch_size)
+                              .limit(batch_size)
+                              .pluck(:identifier)
       break if current_batch.empty?
 
       current_identifiers(current_batch, unique_identifiers).each do |identifier|
@@ -537,7 +545,6 @@ class Dictionary < ApplicationRecord
         expanded_synonyms = synonym_expansion(synonyms)
         create_expanded_synonym_entries(expanded_synonyms, identifier)
       end
-      last_id = current_batch.last.id
     end
   end
 
@@ -649,7 +656,7 @@ class Dictionary < ApplicationRecord
 	end
 
   def current_identifiers(current_batch, unique_identifiers)
-    current_batch.pluck(:identifier).filter do |identifier|
+    current_batch.filter do |identifier|
       new_identifier = !unique_identifiers.include?(identifier)
       unique_identifiers.add(identifier) if new_identifier
       new_identifier
