@@ -541,10 +541,8 @@ class Dictionary < ApplicationRecord
       end
 
       identifier_batches << current_identifiers unless current_identifiers.empty?
-      Rails.logger.debug  "identifier_batches: #{identifier_batches}"
       last_id = current_batch.last.id
-      Rails.logger.debug "last_id after update: #{last_id}"
-		end
+    end
 
     identifier_batches.each do |identifiers|
       identifiers.each do |identifier|
