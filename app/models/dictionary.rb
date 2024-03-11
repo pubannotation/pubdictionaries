@@ -533,28 +533,10 @@ class Dictionary < ApplicationRecord
       current_batch = entries_without_black.where("id > ?", last_id).order(:id).limit(batch_size)
       break if current_batch.empty?
 
-      # create unique identifiers
-      current_identifiers = current_batch.pluck(:identifier).filter do |identifier|
-        new_identifier = !unique_identifiers.include?(identifier)
-        unique_identifiers.add(identifier) if new_identifier
-        new_identifier
-      end
-
-      current_identifiers.each do |identifier|
+      current_identifiers(current_batch, unique_identifiers).each do |identifier|
         synonyms = entries_without_black.where(identifier: identifier).where("id <= ?", max_id).pluck(:label)
         expanded_synonyms = synonym_expansion(synonyms)
-
-        transaction do
-          expanded_synonyms.each do |expanded_synonym|
-            entries.create!(
-              label: expanded_synonym[:label],
-              identifier: identifier,
-              score: expanded_synonym[:score],
-              mode: EntryMode::AUTO_EXPANDED
-            )
-          end
-          update_entries_num
-        end
+        create_expanded_synonym_entries(expanded_synonyms, identifier)
       end
       last_id = current_batch.last.id
     end
@@ -666,4 +648,26 @@ class Dictionary < ApplicationRecord
 			Entry.method(:str_sim_jaccard_3gram)
 		end
 	end
+
+  def current_identifiers(current_batch, unique_identifiers)
+    current_batch.pluck(:identifier).filter do |identifier|
+      new_identifier = !unique_identifiers.include?(identifier)
+      unique_identifiers.add(identifier) if new_identifier
+      new_identifier
+    end
+  end
+
+  def create_expanded_synonym_entries(expanded_synonyms, identifier)
+    transaction do
+      expanded_synonyms.each do |expanded_synonym|
+        entries.create!(
+          label: expanded_synonym[:label],
+          identifier: identifier,
+          score: expanded_synonym[:score],
+          mode: EntryMode::AUTO_EXPANDED
+        )
+      end
+      update_entries_num
+    end
+  end
 end
