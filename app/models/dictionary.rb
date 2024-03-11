@@ -547,8 +547,8 @@ class Dictionary < ApplicationRecord
   def synonym_expansion(synonyms)
     synonyms.map.with_index do |label, i|
       expanded_label = "#{label}--dummy-synonym-#{i + 1}"
-      score = rand.round(4)
-      { label: expanded_label, score:  }
+      score = rand
+      { label: expanded_label, score: }
     end
   end
 
