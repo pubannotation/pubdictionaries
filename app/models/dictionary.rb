@@ -527,14 +527,13 @@ class Dictionary < ApplicationRecord
     max_id = entries.maximum(:id)
     batch_size = 1000
     unique_identifiers = Set.new
-    entries_without_black = entries.where.not(mode: EntryMode::BLACK)
 
     while last_id < max_id do
-      current_batch = entries_without_black.where("id > ?", last_id).order(:id).limit(batch_size)
+      current_batch = entries.without_black.where("id > ?", last_id).order(:id).limit(batch_size)
       break if current_batch.empty?
 
       current_identifiers(current_batch, unique_identifiers).each do |identifier|
-        synonyms = entries_without_black.where(identifier: identifier).where("id <= ?", max_id).pluck(:label)
+        synonyms = entries.without_black.where(identifier: identifier).where("id <= ?", max_id).pluck(:label)
         expanded_synonyms = synonym_expansion(synonyms)
         create_expanded_synonym_entries(expanded_synonyms, identifier)
       end
