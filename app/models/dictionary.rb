@@ -527,25 +527,19 @@ class Dictionary < ApplicationRecord
     max_id = entries.maximum(:id)
     batch_size = 1000
     unique_identifiers = Set.new
-    identifier_batches = []
 
-    # create unique identifier batches
     loop do
       current_batch = entries.where("id > ?", last_id).order(:id).limit(batch_size)
       break if current_batch.empty?
 
+      # create unique identifiers
       current_identifiers = current_batch.pluck(:identifier).filter do |identifier|
         new_identifier = !unique_identifiers.include?(identifier)
         unique_identifiers.add(identifier) if new_identifier
         new_identifier
       end
 
-      identifier_batches << current_identifiers unless current_identifiers.empty?
-      last_id = current_batch.last.id
-    end
-
-    identifier_batches.each do |identifiers|
-      identifiers.each do |identifier|
+      current_identifiers.each do |identifier|
         entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).where("id <= ?", max_id).find_in_batches(batch_size: 1000) do |synonyms_batch|
           synonyms = synonyms_batch.pluck(:label)
           expanded_synonyms = synonym_expansion(synonyms)
@@ -563,6 +557,7 @@ class Dictionary < ApplicationRecord
           end
         end
       end
+      last_id = current_batch.last.id
     end
   end
 
