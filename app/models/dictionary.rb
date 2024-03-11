@@ -541,21 +541,19 @@ class Dictionary < ApplicationRecord
       end
 
       current_identifiers.each do |identifier|
-        entries_without_black.where(identifier: identifier).where("id <= ?", max_id).find_in_batches(batch_size: 1000) do |synonyms_batch|
-          synonyms = synonyms_batch.pluck(:label)
-          expanded_synonyms = synonym_expansion(synonyms)
+        synonyms = entries_without_black.where(identifier: identifier).where("id <= ?", max_id).pluck(:label)
+        expanded_synonyms = synonym_expansion(synonyms)
 
-          transaction do
-            expanded_synonyms.each do |expanded_synonym|
-              entries.create!(
-                label: expanded_synonym[:label],
-                identifier: identifier,
-                score: expanded_synonym[:score],
-                mode: EntryMode::AUTO_EXPANDED
-              )
-            end
-            update_entries_num
+        transaction do
+          expanded_synonyms.each do |expanded_synonym|
+            entries.create!(
+              label: expanded_synonym[:label],
+              identifier: identifier,
+              score: expanded_synonym[:score],
+              mode: EntryMode::AUTO_EXPANDED
+            )
           end
+          update_entries_num
         end
       end
       last_id = current_batch.last.id
