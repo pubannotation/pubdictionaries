@@ -524,6 +524,7 @@ class Dictionary < ApplicationRecord
 
   def expand_synonym
     last_id = 0
+    max_id = entries.maximum(:id)
     batch_size = 1000
     nique_identifiers = Set.new
     identifier_batches = []
@@ -547,7 +548,8 @@ class Dictionary < ApplicationRecord
 
     identifier_batches.each do |identifiers|
       identifiers.each do |identifier|
-        entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).pluck(:label).each_slice(1000) do |synonyms|
+        entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).where("id <= ?", max_id).find_in_batches(batch_size: 1000) do |synonyms_batch|
+          synonyms = synonyms_batch.pluck(:label)
           expanded_synonyms = synonym_expansion(synonyms)
 
           transaction do
