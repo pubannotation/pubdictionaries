@@ -527,9 +527,10 @@ class Dictionary < ApplicationRecord
     max_id = entries.maximum(:id)
     batch_size = 1000
     unique_identifiers = Set.new
+    entries_without_black = entries.where.not(mode: EntryMode::BLACK)
 
     loop do
-      current_batch = entries.where("id > ?", last_id).order(:id).limit(batch_size)
+      current_batch = entries_without_black.where("id > ?", last_id).order(:id).limit(batch_size)
       break if current_batch.empty?
 
       # create unique identifiers
@@ -540,7 +541,7 @@ class Dictionary < ApplicationRecord
       end
 
       current_identifiers.each do |identifier|
-        entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).where("id <= ?", max_id).find_in_batches(batch_size: 1000) do |synonyms_batch|
+        entries_without_black.where(identifier: identifier).where("id <= ?", max_id).find_in_batches(batch_size: 1000) do |synonyms_batch|
           synonyms = synonyms_batch.pluck(:label)
           expanded_synonyms = synonym_expansion(synonyms)
 
