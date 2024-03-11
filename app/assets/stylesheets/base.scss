@@ -71,7 +71,11 @@ table.entries{
     }
 
     .select2-selection__rendered {
-      line-height: 15px;
+      line-height: 11px;
+    }
+
+    .select2-selection__clear {
+      line-height: 1px;
     }
   }
 }
