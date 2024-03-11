@@ -523,7 +523,29 @@ class Dictionary < ApplicationRecord
   end
 
   def expand_synonym
-    entries.pluck(:identifier).uniq.each_slice(1000) do |identifiers|
+    last_id = 0
+    batch_size = 1000
+    nique_identifiers = Set.new
+    identifier_batches = []
+
+    # create unique identifier batches
+    loop do
+      current_batch = entries.where("id > ?", last_id).order(:id).limit(batch_size)
+      reak if current_batch.empty?
+
+      current_identifiers = current_batch.pluck(:identifier).filter do |identifier|
+        new_identifier = !unique_identifiers.include?(identifier)
+        unique_identifiers.add(identifier) if new_identifier
+        new_identifier
+      end
+
+      identifier_batches << current_identifiers unless current_identifiers.empty?
+      Rails.logger.debug  "identifier_batches: #{identifier_batches}"
+      last_id = current_batch.last.id
+      Rails.logger.debug "last_id after update: #{last_id}"
+		end
+
+    identifier_batches.each do |identifiers|
       identifiers.each do |identifier|
         entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).pluck(:label).each_slice(1000) do |synonyms|
           expanded_synonyms = synonym_expansion(synonyms)
