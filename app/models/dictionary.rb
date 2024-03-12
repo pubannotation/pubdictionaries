@@ -539,10 +539,12 @@ class Dictionary < ApplicationRecord
                               .pluck(:identifier)
       break if current_batch.empty?
 
-      current_identifiers(current_batch, unique_identifiers).each do |identifier|
+      new_identifiers = current_batch.reject { |identifier| unique_identifiers.include?(identifier) }
+      new_identifiers.each do |identifier|
         synonyms = entries.without_black.where(identifier: identifier).where("created_at < ?", start_time).pluck(:label)
         expanded_synonyms = synonym_expansion(synonyms)
         append_expanded_synonym_entries(identifier, expanded_synonyms)
+        unique_identifiers.add(identifier)
       end
     end
   end
@@ -653,14 +655,6 @@ class Dictionary < ApplicationRecord
 			Entry.method(:str_sim_jaccard_3gram)
 		end
 	end
-
-  def current_identifiers(current_batch, unique_identifiers)
-    current_batch.filter do |identifier|
-      new_identifier = !unique_identifiers.include?(identifier)
-      unique_identifiers.add(identifier) if new_identifier
-      new_identifier
-    end
-  end
 
   def append_expanded_synonym_entries(identifier, expanded_synonyms)
     transaction do
