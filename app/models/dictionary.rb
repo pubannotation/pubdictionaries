@@ -527,8 +527,8 @@ class Dictionary < ApplicationRecord
     batch_size = 1000
     unique_identifiers = Set.new
 
-    entries_count =  entries.without_black.count
-    batch_count = entries_count / batch_size
+    identifiers_count =  entries.without_black.select(:identifier).distinct.count
+    batch_count = (identifiers_count.to_f / batch_size).ceil
 
     0.upto(batch_count) do |i|
       current_batch = entries.without_black
