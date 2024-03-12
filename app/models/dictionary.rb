@@ -525,7 +525,7 @@ class Dictionary < ApplicationRecord
   def expand_synonym
     start_time = Time.current
     batch_size = 1000
-    unique_identifiers = Set.new
+    processed_identifiers = Set.new
 
     identifiers_count =  entries.without_black.select(:identifier).distinct.count
     batch_count = (identifiers_count.to_f / batch_size)
@@ -539,7 +539,7 @@ class Dictionary < ApplicationRecord
                               .pluck(:identifier)
       break if current_batch.empty?
 
-      new_identifiers = current_batch.reject { |identifier| unique_identifiers.include?(identifier) }
+      new_identifiers = current_batch.reject { |identifier| processed_identifiers.include?(identifier) }
       new_identifiers.each do |identifier|
         synonyms = entries.without_black
                           .where(identifier: identifier)
@@ -547,7 +547,7 @@ class Dictionary < ApplicationRecord
                           .pluck(:label)
         expanded_synonyms = synonym_expansion(synonyms)
         append_expanded_synonym_entries(identifier, expanded_synonyms)
-        unique_identifiers.add(identifier)
+        processed_identifiers.add(identifier)
       end
     end
   end
