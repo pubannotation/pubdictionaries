@@ -54,6 +54,7 @@ class Entry < ApplicationRecord
   scope :custom, -> {where(mode: [EntryMode::WHITE, EntryMode::BLACK])}
   scope :active, -> {where(mode: [EntryMode::GRAY, EntryMode::WHITE])}
   scope :auto_expanded, -> {where(mode: EntryMode::AUTO_EXPANDED).order(score: :desc)}
+  scope :without_black, -> {where.not(mode: EntryMode::BLACK)}
 
   scope :simple_paginate, -> (page = 1, per = 15) {
     offset = (page - 1) * per

@@ -507,22 +507,31 @@ class Dictionary < ApplicationRecord
   end
 
   def expand_synonym
-    identifiers = entries.pluck(:identifier).uniq
+    start_time = Time.current
+    batch_size = 1000
+    processed_identifiers = Set.new
 
-    identifiers.each do |identifier|
-      synonyms = entries.where(identifier: identifier).where.not(mode: EntryMode::BLACK).pluck(:label)
-      expanded_synonyms = synonym_expansion(synonyms)
+    identifiers_count =  entries.without_black.select(:identifier).distinct.count
+    batch_count = identifiers_count / batch_size
 
-      transaction do
-        expanded_synonyms.each do |expanded_synonym|
-          entries.create!(
-            label: expanded_synonym[:label],
-            identifier: identifier,
-            score: expanded_synonym[:score],
-            mode: EntryMode::AUTO_EXPANDED
-          )
-        end
-        update_entries_num
+    0.upto(batch_count) do |i|
+      current_batch = entries.without_black
+                              .select(:identifier)
+                              .distinct
+                              .order(:identifier)
+                              .simple_paginate(i + 1, batch_size)
+                              .pluck(:identifier)
+      break if current_batch.empty?
+
+      new_identifiers = current_batch.reject { |identifier| processed_identifiers.include?(identifier) }
+      new_identifiers.each do |identifier|
+        synonyms = entries.without_black
+                          .where(identifier: identifier)
+                          .where("created_at < ?", start_time)
+                          .pluck(:label)
+        expanded_synonyms = synonym_expansion(synonyms)
+        append_expanded_synonym_entries(identifier, expanded_synonyms)
+        processed_identifiers.add(identifier)
       end
     end
   end
@@ -530,8 +539,8 @@ class Dictionary < ApplicationRecord
   def synonym_expansion(synonyms)
     synonyms.map.with_index do |label, i|
       expanded_label = "#{label}--dummy-synonym-#{i + 1}"
-      score = rand.round(4)
-      { label: expanded_label, score:  }
+      score = rand
+      { label: expanded_label, score: }
     end
   end
 
@@ -633,4 +642,18 @@ class Dictionary < ApplicationRecord
 			Entry.method(:str_sim_jaccard_3gram)
 		end
 	end
+
+  def append_expanded_synonym_entries(identifier, expanded_synonyms)
+    transaction do
+      expanded_synonyms.each do |expanded_synonym|
+        entries.create!(
+          label: expanded_synonym[:label],
+          identifier: identifier,
+          score: expanded_synonym[:score],
+          mode: EntryMode::AUTO_EXPANDED
+        )
+      end
+      update_entries_num
+    end
+  end
 end
