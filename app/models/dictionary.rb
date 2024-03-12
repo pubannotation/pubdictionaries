@@ -535,8 +535,7 @@ class Dictionary < ApplicationRecord
                               .select(:identifier)
                               .distinct
                               .order(:identifier)
-                              .offset(i * batch_size)
-                              .limit(batch_size)
+                              .simple_paginate(i + 1, batch_size)
                               .pluck(:identifier)
       break if current_batch.empty?
 
