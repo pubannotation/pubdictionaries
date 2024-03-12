@@ -541,7 +541,10 @@ class Dictionary < ApplicationRecord
 
       new_identifiers = current_batch.reject { |identifier| unique_identifiers.include?(identifier) }
       new_identifiers.each do |identifier|
-        synonyms = entries.without_black.where(identifier: identifier).where("created_at < ?", start_time).pluck(:label)
+        synonyms = entries.without_black
+                          .where(identifier: identifier)
+                          .where("created_at < ?", start_time)
+                          .pluck(:label)
         expanded_synonyms = synonym_expansion(synonyms)
         append_expanded_synonym_entries(identifier, expanded_synonyms)
         unique_identifiers.add(identifier)
