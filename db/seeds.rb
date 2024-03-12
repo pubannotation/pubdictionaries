@@ -36,6 +36,7 @@ ActiveRecord::Base.transaction do
   entry_items.each do |entry_def|
     entry = dictionary.entries.find_or_create_by!(
       label: entry_def[:label],
+      norm1: Dictionary.normalize1(entry_def[:label]),
       identifier: entry_def[:identifier],
       mode: entry_def[:mode],
       score: entry_def[:score]
