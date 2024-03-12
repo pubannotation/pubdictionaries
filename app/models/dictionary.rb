@@ -523,7 +523,7 @@ class Dictionary < ApplicationRecord
   end
 
   def expand_synonym
-    max_id = entries.maximum(:id)
+    start_time = Time.current
     batch_size = 1000
     unique_identifiers = Set.new
 
@@ -541,7 +541,7 @@ class Dictionary < ApplicationRecord
       break if current_batch.empty?
 
       current_identifiers(current_batch, unique_identifiers).each do |identifier|
-        synonyms = entries.without_black.where(identifier: identifier).where("id <= ?", max_id).pluck(:label)
+        synonyms = entries.without_black.where(identifier: identifier).where("created_at < ?", start_time).pluck(:label)
         expanded_synonyms = synonym_expansion(synonyms)
         append_expanded_synonym_entries(expanded_synonyms, identifier)
       end
