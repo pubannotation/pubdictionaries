@@ -543,7 +543,7 @@ class Dictionary < ApplicationRecord
       current_identifiers(current_batch, unique_identifiers).each do |identifier|
         synonyms = entries.without_black.where(identifier: identifier).where("created_at < ?", start_time).pluck(:label)
         expanded_synonyms = synonym_expansion(synonyms)
-        append_expanded_synonym_entries(expanded_synonyms, identifier)
+        append_expanded_synonym_entries(identifier, expanded_synonyms)
       end
     end
   end
@@ -663,7 +663,7 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def append_expanded_synonym_entries(expanded_synonyms, identifier)
+  def append_expanded_synonym_entries(identifier, expanded_synonyms)
     transaction do
       expanded_synonyms.each do |expanded_synonym|
         entries.create!(
