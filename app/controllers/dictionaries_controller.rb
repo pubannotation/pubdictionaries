@@ -43,13 +43,13 @@ class DictionariesController < ApplicationController
 			format.html {
 				@entries, @type_entries = if params[:label_search]
 					params[:label_search].strip!
-					[@dictionary.narrow_entries_by_label(entries_with_tags, params[:label_search], page, per), "Active"]
+					[entries_with_tags.narrow_by_label(params[:label_search], page, per), "Active"]
 				elsif params[:id_search]
 					params[:id_search].strip!
-					[@dictionary.narrow_entries_by_identifier(entries_with_tags, params[:id_search], page, per), "Active"]
+					[entries_with_tags.narrow_by_identifier(params[:id_search], page, per), "Active"]
 				elsif params[:tag_search]
 					tag_id = params[:tag_search].to_i
-					[@dictionary.narrow_entries_by_tag(entries_with_tags, tag_id, page, per), "Active"]
+					[entries_with_tags.narrow_by_tag(tag_id, page, per), "Active"]
 				else
 					if params[:mode].present?
 						case params[:mode].to_i
@@ -72,17 +72,18 @@ class DictionariesController < ApplicationController
 						[entries_with_tags.active.simple_paginate(page, per).load_async, "Active"]
 					end
 				end
+			puts "@entries = #{@entries.inspect}"
 			}
 			format.tsv  {
 				entries, suffix = if params[:label_search]
 					params[:label_search].strip!
-					[@dictionary.narrow_entries_by_label(entries_with_tags, params[:label_search]), "label_search_#{params[:label_search]}"]
+					[entries_with_tags.narrow_by_label(params[:label_search]), "label_search_#{params[:label_search]}"]
 				elsif params[:id_search]
 					params[:id_search].strip!
-					[@dictionary.narrow_entries_by_identifier(entries_with_tags, params[:id_search]), "id_search_#{params[:id_search]}"]
+					[entries_with_tags.narrow_by_identifier(params[:id_search]), "id_search_#{params[:id_search]}"]
 				elsif params[:tag_search]
 					tag_id = params[:tag_search].to_i
-					[@dictionary.narrow_entries_by_tag(entries_with_tags, tag_id, page, per), "tag_search_#{params[:tag_search]}"]
+					[entries_with_tags.narrow_by_tag(tag_id, page, per), "tag_search_#{params[:tag_search]}"]
 				else
 					if params[:mode].present?
 						case params[:mode].to_i
