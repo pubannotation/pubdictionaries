@@ -334,7 +334,7 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
-	def narrow_entries_by_label(entries, str, page = 0, per = nil)
+	def narrow_entries_by_label(str, page = 0, per = nil)
 		norm1 = normalize1(str)
 		if per.nil?
 			entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page)
@@ -360,22 +360,6 @@ class Dictionary < ApplicationRecord
 		else
 			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page).per(per) +
 			entries.where("norm1 LIKE ?", "_%#{norm1}%").order(:label_length).page(page).per(per)
-		end
-	end
-
-	def narrow_entries_by_identifier(entries, str, page = 0, per = nil)
-		if per.nil?
-			entries.where("identifier ILIKE ?", "%#{str}%").page(page)
-		else
-			entries.where("identifier ILIKE ?", "%#{str}%").page(page).per(per)
-		end
-	end
-
-	def narrow_entries_by_tag(entries, tag_id, page = 0, per = nil)
-		if per.nil?
-			entries.joins(:tags).where(tags: { id: tag_id }).page(page)
-		else
-			entries.joins(:tags).where(tags: { id: tag_id }).page(page).per(per)
 		end
 	end
 

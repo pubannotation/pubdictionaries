@@ -60,6 +60,22 @@ class Entry < ApplicationRecord
     offset(offset).limit(per)
   }
 
+  scope :narrow_by_label, -> (str, page = 0, per = nil) {
+    norm1 = Dictionary.normalize1(str)
+    query = where("norm1 LIKE ?", "%#{norm1}%").order(:label_length)
+    per.nil? ? query.page(page) : query.page(page).per(per)
+  }
+
+  scope :narrow_by_identifier, -> (str, page = 0, per = nil) {
+    query = where("identifier ILIKE ?", "%#{str}%")
+    per.nil? ? query.page(page) : query.page(page).per(per)
+  }
+
+  scope :narrow_by_tag, -> (tag_id, page = 0, per = nil) {
+    query = joins(:tags).where(tags: { id: tag_id })
+    per.nil? ? query.page(page) : query.page(page).per(per)
+  }
+
   def to_s
     "('#{label}', '#{identifier}')"
   end
