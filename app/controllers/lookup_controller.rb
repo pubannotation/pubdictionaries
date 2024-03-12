@@ -131,7 +131,7 @@ class LookupController < ApplicationController
 
 			entries = if params[:term]
 				page = params[:page] || 0
-				dictionary.narrow_entries_by_label(entries, params[:term], page, params[:per_page])
+				dictionary.narrow_entries_by_label(params[:term], page, params[:per_page])
 			end
 
 			respond_to do |format|
