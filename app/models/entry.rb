@@ -62,9 +62,7 @@ class Entry < ApplicationRecord
 
   scope :narrow_by_label, -> (str, page = 0, per = nil) {
     norm1 = Dictionary.normalize1(str)
-    puts "norm1 = #{norm1}"
     query = where("norm1 LIKE ?", "%#{norm1}%").order(:label_length)
-    puts "query = #{query}"
     per.nil? ? query.page(page) : query.page(page).per(per)
   }
 

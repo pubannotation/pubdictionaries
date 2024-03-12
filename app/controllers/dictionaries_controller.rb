@@ -72,7 +72,6 @@ class DictionariesController < ApplicationController
 						[entries_with_tags.active.simple_paginate(page, per).load_async, "Active"]
 					end
 				end
-			puts "@entries = #{@entries.inspect}"
 			}
 			format.tsv  {
 				entries, suffix = if params[:label_search]
