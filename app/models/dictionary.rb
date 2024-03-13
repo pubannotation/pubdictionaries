@@ -464,11 +464,11 @@ class Dictionary < ApplicationRecord
     batch_size = 1000
     processed_identifiers = Set.new
 
-    identifiers_count =  entries.without_black.select(:identifier).distinct.count
+    identifiers_count =  entries.active.select(:identifier).distinct.count
     batch_count = identifiers_count / batch_size
 
     0.upto(batch_count) do |i|
-      current_batch = entries.without_black
+      current_batch = entries.active
                               .select(:identifier)
                               .distinct
                               .order(:identifier)
@@ -478,7 +478,7 @@ class Dictionary < ApplicationRecord
 
       new_identifiers = current_batch.reject { |identifier| processed_identifiers.include?(identifier) }
       new_identifiers.each do |identifier|
-        synonyms = entries.without_black
+        synonyms = entries.active
                           .where(identifier: identifier)
                           .where("created_at < ?", start_time)
                           .pluck(:label)
