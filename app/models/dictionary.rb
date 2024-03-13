@@ -478,7 +478,7 @@ class Dictionary < ApplicationRecord
 
       new_identifiers = current_batch.reject { |identifier| processed_identifiers.include?(identifier) }
       new_identifiers.each do |identifier|
-        synonyms = entries.without_black
+        synonyms = entries.active
                           .where(identifier: identifier)
                           .where("created_at < ?", start_time)
                           .pluck(:label)
