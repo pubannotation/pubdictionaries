@@ -35,7 +35,6 @@
     <col class="col_button">
     <% if @type_entries == 'Auto expanded' %>
       <col class="col_score">
-      <col class="col_button">
     <% end %>
     <% if @dictionary.editable?(current_user) %>
       <col class="col_button">
@@ -72,7 +71,6 @@
       </th>
       <% if @type_entries == 'Auto expanded' %>
         <th>Score</th>
-        <th style="border-right-style: none"></th>
       <% end %>
       <% if @dictionary.editable?(current_user) %>
         <th style="border-left-style: none"></th>
@@ -100,8 +98,8 @@
           </td>
         <% elsif ['Auto expanded'].include?(@type_entries) %>
           <td style="border-style:none"></td>
-          <td style="border-style:none"></td>
           <td style="text-align:center">
+            <a title="confirm to white" href="javascript:{}" onclick="if(confirm('Are you sure to confirm to white selected entries?')) { document.getElementById('confirm_entries_form').submit(); } return false;"><i class="fa-regular fa-circle-check"></i></a>
             <a title="remove selected entries" href="javascript:{}" onclick="if(confirm('Are you sure to remove selected entries?')) { document.getElementById('delete_entries_form').submit(); } return false;"><i class="fa fa-trash-can" aria-hidden="true"></i></a>
           </td>
         <% end %>
