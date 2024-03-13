@@ -67,6 +67,18 @@ class Entry < ApplicationRecord
     per.nil? ? query.page(page) : query.page(page).per(per)
   }
 
+  scope :narrow_by_label_prefix, -> (str, page = 0, per = nil) {
+    norm1 = Dictionary.normalize1(str)
+    query = where("norm1 LIKE ?", "%#{norm1}%").order(:label_length)
+    per.nil? ? query.page(page) : query.page(page).per(per)
+  }
+
+  scope :narrow_by_label_prefix_and_substring, -> (str, page = 0, per = nil) {
+    norm1 = Dictionary.normalize1(str)
+    query = where("norm1 LIKE ? OR norm1 LIKE ?", "#{norm1}%", "_%#{norm1}%").order(:label_length)
+    per.nil? ? query.page(page) : query.page(page).per(per)
+  }
+
   scope :narrow_by_identifier, -> (str, page = 0, per = nil) {
     query = where("identifier ILIKE ?", "%#{str}%")
     per.nil? ? query.page(page) : query.page(page).per(per)
