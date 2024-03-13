@@ -107,7 +107,7 @@ class LookupController < ApplicationController
 
 			entries = if params[:term]
 				page = params[:page] || 0
-				dictionary.narrow_entries_by_label_prefix(params[:term], page, params[:per_page])
+				dictionary.entries.narrow_by_label_prefix(params[:term], page, params[:per_page])
 			end
 
 			respond_to do |format|
@@ -131,7 +131,7 @@ class LookupController < ApplicationController
 
 			entries = if params[:term]
 				page = params[:page] || 0
-				dictionary.narrow_entries_by_label(params[:term], page, params[:per_page])
+				dictionary.entries.narrow_by_label(params[:term], page, params[:per_page])
 			end
 
 			respond_to do |format|
@@ -155,7 +155,7 @@ class LookupController < ApplicationController
 
 			entries = if params[:term]
 				page = params[:page] || 0
-				dictionary.narrow_entries_by_label_prefix_and_substring(params[:term], page, params[:per_page])
+				dictionary.entries.narrow_by_label_prefix_and_substring(params[:term], page, params[:per_page])
 			end
 
 			respond_to do |format|

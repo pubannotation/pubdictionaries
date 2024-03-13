@@ -334,53 +334,6 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
-	def narrow_entries_by_label(str, page = 0, per = nil)
-		norm1 = normalize1(str)
-		if per.nil?
-			entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page)
-		else
-			entries.where("norm1 LIKE ?", "%#{norm1}%").order(:label_length).page(page).per(per)
-		end
-	end
-
-	def narrow_entries_by_label_prefix(str, page = 0, per = nil)
-		norm1 = normalize1(str)
-		if per.nil?
-			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
-		else
-			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page).per(per)
-		end
-	end
-
-	def narrow_entries_by_label_prefix_and_substring(str, page = 0, per = nil)
-		norm1 = normalize1(str)
-		if per.nil?
-			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page) +
-			entries.where("norm1 LIKE ?", "_%#{norm1}%").order(:label_length).page(page)
-		else
-			entries.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page).per(per) +
-			entries.where("norm1 LIKE ?", "_%#{norm1}%").order(:label_length).page(page).per(per)
-		end
-	end
-
-	def self.narrow_entries_by_identifier(str, page = 0, per = nil)
-		if per.nil?
-			Entry.where("identifier ILIKE ?", "%#{str}%").page(page)
-		else
-			Entry.where("identifier ILIKE ?", "%#{str}%").page(page).per(per)
-		end
-	end
-
-	def self.narrow_entries_by_label(str, page = 0)
-		norm1 = normalize1(str)
-		Entry.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
-	end
-
-	def self.narrow_entries_by_label_prefix(str, page = 0)
-		norm1 = normalize1(str)
-		Entry.where("norm1 LIKE ?", "#{norm1}%").order(:label_length).page(page)
-	end
-
 	def self.search_term_order(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
 		return [] if term.empty?
 
