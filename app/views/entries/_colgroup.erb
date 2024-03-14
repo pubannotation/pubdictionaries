@@ -7,7 +7,9 @@
     <% if type_entries == 'Auto expanded' %>
       <col class="col_score">
     <% end %>
-    <% if dictionary.editable?(current_user) %>
-      <col class="col_button">
+    <% if dictionary.editable?(current_user) && @type_entries == 'Auto expanded' %>
+      <col class="col_double_button">
+    <% elsif @dictionary.editable?(current_user) %>
+    <col class="col_button">
     <% end %>
   </colgroup>
