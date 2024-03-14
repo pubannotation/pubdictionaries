@@ -139,10 +139,12 @@ class EntriesController < ApplicationController
 		dictionary = Dictionary.editable(current_user).find_by_name(params[:dictionary_id])
 		raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
-		entry = Entry.find(params[:id])
-		raise ArgumentError, "Cannot find the entry" if entry.nil?
+		raise ArgumentError, "No entry to be confirmed is selected" unless params[:entry_id].present?
 
-		dictionary.confirm_entry(entry)
+		ActiveRecord::Base.transaction do
+			entries = Entry.where(id: params[:entry_id])
+			entries.each{|entry| dictionary.confirm_entry(entry)}
+		end
 
 		respond_to do |format|
 			format.html{
