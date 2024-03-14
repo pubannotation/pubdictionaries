@@ -89,9 +89,7 @@
       <%= render partial: "entries/entry", collection: @entries -%>
 
       <tr>
-        <td style="border-style:none"></td>
-        <td colspan="2" style="border-style:none"></td>
-        <td colspan="2" style="border-style:none"></td>
+        <td colspan="5" style="border-style:none"></td>
         <% if ['Gray', 'Active'].include?(@type_entries) %>
           <td style="text-align:center">
             <a title="switch selected entries to black" href="javascript:{}" onclick="document.getElementById('switch_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
