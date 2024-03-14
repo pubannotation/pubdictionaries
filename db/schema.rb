@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2024_03_01_042744) do
+ActiveRecord::Schema[7.0].define(version: 2024_03_14_070046) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -42,6 +42,7 @@ ActiveRecord::Schema[7.0].define(version: 2024_03_01_042744) do
     t.float "threshold", default: 0.85
     t.string "language"
     t.integer "patterns_num", default: 0
+    t.string "associated_annotation_project"
     t.index ["user_id"], name: "index_dictionaries_on_user_id"
   end
 
