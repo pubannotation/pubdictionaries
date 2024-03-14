@@ -31,6 +31,16 @@ table.entries {
   .col_button {
     width: 30px;
   }
+
+  .col_double_button {
+    width: 50px;
+  }
+
+  .buttons-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 }
 
 .entries td {

@@ -165,9 +165,10 @@ class Dictionary < ApplicationRecord
 		end
 	end
 
-	def confirm_entry(entry)
+	def confirm_entries(entry_ids)
 		transaction do
-			entry.be_white!
+			entries = Entry.where(id: entry_ids)
+			entries.each{ |entry| entry.be_white! }
 			update_entries_num
 		end
 	end

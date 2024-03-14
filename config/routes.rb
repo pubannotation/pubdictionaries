@@ -63,11 +63,11 @@ Rails.application.routes.draw do
         post 'tsv', to: 'entries#upload_tsv'
         put 'switch_entries', to: 'entries#switch_to_black_entries'
         delete '/', to: 'entries#destroy_entries'
+        put 'confirm', to: "entries#confirm_to_white"
       end
 
       member do
         put 'undo', to: "entries#undo"
-        put 'confirm', to: "entries#confirm_to_white"
       end
     end
 

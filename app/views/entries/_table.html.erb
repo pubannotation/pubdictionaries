@@ -27,20 +27,7 @@
 <% end %>
 
 <table class="entries" style="margin-bottom:0; border-bottom-style:none">
-  <colgroup>
-    <col class="col_label">
-    <col class="col_identifier">
-    <col class="col_button">
-    <col class="col_tags">
-    <col class="col_button">
-    <% if @type_entries == 'Auto expanded' %>
-      <col class="col_score">
-      <col class="col_button">
-    <% end %>
-    <% if @dictionary.editable?(current_user) %>
-      <col class="col_button">
-    <% end %>
-  </colgroup>
+  <%= render 'entries/colgroup', type_entries: @type_entries, dictionary: @dictionary %>
   <thead>
     <tr>
       <th>
@@ -72,7 +59,6 @@
       </th>
       <% if @type_entries == 'Auto expanded' %>
         <th>Score</th>
-        <th style="border-right-style: none"></th>
       <% end %>
       <% if @dictionary.editable?(current_user) %>
         <th style="border-left-style: none"></th>
@@ -82,27 +68,27 @@
 </table>
 
 <% if @dictionary.editable?(current_user) %>
-  <% form_action_path = ['Gray', 'Active'].include?(@type_entries) ? switch_entries_dictionary_entries_path(@dictionary) : dictionary_entries_path(@dictionary) %>
-  <% form_method = ['Gray', 'Active'].include?(@type_entries) ? :put : :delete %>
-  <%= form_tag(form_action_path, method: form_method, id: "#{form_method == :put ? 'switch_entries_form' : 'delete_entries_form'}") do %>
+  <%= form_tag(confirm_dictionary_entries_path(@dictionary), method: :put, id: 'confirm_entries_form') do %><% end %>
+  <%= form_tag(dictionary_entries_path(@dictionary), method: :delete, id: 'delete_entries_form') do %><% end %>
 
+  <%= form_tag(switch_entries_dictionary_entries_path(@dictionary), method: :put, id: 'switch_entries_form') do %>
     <table class="entries" style="margin-top:0; margin-bottom:0">
       <%= render 'entries/colgroup', type_entries: @type_entries, dictionary: @dictionary %>
       <%= render partial: "entries/entry", collection: @entries -%>
 
       <tr>
-        <td style="border-style:none"></td>
-        <td colspan="2" style="border-style:none"></td>
-        <td colspan="2" style="border-style:none"></td>
+        <td colspan="5" style="border-style:none"></td>
         <% if ['Gray', 'Active'].include?(@type_entries) %>
           <td style="text-align:center">
             <a title="switch selected entries to black" href="javascript:{}" onclick="document.getElementById('switch_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
           </td>
         <% elsif ['Auto expanded'].include?(@type_entries) %>
           <td style="border-style:none"></td>
-          <td style="border-style:none"></td>
           <td style="text-align:center">
-            <a title="remove selected entries" href="javascript:{}" onclick="if(confirm('Are you sure to remove selected entries?')) { document.getElementById('delete_entries_form').submit(); } return false;"><i class="fa fa-trash-can" aria-hidden="true"></i></a>
+            <div class="buttons-container">
+              <a title="confirm selected entries to white" href="javascript:{}" onclick="if(confirm('Are you sure to confirm to white selected entries?')) { submitFormWithCheckedEntries('confirm_entries_form'); } return false;"><i class="fa-regular fa-circle-check"></i></a>
+              /<a title="remove selected entries" href="javascript:{}" onclick="if(confirm('Are you sure to remove selected entries?')) { submitFormWithCheckedEntries('delete_entries_form'); } return false;"><i class="fa fa-trash-can" aria-hidden="true"></i></a>
+            </div>
           </td>
         <% end %>
       </tr>
@@ -136,6 +122,22 @@
       lastChecked = this;
     });
   });
+
+function submitFormWithCheckedEntries(formId) {
+  const form = document.getElementById(formId);
+
+  form.querySelectorAll('input[name="entry_id[]"]').forEach(input => input.remove());
+
+  document.querySelectorAll('.chkbox:checked').forEach(checkbox => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'entry_id[]';
+    input.value = checkbox.value;
+    form.appendChild(input);
+  });
+
+  form.submit();
+}
 </script>
 
 <table class="entries" style="margin-top:2px">
@@ -145,9 +147,12 @@
     <col class="col_tags">
     <% if @type_entries == 'Auto expanded' %>
       <col class="col_score">
+      <% if @dictionary.editable?(current_user) %>
+        <col class="col_double_button">
+      <% end %>
+    <% else %>
       <col class="col_button">
     <% end %>
-    <col class="col_button">
   </colgroup>
   <% if @dictionary.editable?(current_user) %>
     <%= form_tag(dictionary_entries_path(@dictionary), method: :post, id: "add_entry_form") do %>
@@ -162,7 +167,7 @@
           <span><%= select_tag :tags, options_from_collection_for_select(Tag.where(dictionary_id: @dictionary.id), 'id', 'value'), multiple: true, class: 'js-searchable', style: "box-sizing:content-box; width:100%"  %></span>
         </td>
         <% if @type_entries == 'Auto expanded' %>
-          <td colspan="2"></td>
+          <td></td>
         <% end %>
         <td style="text-align:center">
           <a title="add" href="javascript:{}" onclick="document.getElementById('add_entry_form').submit(); return false;"><i class="fa fa-plus-square" aria-hidden="true"></i></a>
