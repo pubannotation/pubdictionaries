@@ -141,10 +141,7 @@ class EntriesController < ApplicationController
 
 		raise ArgumentError, "No entry to be confirmed is selected" unless params[:entry_id].present?
 
-		ActiveRecord::Base.transaction do
-			entries = Entry.where(id: params[:entry_id])
-			entries.each{|entry| dictionary.confirm_entry(entry)}
-		end
+		dictionary.confirm_entries(params[:entry_id])
 
 		respond_to do |format|
 			format.html{
