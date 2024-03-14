@@ -126,7 +126,7 @@
 function submitFormWithCheckedEntries(formId) {
   const form = document.getElementById(formId);
 
-  form.querySelectorAll(`input[name="entry_id[]"]`).forEach(input => input.remove());
+  form.querySelectorAll('input[name="entry_id[]"]').forEach(input => input.remove());
 
   document.querySelectorAll('.chkbox:checked').forEach(checkbox => {
     const input = document.createElement('input');
