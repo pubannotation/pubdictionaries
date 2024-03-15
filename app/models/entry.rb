@@ -102,24 +102,26 @@ class Entry < ApplicationRecord
 
   def self.as_tsv
     CSV.generate(col_sep: "\t") do |tsv|
-      tsv << ['#label', :id]
+      tsv << ['#label', :id, '#tags']
       all.each do |entry|
-        tsv << [entry.label, entry.identifier]
+        tags = entry.tags.map(&:value).join('|')
+        tsv << [entry.label, entry.identifier, tags]
       end
     end
   end
 
   def self.as_tsv_v
     CSV.generate(col_sep: "\t") do |tsv|
-      tsv << ['#label', :id, :operator]
+      tsv << ['#label', :id, '#tags', :operator]
       all.each do |entry|
+        tags = entry.tags.map(&:value).join('|')
         operator = case entry.mode
         when EntryMode::WHITE
           '+'
         when EntryMode::BLACK
           '-'
         end
-        tsv << [entry.label, entry.identifier, operator]
+        tsv << [entry.label, entry.identifier, tags, operator]
       end
     end
   end
