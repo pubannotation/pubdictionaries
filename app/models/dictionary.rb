@@ -23,8 +23,7 @@ class Dictionary < ApplicationRecord
 											:with => /\A[a-zA-Z_][a-zA-Z0-9_\- ()]*\z/,
 											:message => "should begin with an alphabet or underscore, and only contain alphanumeric letters, underscore, hyphen, space, or round brackets!"
 	validates :associated_annotation_project, presence: true,
-																						length: { minimum: 5, maximum: 40 },
-																						uniqueness: true
+																						length: { minimum: 5, maximum: 40 }
 	validates_format_of :associated_annotation_project, :with => /\A[a-z0-9\-_]+\z/i
 
 	DOWNLOADABLES_DIR = 'db/downloadables/'
