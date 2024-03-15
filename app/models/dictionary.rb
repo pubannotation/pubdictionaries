@@ -141,6 +141,11 @@ class Dictionary < ApplicationRecord
 				h
 			end
 		end
+
+		def index_dictionaries_as_json
+			where(public: true).order(created_at: :desc)
+			.as_json(only: [:name, :entries_num], methods: [:maintainer, :dic_created_at])
+		end
 	end
 
 	# Override the original to_param so that it returns name, not ID, for constructing URLs.
@@ -612,5 +617,13 @@ class Dictionary < ApplicationRecord
       end
       update_entries_num
     end
+  end
+
+  def maintainer
+    self.user.username
+  end
+
+  def dic_created_at
+    self.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
   end
 end

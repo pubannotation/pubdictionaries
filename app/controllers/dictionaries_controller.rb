@@ -26,19 +26,9 @@ class DictionariesController < ApplicationController
 			:per_page => 20
 		)
 
-		dictionaries = Dictionary.where(public: true).order(created_at: :desc)
-		dics = dictionaries.map do |dic|
-			{
-				name: dic.name,
-				entries_num: dic.entries_num,
-				user: dic.user.username,
-				created_at: dic.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
-			}
-		end
-
 		respond_to do |format|
 			format.html # index.html.erb
-			format.json { render json: dics }
+			format.json { render json: Dictionary.index_dictionaries_as_json }
 		end
 	end
 
