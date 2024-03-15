@@ -28,12 +28,14 @@
   <td style="border-left-style: none">
     <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'search') -%>
   </td>
+  <td style="border-left-style: none">
+  </td>
   <td style="border-right-style: none">
     <% entry.tags.each do |tag| %>
       <%= tag.value %>
     <% end %>
   </td>
-  <td style="border-left-style: none"></td>
+  <td colspan="2" style="border-left-style: none"></td>
   <% if @type_entries == 'Auto expanded' %>
     <td style="border-right-style: none">
       <%= entry.score %>
