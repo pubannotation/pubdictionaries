@@ -100,20 +100,20 @@ class Entry < ApplicationRecord
     }
   end
 
-  def self.as_tsv(entries)
+  def self.as_tsv
     CSV.generate(col_sep: "\t") do |tsv|
       tsv << ['#label', :id, '#tags']
-      entries.each do |entry|
+      all.each do |entry|
         tags = entry.tags.map(&:value).join('|')
         tsv << [entry.label, entry.identifier, tags]
       end
     end
   end
 
-  def self.as_tsv_v(entries)
+  def self.as_tsv_v
     CSV.generate(col_sep: "\t") do |tsv|
       tsv << ['#label', :id, '#tags', :operator]
-      entries.each do |entry|
+      all.each do |entry|
         tags = entry.tags.map(&:value).join('|')
         operator = case entry.mode
         when EntryMode::WHITE
