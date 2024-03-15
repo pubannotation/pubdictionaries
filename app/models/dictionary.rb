@@ -83,6 +83,8 @@ class Dictionary < ApplicationRecord
 		end
 	}
 
+	scope :index_dictionaries, -> { where(public: true).order(created_at: :desc) }
+
 	class << self
 		def find_dictionaries_from_params(params)
 			dic_names = if params.has_key?(:dictionaries)
@@ -140,11 +142,6 @@ class Dictionary < ApplicationRecord
 				h[entry.identifier] << {label: entry.label, dictionary: entry.dictionary.name}
 				h
 			end
-		end
-
-		def index_dictionaries_as_json
-			where(public: true).order(created_at: :desc)
-			.as_json(only: [:name, :entries_num], methods: [:maintainer, :dic_created_at])
 		end
 	end
 
