@@ -111,7 +111,6 @@ class DictionariesController < ApplicationController
 				if params[:mode].to_i == EntryMode::CUSTOM
 					send_data entries.as_tsv_v, filename: "#{filename}.tsv", type: :tsv
 				else
-					puts "entries: #{entries.inspect}"
 					send_data entries.as_tsv, filename: "#{filename}.tsv", type: :tsv
 				end
 			}
