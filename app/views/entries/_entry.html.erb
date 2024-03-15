@@ -29,6 +29,7 @@
     <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'search') -%>
   </td>
   <td style="border-left-style: none">
+    <%= link_to('<i class="fa-solid fa-link"></i>'.html_safe, "https://pubannotation.org/term_search?term_search_controller_query%5Bblock_type%5D=sentence&term_search_controller_query%5Bterms%5D=#{entry.identifier}&term_search_controller_query%5Bpredicates%5D=&term_search_controller_query%5Bbase_project%5D=#{@dictionary.assosiated_annatation_project}&term_search_controller_query%5Bbase_project%5D=&term_search_controller_query%5Bpage%5D=1&term_search_controller_query%5Bper%5D=10", title: 'search') -%>
   </td>
   <td style="border-right-style: none">
     <% entry.tags.each do |tag| %>
