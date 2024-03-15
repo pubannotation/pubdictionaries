@@ -387,7 +387,8 @@ class DictionariesController < ApplicationController
 			:associated_managers,
 			:tokens_len_min,
 			:tokens_len_max,
-			:threshold
+			:threshold,
+			:associated_annotation_project
 		)
 	end
 end
