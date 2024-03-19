@@ -4,6 +4,17 @@ module EntriesHelper
   end
 
   def pub_annotation_search_url(entry, dictionary)
-    "https://pubannotation.org/term_search?term_search_controller_query%5Bblock_type%5D=sentence&term_search_controller_query%5Bterms%5D=#{entry.identifier}&term_search_controller_query%5Bpredicates%5D=&term_search_controller_query%5Bbase_project%5D=#{dictionary.associated_annotation_project}&term_search_controller_query%5Bprojects%5D=&term_search_controller_query%5Bpage%5D=1&term_search_controller_query%5Bper%5D=10"
+    base_url = "https://pubannotation.org/term_search"
+    query_params = {
+      "term_search_controller_query[block_type]" => 'sentence',
+      "term_search_controller_query[terms]" => entry.identifier,
+      "term_search_controller_query[predicates]" => '',
+      "term_search_controller_query[projects]" => '',
+      "term_search_controller_query[base_project]" => dictionary.associated_annotation_project,
+      "term_search_controller_query[page]" => 1,
+      "term_search_controller_query[per]" => 10,
+    }
+
+    "#{base_url}?#{query_params.to_query}"
   end
 end
