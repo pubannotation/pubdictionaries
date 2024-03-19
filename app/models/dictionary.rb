@@ -83,6 +83,8 @@ class Dictionary < ApplicationRecord
 		end
 	}
 
+	scope :index_dictionaries, -> { where(public: true).order(created_at: :desc) }
+
 	class << self
 		def find_dictionaries_from_params(params)
 			dic_names = if params.has_key?(:dictionaries)
@@ -612,5 +614,13 @@ class Dictionary < ApplicationRecord
       end
       update_entries_num
     end
+  end
+
+  def maintainer
+    self.user.username
+  end
+
+  def dic_created_at
+    self.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
   end
 end
