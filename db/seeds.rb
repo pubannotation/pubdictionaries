@@ -10,6 +10,7 @@ ActiveRecord::Base.transaction do
   dictionary = user.dictionaries.find_or_create_by(name: 'EntrezGene') do |dictionary|
     dictionary.description = 'EntrezGene dictionary'
     dictionary.public = true
+    dictionary.associated_annotation_project = 'aaa_project'
   end
 
   # add tags to dictionary
