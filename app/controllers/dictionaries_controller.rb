@@ -26,12 +26,11 @@ class DictionariesController < ApplicationController
 			:per_page => 20
 		)
 
-		dics_as_json = Dictionary.index_dictionaries
-										.as_json(only: [:name, :entries_num], methods: [:maintainer, :dic_created_at])
-
+		dics = Dictionary.index_dictionaries
 		respond_to do |format|
 			format.html # index.html.erb
-			format.json { render json: dics_as_json }
+			format.json {
+				render json: dics.as_json(only: [:name, :entries_num], methods: [:maintainer, :dic_created_at]) }
 		end
 	end
 
