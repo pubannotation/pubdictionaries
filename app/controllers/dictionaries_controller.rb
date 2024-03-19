@@ -228,12 +228,7 @@ class DictionariesController < ApplicationController
 
 			db_loc_old = @dictionary.sim_string_db_dir
 			if @dictionary.update(dictionary_params)
-				db_loc_new = @dictionary.sim_string_db_dir
-				if Dir.exist?(db_loc_old)
-					FileUtils.mv db_loc_old, db_loc_new unless db_loc_new == db_loc_old
-				else
-					FileUtils.mkdir_p(db_loc_new)
-				end
+				@dictionary.update_db_location(db_loc_old)
 				if @dictionary.update_tags(tag_list)
 					redirect_to @dictionary
 				else

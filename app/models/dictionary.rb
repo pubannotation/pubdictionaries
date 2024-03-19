@@ -397,6 +397,15 @@ class Dictionary < ApplicationRecord
 		Dictionary::SIM_STRING_DB_DIR + self.name
 	end
 
+	def update_db_location(db_loc_old)
+		db_loc_new = self.sim_string_db_dir
+		if Dir.exist?(db_loc_old)
+			FileUtils.mv db_loc_old, db_loc_new unless db_loc_new == db_loc_old
+		else
+			FileUtils.mkdir_p(db_loc_new)
+		end
+	end
+
 	def downloadable_zip_path
 		@downloadable_path ||= DOWNLOADABLES_DIR + filename + '.zip'
 	end
