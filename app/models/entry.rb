@@ -89,6 +89,10 @@ class Entry < ApplicationRecord
     per.nil? ? query.page(page) : query.page(page).per(per)
   }
 
+  scope :additional_entries_in, -> (dictionary) {
+    where(dictionary_id: dictionary.id, mode: EntryMode::WHITE, dirty: true)
+  }
+
   def to_s
     "('#{label}', '#{identifier}')"
   end
