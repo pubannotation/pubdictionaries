@@ -364,10 +364,11 @@ class Dictionary < ApplicationRecord
   end
 
   def additional_entries
-    binds = [
-      ActiveRecord::Relation::QueryAttribute.new("dictionary_id", id, ActiveRecord::Type::Value.new)
-    ]
-    @additional_entries ||= ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND mode=1 AND dirty=true", 'SQL', binds, prepare:true).to_a.each{|r| r.symbolize_keys!}
+    @additional_entries ||= Entry.select(:label, :norm1, :norm2, :identifier)
+                                  .where(dictionary_id: id, mode: EntryMode::WHITE, dirty: true)
+                                  .map(&:attributes)
+                                  .map(&:symbolize_keys)
+                                  .map{ _1.slice(:label, :norm1, :norm2, :identifier) }
   end
 
   def search_term(ssdb, term, norm1 = nil, norm2 = nil, threshold = nil)
