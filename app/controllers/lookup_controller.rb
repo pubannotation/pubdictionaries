@@ -51,6 +51,7 @@ class LookupController < ApplicationController
         format.any {render json: {message:e.message}, status: :bad_request}
       end
     rescue => e
+      raise e if Rails.env.development?
       respond_to do |format|
         format.html {flash.now[:notice] = e.message}
         format.any {render json: {message:e.message}, status: :internal_server_error}
