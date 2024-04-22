@@ -363,14 +363,6 @@ class Dictionary < ApplicationRecord
     entries.delete_if{|e| e[:score] < max_score}
   end
 
-  def additional_entries
-    self.entries.additional_entries
-                .select(:label, :norm1, :norm2, :identifier)
-                .map(&:attributes)
-                .map(&:symbolize_keys)
-                .map{ _1.slice(:label, :norm1, :norm2, :identifier) }
-  end
-
   def search_term(ssdb, term, norm1 = nil, norm2 = nil, threshold = nil)
     return [] if term.empty? || entries_num == 0
     raise "no ssdb for the dictionry #{name}." unless ssdb.present?
@@ -632,5 +624,13 @@ class Dictionary < ApplicationRecord
 
   def dic_created_at
     self.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+  end
+
+  def additional_entries
+    self.entries.additional_entries
+        .select(:label, :norm1, :norm2, :identifier)
+        .map(&:attributes)
+        .map(&:symbolize_keys)
+        .map{ _1.slice(:label, :norm1, :norm2, :identifier) }
   end
 end
