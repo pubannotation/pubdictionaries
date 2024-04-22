@@ -364,11 +364,11 @@ class Dictionary < ApplicationRecord
   end
 
   def additional_entries
-    @additional_entries ||= self.entries.additional_entries
-                                .select(:label, :norm1, :norm2, :identifier)
-                                .map(&:attributes)
-                                .map(&:symbolize_keys)
-                                .map{ _1.slice(:label, :norm1, :norm2, :identifier) }
+    self.entries.additional_entries
+                .select(:label, :norm1, :norm2, :identifier)
+                .map(&:attributes)
+                .map(&:symbolize_keys)
+                .map{ _1.slice(:label, :norm1, :norm2, :identifier) }
   end
 
   def search_term(ssdb, term, norm1 = nil, norm2 = nil, threshold = nil)
