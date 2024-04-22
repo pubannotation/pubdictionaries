@@ -379,7 +379,7 @@ class Dictionary < ApplicationRecord
     norm2 ||= normalize2(term)
     threshold ||= self.threshold
 
-    results = additional_entries.collect{|e| e.dup}
+    results = additional_entries
 
     norm2s = ssdb.retrieve(norm2)
 
