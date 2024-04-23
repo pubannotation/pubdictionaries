@@ -22,9 +22,8 @@ class Dictionary < ApplicationRecord
   validates_format_of :name,                              # because of to_param overriding.
                       :with => /\A[a-zA-Z_][a-zA-Z0-9_\- ()]*\z/,
                       :message => "should begin with an alphabet or underscore, and only contain alphanumeric letters, underscore, hyphen, space, or round brackets!"
-  validates :associated_annotation_project, presence: true,
-                                            length: { minimum: 5, maximum: 40 }
-  validates_format_of :associated_annotation_project, :with => /\A[a-z0-9\-_]+\z/i
+  # validates :associated_annotation_project, length: { minimum: 5, maximum: 40 }
+  # validates_format_of :associated_annotation_project, :with => /\A[a-z0-9\-_]+\z/i
 
   DOWNLOADABLES_DIR = 'db/downloadables/'
 
@@ -157,6 +156,10 @@ class Dictionary < ApplicationRecord
 
   def administrable?(user)
     user && (user.admin? || user_id == user.id)
+  end
+
+  def use_tags?
+    !tags.empty?
   end
 
   def undo_entry(entry)
