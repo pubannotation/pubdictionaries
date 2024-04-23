@@ -27,7 +27,7 @@ module DictionariesHelper
     else
       "There is #{count} pattern entry."
     end
-    link_to(content_tag(:p, message, class: 'page_link'), show_patterns_dictionary_path(@dictionary))
+    content_tag(:p, link_to(message, show_patterns_dictionary_path(@dictionary)), class: 'page_link')
   end
 
   def downloadable_helper
