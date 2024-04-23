@@ -20,20 +20,44 @@ table.entries {
   width: 100%;
   margin-top: 2px;
 
-  .col_label {
-    width: 30%;
+  colgroup {
+    .col_label {
+      width: 50%;
+    }
+
+    .col_identifier {
+      withd: auto;
+    }
+
+    .col_button {
+      width: 30px;
+    }
   }
 
-  .col_score {
-    width: 50px;
-  }
+  colgroup.with_tags {
+    .col_label {
+      width: 40%;
+    }
 
-  .col_button {
-    width: 30px;
-  }
+    .col_identifier {
+      withd: auto;
+    }
 
-  .col_double_button {
-    width: 50px;
+    .col_tags {
+      width: 20%;
+    }
+
+    .col_score {
+      width: 50px;
+    }
+
+    .col_button {
+      width: 30px;
+    }
+
+    .col_double_button {
+      width: 50px;
+    }
   }
 
   .buttons-container {
