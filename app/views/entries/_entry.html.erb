@@ -27,16 +27,21 @@
   </td>
   <td style="border-left-style: none">
     <div class="buttons-container">
-      <%= link_to('<i class="fa fa-search" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'search') -%>
-      <%= link_to('<i class="fa-solid fa-link"></i>'.html_safe, pub_annotation_search_url(entry, @dictionary), title: 'search') -%>
+      <%= link_to('<i class="fa fa-bars" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'See synonyms (entries with the same Id)') -%>
+
+      <%#= link_to('<i class="fa-solid fa-link"></i>'.html_safe, pub_annotation_search_url(entry, @dictionary), title: 'search') -%>
+
     </div>
   </td>
-  <td style="border-right-style: none">
-    <% entry.tags.each do |tag| %>
-      <%= tag.value %>
-    <% end %>
-  </td>
-  <td style="border-left-style: none"></td>
+
+  <% if @dictionary.use_tags? %>
+    <td style="border-right-style: none">
+      <% entry.tags.each do |tag| %>
+        <span class="tag"><%= tag.value %></span>
+      <% end %>
+    </td>
+  <% end %>
+
   <% if @type_entries == 'Auto expanded' %>
     <td style="border-right-style: none">
       <%= entry.score %>

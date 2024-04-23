@@ -1,15 +1,25 @@
+<% if @dictionary.use_tags? %>
+  <colgroup class="with_tags">
+<% else %>
   <colgroup>
+<% end %>
     <col class="col_label">
     <col class="col_identifier">
-    <col class="col_double_button">
-    <col class="col_tags">
     <col class="col_button">
+    <% if @dictionary.use_tags? %>
+      <col class="col_tags">
+    <% end %>
+    <% if @dictionary.editable?(current_user) %>
+      <col class="col_button">
+    <% end %>
+<!--
     <% if type_entries == 'Auto expanded' %>
       <col class="col_score">
     <% end %>
     <% if dictionary.editable?(current_user) && @type_entries == 'Auto expanded' %>
       <col class="col_double_button">
     <% elsif @dictionary.editable?(current_user) %>
-    <col class="col_button">
+      <col class="col_button">
     <% end %>
+-->
   </colgroup>

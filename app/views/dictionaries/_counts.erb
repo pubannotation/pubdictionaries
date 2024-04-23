@@ -30,21 +30,27 @@
         <th class="black" title="<%= t('title.black') %>">
           <%= link_to_unless_current '# Black', params.permit(:mode).merge(mode: EntryMode::BLACK) %>
         </th>
+<!--
         <th class="auto_expanded" title="<%= t('title.auto_expanded') %>">
           <%= link_to_unless_current '# Auto expanded', params.permit(:mode).merge(mode: EntryMode::AUTO_EXPANDED) %>
         </th>
+-->
       </tr>
       <tr>
         <td style="text-align: right"><%= number_with_delimiter(@dictionary.num_gray, :delimiter => ',') %></td>
         <td style="text-align: right"><%= @dictionary.num_white %></td>
         <td style="text-align: right"><%= @dictionary.num_black %></td>
+<!--
         <td style="text-align: right"><%= @dictionary.num_auto_expanded %></td>
+-->
       </tr>
       <tr>
         <th><%= delete_entries_helper(EntryMode::GRAY) %></th>
         <th><%= delete_entries_helper(EntryMode::WHITE) %></th>
         <th><%= delete_entries_helper(EntryMode::BLACK) %></th>
+<!--
         <th><%= delete_entries_helper(EntryMode::AUTO_EXPANDED) %></th>
+-->
       </tr>
     </table>
   <% else %>

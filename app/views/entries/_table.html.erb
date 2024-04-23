@@ -34,29 +34,40 @@
         Label
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
           <%= text_field_tag :label_search, params[:label_search], required: true -%>
-          <%= submit_tag 'Search', class: 'button' -%>
+          <%#= submit_tag 'Search', class: 'button' -%>
+          <%= button_tag type: :submit, class: 'button transparent', title: :Search do %>
+            <%= content_tag(:i, '', class:"fa fa-search") %>
+          <% end -%>
         <% end -%>
       </th>
       <th colspan="2">
         Id
         <%= form_tag '', method: :get, :style=>'display:inline-block' do -%>
           <%= text_field_tag :id_search, params[:id_search], required: true -%>
-          <%= submit_tag 'Search', class: 'button' -%>
+          <%= button_tag type: :submit, class: 'button transparent', title: :Search do %>
+            <%= content_tag(:i, '', class:"fa fa-search") %>
+          <% end -%>
         <% end -%>
       </th>
-      <th colspan="2">
-          <%= form_tag '', method: :get, class: 'tag-search-container' do -%>
+
+      <% if @dictionary.use_tags? %>
+        <th>
             Tags
-            <%= select_tag :tag_search,
-              options_for_select(
-                Tag.where(dictionary_id: @dictionary.id).pluck(:value, :id),
-                selected: params[:tag_search]
-              ),
-              { include_blank: true, required: true, class: 'js-searchable', style: "width: 150px;" }
-            -%>
-            <%= submit_tag 'Search', class: 'button' -%>
-          <% end -%>
-      </th>
+            <%= form_tag '', method: :get, class: 'tag-search-container' do -%>
+              <%= select_tag :tag_search,
+                options_for_select(
+                  Tag.where(dictionary_id: @dictionary.id).pluck(:value, :id),
+                  selected: params[:tag_search]
+                ),
+                { include_blank: true, required: true }
+              -%>
+              <%= button_tag type: :submit, class: 'button transparent', title: :Search do %>
+                <%= content_tag(:i, '', class:"fa fa-search") %>
+              <% end -%>
+            <% end -%>
+        </th>
+      <% end %>
+
       <% if @type_entries == 'Auto expanded' %>
         <th>Score</th>
       <% end %>
@@ -77,7 +88,12 @@
       <%= render partial: "entries/entry", collection: @entries -%>
 
       <tr>
-        <td colspan="5" style="border-style:none"></td>
+        <% if @dictionary.use_tags? %>
+          <td colspan="4" style="border-style:none"></td>
+        <% else %>
+          <td colspan="3" style="border-style:none"></td>
+        <% end %>
+
         <% if ['Gray', 'Active'].include?(@type_entries) %>
           <td style="text-align:center">
             <a title="switch selected entries to black" href="javascript:{}" onclick="document.getElementById('switch_entries_form').submit(); return false;"><i class="fa fa-minus-square" aria-hidden="true"></i></a>
@@ -123,49 +139,40 @@
     });
   });
 
-function submitFormWithCheckedEntries(formId) {
-  const form = document.getElementById(formId);
+  function submitFormWithCheckedEntries(formId) {
+    const form = document.getElementById(formId);
 
-  form.querySelectorAll('input[name="entry_id[]"]').forEach(input => input.remove());
+    form.querySelectorAll('input[name="entry_id[]"]').forEach(input => input.remove());
 
-  document.querySelectorAll('.chkbox:checked').forEach(checkbox => {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'entry_id[]';
-    input.value = checkbox.value;
-    form.appendChild(input);
-  });
+    document.querySelectorAll('.chkbox:checked').forEach(checkbox => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'entry_id[]';
+      input.value = checkbox.value;
+      form.appendChild(input);
+    });
 
-  form.submit();
-}
+    form.submit();
+  }
 </script>
 
+<!-- add entry form table -->
 <table class="entries" style="margin-top:2px">
-  <colgroup>
-    <col class="col_label">
-    <col class="col_identifier">
-    <col class="col_tags">
-    <% if @type_entries == 'Auto expanded' %>
-      <col class="col_score">
-      <% if @dictionary.editable?(current_user) %>
-        <col class="col_double_button">
-      <% end %>
-    <% else %>
-      <col class="col_button">
-    <% end %>
-  </colgroup>
+  <%= render 'entries/colgroup', type_entries: @type_entries, dictionary: @dictionary %>
   <% if @dictionary.editable?(current_user) %>
     <%= form_tag(dictionary_entries_path(@dictionary), method: :post, id: "add_entry_form") do %>
       <tr>
         <td>
-          <span><%= text_field_tag :label, nil, required: true, style: "box-sizing:content-box; width:90%" -%></span>
+          <span><%= text_field_tag :label, nil, required: true, style: "box-sizing:border-box; width:100%" -%></span>
         </td>
-        <td>
-          <span><%= text_field_tag :identifier, nil, required: true, style: "box-sizing:content-box; width:90%" -%></span>
+        <td colspan='2'>
+          <span><%= text_field_tag :identifier, nil, required: true, style: "box-sizing:border-box; width:100%" -%></span>
         </td>
-        <td>
-          <span><%= select_tag :tags, options_from_collection_for_select(Tag.where(dictionary_id: @dictionary.id), 'id', 'value'), multiple: true, class: 'js-searchable', style: "box-sizing:content-box; width:100%"  %></span>
-        </td>
+        <% if @dictionary.use_tags? %>
+          <td>
+            <span><%= select_tag :tags, options_from_collection_for_select(Tag.where(dictionary_id: @dictionary.id), 'id', 'value'), multiple: true, class: 'js-searchable', style: "box-sizing:border-box; width:100%"  %></span>
+          </td>
+        <% end %>
         <% if @type_entries == 'Auto expanded' %>
           <td></td>
         <% end %>
