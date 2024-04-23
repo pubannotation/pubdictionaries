@@ -67,20 +67,23 @@
       <th style="width: 6em;"><%= f.label :associated_annotation_project, "Associated Annotation Project*" %></th>
       <td>
         <p class="note" style="margin-top:0">Please specify PubAnnotation's project linked to this dictionary if you have.</p>
-        <%= f.text_field :associated_annotation_project, required: true, style: "box-sizing: border-box; width:15em" %></td>
+        <%= f.text_field :associated_annotation_project, style: "box-sizing: border-box; width:15em" %></td>
     </tr>
   </table>
 
   <table style="width: 100%;">
     <tr>
-      <th colspan="2" class="section">Tags</th>
+      <th colspan="2" class="section">
+        Tags
+         <span class="note">(Experimental feature. You can restrict search by specifying tags)</span>
+      </th>
     </tr>
 
     <tr>
       <th style="width: 6em;"><%= f.label :tag_values, "Tags" %></th>
       <td>
-        <p class="note" style="margin-top:0">Enter the tags to be used for classifying entries to be registered in the dictionary. You may enter multiple tags separated by commas.</p>
-        <%= f.text_field :tag_values,  placeholder: 'e.g., tag1, tag2', style: "box-sizing: border-box; width:25em", value: @tag_list %>
+        <p class="note" style="margin-top:0">Pipe('|')-separated list of tags.</p>
+        <%= f.text_field :tag_values,  placeholder: 'e.g., tag1|tag2', style: "box-sizing: border-box; width:25em", value: @tag_list %>
       </td>
     </tr>
   </table>

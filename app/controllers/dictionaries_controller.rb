@@ -184,7 +184,7 @@ class DictionariesController < ApplicationController
 
   def create
     @dictionary = current_user.dictionaries.new(dictionary_params)
-    tag_list = params[:dictionary][:tag_values].split(',').map(&:strip).uniq
+    tag_list = params[:dictionary][:tag_values].split(/[,|]/).map(&:strip).uniq
     if @dictionary.language.present?
       l = LanguageList::LanguageInfo.find(@dictionary.language)
       if l.nil?
@@ -214,14 +214,14 @@ class DictionariesController < ApplicationController
   def edit
     @dictionary = Dictionary.editable(current_user).find_by!(name: params[:id])
     @submit_text = 'Update'
-    @tag_list = @dictionary.tags.map(&:value).join(', ')
+    @tag_list = @dictionary.tags.map(&:value).join('|')
   end
 
   def update
     begin
       @dictionary = Dictionary.editable(current_user).find_by(name: params[:id])
       raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
-      tag_list = params[:dictionary][:tag_values].split(',').map(&:strip).uniq
+      tag_list = params[:dictionary][:tag_values].split(/[,|]/).map(&:strip).uniq
 
       if dictionary_params[:language].present?
         l = LanguageList::LanguageInfo.find(dictionary_params[:language])
