@@ -19,7 +19,7 @@
 				<%= label_tag :threshold, nil, title: "The output will include only the terms whose matching score is above the threshold." %>
 				<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
 			</th>
-			<td><%= text_field_tag :threshold, nil, type: :number, min:0.5, max:1, step:0.01 %></td>
+			<td><%= text_field_tag :threshold, params[:threshold], type: :number, min:0.5, max:1, step:0.01 %></td>
 			</tr>
 			</table>
 
