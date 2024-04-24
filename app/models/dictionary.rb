@@ -383,9 +383,7 @@ class Dictionary < ApplicationRecord
                      .where(norm2: n2)
                      .where.not(mode: EntryMode::BLACK)
                      .select(:label, :norm1, :norm2, :identifier)
-                     .map(&:attributes)
-                     .map(&:symbolize_keys)
-                     .map{ _1.slice(:label, :norm1, :norm2, :identifier) }
+                     .map(&:to_result_hash)
     end
 
     results.uniq!
@@ -634,8 +632,6 @@ class Dictionary < ApplicationRecord
   def additional_entries
     self.entries.additional_entries
         .select(:label, :norm1, :norm2, :identifier)
-        .map(&:attributes)
-        .map(&:symbolize_keys)
-        .map{ _1.slice(:label, :norm1, :norm2, :identifier) }
+        .map(&:to_result_hash)
   end
 end

@@ -104,6 +104,8 @@ class Entry < ApplicationRecord
     }
   end
 
+  def to_result_hash = { label:, norm1:, norm2:, identifier: }
+
   def self.as_tsv
     CSV.generate(col_sep: "\t") do |tsv|
       tsv << ['#label', :id, '#tags']
