@@ -379,9 +379,8 @@ class Dictionary < ApplicationRecord
     norm2s = ssdb.retrieve(norm2)
 
     norm2s.each do |n2|
-      results += self.entries
+      results += self.entries.without_black
                      .where(norm2: n2)
-                     .where.not(mode: EntryMode::BLACK)
                      .select(:label, :norm1, :norm2, :identifier)
                      .map(&:to_result_hash)
     end
