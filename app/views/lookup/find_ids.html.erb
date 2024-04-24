@@ -37,6 +37,13 @@
 			</tr>
 			</table>
 
+			<table class="option">
+			<tr>
+				<th><%= label_tag :tags, "Tags" %></th>
+				<td><%= text_field_tag :tags, params[:tags], placeholder: "Pipe('|')-separated list of tags." %></td>
+			</tr>
+			</table>
+
 		</div>
 
 		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>

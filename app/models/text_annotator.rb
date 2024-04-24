@@ -332,7 +332,7 @@ class TextAnnotator
 
         if entries.nil?
           norm1 = norm1s[idx_token_begin, tlen].join
-          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, span, norm1, norm2)
+          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, [], span, norm1, norm2)
 
           if entries.present?
             # cache all the positive search results

@@ -102,7 +102,7 @@ class Dictionary < ApplicationRecord
       dictionaries.collect{|d| d[1]}
     end
 
-    def find_ids_by_labels(labels, dictionaries = [], threshold = nil, superfluous = false, verbose = false)
+    def find_ids_by_labels(labels, dictionaries = [], threshold = nil, superfluous = false, verbose = false, tags = [])
       sim_string_dbs = dictionaries.inject({}) do |h, dic|
         h[dic.name] = begin
           Simstring::Reader.new(dic.sim_string_db_path)
@@ -119,7 +119,7 @@ class Dictionary < ApplicationRecord
       search_method = superfluous ? Dictionary.method(:search_term_order) : Dictionary.method(:search_term_top)
 
       r = labels.inject({}) do |h, label|
-        h[label] = search_method.call(dictionaries, sim_string_dbs, threshold, label)
+        h[label] = search_method.call(dictionaries, sim_string_dbs, threshold, label, tags)
         h[label].map!{|entry| entry[:identifier]} unless verbose
         h
       end
@@ -343,21 +343,21 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def self.search_term_order(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
+  def self.search_term_order(dictionaries, ssdbs, threshold, term, tags, norm1 = nil, norm2 = nil)
     return [] if term.empty?
 
     entries = dictionaries.inject([]) do |sum, dic|
-      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold)
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold, tags)
     end
 
     entries.sort_by{|e| e[:score]}.reverse
   end
 
-  def self.search_term_top(dictionaries, ssdbs, threshold, term, norm1 = nil, norm2 = nil)
+  def self.search_term_top(dictionaries, ssdbs, threshold, term, tags, norm1 = nil, norm2 = nil)
     return [] if term.empty?
 
     entries = dictionaries.inject([]) do |sum, dic|
-      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold)
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold, tags)
     end
 
     return [] if entries.empty?
@@ -366,7 +366,7 @@ class Dictionary < ApplicationRecord
     entries.delete_if{|e| e[:score] < max_score}
   end
 
-  def search_term(ssdb, term, norm1 = nil, norm2 = nil, threshold = nil)
+  def search_term(ssdb, term, norm1, norm2, threshold, tags)
     return [] if term.empty? || entries_num == 0
     raise "no ssdb for the dictionry #{name}." unless ssdb.present?
 
@@ -374,7 +374,7 @@ class Dictionary < ApplicationRecord
     norm2 ||= normalize2(term)
     threshold ||= self.threshold
 
-    results = additional_entries
+    results = additional_entries tags
 
     norm2s = ssdb.retrieve(norm2)
 
@@ -383,7 +383,7 @@ class Dictionary < ApplicationRecord
                      .left_outer_joins(:tags)
                      .without_black
                      .where(norm2: n2)
-                     .select(:label, :norm1, :norm2, :identifier)
+                     .where(tags: { value: tags })
                      .map(&:to_result_hash)
     end
 
@@ -630,10 +630,11 @@ class Dictionary < ApplicationRecord
     self.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
   end
 
-  def additional_entries
+  def additional_entries(tags)
     self.entries
         .left_outer_joins(:tags)
         .additional_entries
+        .where(tags: { value: tags })
         .map(&:to_result_hash)
   end
 end
