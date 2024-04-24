@@ -379,11 +379,13 @@ class Dictionary < ApplicationRecord
     norm2s = ssdb.retrieve(norm2)
 
     norm2s.each do |n2|
-      binds = [
-        ActiveRecord::Relation::QueryAttribute.new("dictionary_id", id, ActiveRecord::Type::Value.new),
-        ActiveRecord::Relation::QueryAttribute.new("norm2", n2, ActiveRecord::Type::Value.new)
-      ]
-      results += ActiveRecord::Base.connection.exec_query("SELECT label, norm1, norm2, identifier FROM entries WHERE dictionary_id=$1 AND norm2=$2 AND mode!=2", 'SQL', binds, prepare:true).to_a.each{|r| r.symbolize_keys!}
+      results += self.entries
+                     .where(norm2: n2)
+                     .where.not(mode: EntryMode::BLACK)
+                     .select(:label, :norm1, :norm2, :identifier)
+                     .map(&:attributes)
+                     .map(&:symbolize_keys)
+                     .map{ _1.slice(:label, :norm1, :norm2, :identifier) }
     end
 
     results.uniq!
