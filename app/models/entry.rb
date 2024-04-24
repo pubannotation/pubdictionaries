@@ -104,14 +104,14 @@ class Entry < ApplicationRecord
     }
   end
 
-  def to_result_hash = { label:, norm1:, norm2:, identifier: }
+  def to_result_hash = { label:, norm1:, norm2:, identifier:, tags: tag_values }
+  def tag_values = tags.map(&:value).join('|')
 
   def self.as_tsv
     CSV.generate(col_sep: "\t") do |tsv|
       tsv << ['#label', :id, '#tags']
       all.each do |entry|
-        tags = entry.tags.map(&:value).join('|')
-        tsv << [entry.label, entry.identifier, tags]
+        tsv << [entry.label, entry.identifier, entry.tag_values]
       end
     end
   end
@@ -120,14 +120,13 @@ class Entry < ApplicationRecord
     CSV.generate(col_sep: "\t") do |tsv|
       tsv << ['#label', :id, '#tags', :operator]
       all.each do |entry|
-        tags = entry.tags.map(&:value).join('|')
         operator = case entry.mode
         when EntryMode::WHITE
           '+'
         when EntryMode::BLACK
           '-'
         end
-        tsv << [entry.label, entry.identifier, tags, operator]
+        tsv << [entry.label, entry.identifier, entry.tag_values, operator]
       end
     end
   end
@@ -254,7 +253,7 @@ class Entry < ApplicationRecord
   end
 
   def self.get_trigrams(str)
-    return [] if str.empty?
+    return [] if str.nil? || str.empty?
     fstr = str[-1] + str + str[0] # to make a set of circular trigrams
     (0 .. (fstr.length - 3)).collect{|i| fstr[i, 3]}
   end

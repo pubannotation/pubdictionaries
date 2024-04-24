@@ -379,7 +379,9 @@ class Dictionary < ApplicationRecord
     norm2s = ssdb.retrieve(norm2)
 
     norm2s.each do |n2|
-      results += self.entries.without_black
+      results += self.entries
+                     .left_outer_joins(:tags)
+                     .without_black
                      .where(norm2: n2)
                      .select(:label, :norm1, :norm2, :identifier)
                      .map(&:to_result_hash)
@@ -629,8 +631,9 @@ class Dictionary < ApplicationRecord
   end
 
   def additional_entries
-    self.entries.additional_entries
-        .select(:label, :norm1, :norm2, :identifier)
+    self.entries
+        .left_outer_joins(:tags)
+        .additional_entries
         .map(&:to_result_hash)
   end
 end
