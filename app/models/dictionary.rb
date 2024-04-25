@@ -383,7 +383,7 @@ class Dictionary < ApplicationRecord
                      .left_outer_joins(:tags)
                      .without_black
                      .where(norm2: n2)
-                     .where(tags: { value: tags })
+                     .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
                      .map(&:to_result_hash)
     end
 
@@ -634,7 +634,7 @@ class Dictionary < ApplicationRecord
     self.entries
         .left_outer_joins(:tags)
         .additional_entries
-        .where(tags: { value: tags })
+        .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
         .map(&:to_result_hash)
   end
 end
