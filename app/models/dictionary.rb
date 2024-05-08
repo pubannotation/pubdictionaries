@@ -237,7 +237,7 @@ class Dictionary < ApplicationRecord
       r = Entry.bulk_import columns, entries, validate: false
       raise "Import error" unless r.failed_instances.empty?
 
-      entries.first.dictionary.update_entries_num if entries.any?
+      self.update_entries_num if entries.any?
     end
   end
 
