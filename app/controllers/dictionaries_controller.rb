@@ -90,9 +90,9 @@ class DictionariesController < ApplicationController
           if params[:mode].present?
             case params[:mode].to_i
             when EntryMode::WHITE
-              [entries_with_tags.added, "white"]
+              [entries_with_tags.white, "white"]
             when EntryMode::BLACK
-              [entries_with_tags.deleted, "black"]
+              [entries_with_tags.black, "black"]
             when EntryMode::GRAY
               [entries_with_tags.gray, "gray"]
             when EntryMode::ACTIVE
