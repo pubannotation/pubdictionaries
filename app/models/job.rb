@@ -35,7 +35,7 @@ class Job < ApplicationRecord
     case status
     when :done
       d.merge!({finished_at: ended_at})
-      d.merge!({result_location: annotation_result_url(TextAnnotator::BatchResult.new(nil, id).filename, host: host, only_path: host.nil?)})
+      d.merge!({result_location: annotation_result_url(TextAnnotator::BatchResult.new(nil, id).filename, protocol: 'https')})
     when :error
       d.merge!({stopped_at: ended_at})
       d.merge!({error_message: message})
