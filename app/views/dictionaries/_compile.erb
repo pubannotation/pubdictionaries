@@ -2,8 +2,10 @@
 	<fieldset class="dialog">
 		<legend>Compile</legend>
 
-		<p class="note">This dictionary is not fully indexed.<br/>
-		Compile the dictionary to enable search or to make search fast.</p>
+		<p class="note">
+			This dictionary is partially indexed, which is sufficient if you don't require soft matching capability or text annotation.<br/>
+			Compile the dictionary, to enable search with soft matching.
+		</p>
 		<%= link_to(
 			'Compile',
 			compile_dictionary_path(@dictionary.name),

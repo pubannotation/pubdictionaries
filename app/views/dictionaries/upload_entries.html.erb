@@ -1,0 +1,16 @@
+<% content_for :page_title do %>
+  <%= render partial: 'title' %>
+<% end %>
+<br/>
+
+
+<div style="text-align:right">
+<%= num_entries_helper %>
+</div>
+
+<% if @dictionary.jobs.count == 0 %>
+  <%= render partial: 'upload' -%>
+  <%= render partial: 'compile' -%>
+<% else %>
+  <%= render partial: 'last_task' -%>
+<% end %>

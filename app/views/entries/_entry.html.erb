@@ -27,7 +27,7 @@
   </td>
   <td style="border-left-style: none">
     <div class="buttons-container">
-      <%= link_to('<i class="fa fa-bars" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'See synonyms (entries with the same Id)') -%>
+      <%= link_to('<i class="fa fa-angle-double-right" aria-hidden="true"></i>'.html_safe, dictionary_path(@dictionary, id_search:entry.identifier), title: 'See synonyms (entries with the same Id)') -%>
 
       <%#= link_to('<i class="fa-solid fa-link"></i>'.html_safe, pub_annotation_search_url(entry, @dictionary), title: 'search') -%>
 
@@ -36,9 +36,7 @@
 
   <% if @dictionary.use_tags? %>
     <td style="border-right-style: none">
-      <% entry.tags.each do |tag| %>
-        <span class="tag"><%= tag.value %></span>
-      <% end %>
+      <% entry.tags.each do |tag| %><span class="tag"><%= tag.value %></span><% end %>
     </td>
   <% end %>
 

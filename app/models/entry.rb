@@ -144,18 +144,14 @@ class Entry < ApplicationRecord
 
     return nil if items[1].length > 255
 
-    mode = case items[2]
-    when '+'
-      EntryMode::WHITE
-    when '-'
-      EntryMode::BLACK
-    when '/'
-      EntryMode::PATTERN
-    else
-      EntryMode::GRAY
-    end
+    tags = get_tags(items[2])
+    [items[0], items[1], tags]
+  end
 
-    [items[0], items[1], mode]
+  def self.get_tags(tags)
+    return [] unless tags.present?
+    raise ArgumentError, 'invalid tags' unless !!(tags =~ /^([a-zA-Z0-9]+)(\|[a-zA-Z0-9]+)*$/)
+    tags.split('|')
   end
 
   def self.decapitalize(text)

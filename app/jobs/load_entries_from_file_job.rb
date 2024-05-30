@@ -1,3 +1,6 @@
+# ToDo : patterns upload
+# ToDo : black/white entries upload
+
 class LoadEntriesFromFileJob < ApplicationJob
   queue_as :upload
 
@@ -21,13 +24,14 @@ class LoadEntriesFromFileJob < ApplicationJob
       @num_skipped_patterns = 0
     end
 
-    def add_entry(label, identifier, mode)
-      case mode
-      when EntryMode::PATTERN
-        buffer_pattern(label, identifier)
-      else
-        buffer_entry(label, identifier, mode)
-      end
+    def add_entry(label, identifier, tags)
+      # case mode
+      # when EntryMode::PATTERN
+      #   buffer_pattern(label, identifier)
+      # else
+      #   buffer_entry(label, identifier, mode)
+      # end
+      buffer_entry(label, identifier, tags)
     end
 
     def finalize
@@ -42,21 +46,22 @@ class LoadEntriesFromFileJob < ApplicationJob
 
     private
 
-    def buffer_entry(label, identifier, mode)
+    def buffer_entry(label, identifier, tags)
       matched = entries_any? && @dictionary.entries.where(label:label, identifier:identifier)&.first
       if matched
-        case mode
-        when EntryMode::GRAY
-          @num_skipped_entries += 1
-        when EntryMode::WHITE
-          matched.be_white!
-        when EntryMode::BLACK
-          matched.be_black!
-        else
-          raise ArgumentError, "Unexpected mode: #{mode}"
-        end
+        # case mode
+        # when EntryMode::GRAY
+        #   @num_skipped_entries += 1
+        # when EntryMode::WHITE
+        #   matched.be_white!
+        # when EntryMode::BLACK
+        #   matched.be_black!
+        # else
+        #   raise ArgumentError, "Unexpected mode: #{mode}"
+        # end
+        @num_skipped_entries += 1
       else
-        @entries << [label, identifier, mode]
+        @entries << [label, identifier, tags]
       end
       flush_entries if @entries.length >= BUFFER_SIZE
     end
@@ -92,7 +97,7 @@ class LoadEntriesFromFileJob < ApplicationJob
     end
   end
 
-  def perform(dictionary, filename)
+  def perform(dictionary, filename, mode = nil)
     # file preprocessing
     # TODO: at the moment, it is hard-coded. It should be improved.
     `/usr/bin/dos2unix #{filename}`
@@ -108,10 +113,10 @@ class LoadEntriesFromFileJob < ApplicationJob
 
     File.open(filename, 'r') do |f|
       f.each_line do |line|
-        label, id, mode = Entry.read_entry_line(line)
+        label, id, tags = Entry.read_entry_line(line)
         next if label.nil?
 
-        buffer.add_entry(label, id, mode)
+        buffer.add_entry(label, id, tags)
 
         @job.increment!(:num_dones) if @job
 
@@ -125,7 +130,7 @@ class LoadEntriesFromFileJob < ApplicationJob
     end
 
     buffer.finalize
-    dictionary.compile!
+    # dictionary.compile!
     File.delete(filename)
   end
 

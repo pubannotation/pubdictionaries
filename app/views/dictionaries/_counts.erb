@@ -13,6 +13,7 @@
           <%= downloadable_helper %>
         </th>
       </tr>
+<!--
       <tr>
         <td style="border-style:none"></td>
         <th colspan="2" class="custom" style="border-style:none" title="<%= t('title.custom') %>">
@@ -20,15 +21,19 @@
           <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::CUSTOM, format: :tsv), title: "Download") %>
         </th>
       </tr>
+-->
       <tr>
         <th class="gray" title="<%= t('title.gray') %>">
           <%= link_to_unless_current '# Gray', params.permit(:mode).except(:mode).merge(mode: EntryMode::GRAY) %>
+          <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::GRAY, format: :tsv), title: "Download") %>
         </th>
         <th class="white" title="<%= t('title.white') %>">
           <%= link_to_unless_current '# White', params.permit(:mode).merge(mode: EntryMode::WHITE) %>
+          <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::WHITE, format: :tsv), title: "Download") %>
         </th>
         <th class="black" title="<%= t('title.black') %>">
           <%= link_to_unless_current '# Black', params.permit(:mode).merge(mode: EntryMode::BLACK) %>
+          <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::BLACK, format: :tsv), title: "Download") %>
         </th>
 <!--
         <th class="auto_expanded" title="<%= t('title.auto_expanded') %>">
@@ -54,8 +59,15 @@
       </tr>
     </table>
   <% else %>
-    <%= downloadable_helper %>
-    <%= delete_entries_helper %>
+    <%= num_entries_helper %>
+<!--
+    <%= upload_entries_helper %>
+-->
+    <% if @dictionary.empty? %>
+    <% else %>
+      <%= downloadable_helper %>
+      <%= delete_entries_helper %>
+    <% end %>
   <% end %>
 <% else %>
   <%= downloadable_helper %>

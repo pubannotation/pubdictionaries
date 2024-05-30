@@ -245,6 +245,11 @@ class DictionariesController < ApplicationController
     end
   end
 
+  def upload_entries
+    @dictionary = Dictionary.editable(current_user).find_by(name: params[:id])
+    raise ArgumentError, "Cannot find the dictionary" if @dictionary.nil?
+  end
+
   def downloadable
     dictionary = Dictionary.find_by_name(params[:id])
     raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
@@ -322,6 +327,7 @@ class DictionariesController < ApplicationController
         dictionary.empty_patterns
       else
         dictionary.empty_entries(mode)
+        dictionary.clear_tags
       end
 
       respond_to do |format|

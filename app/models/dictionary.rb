@@ -150,6 +150,10 @@ class Dictionary < ApplicationRecord
     name
   end
 
+  def empty?
+    entries_num == 0
+  end
+
   def editable?(user)
     user && (user.admin? || user_id == user.id || associated_managers.include?(user))
   end
@@ -229,13 +233,48 @@ class Dictionary < ApplicationRecord
   end
 
   def add_entries(raw_entries, normalizer = nil)
-    black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
+    # black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
+
     transaction do
-      # enrich entries
-      entries = raw_entries.map {|label, identifier, mode| get_enriched_entry(label, identifier, normalizer, mode)}
-      columns = [:label, :identifier, :norm1, :norm2, :label_length, :mode, :dirty, :dictionary_id]
-      r = Entry.bulk_import columns, entries, validate: false
-      raise "Import error" unless r.failed_instances.empty?
+      # prepare for indexing tags
+      entry_i_tags = []
+      tag_ids = {}
+      entry_num = -1
+
+      # index tags & enrich entries
+      entries = raw_entries.map do |label, identifier, tags|
+        entry_num += 1
+        if tags.present?
+          tags.each {|tag| entry_i_tags << [entry_num, tag]}
+        end
+        get_enriched_entry(label, identifier, normalizer)
+      end
+
+      # import entries
+      columns1 = [:label, :identifier, :norm1, :norm2, :label_length, :mode, :dirty, :dictionary_id]
+      r1 = Entry.bulk_import columns1, entries, validate: false
+      raise "Error during import of entries" unless r1.failed_instances.empty?
+
+      tags_uniq = entry_i_tags.map {|entry_num, tag| tag}.uniq
+      tags_uniq.each {|tag| tag_ids[tag] = Tag.find_by(dictionary_id: id, value: tag)&.id}
+
+      tags_new = tag_ids.select { |_, v| v.nil? || v == '' }.keys
+
+      if tags_new.present?
+        columns2 = [:value, :dictionary_id]
+        r2 = Tag.bulk_import columns2, tags_new.map{|tag| [tag, id]}, validate: false
+        raise "Error during import of tags" unless r1.failed_instances.empty?
+        tags_new.each_with_index {|tag, i| tag_ids[tag] = r2.ids[i]}
+      end
+
+      # get entry_tags association
+      entry_tags = entry_i_tags.map do |entry_num, tag|
+        [r1.ids[entry_num], tag_ids[tag]]
+      end
+
+      # import tag-entry association
+      columns3 = [:entry_id, :tag_id]
+      r2 = EntryTag.bulk_import columns3, entry_tags, validate: false
 
       self.update_entries_num if entries.any?
     end
@@ -278,6 +317,10 @@ class Dictionary < ApplicationRecord
     end
   end
 
+  def clear_tags
+    tags.destroy_all
+  end
+
   def new_pattern(expression, identifier)
     Pattern.new(expression:expression, identifier:identifier, dictionary_id: self.id)
     rescue => e
@@ -304,7 +347,7 @@ class Dictionary < ApplicationRecord
   end
 
   def compilable?
-    entries.where(dirty:true).exists? || !sim_string_db_exist?
+    entries.exists? && (entries.where(dirty:true).exists? || !sim_string_db_exist?)
   end
 
   def compile!
@@ -368,28 +411,41 @@ class Dictionary < ApplicationRecord
 
   def search_term(ssdb, term, norm1, norm2, threshold, tags)
     return [] if term.empty? || entries_num == 0
-    raise "no ssdb for the dictionry #{name}." unless ssdb.present?
+    # raise "no ssdb for the dictionry #{name}." unless ssdb.present?
 
-    norm1 ||= normalize1(term)
-    norm2 ||= normalize2(term)
-    threshold ||= self.threshold
+    soft_search = ssdb.present?
 
-    results = additional_entries tags
+    if soft_search
+      norm1 ||= normalize1(term)
+      norm2 ||= normalize2(term)
+      threshold ||= self.threshold
 
-    norm2s = ssdb.retrieve(norm2)
+      results = additional_entries tags
 
-    norm2s.each do |n2|
+      norm2s = ssdb.retrieve(norm2)
+
+      norm2s.each do |n2|
+        results += self.entries
+                       .left_outer_joins(:tags)
+                       .without_black
+                       .where(norm2: n2)
+                       .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
+                       .map(&:to_result_hash)
+      end
+
+      results.uniq!
+      results.each{|e| e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]), dictionary: name)}
+      results.delete_if{|e| e[:score] < threshold}
+    else
+      results = []
       results += self.entries
                      .left_outer_joins(:tags)
                      .without_black
-                     .where(norm2: n2)
+                     .where(label: term)
                      .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
                      .map(&:to_result_hash)
+      results.each{|e| e.merge!(score: 1, dictionary: name)}
     end
-
-    results.uniq!
-    results.each{|e| e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]), dictionary: name)}
-    results.delete_if{|e| e[:score] < threshold}
   end
 
   def sim_string_db_dir

@@ -30,6 +30,10 @@ module DictionariesHelper
     content_tag(:p, link_to(message, show_patterns_dictionary_path(@dictionary)), class: 'page_link')
   end
 
+  def num_entries_helper
+    content_tag(:span, number_with_delimiter(@dictionary.entries_num, :delimiter => ',') + ' entries', class: 'num_entries')
+  end
+
   def downloadable_helper
     if @dictionary.large?
       if @dictionary.creating_downloadable?
@@ -41,6 +45,14 @@ module DictionariesHelper
       end
     else
       link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::ACTIVE, format: :tsv), title: "Download")
+    end
+  end
+
+  def upload_entries_helper
+    if @dictionary.jobs.count == 0
+      link_to(content_tag(:i, '', class:"fa fa-upload"), upload_entries_dictionary_path(@dictionary.name), title: "Upload")
+    else
+      link_to(content_tag(:i, '', class:"fa fa-cog fa-spin"), upload_entries_dictionary_path(@dictionary.name), title: "Upload")
     end
   end
 

@@ -24,15 +24,15 @@ class ApplicationJob < ActiveJob::Base
       ActiveRecord::Base.connection.clear_query_cache
       @job = Job.find_by(active_job_id: active_job.job_id)
     end
-    raise "Could not find its job object" if @job.nil?
+    # raise "Could not find its job object" if @job.nil?
   end
 
   def set_begun_at
-    @job.update_attribute(:begun_at, Time.now)
+    @job&.update_attribute(:begun_at, Time.now)
   end
 
   def set_ended_at
-    @job.update_attribute(:ended_at, Time.now)
+    @job&.update_attribute(:ended_at, Time.now)
   end
 
   def check_suspend_flag
@@ -42,10 +42,14 @@ class ApplicationJob < ActiveJob::Base
   end
 
   def suspended?
-    Job.find(@job.id)&.suspended?
+    if @job
+      Job.find(@job.id)&.suspended?
+    else
+      false
+    end
   end
 
   def destroy_job_record
-    @job.destroy
+    @job&.destroy
   end
 end

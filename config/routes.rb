@@ -40,6 +40,7 @@ Rails.application.routes.draw do
 
     # Add routes as a member, /dictionary/:id/...
     member do
+      get  'upload_entries'
       get  'show_patterns'
       get  'find_ids', to: "lookup#find_ids"
       post 'find_ids', to: "lookup#find_ids"
