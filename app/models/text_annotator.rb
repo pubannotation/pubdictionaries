@@ -56,15 +56,18 @@ class TextAnnotator
     # nil means there is no cache for the span
     @cache_span_search = {}
 
+    @soft_match = @threshold.present? && (@threshold < 1)
+
     @sub_string_dbs = @dictionaries.inject({}) do |h, dic|
-      sdb = if dic.entries_num > 0
+      sdb = if (dic.entries_num > 0) && @soft_match
         begin
           simstring_db = Simstring::Reader.new(dic.sim_string_db_path)
           simstring_db.measure = dic.simstring_method
           simstring_db.threshold = (@threshold || dic.threshold)
           simstring_db
         rescue => e
-          raise "Error during opening the Simstring DB for '#{dic.name}': #{e.message}"
+          # warn "Error during opening the Simstring DB for '#{dic.name}': #{e.message}"
+          nil
         end
       else
         nil
@@ -332,7 +335,7 @@ class TextAnnotator
 
         if entries.nil?
           norm1 = norm1s[idx_token_begin, tlen].join
-          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, [], span, norm1, norm2)
+          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, span, [], norm1, norm2)
 
           if entries.present?
             # cache all the positive search results
