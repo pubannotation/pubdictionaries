@@ -70,5 +70,8 @@
     <% end %>
   <% end %>
 <% else %>
-  <%= downloadable_helper %>
+  <%= num_entries_helper %>
+  <% unless @dictionary.empty? %>
+    <%= downloadable_helper %>
+  <% end %>
 <% end %>
