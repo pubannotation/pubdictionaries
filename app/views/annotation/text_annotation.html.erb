@@ -11,17 +11,10 @@
 
 		<table class="options">
 			<tr>
-				<th>
-					<%= label_tag :tokens_len_min, "Min Length", title: "The minimum number of tokens to be considered." %>
-					<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
-				</th>
-				<th><%= label_tag :tokens_len_max, "Max Length", title: "The maximum number of tokens to be considered." %>
-					<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
-				</th>
-				<th>
-					<%= label_tag :threshold, nil, title: "The output will include only the annotations whose matching score is above the threshold." %>
-					<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
-				</th>
+				<th><%= label_tag :tokens_len_min, "Min Length", title: "The minimum number of tokens to be considered. Leave it blank to use the default setting of individual dictionaries." %></th>
+				<th><%= label_tag :tokens_len_max, "Max Length", title: "The maximum number of tokens to be considered. Leave it blank to use the default setting of individual dictionaries" %></th>
+				<th><%= label_tag :threshold, nil, title: "The output will include only the annotations whose matching score is above the threshold. Leave it blank to use the default setting of individual dictionaries" %></th>
+				<th><%= label_tag :ngram, "N-gram", title: "Use n-gram similarity. Use it together with a low threshold for a higher sensitivity. However, it will slow the speed." %></th>
 				<th><%= label_tag :abbreviation, "Abbreviation", title: "Abbreviations which are locally defined in an input document will be automatically detected. It defaults to true." %></th>
 				<th><%= label_tag :longest, "Longest", title: "Longest only annotation: the output will not include embedded annotations." %></th>
 				<th><%= label_tag :superfluous, "Superfluous", title: "Superflous annotation: all the annotations with a higher score than the threshold will be produced, while, in the default mode, only the ones with the highest score will be produced." %></th>
@@ -31,12 +24,12 @@
 				<td><%= text_field_tag :tokens_len_min, params[:tokens_len_min].present? ? params[:tokens_len_min]: nil, type: :number, min:1, max:3, step:1 %></td>
 				<td><%= text_field_tag :tokens_len_max, params[:tokens_len_max].present? ? params[:tokens_len_max]: nil, type: :number, min:3, max:30, step:1 %></td>
 				<td><%= text_field_tag :threshold, params[:threshold].present? ? params[:threshold]: nil, type: :number, min:0.5, max:1, step:0.01 %></td>
-				<td><%= check_box_tag :abbreviation, true, (params[:text] ? params[:abbreviation] : true) %></td>
+				<td><%= check_box_tag :ngram, true, (params[:text] ? params[:ngram] : options_default[:ngram]) %></td>
+				<td><%= check_box_tag :abbreviation, true, (params[:text] ? params[:abbreviation] : options_default[:abbreviation]) %></td>
 				<td><%= check_box_tag :longest, true, (params[:text] ? params[:longest] : options_default[:longest]) %></td>
 				<td><%= check_box_tag :superfluous, true, (params[:text] ? params[:superfluous] : options_default[:superfluous]) %></td>
 				<td><%= check_box_tag :verbose, true, (params[:text] ? params[:verbose] : options_default[:verbose]) %></td>
 			</tr>
-
 		</table>
 
 		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>

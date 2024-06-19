@@ -224,6 +224,7 @@ class AnnotationController < ApplicationController
     options[:superfluous] = get_option_boolean(:superfluous)
     options[:verbose] = get_option_boolean(:verbose)
     options[:no_text] = get_option_boolean(:no_text)
+    options[:ngram] = get_option_boolean(:ngram)
     options
   end
 

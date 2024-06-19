@@ -2,6 +2,7 @@
 	default_threshold = '0.85'
 	default_superfluous = 'false'
 	default_verbose = 'false'
+	default_ngram = 'true'
 %>
 
 <% content_for :page_title do %>
@@ -13,33 +14,42 @@
 	<%= form_tag 'find_ids', id: 'find_ids', method: :get do -%>
 		<%= text_area_tag :labels, params[:labels], required: true, placeholder: "List of labels (Tab-, newline-, or vertical bar('|')-delimited)" %>
 		<div class="center-align">
-			<table class="option">
+			<table class="options">
 			<tr>
-			<th>
-				<%= label_tag :threshold, nil, title: "The output will include only the terms whose matching score is above the threshold." %>
-				<%= content_tag :i, '', class:"fa fa-question-circle help_icon", title: "Leave it blank to use the default setting of individual dictionaries" %>
-			</th>
-			<td><%= text_field_tag :threshold, params[:threshold], type: :number, min:0.5, max:1, step:0.01 %></td>
+				<th>
+					<%= label_tag :threshold, nil, title: "The output will include only the terms whose matching score is above the threshold. Leave it blank to use the default setting of individual dictionaries." %>
+				</th>
+				<th>
+					<%= label_tag :superfluous, "Superfluous", title: "Superfluous annotation: the output will include the entries with a higher score than the threshold, while, in the default mode, it will include only the ones with the highest score." %>
+				</th>
+				<th>
+					<%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include information for debugging." %>
+				</th>
+				<th>
+					<%= label_tag :ngram, "N-gram", title: "Use n-gram similarity. Use it together with a low threshold for a higher sensitivity. However, it will slow the speed." %>
+				</th>
+			</tr>
+			<tr>
+				<td>
+					<%= text_field_tag :threshold, params[:threshold], type: :number, min:0.5, max:1, step:0.01 %>
+				</td>
+				<td>
+					<%= check_box_tag :superfluous, true, (params[:superfluous] ? params[:superfluous] : default_superfluous) == 'true' %>
+				</td>
+				<td>
+					<%= check_box_tag :verbose, true, (params[:verbose] ? params[:verbose] : default_verbose) == 'true' %>
+				</td>
+				<td>
+					<%= check_box_tag :ngram, true, (params[:text] ? params[:ngram] : default_ngram) == 'true' %>
+				</td>
 			</tr>
 			</table>
 
-			<table class="option">
-			<tr>
-			<th><%= label_tag :superfluous, "Superfluous", title: "Superfluous annotation: the output will include the entries with a higher score than the threshold, while, in the default mode, it will include only the ones with the highest score." %></th>
-			<td><%= check_box_tag :superfluous, true, (params[:superfluous] ? params[:superfluous] : default_superfluous) == 'true' %></td>
-			</tr>
-			</table>
-
-			<table class="option">
-			<tr>
-			<th><%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include information for debugging." %></th>
-			<td><%= check_box_tag :verbose, true, (params[:verbose] ? params[:verbose] : default_verbose) == 'true' %></td>
-			</tr>
-			</table>
-
-			<table class="option">
+			<table class="options">
 			<tr>
 				<th><%= label_tag :tags, "Tags" %></th>
+			</tr>
+			<tr>
 				<td><%= text_field_tag :tags, params[:tags], placeholder: "Pipe('|')-separated list of tags." %></td>
 			</tr>
 			</table>
@@ -174,6 +184,10 @@
 		set_url();
 	});
 
+	$("#ngram").change(function() {
+		set_url();
+	});
+
 	$("#tags").change(function() {
 		set_url();
 	});
@@ -219,6 +233,13 @@
 		var default_verbose = <%= default_verbose == 'true' %>;
 		if (verbose != default_verbose) {
 			var param = 'verbose=' + verbose;
+			params.push(param);
+		}
+
+		var ngram = $('#ngram').is(':checked');
+		var default_ngram = <%= default_ngram == 'true' %>;
+		if (ngram != default_ngram) {
+			var param = 'ngram=' + ngram;
 			params.push(param);
 		}
 

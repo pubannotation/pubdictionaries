@@ -102,7 +102,7 @@ class Dictionary < ApplicationRecord
       dictionaries.collect{|d| d[1]}
     end
 
-    def find_ids_by_labels(labels, dictionaries = [], threshold = nil, superfluous = false, verbose = false, tags = [])
+    def find_ids_by_labels(labels, dictionaries = [], threshold = nil, superfluous = false, verbose = false, ngram = true, tags = [])
       sim_string_dbs = dictionaries.inject({}) do |h, dic|
         h[dic.name] = begin
           Simstring::Reader.new(dic.sim_string_db_path)
@@ -119,7 +119,7 @@ class Dictionary < ApplicationRecord
       search_method = superfluous ? Dictionary.method(:search_term_order) : Dictionary.method(:search_term_top)
 
       r = labels.inject({}) do |h, label|
-        h[label] = search_method.call(dictionaries, sim_string_dbs, threshold, label, tags)
+        h[label] = search_method.call(dictionaries, sim_string_dbs, threshold, ngram, label, tags)
         h[label].map!{|entry| entry[:identifier]} unless verbose
         h
       end
@@ -386,21 +386,21 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def self.search_term_order(dictionaries, ssdbs, threshold, term, tags, norm1 = nil, norm2 = nil)
+  def self.search_term_order(dictionaries, ssdbs, threshold, ngram, term, tags, norm1 = nil, norm2 = nil)
     return [] if term.empty?
 
     entries = dictionaries.inject([]) do |sum, dic|
-      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold, tags)
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram)
     end
 
     entries.sort_by{|e| e[:score]}.reverse
   end
 
-  def self.search_term_top(dictionaries, ssdbs, threshold, term, tags, norm1 = nil, norm2 = nil)
+  def self.search_term_top(dictionaries, ssdbs, threshold, ngram, term, tags, norm1 = nil, norm2 = nil)
     return [] if term.empty?
 
     entries = dictionaries.inject([]) do |sum, dic|
-      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, threshold, tags)
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram)
     end
 
     return [] if entries.empty?
@@ -409,22 +409,23 @@ class Dictionary < ApplicationRecord
     entries.delete_if{|e| e[:score] < max_score}
   end
 
-  def search_term(ssdb, term, norm1, norm2, threshold, tags)
+  def search_term(ssdb, term, norm1, norm2, tags, threshold, ngram)
     return [] if term.empty? || entries_num == 0
-    # raise "no ssdb for the dictionry #{name}." unless ssdb.present?
 
-    soft_search = ssdb.present?
+    threshold ||= self.threshold
 
-    if soft_search
+    # It needs for a proper sensitivity over additional entities
+    # results = additional_entries tags
+
+    if threshold < 1
+      results = []
+
       norm1 ||= normalize1(term)
       norm2 ||= normalize2(term)
-      threshold ||= self.threshold
-
-      results = additional_entries tags
-
-      norm2s = ssdb.retrieve(norm2)
+      norm2s = (ngram && ssdb.present?) ? ssdb.retrieve(norm2) : [norm2]
 
       norm2s.each do |n2|
+        results += additional_entries_for_norm2(n2, tags)
         results += self.entries
                        .left_outer_joins(:tags)
                        .without_black
@@ -437,7 +438,7 @@ class Dictionary < ApplicationRecord
       results.each{|e| e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]), dictionary: name)}
       results.delete_if{|e| e[:score] < threshold}
     else
-      results = []
+      results = additional_entries_for_label(term, tags)
       results += self.entries
                      .left_outer_joins(:tags)
                      .without_black
@@ -690,6 +691,24 @@ class Dictionary < ApplicationRecord
     self.entries
         .left_outer_joins(:tags)
         .additional_entries
+        .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
+        .map(&:to_result_hash)
+  end
+
+  def additional_entries_for_norm2(norm2, tags)
+    self.entries
+        .left_outer_joins(:tags)
+        .additional_entries
+        .where(norm2: norm2)
+        .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
+        .map(&:to_result_hash)
+  end
+
+  def additional_entries_for_label(label, tags)
+    self.entries
+        .left_outer_joins(:tags)
+        .additional_entries
+        .where(label: label)
         .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
         .map(&:to_result_hash)
   end

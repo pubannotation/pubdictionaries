@@ -17,10 +17,11 @@ class TextAnnotator
     tokens_len_min: 1,
     tokens_len_max: 6,
     threshold: 0.85,
-    abbreviation: false,
+    abbreviation: true,
     longest: false,
     superfluous: false,
-    verbose: false
+    verbose: false,
+    ngram: true
   }
 
   # Initialize the text annotator instance.
@@ -41,6 +42,7 @@ class TextAnnotator
     @longest = options.has_key?(:longest) ? options[:longest] : OPTIONS_DEFAULT[:longest]
     @superfluous = options.has_key?(:superfluous) ? options[:superfluous] : OPTIONS_DEFAULT[:superfluous]
     @verbose = options.has_key?(:verbose) ? options[:verbose] : OPTIONS_DEFAULT[:verbose]
+    @ngram = options.has_key?(:ngram) ? options[:ngram] : OPTIONS_DEFAULT[:ngram]
 
     @es_connection = Net::HTTP::Persistent.new
 
@@ -56,7 +58,7 @@ class TextAnnotator
     # nil means there is no cache for the span
     @cache_span_search = {}
 
-    @soft_match = @threshold.present? && (@threshold < 1)
+    @soft_match = @threshold.nil? || (@threshold < 1)
 
     @sub_string_dbs = @dictionaries.inject({}) do |h, dic|
       sdb = if (dic.entries_num > 0) && @soft_match
@@ -335,7 +337,7 @@ class TextAnnotator
 
         if entries.nil?
           norm1 = norm1s[idx_token_begin, tlen].join
-          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, span, [], norm1, norm2)
+          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, @ngram, span, [], norm1, norm2)
 
           if entries.present?
             # cache all the positive search results

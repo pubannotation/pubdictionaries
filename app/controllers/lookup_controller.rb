@@ -32,8 +32,9 @@ class LookupController < ApplicationController
       superfluous = true if params[:superfluous] == 'true' || params[:superfluous] == '1'
       verbose = true if params[:verbose] == 'true' || params[:verbose] == '1'
       threshold = params[:threshold].present? ? params[:threshold].to_f : nil
+      ngram = true if params[:ngram] == 'true' || params[:ngram] == '1'
       tags = params[:tags].present? ? params[:tags].strip.split("|") : []
-      @result = Dictionary.find_ids_by_labels(labels, dictionaries_selected, threshold, superfluous, verbose, tags)
+      @result = Dictionary.find_ids_by_labels(labels, dictionaries_selected, threshold, superfluous, verbose, ngram, tags)
     else
       {}
     end
