@@ -40,7 +40,7 @@
 					<%= check_box_tag :verbose, true, (params[:verbose] ? params[:verbose] : default_verbose) == 'true' %>
 				</td>
 				<td>
-					<%= check_box_tag :ngram, true, (params[:text] ? params[:ngram] : default_ngram) == 'true' %>
+					<%= check_box_tag :ngram, true, (params[:labels] ? params[:ngram] : default_ngram) == 'true' %>
 				</td>
 			</tr>
 			</table>
