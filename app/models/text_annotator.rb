@@ -17,10 +17,10 @@ class TextAnnotator
     tokens_len_min: 1,
     tokens_len_max: 6,
     threshold: 0.85,
-    abbreviation: true,
     longest: false,
     superfluous: false,
     verbose: false,
+    abbreviation: true,
     ngram: true
   }
 

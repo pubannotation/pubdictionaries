@@ -196,7 +196,6 @@ class AnnotationController < ApplicationController
     end
   end
 
-
   def get_targets_from_json_body
     if body.present?
       JSON.parse body, symbolize_names: true
@@ -216,15 +215,19 @@ class AnnotationController < ApplicationController
 
   def get_options_from_params
     options = {}
+
     options[:tokens_len_min] = get_option_integer(:tokens_len_min)
     options[:tokens_len_max] = get_option_integer(:tokens_len_max)
     options[:threshold] = get_option_float(:threshold)
-    options[:abbreviation] = get_option_boolean(:abbreviation)
-    options[:longest] = get_option_boolean(:longest)
-    options[:superfluous] = get_option_boolean(:superfluous)
-    options[:verbose] = get_option_boolean(:verbose)
-    options[:no_text] = get_option_boolean(:no_text)
-    options[:ngram] = get_option_boolean(:ngram)
+
+    [:longest, :superfluous, :verbose, :no_text, :abbreviation, :ngram].each do |key|
+      options[key] = if (params[:commit] != 'Submit') && TextAnnotator::OPTIONS_DEFAULT[key]
+        params[key] != 'false'
+      else
+        get_option_boolean(key)
+      end
+    end
+
     options
   end
 

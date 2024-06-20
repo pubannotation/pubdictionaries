@@ -203,6 +203,10 @@
 		set_url();
 	});
 
+	$("#ngram").change(function() {
+		set_url();
+	});
+
 	$('#text_annotation').on('reset', function(e) {
 		setTimeout(function() {
 			dictionarySelectionReset();
@@ -257,6 +261,12 @@
 		var verbose = $('#verbose').is(':checked');
 		if (verbose != <%= options_default[:verbose] %>) {
 			var param = 'verbose=' + verbose;
+			params.push(param);
+		}
+
+		var ngram = $('#ngram').is(':checked');
+		if (ngram != <%= options_default[:ngram] %>) {
+			var param = 'ngram=' + ngram;
 			params.push(param);
 		}
 

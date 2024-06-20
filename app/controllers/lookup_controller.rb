@@ -29,10 +29,14 @@ class LookupController < ApplicationController
 
     @result = if labels.present?
       raise ArgumentError, "At least one dictionary has to be specified for lookup." unless dictionaries_selected.present?
-      superfluous = true if params[:superfluous] == 'true' || params[:superfluous] == '1'
-      verbose = true if params[:verbose] == 'true' || params[:verbose] == '1'
       threshold = params[:threshold].present? ? params[:threshold].to_f : nil
-      ngram = true if params[:ngram] == 'true' || params[:ngram] == '1'
+      superfluous = get_option_boolean(:superfluous)
+      verbose = get_option_boolean(:verbose)
+      ngram = if (params[:commit] == 'Submit')
+        get_option_boolean(:ngram)
+      else
+        params[:ngram] != 'false'
+      end
       tags = params[:tags].present? ? params[:tags].strip.split("|") : []
       @result = Dictionary.find_ids_by_labels(labels, dictionaries_selected, threshold, superfluous, verbose, ngram, tags)
     else
@@ -171,5 +175,11 @@ class LookupController < ApplicationController
         format.any {render json: {notice:e.message}, status: :unprocessable_entity}
       end
     end
+  end
+
+  private
+
+  def get_option_boolean(key)
+    (params[key] == 'true' || params[key] == '1') ? true : false
   end
 end
