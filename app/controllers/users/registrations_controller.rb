@@ -1,6 +1,7 @@
 class Users::RegistrationsController < Devise::RegistrationsController
   # before_action :configure_sign_up_params, only: [:create]
   # before_action :configure_account_update_params, only: [:update]
+  before_action :validate_recaptcha, only: [:create]
 
   # GET /resource/sign_up
   # def new
@@ -57,4 +58,15 @@ class Users::RegistrationsController < Devise::RegistrationsController
   # def after_inactive_sign_up_path_for(resource)
   #   super(resource)
   # end
+
+  private
+
+  def validate_recaptcha
+    self.resource = resource_class.new(sign_up_params)
+    resource.validate # Without this, all validations will not be displayed.
+
+    unless verify_recaptcha(model: resource)
+      respond_with_navigational(resource) { render :new }
+    end
+  end
 end
