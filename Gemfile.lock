@@ -262,6 +262,7 @@ GEM
       zeitwerk (~> 2.5)
     raindrops (0.20.1)
     rake (13.2.1)
+    recaptcha (5.17.0)
     redis-client (0.22.1)
       connection_pool
     responders (3.1.1)
@@ -356,6 +357,7 @@ DEPENDENCIES
   rails (~> 7.0.8)
   rails-jquery-autocomplete
   rails3-jquery-autocomplete
+  recaptcha
   ruby-stemmer
   rubyzip
   sass-rails
