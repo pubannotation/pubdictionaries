@@ -25,6 +25,12 @@
 		  <th><%= f.label :password_confirmation %></th>
 		  <td><%= f.password_field :password_confirmation %></td>
 		</tr>
+
+		<tr>
+		  <th></th>
+		  <td><%= recaptcha_tags %></td>
+		</tr>
+
 		<tr>
 			<th colspan="2"><%= f.submit "Sign up", class: :button %></th>
 		</tr>

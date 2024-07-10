@@ -8,6 +8,8 @@
   <div><%= f.label :email %><br />
   <%= f.email_field :email, :autofocus => true %></div>
 
+  <div><%= recaptcha_tags %></div>
+
   <div><%= f.submit "Send me reset password instructions" %></div>
 <% end %>
 
