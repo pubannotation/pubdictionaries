@@ -24,8 +24,8 @@
         link_to dic.user.username, show_user_path(dic.user.username), style: 'display:block'
       end
 
-      g.column name: "Created At", attribute: "created_at", filter: false do |dic| 
-        dic.created_at
+      g.column name: "Updated At", attribute: "updated_at", filter: false do |dic|
+        dic.updated_at
       end
     end
   %>

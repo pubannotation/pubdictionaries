@@ -22,7 +22,7 @@ class DictionariesController < ApplicationController
   def index
     @dictionaries_grid = initialize_grid(Dictionary,
       :conditions => ["public = ?", true],
-      :order => 'created_at',
+      :order => 'updated_at',
       :order_direction => 'desc',
       :per_page => 20
     )
