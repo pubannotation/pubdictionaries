@@ -8,7 +8,8 @@ class DictionariesController < ApplicationController
   before_action :authenticate_user!, except: [
     :index, :show, :show_patterns,
     :find_ids, :text_annotation,
-    :downloadable, :create_downloadable
+    :downloadable, :create_downloadable,
+    :openapi
   ]
 
   # Disable CSRF check for REST-API actions.
@@ -357,6 +358,17 @@ class DictionariesController < ApplicationController
       respond_to do |format|
         format.html {redirect_to dictionary_path(dictionary), notice: e.message}
         format.json {head :no_content}
+      end
+    end
+  end
+
+  def openapi
+    @dictionary = Dictionary.find_by!(name: params[:id])
+
+    respond_to do |format|
+      format.yaml do
+        response.headers['Content-Disposition'] = 'inline'
+        render template: 'dictionaries/openapi', formats: [:yaml]
       end
     end
   end

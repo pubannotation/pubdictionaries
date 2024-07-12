@@ -1,0 +1,37 @@
+openapi: 3.1.0
+info:
+  title: PubDictionaries FindIDs for <%= @dictionary.name %>
+  description: An API which receives the name of a dictionary and natural language terms, and returns the identifiers of the terms.
+  version: v1
+servers:
+  - url: https://pubdictionaries.org
+paths:
+  /find_ids.json:
+    get:
+      operationId: pubdictionaries_findids
+      summary: Lookup a dictionary to find identifiers of natural language terms.
+      parameters:
+        - in: query
+          name: labels
+          schema:
+            type: string
+          required: true
+          description: terms represented as pipe('|')-separated values.
+        - in: query
+          name: dictionary
+          schema:
+            type: string
+          required: true
+          description: The name of the dictionary to lookup. Use '<%= @dictionary.name %>'.
+      responses:
+        "200":
+          description: A JSON hash with dynamic keywords, each associated with an array of strings which are the identifiers of
+            the keywords.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string

@@ -53,6 +53,7 @@ Rails.application.routes.draw do
       get 'compile'
       get 'downloadable'
       post 'downloadable', to: 'dictionaries#create_downloadable', as: 'create_downloadable'
+      get 'openapi', to: 'dictionaries#openapi'
       post 'managers', to: 'dictionaries#add_manager'
       delete 'managers/:username', to: 'dictionaries#remove_manager', as: 'manager'
       resources :expand_synonym_jobs, only: :create
