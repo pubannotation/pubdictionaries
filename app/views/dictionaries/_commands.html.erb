@@ -1,13 +1,15 @@
 <div class="control">
-  <% if @dictionary.administrable?(current_user) %>
-    <%=
-      link_to(
-        '<i class="fa fa-bomb fa-lg"></i>'.html_safe,
-        @dictionary,
-        title: 'Delete the dictionary',
-        method: :delete,
-        data: {confirm: 'Are you sure to completely delete this dictionary?'}
-      )
-    %>
+  <%= num_entries_helper %>
+
+  <% if @dictionary.stable? %>
+    <% if @dictionary.editable?(current_user) && !@dictionary.empty? %>
+      <%= delete_entries_helper %>
     <% end %>
+
+    <% if @dictionary.administrable?(current_user) %>
+      <%= destroy_dictionary_helper %>
+    <% end %>
+  <% else %>
+    <%= unstable_icon_helper %>
+  <% end %>
 </div>

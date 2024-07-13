@@ -56,6 +56,10 @@ module DictionariesHelper
     end
   end
 
+  def unstable_icon_helper
+    content_tag(:i, '', class:"fa fa-cog fa-spin", title: 'The dictionary is currently undergoing updates.')
+  end
+
   def job_stop_helper(job)
     if job.running?
       button_to('Stop', stop_dictionary_job_path(@dictionary.name, job.id), :method => :put, data: { confirm: 'Are you sure?' }, class: :button, disabled: job.suspended?)
@@ -71,18 +75,33 @@ module DictionariesHelper
       "Delete all the #{mode_to_s} entries"
     end
 
+    unless @dictionary.jobs.count == 0
+      title += ' (Disabled due to remaining task)'
+    end
+
     confirm = if mode == EntryMode::BLACK
       "Are you sure to turn all the black entries to gray?"
     else
       "Are you sure to delete all the #{mode_to_s} entries?"
     end
 
-    link_to(
-      content_tag(:i, '', class:"fa-regular fa-trash-can fa-lg"),
+    link_to_if @dictionary.jobs.count == 0,
+      content_tag(:i, '', class:"fa-regular fa-trash-can fa-lg", title: title),
       empty_dictionary_entries_path(@dictionary, mode:mode),
-      title: title,
       method: :put,
       data: {confirm: confirm}
-    )
+  end
+
+  def destroy_dictionary_helper
+    title = 'Delete the dictionary'
+    unless @dictionary.jobs.count == 0
+      title += ' (Disabled due to remaining task)'
+    end
+
+    link_to_if @dictionary.jobs.count == 0,
+      content_tag(:i, '', class:"fa fa-bomb fa-lg", title: title),
+      @dictionary,
+      method: :delete,
+      data: {confirm: 'Are you sure to completely delete this dictionary?'}
   end
 end

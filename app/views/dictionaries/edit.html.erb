@@ -36,8 +36,9 @@
   </table>
 </fieldset>
 
+<%= render partial: 'commands' -%>
+
 <% if @dictionary.jobs.count == 0 %>
-  <%= render partial: 'commands' -%>
   <%= render partial: 'upload' -%>
   <%= render partial: 'compile' -%>
 <!--

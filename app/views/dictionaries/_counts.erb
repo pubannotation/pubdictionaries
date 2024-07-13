@@ -1,77 +1,73 @@
-<% if @dictionary.editable?(current_user) %>
-  <% if @dictionary.num_white > 0 || @dictionary.num_black > 0 %>
-    <table class="counts">
-      <colgroup>
-        <col class="count_entries">
-        <col class="count_entries">
-        <col class="count_entries">
-        <col class="count_entries">
-      </colgroup>
-      <tr>
-        <th colspan="2" class="active" style="border-style:none" title="<%= t('title.active') %>">
-          <%= link_to 'Active', params.permit(:mode).merge(mode: EntryMode::ACTIVE) %>
-          <%= downloadable_helper %>
-        </th>
-      </tr>
+<% if @dictionary.editable?(current_user) && (@dictionary.num_white > 0 || @dictionary.num_black > 0) %>
+  <table class="counts">
+    <colgroup>
+      <col class="count_entries">
+      <col class="count_entries">
+      <col class="count_entries">
+      <col class="count_entries">
+    </colgroup>
+    <tr>
+      <th colspan="2" class="active" style="border-style:none" title="<%= t('title.active') %>">
+        <%= link_to 'Active', params.permit(:mode).merge(mode: EntryMode::ACTIVE) %>
+        <%= downloadable_helper %>
+      </th>
+    </tr>
 <!--
-      <tr>
-        <td style="border-style:none"></td>
-        <th colspan="2" class="custom" style="border-style:none" title="<%= t('title.custom') %>">
-          <%= link_to 'Custom', params.permit(:mode).merge(mode: EntryMode::CUSTOM) %>
-          <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::CUSTOM, format: :tsv), title: "Download") %>
-        </th>
-      </tr>
+    <tr>
+      <td style="border-style:none"></td>
+      <th colspan="2" class="custom" style="border-style:none" title="<%= t('title.custom') %>">
+        <%= link_to 'Custom', params.permit(:mode).merge(mode: EntryMode::CUSTOM) %>
+        <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::CUSTOM, format: :tsv), title: "Download") %>
+      </th>
+    </tr>
 -->
-      <tr>
-        <th class="gray" title="<%= t('title.gray') %>">
-          <%= link_to_unless_current '# Gray', params.permit(:mode).except(:mode).merge(mode: EntryMode::GRAY) %>
-          <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::GRAY, format: :tsv), title: "Download") %>
-        </th>
-        <th class="white" title="<%= t('title.white') %>">
-          <%= link_to_unless_current '# White', params.permit(:mode).merge(mode: EntryMode::WHITE) %>
-          <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::WHITE, format: :tsv), title: "Download") %>
-        </th>
-        <th class="black" title="<%= t('title.black') %>">
-          <%= link_to_unless_current '# Black', params.permit(:mode).merge(mode: EntryMode::BLACK) %>
-          <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::BLACK, format: :tsv), title: "Download") %>
-        </th>
+    <tr>
+      <th class="gray" title="<%= t('title.gray') %>">
+        <%= link_to_unless_current '# Gray', params.permit(:mode).except(:mode).merge(mode: EntryMode::GRAY) %>
+        <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::GRAY, format: :tsv), title: "Download") %>
+      </th>
+      <th class="white" title="<%= t('title.white') %>">
+        <%= link_to_unless_current '# White', params.permit(:mode).merge(mode: EntryMode::WHITE) %>
+        <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::WHITE, format: :tsv), title: "Download") %>
+      </th>
+      <th class="black" title="<%= t('title.black') %>">
+        <%= link_to_unless_current '# Black', params.permit(:mode).merge(mode: EntryMode::BLACK) %>
+        <%= link_to(content_tag(:i, '', class:"fa fa-download"), params.permit(:mode).merge(mode: EntryMode::BLACK, format: :tsv), title: "Download") %>
+      </th>
 <!--
-        <th class="auto_expanded" title="<%= t('title.auto_expanded') %>">
-          <%= link_to_unless_current '# Auto expanded', params.permit(:mode).merge(mode: EntryMode::AUTO_EXPANDED) %>
-        </th>
+      <th class="auto_expanded" title="<%= t('title.auto_expanded') %>">
+        <%= link_to_unless_current '# Auto expanded', params.permit(:mode).merge(mode: EntryMode::AUTO_EXPANDED) %>
+      </th>
 -->
-      </tr>
-      <tr>
-        <td style="text-align: right"><%= number_with_delimiter(@dictionary.num_gray, :delimiter => ',') %></td>
-        <td style="text-align: right"><%= @dictionary.num_white %></td>
-        <td style="text-align: right"><%= @dictionary.num_black %></td>
+    </tr>
+    <tr>
+      <td style="text-align: right"><%= number_with_delimiter(@dictionary.num_gray, :delimiter => ',') %></td>
+      <td style="text-align: right"><%= @dictionary.num_white %></td>
+      <td style="text-align: right"><%= @dictionary.num_black %></td>
 <!--
-        <td style="text-align: right"><%= @dictionary.num_auto_expanded %></td>
+      <td style="text-align: right"><%= @dictionary.num_auto_expanded %></td>
 -->
-      </tr>
-      <tr>
-        <th><%= delete_entries_helper(EntryMode::GRAY) %></th>
-        <th><%= delete_entries_helper(EntryMode::WHITE) %></th>
-        <th><%= delete_entries_helper(EntryMode::BLACK) %></th>
+    </tr>
+    <tr>
+      <th><%= delete_entries_helper(EntryMode::GRAY) %></th>
+      <th><%= delete_entries_helper(EntryMode::WHITE) %></th>
+      <th><%= delete_entries_helper(EntryMode::BLACK) %></th>
 <!--
-        <th><%= delete_entries_helper(EntryMode::AUTO_EXPANDED) %></th>
+      <th><%= delete_entries_helper(EntryMode::AUTO_EXPANDED) %></th>
 -->
-      </tr>
-    </table>
-  <% else %>
-    <%= num_entries_helper %>
-<!--
-    <%= upload_entries_helper %>
--->
-    <% if @dictionary.empty? %>
-    <% else %>
-      <%= downloadable_helper %>
-      <%= delete_entries_helper %>
-    <% end %>
-  <% end %>
+    </tr>
+  </table>
 <% else %>
   <%= num_entries_helper %>
+
   <% unless @dictionary.empty? %>
-    <%= downloadable_helper %>
+    <% if @dictionary.stable? %>
+      <%= downloadable_helper %>
+    <% else %>
+      <%= unstable_icon_helper %>
+    <% end %>
+    <% if @dictionary.editable?(current_user) %>
+      <%= delete_entries_helper %>
+    <% end %>
   <% end %>
 <% end %>

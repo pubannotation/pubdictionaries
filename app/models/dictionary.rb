@@ -162,6 +162,10 @@ class Dictionary < ApplicationRecord
     user && (user.admin? || user_id == user.id)
   end
 
+  def stable?
+    (jobs.count == 0) || (jobs.count == 1 && jobs.first.finished?)
+  end
+
   def use_tags?
     !tags.empty?
   end
