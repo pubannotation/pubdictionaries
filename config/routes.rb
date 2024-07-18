@@ -28,7 +28,9 @@ Rails.application.routes.draw do
 
   devise_for :users, controllers: {
     :omniauth_callbacks => 'callbacks',
-    :confirmations => 'confirmations'
+    :confirmations => 'confirmations',
+    :registrations => 'users/registrations',
+    :passwords => 'users/passwords'
   }
   get '/users/:name' => 'users#show', :as => 'show_user'
 
