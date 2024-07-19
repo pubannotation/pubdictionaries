@@ -40,10 +40,9 @@ class AnnotationController < ApplicationController
 
     time_for_annotation = calc_time_for_annotation(targets)
     job = enqueue_job(targets, targets.length, time_for_annotation)
-    result_name = TextAnnotator::BatchResult.new(nil, job.id).filename
 
     respond_to do |format|
-      format.any {head :see_other, location: annotation_result_url(result_name), retry_after: time_for_annotation}
+      format.any {head :ok}
     end
   rescue ArgumentError => e
     respond_to do |format|
