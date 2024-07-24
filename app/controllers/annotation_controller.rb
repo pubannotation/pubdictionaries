@@ -1,5 +1,5 @@
 class AnnotationController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:annotation_task]
+  skip_before_action :verify_authenticity_token, only: [:annotation_request, :annotation_task]
 
   # GET / POST
   def text_annotation
@@ -141,7 +141,6 @@ class AnnotationController < ApplicationController
 
     # job = TextAnnotationJob.new(target, dictionaries, options)
     # job.perform()
-
     active_job = TextAnnotationJob.perform_later(target, dictionaries, options, callback_url)
     active_job.create_job_record("Text annotation", num_items, time_for_annotation)
   end
