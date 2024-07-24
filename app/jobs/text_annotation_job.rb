@@ -61,7 +61,6 @@ class TextAnnotationJob < ApplicationJob
       TextAnnotator::BatchResult.new(nil, @job.id).save!(annotation_result)
     end
 
-    binding.break
     if callback_url
       Net::HTTP.post(URI.parse(callback_url), annotation_result.to_json, {'Content-type' => 'application/json'})
     end
