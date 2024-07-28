@@ -104,7 +104,8 @@ class Entry < ApplicationRecord
     }
   end
 
-  def to_result_hash = { label:, norm1:, norm2:, identifier:, tags: tag_values }
+  def to_result_hash = { label:, norm1:, norm2:, identifier: }
+  def to_result_hash_with_tags = { label:, norm1:, norm2:, identifier:, tags: tag_values }
   def tag_values = tags.map(&:value).join('|')
 
   def self.as_tsv

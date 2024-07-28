@@ -350,6 +350,22 @@ class Dictionary < ApplicationRecord
     File.exist?(sim_string_db_path)
   end
 
+  def additional_entries_exists?
+    @additional_entries_exists
+  end
+
+  def additional_entries_existency_update
+    @additional_entries_exists = entries.additional_entries.exists?
+  end
+
+  def tags_exists?
+    @tag_exists
+  end
+
+  def tags_existency_update
+    @tag_exists = use_tags?
+  end
+
   def compilable?
     entries.exists? && (entries.where(dirty:true).exists? || !sim_string_db_exist?)
   end
@@ -429,13 +445,18 @@ class Dictionary < ApplicationRecord
       norm2s = (ngram && ssdb.present?) ? ssdb.retrieve(norm2) : [norm2]
 
       norm2s.each do |n2|
-        results += additional_entries_for_norm2(n2, tags)
+        results += additional_entries_for_norm2(n2, tags) if additional_entries_exists?
         results += self.entries
                        .left_outer_joins(:tags)
                        .without_black
                        .where(norm2: n2)
                        .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
-                       .map(&:to_result_hash)
+      end
+
+      if tags_exists?
+        results.map!(&:to_result_hash_with_tags)
+      else
+        results.map!(&:to_result_hash)
       end
 
       results.uniq!

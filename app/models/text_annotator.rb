@@ -31,10 +31,14 @@ class TextAnnotator
 #  def initialize(dictionaries, tokens_len_max = 6, threshold = 0.85, abbreviation = true, longest = false, superfluous = false, verbose=false)
   def initialize(dictionaries, options = {})
     @dictionaries = dictionaries
+    @dictionaries.each do |d|
+      d.additional_entries_existency_update
+      d.tags_existency_update
+    end
     @patterns = Pattern.active.where(dictionary_id: @dictionaries.map{|d| d.id})
-    @no_term_words = dictionaries.collect{|d| d.no_term_words || OPTIONS_DEFAULT[:no_term_words]}.reduce(:+).uniq
-    @no_begin_words = dictionaries.collect{|d| d.no_begin_words || OPTIONS_DEFAULT[:no_begin_words]}.reduce(:+).uniq
-    @no_end_words = dictionaries.collect{|d| d.no_end_words || OPTIONS_DEFAULT[:no_end_words]}.reduce(:+).uniq
+    @no_term_words = dictionaries.flat_map{|d| d.no_term_words || OPTIONS_DEFAULT[:no_term_words]}.to_set
+    @no_begin_words = dictionaries.flat_map{|d| d.no_begin_words || OPTIONS_DEFAULT[:no_begin_words]}.to_set
+    @no_end_words = dictionaries.flat_map{|d| d.no_end_words || OPTIONS_DEFAULT[:no_end_words]}.to_set
     @tokens_len_min = options[:tokens_len_min] || dictionaries.collect{|d| d.tokens_len_min}.min
     @tokens_len_max = options[:tokens_len_max] || dictionaries.collect{|d| d.tokens_len_max}.max
     @threshold = options[:threshold]
