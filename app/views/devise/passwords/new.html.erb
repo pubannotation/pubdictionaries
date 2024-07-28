@@ -5,10 +5,21 @@
 <%= form_for(resource, :as => resource_name, :url => password_path(resource_name), :html => { :method => :post }) do |f| %>
   <%= render "devise/shared/error_messages", resource: resource %>
 
-  <div><%= f.label :email %><br />
-  <%= f.email_field :email, :autofocus => true %></div>
+  <table>
+    <tr>
+      <th><%= f.label :email %></th>
+      <td><%= f.email_field :email, :autofocus => true, class: 'form-field' %></td>
+    </tr>
 
-  <div><%= f.submit "Send me reset password instructions" %></div>
+    <tr>
+      <th></th>
+      <td><%= recaptcha_tags %></td>
+    </tr>
+
+    <tr>
+      <th colspan="2"><%= f.submit "Send me reset password instructions", class: :button %></th>
+    </tr>
+  </table>
 <% end %>
 
 <br/>

@@ -1,5 +1,5 @@
 class AnnotationController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:annotation_task]
+  skip_before_action :verify_authenticity_token, only: [:annotation_request, :annotation_task]
 
   # GET / POST
   def text_annotation
@@ -39,11 +39,11 @@ class AnnotationController < ApplicationController
     raise TextAnnotator::AnnotationQueueOverflowError unless Job.number_of_tasks_to_go(:annotation) < 8
 
     time_for_annotation = calc_time_for_annotation(targets)
-    job = enqueue_job(targets, targets.length, time_for_annotation)
-    result_name = TextAnnotator::BatchResult.new(nil, job.id).filename
+    callback_url = params[:callback_url]
+    job = enqueue_job(targets, targets.length, time_for_annotation, callback_url)
 
     respond_to do |format|
-      format.any {head :see_other, location: annotation_result_url(result_name), retry_after: time_for_annotation}
+      format.any {head :ok}
     end
   rescue ArgumentError => e
     respond_to do |format|
@@ -135,14 +135,13 @@ class AnnotationController < ApplicationController
     r
   end
 
-  def enqueue_job(target, num_items, time_for_annotation)
+  def enqueue_job(target, num_items, time_for_annotation, callback_url = nil)
     dictionaries = Dictionary.find_dictionaries_from_params(params)
     options = get_options_from_params
 
     # job = TextAnnotationJob.new(target, dictionaries, options)
     # job.perform()
-
-    active_job = TextAnnotationJob.perform_later(target, dictionaries, options)
+    active_job = TextAnnotationJob.perform_later(target, dictionaries, options, callback_url)
     active_job.create_job_record("Text annotation", num_items, time_for_annotation)
   end
 
