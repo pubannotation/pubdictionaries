@@ -62,7 +62,12 @@ class TextAnnotationJob < ApplicationJob
     end
 
     if callback_url
-      Net::HTTP.post(URI.parse(callback_url), annotation_result.to_json, {'Content-type' => 'application/json'})
+      url = URI.parse(callback_url)
+      http = Net::HTTP.new(url.host, url.port)
+      request = Net::HTTP::Put.new(url.path, {'Content-type' => 'application/json'})
+      request.body = annotation_result.to_json
+
+      http.request(request)
     end
   end
 
