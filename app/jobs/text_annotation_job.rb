@@ -65,7 +65,8 @@ class TextAnnotationJob < ApplicationJob
       url = URI.parse(callback_url)
       http = Net::HTTP.new(url.host, url.port)
       request = Net::HTTP::Put.new(url.path, {'Content-type' => 'application/json'})
-      request.body = annotation_result.to_json
+      result = (annotation_result.class == Array) ? annotation_result : [annotation_result]
+      request.body = result.to_json
 
       http.request(request)
     end
