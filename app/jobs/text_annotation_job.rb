@@ -62,7 +62,7 @@ class TextAnnotationJob < ApplicationJob
     end
 
     if callback_url
-      Net::HTTP.post(URI.parse(callback_url), annotation_result.to_json, {'Content-type' => 'application/json'})
+      http_put(callback_url, annotation_result)
     end
   end
 
@@ -91,5 +91,17 @@ class TextAnnotationJob < ApplicationJob
   def clean_files
     to_delete = TextAnnotator::BatchResult.older_files 1.day
     File.delete(*to_delete)
+  end
+
+  def http_put(callback_url, annotation_result)
+    url = URI.parse(callback_url)
+    http = Net::HTTP.new(url.host, url.port)
+    request = Net::HTTP::Put.new(url.path, {'Content-type' => 'application/json'})
+    http.use_ssl = true if url.scheme == 'https'
+
+    result = (annotation_result.class == Array) ? annotation_result : [annotation_result]
+    request.body = result.to_json
+
+    http.request(request)
   end
 end
