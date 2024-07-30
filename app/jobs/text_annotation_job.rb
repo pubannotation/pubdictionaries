@@ -97,6 +97,8 @@ class TextAnnotationJob < ApplicationJob
     url = URI.parse(callback_url)
     http = Net::HTTP.new(url.host, url.port)
     request = Net::HTTP::Put.new(url.path, {'Content-type' => 'application/json'})
+    http.use_ssl = true if url.scheme == 'https'
+
     result = (annotation_result.class == Array) ? annotation_result : [annotation_result]
     request.body = result.to_json
 
