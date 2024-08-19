@@ -2,12 +2,6 @@ class ApplicationController < ActionController::Base
   before_action :configure_permitted_parameters, if: :devise_controller?
   protect_from_forgery
 
-  helper_method :recaptcha_usable?
-
-  def recaptcha_usable?
-    ENV['RECAPTCHA_SITE_KEY'].present? && ENV['RECAPTCHA_SECRET_KEY'].present?
-  end
-
   protected
 
   def configure_permitted_parameters

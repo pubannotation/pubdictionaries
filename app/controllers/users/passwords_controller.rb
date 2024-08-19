@@ -1,10 +1,11 @@
 class Users::PasswordsController < Devise::PasswordsController
-  before_action :validate_recaptcha, only: [:create]
+  include Recaptchable
+
+  before_action :validate_recaptcha, only: [:create], if: :recaptcha_usable?
 
   private
 
   def validate_recaptcha
-    return unless recaptcha_usable?
     self.resource = resource_class.new
 
     unless verify_recaptcha(model: resource)
