@@ -4,6 +4,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   private
 
   def validate_recaptcha
+    return unless recaptcha_usable?
     self.resource = resource_class.new(sign_up_params)
     resource.validate # Without this, all validations will not be displayed.
 

@@ -11,10 +11,12 @@
       <td><%= f.email_field :email, :autofocus => true, class: 'form-field' %></td>
     </tr>
 
-    <tr>
-      <th></th>
-      <td><%= recaptcha_tags %></td>
-    </tr>
+    <% if recaptcha_usable? %>
+      <tr>
+        <th></th>
+        <td><%= recaptcha_tags %></td>
+      </tr>
+    <% end %>
 
     <tr>
       <th colspan="2"><%= f.submit "Send me reset password instructions", class: :button %></th>

@@ -4,6 +4,7 @@ class Users::PasswordsController < Devise::PasswordsController
   private
 
   def validate_recaptcha
+    return unless recaptcha_usable?
     self.resource = resource_class.new
 
     unless verify_recaptcha(model: resource)
