@@ -35,12 +35,11 @@ class AnnotationController < ApplicationController
   # POST
   def annotation_request
     targets = get_targets_from_json_body
-    targets = targets[:hdocs] if targets.key?(:hdocs)
     raise ArgumentError, "No text was supplied." unless targets.present?
     raise TextAnnotator::AnnotationQueueOverflowError unless Job.number_of_tasks_to_go(:annotation) < 8
 
     time_for_annotation = calc_time_for_annotation(targets)
-    callback_url = params[:callback_url]
+    callback_url = request.headers['HTTP_CALLBACK_URL']
     job = enqueue_job(targets, targets.length, time_for_annotation, callback_url)
 
     respond_to do |format|
