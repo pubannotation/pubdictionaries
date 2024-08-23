@@ -1,4 +1,6 @@
 class Api::V1::EntriesController < ApplicationController
+  skip_before_action :verify_authenticity_token, only: :create
+
   def create
     dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
 
