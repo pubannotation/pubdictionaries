@@ -92,6 +92,12 @@ Rails.application.routes.draw do
     end
   end
 
+  namespace :api do
+    namespace :v1 do
+      resources :entries, only: :create
+    end
+  end
+
   resources :jobs, only: [:index, :show, :destroy]
   delete 'jobs', to: "jobs#destroy_all"
   delete 'annotation_jobs', to: "jobs#destroy_all_annotation_jobs"
