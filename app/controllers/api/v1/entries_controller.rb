@@ -1,5 +1,5 @@
 class Api::V1::EntriesController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: %i[create destroy_entries]
+  skip_before_action :verify_authenticity_token, only: %i[create undo destroy_entries]
 
   def create
     dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
@@ -45,6 +45,30 @@ class Api::V1::EntriesController < ApplicationController
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
     end
+  end
+
+  def undo
+    begin
+      dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
+
+      if dictionary.nil?
+        render json: { error: "Cannot find the dictionary." }, status: :bad_request
+        return
+      end
+
+      entry = Entry.find(params[:id])
+
+      if entry.nil?
+        render json: { error: "Cannot find the entry." }, status: :bad_request
+        return
+      end
+
+      dictionary.undo_entry(entry)
+    rescue => e
+      render json: { error: e.message }, status: :internal_server_error
+    end
+
+    render json: { message: "Entry was successfully redid." }, status: :ok
   end
 
   def destroy_entries

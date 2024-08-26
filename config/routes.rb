@@ -98,6 +98,10 @@ Rails.application.routes.draw do
         collection do
           delete '/', to: 'entries#destroy_entries'
         end
+
+        member do
+          put 'undo', to: 'entries#undo'
+        end
       end
     end
   end
