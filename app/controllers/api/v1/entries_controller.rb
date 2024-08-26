@@ -1,5 +1,5 @@
 class Api::V1::EntriesController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: :create
+  skip_before_action :verify_authenticity_token, only: %i[create destroy_entries]
 
   def create
     dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
@@ -45,5 +45,30 @@ class Api::V1::EntriesController < ApplicationController
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
     end
+  end
+
+  def destroy_entries
+    begin
+      dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
+
+      if dictionary.nil?
+        render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
+        return
+      end
+
+      if params[:entry_id].nil?
+        render json: { error: "No entry to be deleted is selected" }, status: :bad_request
+        return
+      end
+
+      ActiveRecord::Base.transaction do
+        Entry.where(id: params[:entry_id]).destroy_all
+        dictionary.update_entries_num
+      end
+    rescue => e
+      render json: { error: e.message }, status: :internal_server_error
+    end
+
+    render json: { message: "Entry was successfully deleted." }, status: :ok
   end
 end

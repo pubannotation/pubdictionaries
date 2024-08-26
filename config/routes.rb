@@ -94,7 +94,11 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      resources :entries, only: :create
+      resources :entries, only: :create do
+        collection do
+          delete '/', to: 'entries#destroy_entries'
+        end
+      end
     end
   end
 
