@@ -97,6 +97,7 @@ Rails.application.routes.draw do
       resources :entries, only: :create do
         collection do
           delete '/', to: 'entries#destroy_entries'
+          post 'tsv', to: 'entries#upload_tsv'
         end
 
         member do
