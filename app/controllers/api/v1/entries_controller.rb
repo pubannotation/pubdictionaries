@@ -29,14 +29,9 @@ class Api::V1::EntriesController < ApplicationController
 
     begin
       ActiveRecord::Base.transaction do
-        entry = dictionary.new_entry(label, identifier, nil, EntryMode::WHITE, true)
+        success, entry = dictionary.create_entry(label, identifier, params[:tags])
 
-        tag_ids = params[:tags] || []
-        entry.tag_ids = tag_ids
-
-        if entry.save
-          dictionary.update_entries_num
-
+        if success
           render json: { message: "The white entry #{entry} was created." }, status: :created
         else
           render json: { message: "The white entry #{entry} could not be created." }, status: :unprocessable_entity
