@@ -96,7 +96,7 @@ class Api::V1::EntriesController < ApplicationController
       render json: { error: e.message }, status: :internal_server_error
     end
 
-    render json: { message: "Entry was successfully redid." }, status: :ok
+    render json: { message: "Entry was successfully undid." }, status: :ok
   end
 
   def destroy_entries
