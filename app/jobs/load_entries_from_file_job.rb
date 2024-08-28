@@ -97,11 +97,34 @@ class LoadEntriesFromFileJob < ApplicationJob
     end
   end
 
+  def self.prepare_file_and_perform(dictionary, uploaded_file)
+    source_filepath = uploaded_file.tempfile.path
+    target_filepath = File.join('tmp', "upload-#{dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
+    FileUtils.cp source_filepath, target_filepath
+
+    active_job = perform_later(dictionary, target_filepath)
+    active_job.create_job_record("Upload dictionary entries")
+  end
+
   def perform(dictionary, filename, mode = nil)
     # file preprocessing
     # TODO: at the moment, it is hard-coded. It should be improved.
-    `/usr/bin/dos2unix #{filename}`
-    `/usr/bin/cut -f1-3 #{filename} | sort -u | sort -k3 -o #{filename}`
+    # `/usr/bin/dos2unix #{filename}`
+    # `/usr/bin/cut -f1-3 #{filename} | sort -u | sort -k3 -o #{filename}`
+
+    # ファイルを読み込み、Unix形式の改行に変換
+    content = File.read(filename).gsub(/\r\n?/, "\n")
+
+    # TSVデータを処理
+    entries = content.lines.map do |line|
+      next if line.strip.empty? || line.start_with?('#')
+
+      fields = line.split("\t").first(3) # 最初の3カラムを取得
+      fields if fields[0] && fields[0].length.between?(2, 127) && fields[1] && fields[1].length.between?(2, 255)
+    end.compact.uniq.sort_by { |fields| fields[2] || "" } # タグでソート
+
+    # 結果をファイルに書き戻す
+    File.write(filename, entries.map { |fields| fields.join("\t") }.join("\n"))
 
     num_entries = File.read(filename).each_line.count
     if @job

@@ -98,12 +98,7 @@ class Api::V1::EntriesController < ApplicationController
         return
       end
 
-      source_filepath = params[:file].tempfile.path
-      target_filepath = File.join('tmp', "upload-#{@dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
-      FileUtils.cp source_filepath, target_filepath
-
-      active_job = LoadEntriesFromFileJob.perform_later(@dictionary, target_filepath)
-      active_job.create_job_record("Upload dictionary entries")
+      LoadEntriesFromFileJob.prepare_file_and_perform(@dictionary, params[:file])
 
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
