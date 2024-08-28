@@ -73,7 +73,7 @@ class Api::V1::EntriesController < ApplicationController
 
   def undo
     if @dictionary.nil?
-    render json: { error: "Cannot find the dictionary." }, status: :bad_request
+      render json: { error: "Cannot find the dictionary." }, status: :bad_request
       return
     end
 
