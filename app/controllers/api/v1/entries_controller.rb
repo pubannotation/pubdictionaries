@@ -52,9 +52,16 @@ class Api::V1::EntriesController < ApplicationController
       return
     end
 
+    entries = Entry.where(id: params[:entry_id])
+
+    if entries.empty?
+      render json: { error: "Could not find the entries, #{params[:entry_id]}" }, status: :not_found
+      return
+    end
+
     begin
       ActiveRecord::Base.transaction do
-        Entry.where(id: params[:entry_id]).destroy_all
+        entries.destroy_all
         @dictionary.update_entries_num
       end
 
