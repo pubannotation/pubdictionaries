@@ -42,7 +42,7 @@ class Api::V1::EntriesController < ApplicationController
     end
   end
 
-  def upload_tsv
+  def destroy_entries
     begin
       dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
 
@@ -51,23 +51,20 @@ class Api::V1::EntriesController < ApplicationController
         return
       end
 
-      if dictionary.jobs.count > 0
-        render json: { error: "The last task is not yet dismissed. Please dismiss it and try again." }, status: :bad_request
+      if params[:entry_id].nil?
+        render json: { error: "No entry to be deleted is selected" }, status: :bad_request
         return
       end
 
-      source_filepath = params[:file].tempfile.path
-      target_filepath = File.join('tmp', "upload-#{dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
-      FileUtils.cp source_filepath, target_filepath
-
-      active_job = LoadEntriesFromFileJob.perform_later(dictionary, target_filepath)
-      active_job.create_job_record("Upload dictionary entries")
-
+      ActiveRecord::Base.transaction do
+        Entry.where(id: params[:entry_id]).destroy_all
+        dictionary.update_entries_num
+      end
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
     end
 
-    render json: { message: "Upload dictionary entries task was successfully created." }, status: :accepted
+    render json: { message: "Entry was successfully deleted." }, status: :ok
   end
 
   def undo
@@ -94,7 +91,7 @@ class Api::V1::EntriesController < ApplicationController
     render json: { message: "Entry was successfully undid." }, status: :ok
   end
 
-  def destroy_entries
+  def upload_tsv
     begin
       dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
 
@@ -103,19 +100,22 @@ class Api::V1::EntriesController < ApplicationController
         return
       end
 
-      if params[:entry_id].nil?
-        render json: { error: "No entry to be deleted is selected" }, status: :bad_request
+      if dictionary.jobs.count > 0
+        render json: { error: "The last task is not yet dismissed. Please dismiss it and try again." }, status: :bad_request
         return
       end
 
-      ActiveRecord::Base.transaction do
-        Entry.where(id: params[:entry_id]).destroy_all
-        dictionary.update_entries_num
-      end
+      source_filepath = params[:file].tempfile.path
+      target_filepath = File.join('tmp', "upload-#{dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
+      FileUtils.cp source_filepath, target_filepath
+
+      active_job = LoadEntriesFromFileJob.perform_later(dictionary, target_filepath)
+      active_job.create_job_record("Upload dictionary entries")
+
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
     end
 
-    render json: { message: "Entry was successfully deleted." }, status: :ok
+    render json: { message: "Upload dictionary entries task was successfully created." }, status: :accepted
   end
 end
