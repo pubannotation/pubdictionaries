@@ -42,69 +42,66 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   def destroy_entries
+    if @dictionary.nil?
+      render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
+      return
+    end
+
+    if params[:entry_id].nil?
+      render json: { error: "No entry to be deleted is selected" }, status: :bad_request
+      return
+    end
+
     begin
-      if @dictionary.nil?
-        render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
-        return
-      end
-
-      if params[:entry_id].nil?
-        render json: { error: "No entry to be deleted is selected" }, status: :bad_request
-        return
-      end
-
       ActiveRecord::Base.transaction do
         Entry.where(id: params[:entry_id]).destroy_all
         @dictionary.update_entries_num
       end
+
+      render json: { message: "Entry was successfully deleted." }, status: :ok
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
     end
-
-    render json: { message: "Entry was successfully deleted." }, status: :ok
   end
 
   def undo
-    begin
-      if @dictionary.nil?
-        render json: { error: "Cannot find the dictionary." }, status: :bad_request
-        return
-      end
-
-      entry = Entry.find(params[:id])
-
-      if entry.nil?
-        render json: { error: "Cannot find the entry." }, status: :bad_request
-        return
-      end
-
-      @dictionary.undo_entry(entry)
-    rescue => e
-      render json: { error: e.message }, status: :internal_server_error
+    if @dictionary.nil?
+    render json: { error: "Cannot find the dictionary." }, status: :bad_request
+      return
     end
 
+    entry = Entry.find(params[:id])
+
+    if entry.nil?
+      render json: { error: "Cannot find the entry." }, status: :bad_request
+      return
+    end
+
+    @dictionary.undo_entry(entry)
+
     render json: { message: "Entry was successfully undid." }, status: :ok
+  rescue => e
+    render json: { error: e.message }, status: :internal_server_error
   end
 
   def upload_tsv
+    if @dictionary.nil?
+      render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
+      return
+    end
+
+    if @dictionary.jobs.count > 0
+      render json: { error: "The last task is not yet dismissed. Please dismiss it and try again." }, status: :bad_request
+      return
+    end
+
     begin
-      if @dictionary.nil?
-        render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
-        return
-      end
-
-      if @dictionary.jobs.count > 0
-        render json: { error: "The last task is not yet dismissed. Please dismiss it and try again." }, status: :bad_request
-        return
-      end
-
       LoadEntriesFromFileJob.prepare_file_and_perform(@dictionary, params[:file])
 
+      render json: { message: "Upload dictionary entries task was successfully created." }, status: :accepted
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
     end
-
-    render json: { message: "Upload dictionary entries task was successfully created." }, status: :accepted
   end
 
   private
