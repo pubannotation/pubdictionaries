@@ -1,10 +1,9 @@
 class Api::V1::EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
+  before_action :set_dictionary
 
   def create
-    dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
-
-    if dictionary.nil?
+    if @dictionary.nil?
       render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
       return
     end
@@ -21,7 +20,7 @@ class Api::V1::EntriesController < ApplicationController
       return
     end
 
-    entry = dictionary.entries.find_by(label:, identifier:)
+    entry = @dictionary.entries.find_by(label:, identifier:)
     if entry.present?
       render json: { error: "The entry #{entry} already exists in the dictionary." }, status: :conflict
       return
@@ -29,7 +28,7 @@ class Api::V1::EntriesController < ApplicationController
 
     begin
       ActiveRecord::Base.transaction do
-        success, entry = dictionary.create_entry(label, identifier, params[:tags])
+        success, entry = @dictionary.create_entry(label, identifier, params[:tags])
 
         if success
           render json: { message: "The white entry #{entry} was created." }, status: :created
@@ -44,9 +43,7 @@ class Api::V1::EntriesController < ApplicationController
 
   def destroy_entries
     begin
-      dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
-
-      if dictionary.nil?
+      if @dictionary.nil?
         render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
         return
       end
@@ -58,7 +55,7 @@ class Api::V1::EntriesController < ApplicationController
 
       ActiveRecord::Base.transaction do
         Entry.where(id: params[:entry_id]).destroy_all
-        dictionary.update_entries_num
+        @dictionary.update_entries_num
       end
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
@@ -69,9 +66,7 @@ class Api::V1::EntriesController < ApplicationController
 
   def undo
     begin
-      dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
-
-      if dictionary.nil?
+      if @dictionary.nil?
         render json: { error: "Cannot find the dictionary." }, status: :bad_request
         return
       end
@@ -83,7 +78,7 @@ class Api::V1::EntriesController < ApplicationController
         return
       end
 
-      dictionary.undo_entry(entry)
+      @dictionary.undo_entry(entry)
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
     end
@@ -93,23 +88,21 @@ class Api::V1::EntriesController < ApplicationController
 
   def upload_tsv
     begin
-      dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
-
-      if dictionary.nil?
+      if @dictionary.nil?
         render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
         return
       end
 
-      if dictionary.jobs.count > 0
+      if @dictionary.jobs.count > 0
         render json: { error: "The last task is not yet dismissed. Please dismiss it and try again." }, status: :bad_request
         return
       end
 
       source_filepath = params[:file].tempfile.path
-      target_filepath = File.join('tmp', "upload-#{dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
+      target_filepath = File.join('tmp', "upload-#{@dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
       FileUtils.cp source_filepath, target_filepath
 
-      active_job = LoadEntriesFromFileJob.perform_later(dictionary, target_filepath)
+      active_job = LoadEntriesFromFileJob.perform_later(@dictionary, target_filepath)
       active_job.create_job_record("Upload dictionary entries")
 
     rescue => e
@@ -117,5 +110,11 @@ class Api::V1::EntriesController < ApplicationController
     end
 
     render json: { message: "Upload dictionary entries task was successfully created." }, status: :accepted
+  end
+
+  private
+
+  def set_dictionary
+    @dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
   end
 end
