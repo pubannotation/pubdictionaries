@@ -1,6 +1,8 @@
 class Api::V1::EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
   before_action :set_dictionary
+
+  rescue_from StandardError, with: :handle_standard_error
   rescue_from Exceptions::DictionaryNotFoundError, with: :dictionary_not_found
 
   def create
@@ -22,13 +24,9 @@ class Api::V1::EntriesController < ApplicationController
       return
     end
 
-    begin
-      entry = @dictionary.create_entry!(label, identifier, params[:tags])
+    entry = @dictionary.create_entry!(label, identifier, params[:tags])
 
-      render json: { message: "The white entry #{entry} was created." }, status: :created
-    rescue => e
-      render json: { error: e.message }, status: :internal_server_error
-    end
+    render json: { message: "The white entry #{entry} was created." }, status: :created
   end
 
   def destroy_entries
@@ -44,16 +42,12 @@ class Api::V1::EntriesController < ApplicationController
       return
     end
 
-    begin
-      ActiveRecord::Base.transaction do
-        entries.destroy_all
-        @dictionary.update_entries_num
-      end
-
-      render json: { message: "Entry was successfully deleted." }, status: :ok
-    rescue => e
-      render json: { error: e.message }, status: :internal_server_error
+    ActiveRecord::Base.transaction do
+      entries.destroy_all
+      @dictionary.update_entries_num
     end
+
+    render json: { message: "Entry was successfully deleted." }, status: :ok
   end
 
   def undo
@@ -67,8 +61,6 @@ class Api::V1::EntriesController < ApplicationController
     @dictionary.undo_entry(entry)
 
     render json: { message: "Entry was successfully undid." }, status: :ok
-  rescue => e
-    render json: { error: e.message }, status: :internal_server_error
   end
 
   def upload_tsv
@@ -77,14 +69,10 @@ class Api::V1::EntriesController < ApplicationController
       return
     end
 
-    begin
       source_filepath = params[:file].tempfile.path
       LoadEntriesFromFileJob.copy_file_and_perform(@dictionary, source_filepath)
 
-      render json: { message: "Upload dictionary entries task was successfully created." }, status: :accepted
-    rescue => e
-      render json: { error: e.message }, status: :internal_server_error
-    end
+    render json: { message: "Upload dictionary entries task was successfully created." }, status: :accepted
   end
 
   private
@@ -96,5 +84,9 @@ class Api::V1::EntriesController < ApplicationController
 
   def dictionary_not_found
     render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
+  end
+
+  def handle_standard_error(exception)
+    render json: { error: exception.message }, status: :internal_server_error
   end
 end
