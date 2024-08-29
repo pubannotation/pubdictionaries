@@ -97,8 +97,7 @@ class LoadEntriesFromFileJob < ApplicationJob
     end
   end
 
-  def self.prepare_file_and_perform(dictionary, uploaded_file)
-    source_filepath = uploaded_file.tempfile.path
+  def self.copy_file_and_perform(dictionary, source_filepath)
     target_filepath = File.join('tmp', "upload-#{dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
     FileUtils.cp source_filepath, target_filepath
 
