@@ -300,16 +300,14 @@ class Dictionary < ApplicationRecord
     raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
 
-  def create_entry(label, identifier, tag_ids = [])
+  def create_entry!(label, identifier, tag_ids = [])
     entry = new_entry(label, identifier, nil, EntryMode::WHITE, true)
     entry.tag_ids = tag_ids
 
-    if entry.save
-      update_entries_num
-      [true, entry]
-    else
-      [false, entry]
-    end
+    entry.save!
+    update_entries_num
+
+    entry
   end
 
   def empty_entries(mode = nil)

@@ -23,15 +23,9 @@ class Api::V1::EntriesController < ApplicationController
     end
 
     begin
-      ActiveRecord::Base.transaction do
-        success, entry = @dictionary.create_entry(label, identifier, params[:tags])
+      entry = @dictionary.create_entry!(label, identifier, params[:tags])
 
-        if success
-          render json: { message: "The white entry #{entry} was created." }, status: :created
-        else
-          render json: { message: "The white entry #{entry} could not be created." }, status: :unprocessable_entity
-        end
-      end
+      render json: { message: "The white entry #{entry} was created." }, status: :created
     rescue => e
       render json: { error: e.message }, status: :internal_server_error
     end
