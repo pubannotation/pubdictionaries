@@ -92,6 +92,21 @@ Rails.application.routes.draw do
     end
   end
 
+  namespace :api do
+    namespace :v1 do
+      resources :entries, only: :create do
+        collection do
+          delete '/', to: 'entries#destroy_entries'
+          post 'tsv', to: 'entries#upload_tsv'
+        end
+
+        member do
+          put 'undo', to: 'entries#undo'
+        end
+      end
+    end
+  end
+
   resources :jobs, only: [:index, :show, :destroy]
   delete 'jobs', to: "jobs#destroy_all"
   delete 'annotation_jobs', to: "jobs#destroy_all_annotation_jobs"

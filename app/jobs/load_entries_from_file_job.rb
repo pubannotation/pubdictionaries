@@ -97,6 +97,14 @@ class LoadEntriesFromFileJob < ApplicationJob
     end
   end
 
+  def self.copy_file_and_perform(dictionary, source_filepath)
+    target_filepath = File.join('tmp', "upload-#{dictionary.name}-#{Time.now.to_s[0..18].gsub(/[ :]/, '-')}")
+    FileUtils.cp source_filepath, target_filepath
+
+    active_job = perform_later(dictionary, target_filepath)
+    active_job.create_job_record("Upload dictionary entries")
+  end
+
   def perform(dictionary, filename, mode = nil)
     # file preprocessing
     # TODO: at the moment, it is hard-coded. It should be improved.
