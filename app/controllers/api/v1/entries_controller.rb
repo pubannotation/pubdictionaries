@@ -69,8 +69,8 @@ class Api::V1::EntriesController < ApplicationController
       return
     end
 
-      source_filepath = params[:file].tempfile.path
-      LoadEntriesFromFileJob.copy_file_and_perform(@dictionary, source_filepath)
+    source_filepath = params[:file].tempfile.path
+    LoadEntriesFromFileJob.copy_file_and_perform(@dictionary, source_filepath)
 
     render json: { message: "Upload dictionary entries task was successfully created." }, status: :accepted
   end
