@@ -1,13 +1,9 @@
 class Api::V1::EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
   before_action :set_dictionary
+  rescue_from Exceptions::DictionaryNotFoundError, with: :dictionary_not_found
 
   def create
-    if @dictionary.nil?
-      render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
-      return
-    end
-
     label = params[:label]&.strip
     if label.blank?
       render json: { error: "A label should be supplied." }, status: :bad_request
@@ -42,11 +38,6 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   def destroy_entries
-    if @dictionary.nil?
-      render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
-      return
-    end
-
     if params[:entry_id].nil?
       render json: { error: "No entry to be deleted is selected" }, status: :bad_request
       return
@@ -72,11 +63,6 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   def undo
-    if @dictionary.nil?
-      render json: { error: "Cannot find the dictionary." }, status: :bad_request
-      return
-    end
-
     entry = Entry.find(params[:id])
 
     if entry.nil?
@@ -92,11 +78,6 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   def upload_tsv
-    if @dictionary.nil?
-      render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
-      return
-    end
-
     if @dictionary.jobs.count > 0
       render json: { error: "The last task is not yet dismissed. Please dismiss it and try again." }, status: :bad_request
       return
@@ -115,5 +96,10 @@ class Api::V1::EntriesController < ApplicationController
 
   def set_dictionary
     @dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
+    raise Exceptions::DictionaryNotFoundError if @dictionary.nil?
+  end
+
+  def dictionary_not_found
+    render json: { error: "Could not find the dictionary, #{params[:dictionary_id]}." }, status: :not_found
   end
 end

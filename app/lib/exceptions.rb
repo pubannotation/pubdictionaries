@@ -4,4 +4,6 @@ module Exceptions
       super(msg)
     end
   end
+
+  class DictionaryNotFoundError < StandardError; end
 end
