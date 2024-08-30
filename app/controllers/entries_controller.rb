@@ -170,10 +170,7 @@ class EntriesController < ApplicationController
 
       raise ArgumentError, "No entry to be deleted is selected" unless params[:entry_id].present?
 
-      ActiveRecord::Base.transaction do
-        Entry.where(id: params[:entry_id]).destroy_all
-        dictionary.update_entries_num
-      end
+      Entry.where(id: params[:entry_id]).destroy_all
     rescue => e
       message = e.message
     end

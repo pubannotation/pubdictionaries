@@ -171,13 +171,13 @@ class Dictionary < ApplicationRecord
   end
 
   def undo_entry(entry)
-    transaction do
-      if entry.is_white?
-        entry.delete
-      elsif entry.is_black?
+    if entry.is_white?
+      entry.destroy
+    elsif entry.is_black?
+      transaction do
         entry.be_gray!
+        update_entries_num
       end
-      update_entries_num
     end
   end
 
@@ -325,7 +325,6 @@ class Dictionary < ApplicationRecord
       else
         raise ArgumentError, "Unexpected mode: #{mode}"
       end
-      update_entries_num
     end
   end
 

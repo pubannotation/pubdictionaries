@@ -94,6 +94,7 @@ class Entry < ApplicationRecord
   }
 
   after_save :update_dictionary_entries_num
+  after_destroy :update_dictionary_entries_num
 
   def to_s
     "('#{label}', '#{identifier}')"
