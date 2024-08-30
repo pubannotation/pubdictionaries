@@ -47,7 +47,6 @@ class EntriesController < ApplicationController
         entry.tag_ids = tag_ids
 
         message = if entry.save
-          dictionary.update_entries_num
           # dictionary.update_tmp_sim_string_db
           "The white entry #{entry} was created."
         else

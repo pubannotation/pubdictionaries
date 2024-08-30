@@ -303,9 +303,7 @@ class Dictionary < ApplicationRecord
   def create_entry!(label, identifier, tag_ids = [])
     entry = new_entry(label, identifier, nil, EntryMode::WHITE, true)
     entry.tag_ids = tag_ids
-
     entry.save!
-    update_entries_num
 
     entry
   end
@@ -710,7 +708,6 @@ class Dictionary < ApplicationRecord
           mode: EntryMode::AUTO_EXPANDED
         )
       end
-      update_entries_num
     end
   end
 
