@@ -93,6 +93,9 @@ class Entry < ApplicationRecord
     where(mode: EntryMode::WHITE, dirty: true)
   }
 
+  after_save :update_dictionary_entries_num
+  after_destroy :update_dictionary_entries_num
+
   def to_s
     "('#{label}', '#{identifier}')"
   end
@@ -263,5 +266,9 @@ class Entry < ApplicationRecord
   def self.jaccard_sim(items1, items2)
     return 0.0 if items1.empty? || items2.empty?
     (items1 & items2).size.to_f / (items1 | items2).size
+  end
+
+  def update_dictionary_entries_num
+    dictionary.update_entries_num
   end
 end

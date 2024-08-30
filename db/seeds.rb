@@ -47,7 +47,4 @@ ActiveRecord::Base.transaction do
 
     entry.tags = entry_def[:tags]
   end
-
-  # set entries_num
-  dictionary.update_entries_num
 end
