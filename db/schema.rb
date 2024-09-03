@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2024_03_14_070046) do
+ActiveRecord::Schema[7.0].define(version: 2024_09_03_031755) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -94,6 +94,16 @@ ActiveRecord::Schema[7.0].define(version: 2024_03_14_070046) do
     t.index ["dictionary_id"], name: "index_jobs_on_dictionary_id"
   end
 
+  create_table "oauth_access_tokens", force: :cascade do |t|
+    t.bigint "resource_owner_id"
+    t.string "token", null: false
+    t.integer "expires_in"
+    t.datetime "created_at", null: false
+    t.datetime "revoked_at"
+    t.index ["resource_owner_id"], name: "index_oauth_access_tokens_on_resource_owner_id"
+    t.index ["token"], name: "index_oauth_access_tokens_on_token", unique: true
+  end
+
   create_table "patterns", force: :cascade do |t|
     t.string "expression"
     t.string "identifier"
@@ -139,6 +149,7 @@ ActiveRecord::Schema[7.0].define(version: 2024_03_14_070046) do
 
   add_foreign_key "entry_tags", "entries", on_delete: :cascade
   add_foreign_key "entry_tags", "tags"
+  add_foreign_key "oauth_access_tokens", "users", column: "resource_owner_id"
   add_foreign_key "patterns", "dictionaries"
   add_foreign_key "tags", "dictionaries"
 end
