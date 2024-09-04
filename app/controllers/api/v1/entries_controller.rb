@@ -1,5 +1,7 @@
 class Api::V1::EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
+  before_action :doorkeeper_authorize!
+  before_action :set_user
   before_action :set_dictionary
 
   rescue_from StandardError, with: :handle_standard_error
@@ -72,6 +74,14 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   private
+
+  def set_user
+    token = request.headers['Authorization']&.split(' ')&.last
+    token_object = Doorkeeper::AccessToken.by_token(token)
+    user = User.find_by(id: token_object.resource_owner_id)
+
+    sign_in(user)
+  end
 
   def set_dictionary
     @dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
