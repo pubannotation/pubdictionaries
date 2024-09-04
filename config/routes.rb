@@ -33,6 +33,7 @@ Rails.application.routes.draw do
     :passwords => 'users/passwords'
   }
   get '/users/:name' => 'users#show', :as => 'show_user'
+  resources :access_tokens, only: :create
 
   resources :dictionaries do
     # Add routes for a collection route, /dictionaries/...
