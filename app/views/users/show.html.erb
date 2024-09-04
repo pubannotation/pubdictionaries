@@ -38,6 +38,11 @@
       <tr>
         <th>Access Token</th>
         <td id="access-token"></td>
+        <td>
+          <button id="clipboard-btn" data-clipboard-action="copy" data-clipboard-target="#access-token">
+            <%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard', title: 'Copy to clipboard' %>
+          </button>
+        </td>
       </tr>
     </table>
   </section>
@@ -53,6 +58,8 @@
 
 <script>
   $(document).ready(() => {
+    const clipboard = new Clipboard('#clipboard-btn')
+
     $('#generate-token-button').on('click', () => {
       $.ajax({
         url: '/access_tokens',
