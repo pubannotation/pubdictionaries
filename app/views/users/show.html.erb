@@ -31,24 +31,26 @@
     <% end %>
   </section>
 
-  <section>
-    <h2>Access Tokens</h2>
-    <button id="generate-token-button" class="button">Generate Access Token</button>
-    <div  id ="token-display" style="display: none">
-      <p id="token-notice"></p>
-      <table>
-        <tr>
-          <th>Access Token</th>
-          <td id="access-token"></td>
-          <td>
-            <button id="clipboard-btn" data-clipboard-action="copy" data-clipboard-target="#access-token">
-              <%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard', title: 'Copy to clipboard' %>
-            </button>
-          </td>
-        </tr>
-      </table>
-    </div>
-  </section>
+  <% if @user == current_user %>
+    <section>
+      <h2>Access Tokens</h2>
+      <button id="generate-token-button" class="button">Generate Access Token</button>
+      <div  id ="token-display" style="display: none">
+        <p id="token-notice"></p>
+        <table>
+          <tr>
+            <th>Access Token</th>
+            <td id="access-token"></td>
+            <td>
+              <button id="clipboard-btn" data-clipboard-action="copy" data-clipboard-target="#access-token">
+                <%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard', title: 'Copy to clipboard' %>
+              </button>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+  <% end %>
 
   <% if current_user && current_user.admin %>
     <section>
