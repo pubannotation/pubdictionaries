@@ -60,6 +60,10 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   def upload_tsv
+    if @dictionary.jobs.any? && params[:replace_task] == 'true'
+      @dictionary.jobs.last.destroy_if_not_running
+    end
+
     if @dictionary.jobs.count > 0
       render json: {
         error: "The last task is not yet dismissed. Please dismiss it and try again.",
