@@ -34,13 +34,15 @@
   <% if @user == current_user %>
     <section>
       <h2>Access Tokens</h2>
-      <button id="generate-token-button" class="button">Generate Access Token</button>
-      <div id ="token-display" style="display: none">
-        <p id="token-notice"></p>
+      <%= form_with url: access_tokens_path, method: :post do %>
+        <button type="submit" class="button">Generate Access Token</button>
+      <% end %>
+
+      <% if @user.access_tokens.any? %>
         <table>
           <tr>
             <th>Access Token</th>
-            <td id="access-token"></td>
+            <td id="access-token"><%= @latest_access_token %></td>
             <td>
               <button id="clipboard-btn" data-clipboard-action="copy" data-clipboard-target="#access-token">
                 <%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard', title: 'Copy to clipboard' %>
@@ -48,7 +50,7 @@
             </td>
           </tr>
         </table>
-      </div>
+      <% end %>
     </section>
   <% end %>
 
@@ -64,21 +66,5 @@
 <script>
   $(document).ready(() => {
     const clipboard = new Clipboard('#clipboard-btn')
-
-    $('#generate-token-button').on('click', () => {
-      $.ajax({
-        url: '/access_tokens',
-        method: 'POST',
-        headers: {
-          'X-CSRF-Token': $('meta[name="csrf-token"]').attr('content')
-        }
-      })
-      .done((data) => {
-        $('#generate-token-button').hide();
-        $('#token-display').show();
-        $('#token-notice').text('Access token generated. It will expire in ' + data.expires_in + ' hours.');
-        $('#access-token').text(data.token);
-      })
-    })
   })
 </script>

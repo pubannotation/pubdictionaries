@@ -2,11 +2,11 @@ class AccessTokensController < ApplicationController
   before_action :authenticate_user!
 
   def create
-    access_token = current_user.access_tokens.create!(
+    current_user.access_tokens.create!(
       token: SecureRandom.hex(16),
       expired_at: 2.hours.from_now
     )
 
-    render json: { token: access_token.token }
+    redirect_back fallback_location: root_path, notice: "Access token was successfully created. It will expired in 2 hours."
   end
 end
