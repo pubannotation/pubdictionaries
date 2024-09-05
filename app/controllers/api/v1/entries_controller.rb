@@ -61,7 +61,10 @@ class Api::V1::EntriesController < ApplicationController
 
   def upload_tsv
     if @dictionary.jobs.count > 0
-      render json: { error: "The last task is not yet dismissed. Please dismiss it and try again." }, status: :bad_request
+      render json: {
+        error: "The last task is not yet dismissed. Please dismiss it and try again.",
+        task_dismiss_instruction: "To dismiss the task, send a DELETE request to /api/v1/jobs/#{@dictionary.jobs.last.id} ."
+      }, status: :bad_request
       return
     end
 
@@ -74,6 +77,7 @@ class Api::V1::EntriesController < ApplicationController
   private
 
   def set_dictionary
+    current_user = User.first
     @dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
     raise Exceptions::DictionaryNotFoundError if @dictionary.nil?
   end
