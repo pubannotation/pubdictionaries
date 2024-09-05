@@ -81,7 +81,6 @@ class Api::V1::EntriesController < ApplicationController
   private
 
   def set_dictionary
-    current_user = User.first
     @dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
     raise Exceptions::DictionaryNotFoundError if @dictionary.nil?
   end
