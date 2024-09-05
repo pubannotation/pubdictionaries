@@ -2,13 +2,11 @@ class AccessTokensController < ApplicationController
   before_action :authenticate_user!
 
   def create
-    token_expires_in = Doorkeeper.configuration.access_token_expires_in
-
-    token = Doorkeeper::AccessToken.create!(
-      resource_owner_id: current_user.id,
-      expires_in: token_expires_in
+    access_token = current_user.access_tokens.create!(
+      token: SecureRandom.hex(16),
+      expired_at: 2.hours.from_now
     )
 
-    render json: { token: token.token, expires_in: (token_expires_in / 3600) }
+    render json: { token: access_token.token }
   end
 end
