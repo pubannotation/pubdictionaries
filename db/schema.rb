@@ -10,10 +10,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2024_03_14_070046) do
+ActiveRecord::Schema[7.0].define(version: 2024_09_05_071740) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
+
+  create_table "access_tokens", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "token", null: false
+    t.datetime "expired_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_access_tokens_on_user_id"
+  end
 
   create_table "associations", force: :cascade do |t|
     t.bigint "user_id"
@@ -137,6 +146,7 @@ ActiveRecord::Schema[7.0].define(version: 2024_03_14_070046) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  add_foreign_key "access_tokens", "users"
   add_foreign_key "entry_tags", "entries", on_delete: :cascade
   add_foreign_key "entry_tags", "tags"
   add_foreign_key "patterns", "dictionaries"
