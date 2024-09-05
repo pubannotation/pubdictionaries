@@ -18,5 +18,8 @@ module PubDictionaries
     #
     # config.time_zone = "Central Time (US & Canada)"
     config.eager_load_paths << Rails.root.join("lib")
+
+    # Set access token expiration time
+    config.access_token_expiration_time = 2.hours
   end
 end
