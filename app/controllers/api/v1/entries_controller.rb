@@ -75,14 +75,24 @@ class Api::V1::EntriesController < ApplicationController
   private
 
   def authenticate_token
-    raw_token = request.headers['Authorization']&.split(' ')&.last
-    token = AccessToken.find_by(token: raw_token)
+    auth_header = request.headers['Authorization']
 
-    if token&.live?
-      sign_in(token.user)
+    if auth_header.present? && auth_header.starts_with?('Bearer ')
+      token = AccessToken.find_by(token: auth_header.split(' ').last)
+
+      if token&.live?
+        sign_in(token.user)
+      else
+        render_token_invalid_error
+      end
     else
-      render json: { error: "The access token is invalid." }, status: :unauthorized
+      render_token_invalid_error
     end
+  end
+
+  def render_token_invalid_error
+    render json: { error: "The access token is missing or invalid." }, status: :unauthorized
+    response.headers['WWW-Authenticate'] = 'Bearer'
   end
 
   def set_dictionary
