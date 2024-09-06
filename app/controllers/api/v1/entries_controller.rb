@@ -75,12 +75,24 @@ class Api::V1::EntriesController < ApplicationController
   private
 
   def authenticate_token
-    token = AccessToken.find_token(request.headers)
-
     if token&.live?
       sign_in(token.user)
     else
       render_token_invalid_error
+    end
+  end
+
+  def token
+    bearer_token = bearer_token_in(request.headers)
+    AccessToken.find_by(token: bearer_token) if bearer_token
+  end
+
+  def bearer_token_in(headers)
+    case headers['Authorization']
+    in /^Bearer (.+)$/
+      Regexp.last_match(1)
+    else
+      nil
     end
   end
 
