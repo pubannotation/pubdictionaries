@@ -6,6 +6,6 @@ class UsersController < ApplicationController
       :order_direction => 'desc',
       :per_page => 20
     )
-    @latest_access_token = @user.access_tokens.last&.token
+    @latest_access_token = @user.latest_access_token
   end
 end

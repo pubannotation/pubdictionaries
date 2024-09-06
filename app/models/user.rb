@@ -30,4 +30,8 @@ class User < ApplicationRecord
   def editable?(user)
     user && (user.admin? || id == user.id)
   end
+
+  def latest_access_token
+    access_tokens.last&.token
+  end
 end
