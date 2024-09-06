@@ -105,6 +105,8 @@ Rails.application.routes.draw do
           put 'undo', to: 'entries#undo'
         end
       end
+
+      resources :jobs, only: :destroy
     end
   end
 
