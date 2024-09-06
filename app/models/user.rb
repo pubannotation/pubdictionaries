@@ -31,6 +31,13 @@ class User < ApplicationRecord
     user && (user.admin? || id == user.id)
   end
 
+  def create_access_token!
+    access_tokens.create!(
+      token: SecureRandom.hex(16),
+      expired_at: Rails.application.config.access_token_expiration_time.from_now
+    )
+  end
+
   def latest_access_token
     access_tokens.last&.token
   end
