@@ -78,7 +78,7 @@ class Api::V1::EntriesController < ApplicationController
     raw_token = request.headers['Authorization']&.split(' ')&.last
     token = AccessToken.find_by(token: raw_token)
 
-    if token && token.unexpired?
+    if token&.live?
       sign_in(token.user)
     else
       render json: { error: "The access token is invalid." }, status: :unauthorized
