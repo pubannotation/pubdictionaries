@@ -1,5 +1,6 @@
 class Api::V1::EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
+  before_action :authenticate_token
   before_action :set_dictionary
 
   rescue_from StandardError, with: :handle_standard_error
@@ -72,6 +73,33 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   private
+
+  def authenticate_token
+    if token&.live?
+      sign_in(token.user)
+    else
+      render_token_invalid_error
+    end
+  end
+
+  def token
+    bearer_token = bearer_token_in(request.headers)
+    AccessToken.find_by(token: bearer_token) if bearer_token
+  end
+
+  def bearer_token_in(headers)
+    case headers['Authorization']
+    in /^Bearer (.+)$/
+      Regexp.last_match(1)
+    else
+      nil
+    end
+  end
+
+  def render_token_invalid_error
+    render json: { error: "The access token is missing or invalid." }, status: :unauthorized
+    response.headers['WWW-Authenticate'] = 'Bearer'
+  end
 
   def set_dictionary
     @dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])

@@ -31,6 +31,29 @@
     <% end %>
   </section>
 
+  <% if @user == current_user %>
+    <section>
+      <h2>Access Tokens</h2>
+      <%= form_with url: access_tokens_path, method: :post do %>
+        <button type="submit" class="button">Generate Access Token</button>
+      <% end %>
+
+      <% if @user.access_tokens.any? %>
+        <table>
+          <tr>
+            <th>Access Token</th>
+            <td id="access-token"><%= @latest_access_token %></td>
+            <td>
+              <button id="clipboard-btn" data-clipboard-action="copy" data-clipboard-target="#access-token">
+                <%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard', title: 'Copy to clipboard' %>
+              </button>
+            </td>
+          </tr>
+        </table>
+      <% end %>
+    </section>
+  <% end %>
+
   <% if current_user && current_user.admin %>
     <section>
       <h2>Jobs</h2>
@@ -39,3 +62,7 @@
   <% end %>
 
 </section>
+
+<script>
+  new Clipboard('#clipboard-btn')
+</script>
