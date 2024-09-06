@@ -65,10 +65,15 @@ class Api::V1::EntriesController < ApplicationController
     end
 
     if @dictionary.jobs.count > 0
-      render json: {
-        error: "The last task is not yet dismissed. Please dismiss it and try again.",
-        task_dismiss_instruction: "To dismiss the task, send a DELETE request to /api/v1/jobs/#{@dictionary.jobs.last.id} ."
-      }, status: :bad_request
+      if @dictionary.jobs.last.running?
+        render json: { error: "The last task is still in progress. Please wait a moment and try again later." }, status: :conflict
+      else
+        render json: {
+          error: "The last task is not yet dismissed. Please dismiss it and try again.",
+          task_dismiss_instruction: "To dismiss the task, send a DELETE request to /api/v1/jobs/#{@dictionary.jobs.last.id} ."
+        }, status: :conflict
+      end
+
       return
     end
 
