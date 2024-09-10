@@ -87,7 +87,7 @@ class Api::V1::EntriesController < ApplicationController
   private
 
   def authenticate_token
-    if token&.live?
+    if token
       sign_in(token.user)
     else
       render_token_invalid_error

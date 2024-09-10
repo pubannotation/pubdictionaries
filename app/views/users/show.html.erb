@@ -34,22 +34,29 @@
   <% if @user == current_user %>
     <section>
       <h2>Access Tokens</h2>
-      <%= form_with url: access_tokens_path, method: :post do %>
-        <button type="submit" class="button">Generate Access Token</button>
-      <% end %>
 
-      <% if @user.access_tokens.any? %>
+      <% if @user.access_token.present? %>
+        <button class="disabled-button" disabled>Generate Access Token</button>
         <table>
           <tr>
             <th>Access Token</th>
-            <td id="access-token"><%= @latest_access_token %></td>
+            <td id="access-token"><%= @user.access_token.token %></td>
             <td>
               <button id="clipboard-btn" data-clipboard-action="copy" data-clipboard-target="#access-token">
                 <%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard', title: 'Copy to clipboard' %>
               </button>
             </td>
+            <td>
+              <%= link_to access_token_path(@user.access_token), method: :delete, data: { confirm: 'Are you sure?' } do %>
+                <i class="fa-regular fa-trash-can" style="margin: 0 4px"></i>
+              <% end %>
+            </td>
           </tr>
         </table>
+      <% else %>
+        <%= form_with url: access_tokens_path, method: :post do %>
+          <button type="submit" class="button">Generate Access Token</button>
+        <% end %>
       <% end %>
     </section>
   <% end %>
