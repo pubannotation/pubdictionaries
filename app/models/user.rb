@@ -9,7 +9,7 @@ class User < ApplicationRecord
   has_many :dictionaries, dependent: :destroy
   has_many :associations
   has_many :associated_dictionaries, through: :associations, source: :dictionary
-  has_many :access_tokens, dependent: :destroy
+  has_one :access_token, dependent: :destroy
 
   validates :username, :presence => true, :length => {:minimum => 5, :maximum => 20}, uniqueness: true
   validates_format_of :username, :with => /\A[a-z0-9][ a-z0-9_-]+\z/i
@@ -29,13 +29,5 @@ class User < ApplicationRecord
 
   def editable?(user)
     user && (user.admin? || id == user.id)
-  end
-
-  def create_access_token!
-    access_tokens.create!(token: SecureRandom.hex(16))
-  end
-
-  def latest_access_token
-    access_tokens.last&.token
   end
 end
