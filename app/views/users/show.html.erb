@@ -48,6 +48,11 @@
                 <%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard', title: 'Copy to clipboard' %>
               </button>
             </td>
+            <td>
+              <%= link_to access_token_path(@user.access_token), method: :delete, data: { confirm: 'Are you sure?' } do %>
+                <i class="fa-regular fa-trash-can" style="margin: 0 4px"></i>
+              <% end %>
+            </td>
           </tr>
         </table>
       <% end %>
