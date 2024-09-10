@@ -35,11 +35,7 @@
     <section>
       <h2>Access Tokens</h2>
 
-      <% if @user.access_token.nil? %>
-        <%= form_with url: access_tokens_path, method: :post do %>
-          <button type="submit" class="button">Generate Access Token</button>
-        <% end %>
-      <% else %>
+      <% if @user.access_token.present? %>
         <button class="disabled-button" disabled>Generate Access Token</button>
         <table>
           <tr>
@@ -57,6 +53,10 @@
             </td>
           </tr>
         </table>
+      <% else %>
+        <%= form_with url: access_tokens_path, method: :post do %>
+          <button type="submit" class="button">Generate Access Token</button>
+        <% end %>
       <% end %>
     </section>
   <% end %>
