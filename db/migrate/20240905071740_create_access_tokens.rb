@@ -3,7 +3,6 @@ class CreateAccessTokens < ActiveRecord::Migration[7.0]
     create_table :access_tokens do |t|
       t.references :user, null: false, foreign_key: true
       t.string :token, null: false
-      t.datetime :expired_at, null: false
 
       t.timestamps
     end
