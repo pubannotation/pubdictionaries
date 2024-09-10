@@ -61,7 +61,7 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   def upload_tsv
-    if @dictionary.jobs.any? && params[:replace_task] == 'true'
+    if @dictionary.jobs.any? && params[:force] == 'true'
       @dictionary.jobs.last.destroy_if_not_running
     end
 
