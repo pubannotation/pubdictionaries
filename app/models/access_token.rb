@@ -1,10 +1,10 @@
 class AccessToken < ApplicationRecord
   belongs_to :user
-  before_create :set_token
+  before_create :generate_token
 
   private
 
-  def set_token
+  def generate_token
     self.token = SecureRandom.hex(16)
   end
 end
