@@ -47,22 +47,7 @@ class LoadEntriesFromFileJob < ApplicationJob
     private
 
     def buffer_entry(label, identifier, tags)
-      matched = entries_any? && @dictionary.entries.where(label:label, identifier:identifier)&.first
-      if matched
-        # case mode
-        # when EntryMode::GRAY
-        #   @num_skipped_entries += 1
-        # when EntryMode::WHITE
-        #   matched.be_white!
-        # when EntryMode::BLACK
-        #   matched.be_black!
-        # else
-        #   raise ArgumentError, "Unexpected mode: #{mode}"
-        # end
-        @num_skipped_entries += 1
-      else
-        @entries << [label, identifier, tags]
-      end
+      @entries << [label, identifier, tags]
       flush_entries if @entries.length >= BUFFER_SIZE
     end
 
@@ -84,11 +69,6 @@ class LoadEntriesFromFileJob < ApplicationJob
     def flush_patterns
       @dictionary.add_patterns(@patterns)
       @patterns.clear
-    end
-
-    # It is supposed to memorize whether the entries of the dictionary are empty when the class is initialized.
-    def entries_any?
-      @entries_any_p ||= !@dictionary.entries.empty?
     end
 
     # It is supposed to memorize whether the patterns of the dictionary are empty when the class is initialized.
