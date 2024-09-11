@@ -86,6 +86,12 @@ class LoadEntriesFromFileJob < ApplicationJob
   end
 
   def perform(dictionary, filename, mode = nil)
+    unless dictionary.entries.empty?
+      @job.message = "Dictionary upload is only available when there are no dictionary entries."
+      File.delete(filename)
+      return
+    end
+
     # file preprocessing
     # TODO: at the moment, it is hard-coded. It should be improved.
     `/usr/bin/dos2unix #{filename}`
