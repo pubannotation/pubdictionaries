@@ -40,7 +40,7 @@
 
 <% if @dictionary.jobs.count == 0 %>
   <% if @dictionary.entries.any? %>
-    <%= render partial: 'upload_unavailable' %>
+    <%= render partial: 'upload_disabled' %>
   <% else %>
     <%= render partial: 'upload' -%>
   <% end %>
