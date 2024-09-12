@@ -170,6 +170,10 @@ class Dictionary < ApplicationRecord
     entries.empty?
   end
 
+  def locked?
+    jobs.size > 0 && jobs.first.running?
+  end
+
   def use_tags?
     !tags.empty?
   end
