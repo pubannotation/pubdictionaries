@@ -79,8 +79,7 @@ class Api::V1::EntriesController < ApplicationController
     end
 
     unless @dictionary.uploadable?
-      render json: { error: "Dictionary upload is only available when there are no dictionary entries. " \
-                            "If you want to upload a dictionary, please delete the existing entries first." }
+      render json: { error: t('message.upload_disabled'), status: :bad_request }
       return
     end
 

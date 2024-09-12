@@ -37,3 +37,6 @@ en:
     active: "Active entries: gray entries + white entries. These entries will be used for annotation and lookup."
     custom: "Custom entries: white entries + black entries. These entries are those that have been manually added or removed."
     auto_expanded: "Auto expanded entries: " # MUST: add description of auto_expanded entries
+  messages:
+    upload_disabled: |
+      Uploading a dictionary is only possible if there are no dictionary entries. To upload a dictionary, first delete the existing entry.
