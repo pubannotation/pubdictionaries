@@ -78,6 +78,12 @@ class Api::V1::EntriesController < ApplicationController
       return
     end
 
+    if @dictionary.entries.any?
+      render json: { error: "Dictionary upload is only available when there are no dictionary entries. " \
+                            "If you want to upload a dictionary, please delete the existing entries first." }
+      return
+    end
+
     source_filepath = params[:file].tempfile.path
     LoadEntriesFromFileJob.copy_file_and_perform(@dictionary, source_filepath)
 
