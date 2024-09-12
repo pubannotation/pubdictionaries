@@ -9,7 +9,12 @@
 </div>
 
 <% if @dictionary.jobs.count == 0 %>
-  <%= render partial: 'upload' -%>
+  <% if @dictionary.entries.any? %>
+    <%= render partial: 'upload_unavailable' %>
+  <% else %>
+    <%= render partial: 'upload' -%>
+  <% end %>
+
   <%= render partial: 'compile' -%>
 <% else %>
   <%= render partial: 'last_task' -%>
