@@ -5,6 +5,9 @@ require 'simstring'
 
 # Provide functionalities for text annotation.
 class TextAnnotator
+  CHUNK_SIZE = 50_000
+  BUFFER_SIZE = 1024
+
   OPTIONS_DEFAULT = {
     # terms will never include these words
     # no_term_words: %w(is are am be was were do did does what which when where who how an the this that these those it its we our us they their them there then I he she my me his him her will shall may can cannot would should might could ought each every many much very more most than such several some both even and or but neither nor not never also much as well many e.g),
@@ -447,11 +450,39 @@ class TextAnnotator
     tokenize(normalizer2, text)
   end
 
+  def get_chunk_spans(text)
+    chunk_spans = []
+
+    t_length = text.length
+    c_begin = 0
+    while c_begin < t_length
+      c_end = (t_length - c_begin) < CHUNK_SIZE ? t_length : c_begin + CHUNK_SIZE
+      if c_end < t_length
+        adjustment = text[c_end .. c_end + BUFFER_SIZE].index(/\s/)
+        raise "Could not find a whitespace character" if adjustment.nil?
+        c_end += adjustment
+      end
+      chunk_spans << [c_begin, c_end]
+      c_begin = c_end
+    end
+
+    chunk_spans
+  end
+
   def tokenize(analyzer, text)
     raise ArgumentError, "Empty text" if text.empty?
-    @tokenizer_post.body = {analyzer: analyzer, text: text.tr('{}', '()')}.to_json
-    res = @es_connection.request @tokenizer_url, @tokenizer_post
-    (JSON.parse res.body, symbolize_names: true)[:tokens]
+
+    # Get chunks in manageable sizes if the text is too long
+    chunk_spans = get_chunk_spans(text)
+
+    # Analyze each chunk and collect the results
+    tokens = chunk_spans.flat_map do |span|
+      @tokenizer_post.body = {analyzer: analyzer, text: text[span[0] ... span[1]].tr('{}', '()')}.to_json
+      res = @es_connection.request @tokenizer_url, @tokenizer_post
+
+      # Parse and extract tokens from the result
+      (JSON.parse(res.body, symbolize_names: true)[:tokens])
+    end
   end
 
   def normalizer1
