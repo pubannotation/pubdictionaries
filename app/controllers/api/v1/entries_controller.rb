@@ -79,7 +79,7 @@ class Api::V1::EntriesController < ApplicationController
     end
 
     unless @dictionary.uploadable?
-      render json: { error: t('message.upload_disabled'), status: :bad_request }
+      render json: { error: t('messages.upload_disabled') }, status: :bad_request
       return
     end
 

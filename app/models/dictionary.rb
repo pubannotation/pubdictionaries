@@ -167,7 +167,7 @@ class Dictionary < ApplicationRecord
   end
 
   def uploadable?
-    entries.any?
+    entries.empty?
   end
 
   def use_tags?
