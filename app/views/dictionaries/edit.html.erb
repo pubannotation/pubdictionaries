@@ -39,10 +39,10 @@
 <%= render partial: 'commands' -%>
 
 <% if @dictionary.jobs.count == 0 %>
-  <% if @dictionary.entries.any? %>
-    <%= render partial: 'upload_disabled' %>
-  <% else %>
+  <% if @dictionary.uploadable? %>
     <%= render partial: 'upload' -%>
+  <% else %>
+    <%= render partial: 'upload_disabled' %>
   <% end %>
 
   <%= render partial: 'compile' -%>
