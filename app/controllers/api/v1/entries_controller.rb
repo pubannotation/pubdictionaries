@@ -2,6 +2,7 @@ class Api::V1::EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
   before_action :authenticate_token
   before_action :set_dictionary
+  before_action :validate_dictionary_editable
 
   rescue_from StandardError, with: :handle_standard_error
   rescue_from Exceptions::DictionaryNotFoundError, with: :dictionary_not_found
@@ -66,14 +67,10 @@ class Api::V1::EntriesController < ApplicationController
     end
 
     if @dictionary.jobs.count > 0
-      if @dictionary.jobs.last.running?
-        render json: { error: "The last task is still in progress. Please wait a moment and try again later." }, status: :conflict
-      else
-        render json: {
-          error: "The last task is not yet dismissed. Please dismiss it and try again.",
-          task_dismiss_instruction: "To dismiss the task, send a DELETE request to /api/v1/jobs/#{@dictionary.jobs.last.id} ."
-        }, status: :conflict
-      end
+      render json: {
+        error: "The last task is not yet dismissed. Please dismiss it and try again.",
+        task_dismiss_instruction: "To dismiss the task, send a DELETE request to /api/v1/jobs/#{@dictionary.jobs.last.id} ."
+      }, status: :conflict
 
       return
     end
@@ -121,6 +118,12 @@ class Api::V1::EntriesController < ApplicationController
   def set_dictionary
     @dictionary = Dictionary.editable(current_user).find_by(name: params[:dictionary_id])
     raise Exceptions::DictionaryNotFoundError if @dictionary.nil?
+  end
+
+  def validate_dictionary_editable
+    if @dictionary.locked?
+      render json: { error: "The last task is still in progress. Please wait a moment and try again later." }, status: :conflict
+    end
   end
 
   def dictionary_not_found
