@@ -166,6 +166,10 @@ class Dictionary < ApplicationRecord
     (jobs.count == 0) || (jobs.count == 1 && jobs.first.finished?)
   end
 
+  def uploadable?
+    entries.empty?
+  end
+
   def use_tags?
     !tags.empty?
   end

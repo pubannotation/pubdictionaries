@@ -78,6 +78,11 @@ class Api::V1::EntriesController < ApplicationController
       return
     end
 
+    unless @dictionary.uploadable?
+      render json: { error: t('messages.upload_disabled') }, status: :bad_request
+      return
+    end
+
     source_filepath = params[:file].tempfile.path
     LoadEntriesFromFileJob.copy_file_and_perform(@dictionary, source_filepath)
 

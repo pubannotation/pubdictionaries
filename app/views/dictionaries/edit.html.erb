@@ -39,7 +39,12 @@
 <%= render partial: 'commands' -%>
 
 <% if @dictionary.jobs.count == 0 %>
-  <%= render partial: 'upload' -%>
+  <% if @dictionary.uploadable? %>
+    <%= render partial: 'upload' -%>
+  <% else %>
+    <%= render partial: 'upload_disabled' %>
+  <% end %>
+
   <%= render partial: 'compile' -%>
 <!--
    <%= render partial: 'expand_synonym' -%>
