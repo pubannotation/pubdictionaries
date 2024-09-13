@@ -2,7 +2,7 @@ class Api::V1::EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
   before_action :authenticate_token
   before_action :set_dictionary
-  before_action :validate_job_not_running
+  before_action :validate_dictionary_editable
 
   rescue_from StandardError, with: :handle_standard_error
   rescue_from Exceptions::DictionaryNotFoundError, with: :dictionary_not_found
@@ -120,7 +120,7 @@ class Api::V1::EntriesController < ApplicationController
     raise Exceptions::DictionaryNotFoundError if @dictionary.nil?
   end
 
-  def validate_job_not_running
+  def validate_dictionary_editable
     if @dictionary.locked?
       render json: { error: "The last task is still in progress. Please wait a moment and try again later." }, status: :conflict
     end
