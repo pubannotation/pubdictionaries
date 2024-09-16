@@ -346,13 +346,7 @@ class TextAnnotator
           norm1 = norm1s[idx_token_begin, tlen].join
           entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, @ngram, span, [], norm1, norm2)
 
-          if entries.present?
-            # cache all the positive search results
-            @cache_span_search[span] = entries
-          else
-            # cache negative search results up to bigrams
-            @cache_span_search[span] = entries if tlen <= 2
-          end
+          @cache_span_search[span] = entries
         end
 
         entries.each do |entry|
