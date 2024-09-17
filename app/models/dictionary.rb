@@ -2,6 +2,7 @@ require 'fileutils'
 require 'rubygems'
 require 'zip'
 require 'simstring'
+using HashToResultHash
 
 class Dictionary < ApplicationRecord
   include StringManipulator
@@ -457,7 +458,8 @@ class Dictionary < ApplicationRecord
 
       norm1 ||= normalize1(term)
       norm2 ||= normalize2(term)
-      norm2s = (ngram && ssdb.present?) ? ssdb.retrieve(norm2) : [norm2]
+      norm2s = ssdb.retrieve(norm2) if ngram && ssdb.present?
+      norm2s = [norm2] unless norm2s.present?
 
       norm2s.each do |n2|
         results += additional_entries_for_norm2(n2, tags) if additional_entries_exists?
