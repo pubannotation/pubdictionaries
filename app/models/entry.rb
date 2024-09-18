@@ -1,4 +1,6 @@
 class Entry < ApplicationRecord
+  INCREMENT_NUM_PER_LABEL = 101
+
   include Elasticsearch::Model
 
   settings index: {
@@ -186,16 +188,17 @@ class Entry < ApplicationRecord
     raise ArgumentError, "Empty text" unless text.present?
     _text = text.tr('{}', '()')
     body = {analyzer: normalizer, text: _text}.to_json
-    res = if analyzer.nil?
-            uri = URI(Rails.configuration.elasticsearch[:host])
-            http = Net::HTTP.new(uri.host, uri.port)
-            http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
-          else
-            analyzer[:post].body = body
-            analyzer[:http].request(analyzer[:uri], analyzer[:post])
-          end
-    raise res.body unless res.kind_of? Net::HTTPSuccess
+    res = request_normalize(analyzer, body)
     (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
+  end
+
+  def self.batch_normalize(texts, normalizer, analyzer = nil)
+    raise ArgumentError, "Empty text in array" unless texts.present?
+    _texts = texts.map { _1.tr('{}', '()') }
+    body = { analyzer: normalizer, text: _texts }.to_json
+    res = request_normalize(analyzer, body)
+    JSON.parse(res.body, symbolize_names: true)[:tokens].chunk_while { |a, b| b[:position] - a[:position] != INCREMENT_NUM_PER_LABEL }
+                                                        .map{|data| data.map{ _1[:token] }.join('') }
   end
 
   private
@@ -266,6 +269,20 @@ class Entry < ApplicationRecord
   def self.jaccard_sim(items1, items2)
     return 0.0 if items1.empty? || items2.empty?
     (items1 & items2).size.to_f / (items1 | items2).size
+  end
+
+  def self.request_normalize(analyzer, body)
+    res = if analyzer.nil?
+            uri = URI(Rails.configuration.elasticsearch[:host])
+            http = Net::HTTP.new(uri.host, uri.port)
+            http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
+          else
+            analyzer[:post].body = body
+            analyzer[:http].request(analyzer[:uri], analyzer[:post])
+          end
+    raise res.body unless res.kind_of? Net::HTTPSuccess
+
+    res
   end
 
   def update_dictionary_entries_num
