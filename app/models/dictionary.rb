@@ -244,18 +244,18 @@ class Dictionary < ApplicationRecord
     # black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
 
     transaction do
-      # prepare for indexing tags
-      entry_i_tags = []
-      tag_ids = {}
-      entry_num = -1
+      # prepare for enrich entries
+      labels = raw_entries.map { |label, _, _| label }
+      norm1s, norm2s = batch_normalize_entries(labels, normalizer)
 
       # index tags & enrich entries
-      entries = raw_entries.map do |label, identifier, tags|
-        entry_num += 1
+      entry_i_tags = []
+      entries = raw_entries.map.with_index do |(label, identifier, tags), i|
         if tags.present?
-          tags.each {|tag| entry_i_tags << [entry_num, tag]}
+          tags.each {|tag| entry_i_tags << [i, tag]}
         end
-        get_enriched_entry(label, identifier, normalizer)
+        # Each value means: [label, identifier norm1, norm2, label_length, mode, dirty, dictionary_id]
+        [label, identifier, norm1s[i], norm2s[i], label.length, EntryMode::GRAY, false, self.id]
       end
 
       # import entries
@@ -263,6 +263,7 @@ class Dictionary < ApplicationRecord
       r1 = Entry.bulk_import columns1, entries, validate: false
       raise "Error during import of entries" unless r1.failed_instances.empty?
 
+      tag_ids = {}
       tags_uniq = entry_i_tags.map {|entry_num, tag| tag}.uniq
       tags_uniq.each {|tag| tag_ids[tag] = Tag.find_by(dictionary_id: id, value: tag)&.id}
 
@@ -288,12 +289,12 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def get_enriched_entry(label, identifier, normalizer = nil, mode = EntryMode::GRAY, dirty = false)
-    norm1 = normalize1(label, normalizer)
-    norm2 = normalize2(label, normalizer)
-    [label, identifier, norm1, norm2, label.length, mode, dirty, self.id]
+  def batch_normalize_entries(labels, normalizer)
+    norm1s = Entry.batch_normalize(labels, normalizer1, normalizer)
+    norm2s = Entry.batch_normalize(labels, normalizer2, normalizer)
+    [norm1s, norm2s]
   rescue => e
-    raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
+    raise ArgumentError, "Entries are rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
 
   def new_entry(label, identifier, normalizer = nil, mode = EntryMode::GRAY, dirty = false)

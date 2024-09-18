@@ -198,6 +198,23 @@ class Entry < ApplicationRecord
     (JSON.parse res.body, symbolize_names: true)[:tokens].map{|t| t[:token]}.join('')
   end
 
+  def self.batch_normalize(texts, normalizer, analyzer = nil)
+    raise ArgumentError, "Empty text in array" unless texts.present?
+    _texts = texts.map { _1.tr('{}', '()') }
+    body = { analyzer: normalizer, text: _texts }.to_json
+    res = if analyzer.nil?
+            uri = URI(Rails.configuration.elasticsearch[:host])
+            http = Net::HTTP.new(uri.host, uri.port)
+            http.request_post('/entries/_analyze', body, {'Content-Type' => 'application/json'})
+          else
+            analyzer[:post].body = body
+            analyzer[:http].request(analyzer[:uri], analyzer[:post])
+          end
+    raise res.body unless res.kind_of? Net::HTTPSuccess
+    JSON.parse(res.body, symbolize_names: true)[:tokens].chunk_while { |a, b| a[:position] + 1 == b[:position] }
+                                                        .map{|data| data.map{ _1[:token] }.join('') }
+  end
+
   private
 
   # Compute similarity of two strings
