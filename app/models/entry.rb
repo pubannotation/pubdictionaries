@@ -1,5 +1,5 @@
 class Entry < ApplicationRecord
-  INCREMENT_NUM_PER_LABEL = 101
+  INCREMENT_NUM_PER_TEXT = 101
 
   include Elasticsearch::Model
 
@@ -197,7 +197,10 @@ class Entry < ApplicationRecord
     _texts = texts.map { _1.tr('{}', '()') }
     body = { analyzer: normalizer, text: _texts }.to_json
     res = request_normalize(analyzer, body)
-    JSON.parse(res.body, symbolize_names: true)[:tokens].chunk_while { |a, b| b[:position] - a[:position] < INCREMENT_NUM_PER_LABEL }
+
+    # When Elasticsearch normalizes multiple texts at the same time, it combines and normalizes them as a single string.
+    # To determine each text from results, using the position value in response which is increased by 101 for each text.
+    JSON.parse(res.body, symbolize_names: true)[:tokens].chunk_while { |a, b| b[:position] - a[:position] < INCREMENT_NUM_PER_TEXT }
                                                         .map{|data| data.map{ _1[:token] }.join('') }
   end
 
