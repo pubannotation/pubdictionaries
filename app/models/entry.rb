@@ -1,4 +1,6 @@
 class Entry < ApplicationRecord
+  INCREMENT_NUM_PER_LABEL = 101
+
   include Elasticsearch::Model
 
   settings index: {
@@ -195,7 +197,7 @@ class Entry < ApplicationRecord
     _texts = texts.map { _1.tr('{}', '()') }
     body = { analyzer: normalizer, text: _texts }.to_json
     res = request_normalize(analyzer, body)
-    JSON.parse(res.body, symbolize_names: true)[:tokens].chunk_while { |a, b| a[:position] + 1 == b[:position] }
+    JSON.parse(res.body, symbolize_names: true)[:tokens].chunk_while { |a, b| b[:position] - a[:position] != INCREMENT_NUM_PER_LABEL }
                                                         .map{|data| data.map{ _1[:token] }.join('') }
   end
 
