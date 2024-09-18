@@ -271,10 +271,6 @@ class Entry < ApplicationRecord
     (items1 & items2).size.to_f / (items1 | items2).size
   end
 
-  def update_dictionary_entries_num
-    dictionary.update_entries_num
-  end
-
   def self.request_normalize(analyzer, body)
     res = if analyzer.nil?
             uri = URI(Rails.configuration.elasticsearch[:host])
@@ -287,5 +283,9 @@ class Entry < ApplicationRecord
     raise res.body unless res.kind_of? Net::HTTPSuccess
 
     res
+  end
+
+  def update_dictionary_entries_num
+    dictionary.update_entries_num
   end
 end
