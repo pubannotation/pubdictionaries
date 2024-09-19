@@ -1,5 +1,5 @@
 class Entry < ApplicationRecord
-  INCREMENT_NUM_PER_TEXT = 101
+  INCREMENT_NUM_PER_TEXT = 100
 
   include Elasticsearch::Model
 
@@ -198,10 +198,26 @@ class Entry < ApplicationRecord
     body = { analyzer: normalizer, text: _texts }.to_json
     res = request_normalize(analyzer, body)
 
+    tokens = JSON.parse(res.body, symbolize_names: true)[:tokens]
+    result = []
+    previous_position = 0
+
     # When Elasticsearch normalizes multiple texts at the same time, it combines and normalizes them as a single string.
-    # To determine each text from results, using the position value in response which is increased by 101 for each text.
-    JSON.parse(res.body, symbolize_names: true)[:tokens].chunk_while { |a, b| b[:position] - a[:position] < INCREMENT_NUM_PER_TEXT }
-                                                        .map{|data| data.map{ _1[:token] }.join('') }
+    # To determine each text from results, using the position value in response which is increased by 100 for each text.
+    tokens.chunk_while { |a, b| b[:position] - a[:position] <= INCREMENT_NUM_PER_TEXT }
+          .each do |words|
+            # If all words in the text are removed by stopwords, the difference in position value is more than 200.
+            # Adding empty string to indicate that all words has been removed.
+            if (words.first[:position] - previous_position) > 200
+              skipped_texts_count = (words.first[:position] - previous_position) / INCREMENT_NUM_PER_TEXT - 1
+              skipped_texts_count.times { result << '' }
+            end
+
+            previous_position = words.last[:position]
+            result << words.map { _1[:token] }.join('')
+          end
+
+    result
   end
 
   private
