@@ -10,6 +10,7 @@ class Analyzer
         Net::HTTP.new(@uri.host, @uri.port)
       end
     @post = Net::HTTP::Post.new(@uri.request_uri, 'Content-Type' => 'application/json')
+    @use_persistent = use_persistent
   end
 
   def normalize(text, normalizer)
@@ -71,7 +72,12 @@ class Analyzer
 
   def tokenize(body)
     @post.body = body
-    response = @http.request(@uri, @post)
+    response =
+      if @use_persistent
+        @http.request(@uri, @post)
+      else
+        @http.request(@post)
+      end
 
     raise response.body unless response.kind_of? Net::HTTPSuccess
     response
