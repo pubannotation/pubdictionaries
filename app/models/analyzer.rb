@@ -12,6 +12,15 @@ class Analyzer
     @post = Net::HTTP::Post.new(@uri.request_uri, 'Content-Type' => 'application/json')
   end
 
+  def normalize(text, normalizer)
+    raise ArgumentError, "Empty text" unless text.present?
+    _text = text.tr('{}', '()')
+    body = { analyzer: normalizer, text: _text }.to_json
+    response = tokenize(body)
+
+    (JSON.parse response.body, symbolize_names: true)[:tokens].map{ _1[:token] }.join('')
+  end
+
   def batch_normalize(texts, normalizer)
     ## Explanation
     # This method returns the following results from input texts corresponding to normalizer.

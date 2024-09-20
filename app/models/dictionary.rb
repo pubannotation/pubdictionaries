@@ -304,9 +304,9 @@ class Dictionary < ApplicationRecord
     raise ArgumentError, "Entries are rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
 
-  def new_entry(label, identifier, normalizer = nil, mode = EntryMode::GRAY, dirty = false)
-    norm1 = normalize1(label, normalizer)
-    norm2 = normalize2(label, normalizer)
+  def new_entry(label, identifier, analyzer = nil, mode = EntryMode::GRAY, dirty = false)
+    norm1 = normalize1(label, analyzer)
+    norm2 = normalize2(label, analyzer)
     Entry.new(label:label, identifier:identifier, norm1:norm1, norm2:norm2, label_length:label.length, mode:mode, dirty:dirty, dictionary_id: self.id)
   rescue => e
     raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
@@ -657,11 +657,13 @@ class Dictionary < ApplicationRecord
   # * (string) text  - Input text.
   #
   def normalize1(text, analyzer = nil)
-    Entry.normalize(text, normalizer1, analyzer)
+    analyzer ||= Analyzer.new
+    analyzer.normalize(text, normalizer1)
   end
 
   def self.normalize1(text, analyzer = nil)
-    Entry.normalize(text, 'normalizer1', analyzer)
+    analyzer ||= Analyzer.new
+    analyzer.normalize(text, 'normalizer1')
   end
 
   # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
@@ -669,11 +671,13 @@ class Dictionary < ApplicationRecord
   # * (string) text  - Input text.
   #
   def normalize2(text, analyzer = nil)
-    Entry.normalize(text, normalizer2, analyzer)
+    analyzer ||= Analyzer.new
+    analyzer.normalize(text, normalizer2)
   end
 
   def self.normalize2(text, analyzer = nil)
-    Entry.normalize(text, 'normalizer2', analyzer)
+    analyzer ||= Analyzer.new
+    analyzer.normalize(text, 'normalizer2')
   end
 
   def normalizer1
