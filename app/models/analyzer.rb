@@ -19,7 +19,7 @@ class Analyzer
     body = { analyzer: normalizer, text: _text }.to_json
     response = tokenize(body)
 
-    (JSON.parse response.body, symbolize_names: true)[:tokens].map{ _1[:token] }.join('')
+    JSON.parse(response.body, symbolize_names: true)[:tokens].map{ _1[:token] }.join('')
   end
 
   def batch_normalize(texts, normalizer)
