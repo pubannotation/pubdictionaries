@@ -245,13 +245,13 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def add_entries(raw_entries, normalizer = nil)
+  def add_entries(raw_entries, analyzer = nil)
     # black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
 
     transaction do
       # prepare for enrich entries
       labels = raw_entries.map { |label, _, _| label }
-      norm1s, norm2s = batch_normalize_entries(labels, normalizer)
+      norm1s, norm2s = batch_normalize_entries(labels, analyzer)
 
       # index tags & enrich entries
       entry_i_tags = []
@@ -294,9 +294,11 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def batch_normalize_entries(labels, normalizer)
-    norm1s = Entry.batch_normalize(labels, normalizer1, normalizer)
-    norm2s = Entry.batch_normalize(labels, normalizer2, normalizer)
+  def batch_normalize_entries(labels, analyzer)
+    analyzer ||= Analyzer.new
+
+    norm1s = analyzer.batch_normalize(labels, normalizer1)
+    norm2s = analyzer.batch_normalize(labels, normalizer2)
     [norm1s, norm2s]
   rescue => e
     raise ArgumentError, "Entries are rejected: #{e.message} #{e.backtrace.join("\n")}."
