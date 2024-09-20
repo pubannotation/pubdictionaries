@@ -32,7 +32,7 @@ class LoadEntriesFromFileJob < ApplicationJob
     def finalize
       flush_entries unless @entries.empty?
       flush_patterns unless @patterns.empty?
-      @analyzer && @analyzer.shutdown
+      @analyzer&.shutdown
     end
 
     def result
