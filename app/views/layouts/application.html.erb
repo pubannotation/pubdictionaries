@@ -31,7 +31,8 @@
       <div class="menu">
         <ul>
           <li><%= link_to 'Dictionaries', dictionaries_path %></li>
-          <li><%= link_to 'Find IDs', find_ids_path %></li>
+          <li><%= link_to 'Find IDs', find_ids_path, title: 'Find IDs of terms' %></li>
+          <li><%= link_to 'Find Terms', find_terms_path, title: 'Find terms by their IDs' %></li>
           <li><%= link_to 'Annotation', text_annotation_path %></li>
           <li><%= link_to 'Documentation', "https://docs.pubdictionaries.org" %></li>
         </ul>

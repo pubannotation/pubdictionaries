@@ -79,8 +79,8 @@ class LookupController < ApplicationController
       @dictionary_names_selected = dictionaries_selected.map{|d| d.name}
 
       @result = if ids.present?
-        verbose = true if params[:verbose] == 'true' || params[:verbose] == '1'
-        @result = Dictionary.find_labels_by_ids(ids, dictionaries_selected, verbose)
+        raise ArgumentError, "At least one dictionary has to be specified for lookup." unless dictionaries_selected.present?
+        @result = Dictionary.find_labels_by_ids(ids, dictionaries_selected)
       else
         {}
       end

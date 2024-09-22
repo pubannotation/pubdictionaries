@@ -130,17 +130,16 @@ class Dictionary < ApplicationRecord
       r
     end
 
-    def find_labels_by_ids(ids, dictionaries = [], verbose = false)
+    def find_labels_by_ids(ids, dictionaries = [])
       entries = if dictionaries.present?
         Entry.where(identifier: ids, dictionary_id: dictionaries)
       else
         Entry.where(identifier: ids)
       end
 
-      entries.inject({}) do |h, entry|
+      entries.each_with_object({}) do |entry, h|
         h[entry.identifier] = [] unless h.has_key? entry.identifier
         h[entry.identifier] << {label: entry.label, dictionary: entry.dictionary.name}
-        h
       end
     end
   end
