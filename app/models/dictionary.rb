@@ -321,7 +321,9 @@ class Dictionary < ApplicationRecord
     transaction do
       case mode
       when nil
-        entries.destroy_all
+        EntryTag.where(entry_id: entries.pluck(:id)).delete_all
+        entries.delete_all
+        update_entries_num
         clean_sim_string_db
       when EntryMode::GRAY
         entries.gray.destroy_all
