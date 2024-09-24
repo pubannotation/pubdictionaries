@@ -13,12 +13,7 @@ class LoadEntriesFromFileJob < ApplicationJob
       @entries = []
       @patterns = []
 
-      analyzer_url = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
-      @analyzer = {
-        uri: analyzer_url,
-        http: Net::HTTP::Persistent.new,
-        post: Net::HTTP::Post.new(analyzer_url.request_uri, 'Content-Type' => 'application/json')
-      }
+      @analyzer = Analyzer.new(use_persistent: true)
 
       @num_skipped_entries = 0
       @num_skipped_patterns = 0
@@ -37,7 +32,7 @@ class LoadEntriesFromFileJob < ApplicationJob
     def finalize
       flush_entries unless @entries.empty?
       flush_patterns unless @patterns.empty?
-      @analyzer && @analyzer[:http] && @analyzer[:http].shutdown
+      @analyzer&.shutdown
     end
 
     def result

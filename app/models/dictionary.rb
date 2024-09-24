@@ -244,13 +244,13 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def add_entries(raw_entries, normalizer = nil)
+  def add_entries(raw_entries, analyzer = Analyzer.new)
     # black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
 
     transaction do
       # prepare for enrich entries
       labels = raw_entries.map { |label, _, _| label }
-      norm1s, norm2s = batch_normalize_entries(labels, normalizer)
+      norm1s, norm2s = batch_normalize_entries(labels, analyzer)
 
       # index tags & enrich entries
       entry_i_tags = []
@@ -293,24 +293,24 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def batch_normalize_entries(labels, normalizer)
-    norm1s = Entry.batch_normalize(labels, normalizer1, normalizer)
-    norm2s = Entry.batch_normalize(labels, normalizer2, normalizer)
+  def batch_normalize_entries(labels, analyzer)
+    norm1s = analyzer.batch_normalize(labels, normalizer1)
+    norm2s = analyzer.batch_normalize(labels, normalizer2)
     [norm1s, norm2s]
   rescue => e
     raise ArgumentError, "Entries are rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
 
-  def new_entry(label, identifier, normalizer = nil, mode = EntryMode::GRAY, dirty = false)
-    norm1 = normalize1(label, normalizer)
-    norm2 = normalize2(label, normalizer)
+  def new_entry(label, identifier, mode = EntryMode::GRAY, dirty = false, analyzer = Analyzer.new)
+    norm1 = normalize1(label, analyzer)
+    norm2 = normalize2(label, analyzer)
     Entry.new(label:label, identifier:identifier, norm1:norm1, norm2:norm2, label_length:label.length, mode:mode, dirty:dirty, dictionary_id: self.id)
   rescue => e
     raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
 
   def create_entry!(label, identifier, tag_ids = [])
-    entry = new_entry(label, identifier, nil, EntryMode::WHITE, true)
+    entry = new_entry(label, identifier, EntryMode::WHITE, true)
     entry.tag_ids = tag_ids
     entry.save!
 
@@ -655,24 +655,24 @@ class Dictionary < ApplicationRecord
   #
   # * (string) text  - Input text.
   #
-  def normalize1(text, analyzer = nil)
-    Entry.normalize(text, normalizer1, analyzer)
+  def normalize1(text, analyzer = Analyzer.new)
+    analyzer.normalize(text, normalizer1)
   end
 
-  def self.normalize1(text, analyzer = nil)
-    Entry.normalize(text, 'normalizer1', analyzer)
+  def self.normalize1(text, analyzer = Analyzer.new)
+    analyzer.normalize(text, 'normalizer1')
   end
 
   # Get typographic and morphosyntactic normalization of an input text using an analyzer of ElasticSearch.
   #
   # * (string) text  - Input text.
   #
-  def normalize2(text, analyzer = nil)
-    Entry.normalize(text, normalizer2, analyzer)
+  def normalize2(text, analyzer = Analyzer.new)
+    analyzer.normalize(text, normalizer2)
   end
 
-  def self.normalize2(text, analyzer = nil)
-    Entry.normalize(text, 'normalizer2', analyzer)
+  def self.normalize2(text, analyzer = Analyzer.new)
+    analyzer.normalize(text, 'normalizer2')
   end
 
   def normalizer1
