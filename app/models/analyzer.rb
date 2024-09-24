@@ -14,7 +14,7 @@ class Analyzer
   end
 
   def normalize(text, normalizer)
-    raise ArgumentError, "Empty text" unless text.present?
+    raise ArgumentError, "Empty text" if text.blank?
     _text = text.tr('{}', '()')
     body = { analyzer: normalizer, text: _text }.to_json
     response = tokenize(body)
@@ -29,7 +29,7 @@ class Analyzer
     # normalize1 results: ["abcdef", "of", "ghi"]
     # normalize2 results: ["abcdef", "", "ghi"]
 
-    raise ArgumentError, "Empty text in array" unless texts.present?
+    raise ArgumentError, "Empty text in array" if texts.empty? || texts.any?{ _1.empty? }
     _texts = texts.map { _1.tr('{}', '()') }
     body = { analyzer: normalizer, text: _texts }.to_json
     response = tokenize(body)
