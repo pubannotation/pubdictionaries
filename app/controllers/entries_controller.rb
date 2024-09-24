@@ -41,7 +41,7 @@ class EntriesController < ApplicationController
 
       message = nil
       ActiveRecord::Base.transaction do
-        entry = dictionary.new_entry(label, identifier, nil, EntryMode::WHITE, true)
+        entry = dictionary.new_entry(label, identifier, EntryMode::WHITE, true)
 
         tag_ids = params[:tags] || []
         entry.tag_ids = tag_ids

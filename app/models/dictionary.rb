@@ -245,7 +245,7 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def add_entries(raw_entries, analyzer = nil)
+  def add_entries(raw_entries, analyzer = Analyzer.new)
     # black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
 
     transaction do
@@ -295,8 +295,6 @@ class Dictionary < ApplicationRecord
   end
 
   def batch_normalize_entries(labels, analyzer)
-    analyzer ||= Analyzer.new
-
     norm1s = analyzer.batch_normalize(labels, normalizer1)
     norm2s = analyzer.batch_normalize(labels, normalizer2)
     [norm1s, norm2s]
@@ -304,7 +302,7 @@ class Dictionary < ApplicationRecord
     raise ArgumentError, "Entries are rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
 
-  def new_entry(label, identifier, analyzer = nil, mode = EntryMode::GRAY, dirty = false)
+  def new_entry(label, identifier, mode = EntryMode::GRAY, dirty = false, analyzer = Analyzer.new)
     norm1 = normalize1(label, analyzer)
     norm2 = normalize2(label, analyzer)
     Entry.new(label:label, identifier:identifier, norm1:norm1, norm2:norm2, label_length:label.length, mode:mode, dirty:dirty, dictionary_id: self.id)
@@ -313,7 +311,7 @@ class Dictionary < ApplicationRecord
   end
 
   def create_entry!(label, identifier, tag_ids = [])
-    entry = new_entry(label, identifier, nil, EntryMode::WHITE, true)
+    entry = new_entry(label, identifier, EntryMode::WHITE, true)
     entry.tag_ids = tag_ids
     entry.save!
 
@@ -656,13 +654,11 @@ class Dictionary < ApplicationRecord
   #
   # * (string) text  - Input text.
   #
-  def normalize1(text, analyzer = nil)
-    analyzer ||= Analyzer.new
+  def normalize1(text, analyzer = Analyzer.new)
     analyzer.normalize(text, normalizer1)
   end
 
-  def self.normalize1(text, analyzer = nil)
-    analyzer ||= Analyzer.new
+  def self.normalize1(text, analyzer = Analyzer.new)
     analyzer.normalize(text, 'normalizer1')
   end
 
@@ -670,13 +666,11 @@ class Dictionary < ApplicationRecord
   #
   # * (string) text  - Input text.
   #
-  def normalize2(text, analyzer = nil)
-    analyzer ||= Analyzer.new
+  def normalize2(text, analyzer = Analyzer.new)
     analyzer.normalize(text, normalizer2)
   end
 
-  def self.normalize2(text, analyzer = nil)
-    analyzer ||= Analyzer.new
+  def self.normalize2(text, analyzer = Analyzer.new)
     analyzer.normalize(text, 'normalizer2')
   end
 
