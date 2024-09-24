@@ -244,7 +244,7 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def add_entries(raw_entries, analyzer = Analyzer.new)
+  def add_entries(raw_entries, analyzer)
     # black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
 
     transaction do
