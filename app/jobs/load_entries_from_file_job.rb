@@ -15,14 +15,11 @@ class LoadEntriesFromFileJob < ApplicationJob
   def perform(dictionary, filename, mode = nil)
     unless dictionary.entries.empty?
       @job.message = "Dictionary upload is only available when there are no dictionary entries."
-      File.delete(filename)
       return
     end
 
     # file preprocessing
-    # TODO: at the moment, it is hard-coded. It should be improved.
-    `/usr/bin/dos2unix #{filename}`
-    `/usr/bin/cut -f1-3 #{filename} | sort -u | sort -k3 -o #{filename}`
+    format_and_rewrite(filename)
 
     num_entries = File.read(filename).each_line.count
     if @job
@@ -44,7 +41,6 @@ class LoadEntriesFromFileJob < ApplicationJob
         if suspended?
           buffer.finalize
           dictionary.compile!
-          File.delete(filename)
           raise Exceptions::JobSuspendError
         end
       end
@@ -52,6 +48,7 @@ class LoadEntriesFromFileJob < ApplicationJob
 
     buffer.finalize
     # dictionary.compile!
+  ensure
     File.delete(filename)
   end
 
@@ -62,5 +59,25 @@ class LoadEntriesFromFileJob < ApplicationJob
 
   after_perform do
     set_ended_at
+  end
+
+  private
+
+  def format_and_rewrite(filename)
+    lines = File.readlines(filename)
+
+    cut_lines = lines.map do |line|
+      fields = line.split("\t")
+      fields[0..2].join("\t")
+    end
+
+    sorted_lines = cut_lines.uniq.sort_by do |line|
+      fields = line.split("\t")
+      fields[2]
+    end
+
+    File.open(filename, "w") do |file|
+      sorted_lines.each { |line| file.puts(line) }
+    end
   end
 end
