@@ -15,7 +15,6 @@ class LoadEntriesFromFileJob < ApplicationJob
   def perform(dictionary, filename, mode = nil)
     unless dictionary.entries.empty?
       @job.message = "Dictionary upload is only available when there are no dictionary entries."
-      File.delete(filename)
       return
     end
 
@@ -42,7 +41,6 @@ class LoadEntriesFromFileJob < ApplicationJob
         if suspended?
           buffer.finalize
           dictionary.compile!
-          File.delete(filename)
           raise Exceptions::JobSuspendError
         end
       end
