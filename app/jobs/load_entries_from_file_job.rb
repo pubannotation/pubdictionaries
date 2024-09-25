@@ -50,6 +50,7 @@ class LoadEntriesFromFileJob < ApplicationJob
 
     buffer.finalize
     # dictionary.compile!
+  ensure
     File.delete(filename)
   end
 
