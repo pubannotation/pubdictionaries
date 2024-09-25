@@ -7,7 +7,7 @@ class LoadEntriesFromFileJob::BufferToStore
     @entries = []
     @patterns = []
 
-    @analyzer = Analyzer.new(use_persistent: true)
+    @analyzer = BatchAnalyzer.new
 
     @num_skipped_entries = 0
     @num_skipped_patterns = 0
@@ -52,9 +52,9 @@ class LoadEntriesFromFileJob::BufferToStore
 
   def flush_entries
     labels = @entries.map(&:first)
-    norm1list, norm2list = @analyzer.batch_normalize labels,
-                                                     @dictionary.normalizer1,
-                                                     @dictionary.normalizer2
+    norm1list, norm2list = @analyzer.normalize(labels,
+                                               @dictionary.normalizer1,
+                                               @dictionary.normalizer2)
     @dictionary.add_entries(@entries, norm1list, norm2list)
     @entries.clear
   rescue => e
