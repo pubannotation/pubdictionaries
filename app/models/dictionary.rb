@@ -290,12 +290,16 @@ class Dictionary < ApplicationRecord
   end
 
   def new_entry(label, identifier)
-    mode = EntryMode::WHITE
-    dirty = true
     analyzer = Analyzer.new
     norm1 = normalize1(label, analyzer)
     norm2 = normalize2(label, analyzer)
-    Entry.new(label:label, identifier:identifier, norm1:norm1, norm2:norm2, label_length:label.length, mode:mode, dirty:dirty, dictionary_id: self.id)
+    entries.build(label: label,
+                  identifier: identifier,
+                  norm1: norm1,
+                  norm2: norm2,
+                  label_length: label.length,
+                  mode: EntryMode::WHITE,
+                  dirty: true)
   rescue => e
     raise ArgumentError, "The entry, [#{label}, #{identifier}], is rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
@@ -636,6 +640,7 @@ class Dictionary < ApplicationRecord
       .active
       .pluck(:norm2)
       .uniq
+      .compact # to avoid error
       .each{|norm2| db.insert norm2}
 
     db.close
