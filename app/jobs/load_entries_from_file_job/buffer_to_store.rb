@@ -51,8 +51,14 @@ class LoadEntriesFromFileJob::BufferToStore
   end
 
   def flush_entries
-    @dictionary.add_entries(@entries, @analyzer)
+    labels = @entries.map(&:first)
+    norm1list, norm2list = @analyzer.batch_normalize labels,
+                                                     @dictionary.normalizer1,
+                                                     @dictionary.normalizer2
+    @dictionary.add_entries(@entries, norm1list, norm2list)
     @entries.clear
+  rescue => e
+    raise ArgumentError, "Entries are rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
 
   def flush_patterns

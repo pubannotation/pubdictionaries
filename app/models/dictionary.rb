@@ -244,14 +244,10 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def add_entries(raw_entries, analyzer)
+  def add_entries(raw_entries, norm1list, norm2list)
     # black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
 
     transaction do
-      # prepare for enrich entries
-      labels = raw_entries.map { |label, _, _| label }
-      norm1s, norm2s = batch_normalize_entries(labels, analyzer)
-
       # index tags & enrich entries
       entry_i_tags = []
       entries = raw_entries.map.with_index do |(label, identifier, tags), i|
@@ -259,7 +255,7 @@ class Dictionary < ApplicationRecord
           tags.each {|tag| entry_i_tags << [i, tag]}
         end
         # Each value means: [label, identifier norm1, norm2, label_length, mode, dirty, dictionary_id]
-        [label, identifier, norm1s[i], norm2s[i], label.length, EntryMode::GRAY, false, self.id]
+        [label, identifier, norm1list[i], norm2list[i], label.length, EntryMode::GRAY, false, self.id]
       end
 
       # import entries
@@ -291,14 +287,6 @@ class Dictionary < ApplicationRecord
 
       self.update_entries_num if entries.any?
     end
-  end
-
-  def batch_normalize_entries(labels, analyzer)
-    norm1s = analyzer.batch_normalize(labels, normalizer1)
-    norm2s = analyzer.batch_normalize(labels, normalizer2)
-    [norm1s, norm2s]
-  rescue => e
-    raise ArgumentError, "Entries are rejected: #{e.message} #{e.backtrace.join("\n")}."
   end
 
   def new_entry(label, identifier)
@@ -613,6 +601,14 @@ class Dictionary < ApplicationRecord
     end
   end
 
+  def normalizer1
+    @normalizer1 ||= 'normalizer1' + language_suffix
+  end
+
+  def normalizer2
+    @normalizer2 ||= 'normalizer2' + language_suffix
+  end
+
   private
 
   def ngram_order
@@ -676,14 +672,6 @@ class Dictionary < ApplicationRecord
 
   def self.normalize2(text, analyzer = Analyzer.new)
     analyzer.normalize(text, 'normalizer2')
-  end
-
-  def normalizer1
-    @normalizer1 ||= 'normalizer1' + language_suffix
-  end
-
-  def normalizer2
-    @normalizer2 ||= 'normalizer2' + language_suffix
   end
 
   def language_suffix
