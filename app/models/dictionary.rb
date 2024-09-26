@@ -248,15 +248,12 @@ class Dictionary < ApplicationRecord
     # black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
 
     transaction do
-      # import tags
       tag_set = raw_entries.map{|(_, _, tags)| tags}.flatten.uniq
       new_tags = tag_set - tags.where(value: tag_set).pluck(:value)
+
+      # import tags, entries, entry_tag associations
       import_tags!(new_tags) if new_tags.present?
-
-      # import entries
       entries_result = import_entries!(raw_entries, norm1list, norm2list)
-
-      # import entry_tags association
       import_entry_tags!(tag_set, entries_result, raw_entries)
 
       update_entries_num
