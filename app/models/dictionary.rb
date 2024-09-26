@@ -248,45 +248,39 @@ class Dictionary < ApplicationRecord
     # black_count = raw_entries.count{|e| e[2] == EntryMode::BLACK}
 
     transaction do
-      # index tags & enrich entries
-      entry_i_tags = []
-      entries = raw_entries.map.with_index do |(label, identifier, tags), i|
-        if tags.present?
-          tags.each {|tag| entry_i_tags << [i, tag]}
-        end
-        # Each value means: [label, identifier norm1, norm2, label_length, mode, dirty, dictionary_id]
-        [label, identifier, norm1list[i], norm2list[i], label.length, EntryMode::GRAY, false, self.id]
+      # import tags
+      tag_set = raw_entries.map{|(_, _, tags)| tags}.flatten.uniq
+      new_tags = tag_set - tags.where(value: tag_set).pluck(:value)
+
+      if new_tags.present?
+        columns = [:value, :dictionary_id]
+        values = new_tags.map{|tag| [tag, self.id]}
+        r = Tag.bulk_import columns, values, validate: false
+        raise "Error during import of tags" unless r.failed_instances.empty?
       end
 
       # import entries
-      columns1 = [:label, :identifier, :norm1, :norm2, :label_length, :mode, :dirty, :dictionary_id]
-      r1 = Entry.bulk_import columns1, entries, validate: false
-      raise "Error during import of entries" unless r1.failed_instances.empty?
-
-      tag_ids = {}
-      uniq_tags = entry_i_tags.map { |_, tag| tag }.uniq
-      existing_tags = tags.where(value: uniq_tags).pluck(:value, :id).to_h
-      uniq_tags.each { |tag| tag_ids[tag] = existing_tags[tag] }
-
-      tags_new = tag_ids.select { |_, v| v.nil? || v == '' }.keys
-
-      if tags_new.present?
-        columns2 = [:value, :dictionary_id]
-        r2 = Tag.bulk_import columns2, tags_new.map{|tag| [tag, id]}, validate: false
-        raise "Error during import of tags" unless r1.failed_instances.empty?
-        tags_new.each_with_index {|tag, i| tag_ids[tag] = r2.ids[i]}
+      entries = raw_entries.map.with_index do |(label, identifier, _), i|
+        [label, identifier, norm1list[i], norm2list[i], label.length, EntryMode::GRAY, false, self.id]
       end
 
-      # get entry_tags association
-      entry_tags = entry_i_tags.map do |entry_num, tag|
-        [r1.ids[entry_num], tag_ids[tag]]
+      columns = [:label, :identifier, :norm1, :norm2, :label_length, :mode, :dirty, :dictionary_id]
+      values = entries
+      r = Entry.bulk_import columns, values, validate: false
+      raise "Error during import of entries" unless r.failed_instances.empty?
+
+      # import entry_tags association
+      tag_map = tags.where(value: tag_set).pluck(:value, :id).to_h
+      entry_tags = raw_entries.map.with_index do |(_, _, tags), i|
+        tags.map{|tag| [r.ids[i], tag_map[tag]]}
       end
 
-      # import tag-entry association
-      columns3 = [:entry_id, :tag_id]
-      r2 = EntryTag.bulk_import columns3, entry_tags, validate: false
+      columns = [:entry_id, :tag_id]
+      values = entry_tags.flatten(1)
+      r = EntryTag.bulk_import columns, values, validate: false
+      raise "Error during import of entry_tags" unless r.failed_instances.empty?
 
-      self.update_entries_num if entries.any?
+      update_entries_num
     end
   end
 
