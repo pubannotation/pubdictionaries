@@ -13,10 +13,7 @@ class LoadEntriesFromFileJob < ApplicationJob
   end
 
   def perform(dictionary, filename, mode = nil)
-    unless dictionary.entries.empty?
-      @job.message = "Dictionary upload is only available when there are no dictionary entries."
-      return
-    end
+    raise ArgumentError, "Dictionary upload is only available when there are no dictionary entries." unless dictionary.entries.empty?
 
     # file preprocessing
     format_and_rewrite(filename)
