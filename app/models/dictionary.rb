@@ -264,8 +264,9 @@ class Dictionary < ApplicationRecord
       raise "Error during import of entries" unless r1.failed_instances.empty?
 
       tag_ids = {}
-      tags_uniq = entry_i_tags.map {|entry_num, tag| tag}.uniq
-      tags_uniq.each {|tag| tag_ids[tag] = Tag.find_by(dictionary_id: id, value: tag)&.id}
+      uniq_tags = entry_i_tags.map { |_, tag| tag }.uniq
+      existing_tags = tags.where(value: uniq_tags).pluck(:value, :id).to_h
+      uniq_tags.each { |tag| tag_ids[tag] = existing_tags[tag] }
 
       tags_new = tag_ids.select { |_, v| v.nil? || v == '' }.keys
 
