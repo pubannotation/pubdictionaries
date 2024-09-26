@@ -675,10 +675,6 @@ class Dictionary < ApplicationRecord
     analyzer.normalize(text, normalizer2)
   end
 
-  def self.normalize2(text, analyzer = Analyzer.new)
-    analyzer.normalize(text, 'normalizer2')
-  end
-
   def language_suffix
     @language_suffix ||= if language.present?
       case language
