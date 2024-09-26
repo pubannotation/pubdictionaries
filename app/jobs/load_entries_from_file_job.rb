@@ -13,19 +13,15 @@ class LoadEntriesFromFileJob < ApplicationJob
   end
 
   def perform(dictionary, filename, mode = nil)
-    unless dictionary.entries.empty?
-      @job.message = "Dictionary upload is only available when there are no dictionary entries."
-      return
-    end
+    raise ArgumentError, "Dictionary upload is only available when there are no dictionary entries." unless dictionary.entries.empty?
 
     # file preprocessing
     format_and_rewrite(filename)
 
     num_entries = File.read(filename).each_line.count
-    if @job
-      @job.update_attribute(:num_items, num_entries)
-      @job.update_attribute(:num_dones, 0)
-    end
+
+    @job.update_attribute(:num_items, num_entries)
+    @job.update_attribute(:num_dones, 0)
 
     buffer = LoadEntriesFromFileJob::BufferToStore.new(dictionary)
 
@@ -36,7 +32,7 @@ class LoadEntriesFromFileJob < ApplicationJob
 
         buffer.add_entry(label, id, tags)
 
-        @job.increment!(:num_dones) if @job
+        @job.increment!(:num_dones)
 
         if suspended?
           buffer.finalize
