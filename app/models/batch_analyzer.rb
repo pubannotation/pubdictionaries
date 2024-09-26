@@ -1,11 +1,26 @@
 class BatchAnalyzer
   INCREMENT_NUM_PER_TEXT = 100
 
-  def initialize
+  def initialize(dictionary)
+    @dictionary = dictionary
     @uri = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
     @http = Net::HTTP::Persistent.new
     @post = Net::HTTP::Post.new(@uri.request_uri, 'Content-Type' => 'application/json')
   end
+
+  def add_entries(entries)
+    labels = entries.map(&:first)
+    norm1list, norm2list = normalize(labels,
+                                     @dictionary.normalizer1,
+                                     @dictionary.normalizer2)
+    @dictionary.add_entries(entries, norm1list, norm2list)
+  end
+
+  def shutdown
+    @http.shutdown
+  end
+
+  private
 
   def normalize(texts, *normalizers)
     ## Explanation
@@ -51,12 +66,6 @@ class BatchAnalyzer
             end.first
     end
   end
-
-  def shutdown
-    @http.shutdown
-  end
-
-  private
 
   def tokenize(body)
     @post.body = body
