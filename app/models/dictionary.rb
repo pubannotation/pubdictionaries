@@ -251,34 +251,13 @@ class Dictionary < ApplicationRecord
       # import tags
       tag_set = raw_entries.map{|(_, _, tags)| tags}.flatten.uniq
       new_tags = tag_set - tags.where(value: tag_set).pluck(:value)
-
-      if new_tags.present?
-        columns = [:value, :dictionary_id]
-        values = new_tags.map{|tag| [tag, self.id]}
-        r = Tag.bulk_import columns, values, validate: false
-        raise "Error during import of tags" unless r.failed_instances.empty?
-      end
+      import_tags!(new_tags) if new_tags.present?
 
       # import entries
-      entries = raw_entries.map.with_index do |(label, identifier, _), i|
-        [label, identifier, norm1list[i], norm2list[i], label.length, EntryMode::GRAY, false, self.id]
-      end
-
-      columns = [:label, :identifier, :norm1, :norm2, :label_length, :mode, :dirty, :dictionary_id]
-      values = entries
-      r = Entry.bulk_import columns, values, validate: false
-      raise "Error during import of entries" unless r.failed_instances.empty?
+      entries_result = import_entries!(raw_entries, norm1list, norm2list)
 
       # import entry_tags association
-      tag_map = tags.where(value: tag_set).pluck(:value, :id).to_h
-      entry_tags = raw_entries.map.with_index do |(_, _, tags), i|
-        tags.map{|tag| [r.ids[i], tag_map[tag]]}
-      end
-
-      columns = [:entry_id, :tag_id]
-      values = entry_tags.flatten(1)
-      r = EntryTag.bulk_import columns, values, validate: false
-      raise "Error during import of entry_tags" unless r.failed_instances.empty?
+      import_entry_tags!(tag_set, entries_result, raw_entries)
 
       update_entries_num
     end
@@ -741,5 +720,37 @@ class Dictionary < ApplicationRecord
         .where(label: label)
         .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
         .map(&:to_result_hash)
+  end
+
+  def import_tags!(new_tags)
+    columns = [:value, :dictionary_id]
+    values = new_tags.map{|tag| [tag, self.id]}
+    result = Tag.bulk_import columns, values, validate: false
+    raise "Error during import of tags" unless result.failed_instances.empty?
+  end
+
+  def import_entries!(raw_entries, norm1list, norm2list)
+    entries = raw_entries.map.with_index do |(label, identifier, _), i|
+      [label, identifier, norm1list[i], norm2list[i], label.length, EntryMode::GRAY, false, self.id]
+    end
+
+    columns = [:label, :identifier, :norm1, :norm2, :label_length, :mode, :dirty, :dictionary_id]
+    values = entries
+    result = Entry.bulk_import columns, values, validate: false
+    raise "Error during import of entries" unless result.failed_instances.empty?
+
+    result
+  end
+
+  def import_entry_tags!(tag_set, entries_result, raw_entries)
+    tag_map = tags.where(value: tag_set).pluck(:value, :id).to_h
+    entry_tags = raw_entries.map.with_index do |(_, _, tags), i|
+      tags.map{|tag| [entries_result.ids[i], tag_map[tag]]}
+    end
+
+    columns = [:entry_id, :tag_id]
+    values = entry_tags.flatten(1)
+    result = EntryTag.bulk_import columns, values, validate: false
+    raise "Error during import of entry_tags" unless result.failed_instances.empty?
   end
 end
