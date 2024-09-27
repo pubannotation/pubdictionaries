@@ -47,23 +47,29 @@ class BatchAnalyzer
 
       # Large gaps in position values in tokens indicate text switching. It increases by 100.
       # To determine each text from results, grouping tokens as one text if difference of position value is within the gap.
-      tokens.chunk_while { |a, b| b[:position] - a[:position] <= INCREMENT_NUM_PER_TEXT }
-            .reduce([[], 0]) do |(result, previous_position), words|
-              # If all words in the text are removed by stopwords, the difference in position value is more than 200.
-              # example: [{:token=>"abc", :start_offset=>0, :end_offset=>3, :type=>"<ALPHANUM>", :position=>0},
-              #           {:token=>"def", :start_offset=>4, :end_offset=>7, :type=>"<ALPHANUM>", :position=>1},
-              #           {:token=>"ghi", :start_offset=>11, :end_offset=>14, :type=>"<ALPHANUM>", :position=>203}]
+      result = tokens.chunk_while { |a, b| b[:position] - a[:position] <= INCREMENT_NUM_PER_TEXT }
+                     .reduce([[], 0]) do |(result, previous_position), words|
+                       # If all words in the text are removed by stopwords, the difference in position value is more than 200.
+                       # example: [{:token=>"abc", :start_offset=>0, :end_offset=>3, :type=>"<ALPHANUM>", :position=>0},
+                       #           {:token=>"def", :start_offset=>4, :end_offset=>7, :type=>"<ALPHANUM>", :position=>1},
+                       #           {:token=>"ghi", :start_offset=>11, :end_offset=>14, :type=>"<ALPHANUM>", :position=>203}]
 
-              # To obtain expected result, adding empty strings according to skipped texts number when difference of position value is over 200.
-              if (words.first[:position] - previous_position) > 200
-                skipped_texts_count = (words.first[:position] - previous_position) / INCREMENT_NUM_PER_TEXT - 1
-                skipped_texts_count.times { result << '' }
-              end
+                       # To obtain expected result, adding empty strings according to skipped texts number when difference of position value is over 200.
+                       if (words.first[:position] - previous_position) > 200
+                         skipped_texts_count = (words.first[:position] - previous_position) / INCREMENT_NUM_PER_TEXT - 1
+                         skipped_texts_count.times { result << '' }
+                       end
 
-              previous_position = words.last[:position]
-              result << words.map { _1[:token] }.join('')
-              [result, previous_position]
-            end.first
+                       previous_position = words.last[:position]
+                       result << words.map { _1[:token] }.join('')
+                       [result, previous_position]
+                     end.first
+
+      # Skip judgment by postiion value cannot determine if the last text was skipped.
+      # If the last text is skipped, add an empty string to avoid last result becomes nil.
+      result << '' if result.size == (texts.size - 1)
+
+      result
     end
   end
 
