@@ -11,8 +11,11 @@ class LoadEntriesFromFileJob::BufferToStore
     flush_entries if @entries.length >= BUFFER_SIZE
   end
 
-  def finalize
+  def flush
     flush_entries unless @entries.empty?
+  end
+
+  def close
     @analyzer.shutdown
   end
 
