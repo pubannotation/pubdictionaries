@@ -67,7 +67,7 @@ class BatchAnalyzer
 
       # Skip judgment by position value cannot determine if the last text was skipped.
       # If the last text is skipped, add an empty string to avoid last result becomes nil.
-      result << '' if result.size == (texts.size - 1)
+      result << '' while result.size < texts.size
 
       result
     end
