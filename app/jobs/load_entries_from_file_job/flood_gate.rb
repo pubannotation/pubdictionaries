@@ -1,5 +1,5 @@
-class LoadEntriesFromFileJob::BufferToStore
-  BUFFER_SIZE = 10000
+class LoadEntriesFromFileJob::FloodGate
+  CAPACITY = 10000
 
   def initialize(dictionary)
     @entries = []
@@ -8,11 +8,20 @@ class LoadEntriesFromFileJob::BufferToStore
 
   def add_entry(label, identifier, tags)
     @entries << [label, identifier, tags]
-    flush_entries if @entries.length >= BUFFER_SIZE
+
+    if @entries.length >= CAPACITY
+      flush_entries
+       true
+    else
+      false
+    end
   end
 
   def flush
+    entries_count = @entries.size
     flush_entries unless @entries.empty?
+
+    entries_count
   end
 
   def close

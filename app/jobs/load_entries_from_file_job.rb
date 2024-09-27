@@ -23,29 +23,30 @@ class LoadEntriesFromFileJob < ApplicationJob
     @job.update_attribute(:num_items, num_entries)
     @job.update_attribute(:num_dones, 0)
 
-    buffer = LoadEntriesFromFileJob::BufferToStore.new(dictionary)
+    gate = LoadEntriesFromFileJob::FloodGate.new(dictionary)
 
     File.open(filename, 'r') do |f|
       f.each_line do |line|
         label, id, tags = Entry.read_entry_line(line)
         next if label.nil?
 
-        buffer.add_entry(label, id, tags)
-
-        @job.increment!(:num_dones)
+        is_flushed = gate.add_entry(label, id, tags)
+        @job.increment!(:num_dones, FloodGate::CAPACITY) if is_flushed
 
         if suspended?
-          buffer.flush
+          remnants_count = gate.flush
+          @job.increment!(:num_dones, remnants_count)
           dictionary.compile!
           raise Exceptions::JobSuspendError
         end
       end
     end
 
-    buffer.flush
+    remnants_count = gate.flush
+    @job.increment!(:num_dones, remnants_count)
     # dictionary.compile!
   ensure
-    buffer.close
+    gate.close
     File.delete(filename)
   end
 
