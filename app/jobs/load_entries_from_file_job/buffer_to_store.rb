@@ -13,6 +13,9 @@ class LoadEntriesFromFileJob::BufferToStore
 
   def finalize
     flush_entries unless @entries.empty?
+  end
+
+  def shutdown_analyzer
     @analyzer.shutdown
   end
 

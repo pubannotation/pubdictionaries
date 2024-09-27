@@ -45,6 +45,7 @@ class LoadEntriesFromFileJob < ApplicationJob
     buffer.finalize
     # dictionary.compile!
   ensure
+    buffer.shutdown_analyzer
     File.delete(filename)
   end
 
