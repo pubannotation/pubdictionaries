@@ -35,17 +35,17 @@ class LoadEntriesFromFileJob < ApplicationJob
         @job.increment!(:num_dones)
 
         if suspended?
-          buffer.finalize
+          buffer.flush
           dictionary.compile!
           raise Exceptions::JobSuspendError
         end
       end
     end
 
-    buffer.finalize
+    buffer.flush
     # dictionary.compile!
   ensure
-    buffer.shutdown_analyzer
+    buffer.close
     File.delete(filename)
   end
 
