@@ -9,6 +9,9 @@ class LoadEntriesFromFileJob::FloodGate
   def add_entry(label, identifier, tags)
     @entries << [label, identifier, tags]
 
+    # Before each batch process, check and suspend job depending on status.
+    yield if @entries.length == CAPACITY - 1
+
     if @entries.length >= CAPACITY
       flush_entries
        true
