@@ -86,7 +86,7 @@ GEM
     bindex (0.8.1)
     bootsnap (1.18.3)
       msgpack (~> 1.2)
-    builder (3.2.4)
+    builder (3.3.0)
     clipboard-rails (1.7.1)
     coffee-rails (5.0.0)
       coffee-script (>= 2.2.0)
