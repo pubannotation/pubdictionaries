@@ -7,15 +7,12 @@ class DictionariesController < ApplicationController
   # Require authentication for all actions except :index, :show, and some others.
   before_action :authenticate_user!, except: [
     :index, :show, :show_patterns,
-    :find_ids, :text_annotation,
     :downloadable, :create_downloadable,
     :openapi
   ]
 
-  # Disable CSRF check for REST-API actions.
-  skip_before_action :verify_authenticity_token, :only => [
-    :text_annotation, :id_mapping, :label_mapping, :create
-  ], :if => Proc.new { |c| c.request.format == 'application/json' }
+  # Disable CSRF check for REST-API action.
+  skip_before_action :verify_authenticity_token, only: :create, :if => Proc.new { |c| c.request.format == 'application/json' }
 
   autocomplete :user, :username
 
