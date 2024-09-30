@@ -310,7 +310,7 @@ GEM
     unicorn (6.1.0)
       kgio (~> 2.6)
       raindrops (~> 0.7)
-    uri (0.13.0)
+    uri (0.13.1)
     validate_url (1.0.15)
       activemodel (>= 3.0.0)
       public_suffix
