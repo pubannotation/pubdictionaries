@@ -10,8 +10,11 @@ class LoadEntriesFromFileJob::FloodGate
     @entries << [label, identifier, tags]
 
     if @entries.length >= CAPACITY
+      # Before each batch process, check and suspend job depending on status.
+      yield
+
       flush_entries
-       true
+      true
     else
       false
     end

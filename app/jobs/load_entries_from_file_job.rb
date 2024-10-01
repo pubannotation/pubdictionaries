@@ -30,15 +30,16 @@ class LoadEntriesFromFileJob < ApplicationJob
         label, id, tags = Entry.read_entry_line(line)
         next if label.nil?
 
-        is_flushed = gate.add_entry(label, id, tags)
-        @job.increment!(:num_dones, FloodGate::CAPACITY) if is_flushed
-
-        if suspended?
-          remnants_count = gate.flush
-          @job.increment!(:num_dones, remnants_count)
-          dictionary.compile!
-          raise Exceptions::JobSuspendError
+        is_flushed = gate.add_entry(label, id, tags) do
+          if suspended?
+            remnants_count = gate.flush
+            @job.increment!(:num_dones, remnants_count)
+            dictionary.compile!
+            raise Exceptions::JobSuspendError
+          end
         end
+
+        @job.increment!(:num_dones, FloodGate::CAPACITY) if is_flushed
       end
     end
 
