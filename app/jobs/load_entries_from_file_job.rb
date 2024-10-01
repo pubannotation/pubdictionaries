@@ -34,7 +34,6 @@ class LoadEntriesFromFileJob < ApplicationJob
           if suspended?
             remnants_count = gate.flush
             @job.increment!(:num_dones, remnants_count)
-            dictionary.compile!
             raise Exceptions::JobSuspendError
           end
         end
@@ -45,7 +44,6 @@ class LoadEntriesFromFileJob < ApplicationJob
 
     remnants_count = gate.flush
     @job.increment!(:num_dones, remnants_count)
-    # dictionary.compile!
   ensure
     gate.close
     File.delete(filename)
