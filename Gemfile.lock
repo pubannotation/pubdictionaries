@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/ledsun/wice_grid.git
-  revision: c9f4f9ccdbcd1aa26e6d5867a339b4ab7cd1f36c
-  branch: rails_7
+  revision: 8e08de1c28ad39369b7ce79746d8b4ceb16c37b6
+  branch: rails_7_1
   specs:
     wice_grid (4.1.0)
       coffee-rails (> 3.2)
