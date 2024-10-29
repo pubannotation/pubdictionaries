@@ -22,6 +22,9 @@ class TextAnnotator
       end
 
       test 'detect old files ' do
+        #  Add slight delay to ensure setup file is detected as older
+        sleep 0.0001
+
         files = BatchResult.older_files 0
         assert_not_empty files
       end
