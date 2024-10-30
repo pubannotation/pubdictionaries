@@ -231,7 +231,7 @@ GEM
       oauth2 (>= 1.4, < 3)
       omniauth (~> 2.0)
     orm_adapter (0.5.0)
-    pg (1.5.8)
+    pg (1.5.9)
     power_assert (2.0.3)
     psych (5.1.2)
       stringio
