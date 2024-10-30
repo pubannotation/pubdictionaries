@@ -178,7 +178,7 @@ GEM
     kgio (2.11.4)
     language_list (1.2.1)
     logger (1.6.1)
-    loofah (2.23.0)
+    loofah (2.23.1)
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
     mail (2.8.1)
