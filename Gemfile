@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 ruby '3.2.6'
 
-gem 'rails', '~> 7.2.1'
+gem 'rails', '~> 7.2.2'
 gem 'activerecord-import'
 
 gem 'pg'
