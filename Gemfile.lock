@@ -366,7 +366,6 @@ DEPENDENCIES
   activerecord-import
   bootsnap
   clipboard-rails
-  coffee-rails
   daemons
   devise
   dotenv-rails
