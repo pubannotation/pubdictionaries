@@ -4,7 +4,7 @@
 PubDictionaries aims to provide a platform in which users can easily share their dictionaries and automatically annotate texts with those dictionaries.
 
 ## Requirements
-* Ruby v3.2.x
+* Ruby v3.3.x
 * Rails v7.2.x
 * SimString v1.0
   * [original version with documentation](http://www.chokkan.org/software/simstring/)
