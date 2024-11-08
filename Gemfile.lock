@@ -1,12 +1,11 @@
 GIT
-  remote: https://github.com/ledsun/wice_grid.git
-  revision: 8e08de1c28ad39369b7ce79746d8b4ceb16c37b6
-  branch: rails_7_1
+  remote: https://github.com/yush-nh/wice_grid.git
+  revision: f2999ab4d90c1f669d32ffae4de229813051c907
   specs:
-    wice_grid (4.1.0)
-      coffee-rails (> 3.2)
-      kaminari (~> 1.1)
-      rails (>= 5.0)
+    wice_grid (7.1.4)
+      jquery-rails
+      kaminari
+      rails (>= 7.0)
 
 GEM
   remote: https://rubygems.org/
@@ -96,13 +95,6 @@ GEM
       msgpack (~> 1.2)
     builder (3.3.0)
     clipboard-rails (1.7.1)
-    coffee-rails (5.0.0)
-      coffee-script (>= 2.2.0)
-      railties (>= 5.2.0)
-    coffee-script (2.4.1)
-      coffee-script-source
-      execjs
-    coffee-script-source (1.12.2)
     concurrent-ruby (1.3.4)
     connection_pool (2.4.1)
     crass (1.0.6)
@@ -401,7 +393,7 @@ DEPENDENCIES
   validate_url
   web-console
   webrick
-  wice_grid (~> 4.1)!
+  wice_grid!
 
 RUBY VERSION
    ruby 3.3.6p108
