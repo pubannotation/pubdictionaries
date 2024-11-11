@@ -332,7 +332,7 @@ GEM
     unicorn (6.1.0)
       kgio (~> 2.6)
       raindrops (~> 0.7)
-    uri (0.13.1)
+    uri (1.0.1)
     useragent (0.16.10)
     validate_url (1.0.15)
       activemodel (>= 3.0.0)
