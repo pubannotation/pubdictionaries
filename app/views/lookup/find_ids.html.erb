@@ -12,7 +12,7 @@
 <fieldset>
 	<legend>Demo</legend>
 	<%= form_tag 'find_ids', id: 'find_ids', method: :get do -%>
-		<%= text_area_tag :labels, params[:labels], required: true, placeholder: "List of labels (Tab-, newline-, or vertical bar('|')-delimited)" %>
+		<%= text_area_tag :labels, params[:labels], required: true, placeholder: "List of labels (Tab-, newline-, vertical bar('|')-, or comma(',')-delimited)" %>
 		<div class="center-align">
 			<table class="options">
 			<tr>
@@ -50,7 +50,7 @@
 				<th><%= label_tag :tags, "Tags" %></th>
 			</tr>
 			<tr>
-				<td><%= text_field_tag :tags, params[:tags], placeholder: "Pipe('|')-separated list of tags." %></td>
+				<td><%= text_field_tag :tags, params[:tags], placeholder: "Pipe- or comma-separated tags." %></td>
 			</tr>
 			</table>
 

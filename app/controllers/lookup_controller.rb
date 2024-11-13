@@ -16,12 +16,12 @@ class LookupController < ApplicationController
     dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
     params[:labels] = params[:label] if params.has_key?(:label) && !params.has_key?(:labels)
     labels = if params[:labels]
-      params[:labels].strip.split(/[\n\t\r|]+/)
+      get_values(params[:labels])
     elsif params[:_json]
       params[:_json]
     else
       body = request.body.read.force_encoding('UTF-8')
-      body.strip.split(/[\n\t\r|]+/) if body.present?
+      get_values(body) if body.present?
     end
 
     @dictionary_names_all = Dictionary.order(:name).pluck(:name)
@@ -37,7 +37,7 @@ class LookupController < ApplicationController
       else
         params[:ngram] != 'false'
       end
-      tags = params[:tags].present? ? params[:tags].strip.split("|") : []
+      tags = params[:tags].present? ? get_values(params[:tags]) : []
       @result = Dictionary.find_ids_by_labels(labels, dictionaries_selected, threshold, superfluous, verbose, ngram, tags)
     else
       {}
@@ -67,12 +67,12 @@ class LookupController < ApplicationController
     begin
       dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
       ids = if params[:ids]
-        params[:ids].strip.split(/[\n\t\r|]+/)
+        get_values(params[:ids])
       elsif params[:_json]
         params[:_json]
       else
         body = request.body.read.force_encoding('UTF-8')
-        body.strip.split(/[\n\t\r|]+/) if body.present?
+        get_values(body) if body.present?
       end
 
       @dictionary_names_all = Dictionary.order(:name).pluck(:name)
@@ -182,4 +182,9 @@ class LookupController < ApplicationController
   def get_option_boolean(key)
     (params[key] == 'true' || params[key] == '1') ? true : false
   end
+
+  def get_values(symbol_separated_values)
+    symbol_separated_values.strip.split(/[\n\t\r|,]+/).map(&:strip)
+  end
+
 end

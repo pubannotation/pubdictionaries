@@ -5,7 +5,7 @@
 <fieldset>
 	<legend>Demo</legend>
 	<%= form_tag 'find_terms', id: 'find_terms', method: :get do -%>
-		<%= text_area_tag :ids, params[:ids], required: true, placeholder: "List of IDs (Tab-, newline-, or vertical bar('|')-delimited)" %>
+		<%= text_area_tag :ids, params[:ids], required: true, placeholder: "List of IDs (Tab-, newline-, vertical bar('|')-, or comma(',')-delimited)" %>
 
 		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>
 
