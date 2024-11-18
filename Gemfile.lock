@@ -135,8 +135,6 @@ GEM
     faraday-net_http (3.3.0)
       net-http
     ffi (1.17.0)
-    font-awesome-sass (6.5.2)
-      sassc (~> 2.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
     hashie (5.0.0)
@@ -365,7 +363,6 @@ DEPENDENCIES
   elasticsearch-model
   elasticsearch-rails
   faker
-  font-awesome-sass (~> 6.2)
   i18n_data
   jquery-rails
   jquery-ui-rails
