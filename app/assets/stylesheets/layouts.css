@@ -103,7 +103,7 @@ body {
 .main {
   position: relative;
   margin: 0;
-  
+
   .control {
     position: absolute;
     right: 5px;
@@ -111,7 +111,7 @@ body {
   }
 
   .dictionaries_page .entry_list .ui-tabs-nav {
-    height: 2.4em;    // To avoid large background.
+    height: 2.4em;    /* To avoid large background. */
   }
 }
 
