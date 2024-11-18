@@ -26,7 +26,7 @@ table.entries {
     }
 
     .col_identifier {
-      withd: auto;
+      width: auto;
     }
 
     .col_button {
@@ -40,7 +40,7 @@ table.entries {
     }
 
     .col_identifier {
-      withd: auto;
+      width: auto;
     }
 
     .col_tags {
