@@ -1,6 +1,5 @@
-// Place all the styles related to the Entries controller here.
-// They will automatically be included in application.css.
-// You can use Sass (SCSS) here: http://sass-lang.com/
+/* Place all the styles related to the Entries controller here. */
+/* They will automatically be included in application.css. */
 
 nav.pagination{
   margin: 1em 0;
@@ -26,7 +25,7 @@ table.entries {
     }
 
     .col_identifier {
-      withd: auto;
+      width: auto;
     }
 
     .col_button {
@@ -40,7 +39,7 @@ table.entries {
     }
 
     .col_identifier {
-      withd: auto;
+      width: auto;
     }
 
     .col_tags {

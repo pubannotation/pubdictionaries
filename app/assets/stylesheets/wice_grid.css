@@ -1,8 +1,3 @@
-@mixin icon-dimensions {
-  width: 16px;
-  height: 16px;
-}
-
 .wg-detached-filter, .wice-grid{
 
   .text-filter-container {
@@ -63,36 +58,42 @@
 */
   .submit.clickable{
     background: transparent image-url("icons/grid/table_refresh.png") no-repeat;
-    @include icon-dimensions;
+    width: 16px;
+    height: 16px;
   }
 
   .reset.clickable{
     background: transparent image-url("icons/grid/table.png") no-repeat;
-    @include icon-dimensions;
+    width: 16px;
+    height: 16px;
   }
 
 
   .wg-show-filter.clickable,
   .wg-hide-filter.clickable{
     background: transparent image-url("icons/grid/page_white_find.png") no-repeat;
-    @include icon-dimensions;
+    width: 16px;
+    height: 16px;
   }
 
 
   .export-to-csv-button.clickable{
     background: transparent image-url("icons/grid/page_white_excel.png") no-repeat;
-    @include icon-dimensions;
+    width: 16px;
+    height: 16px;
   }
 
   .clickable.select-all{
     background: transparent image-url("icons/grid/tick_all.png") no-repeat;
-    @include icon-dimensions;
+    width: 16px;
+    height: 16px;
     float:left;
   }
 
   .clickable.deselect-all{
     background: transparent image-url("icons/grid/untick_all.png") no-repeat;
-    @include icon-dimensions;
+    width: 16px;
+    height: 16px;
     float:left;
   }
 
@@ -127,7 +128,8 @@
   a.wice-grid-delete-query .delete-icon{
     background: transparent image-url("icons/grid/delete.png") no-repeat;
     float: left;
-    @include icon-dimensions;
+    width: 16px;
+    height: 16px;
   }
 }
 

@@ -221,8 +221,6 @@ ul.warning {
   padding: 0 3px;
 }
 
-@import "font-awesome";
-
 .pagination {
   li {
     display: inline-block;

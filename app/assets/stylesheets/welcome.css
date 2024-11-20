@@ -1,0 +1,19 @@
+/* Place all the styles related to the welcome controller here. */
+/* They will automatically be included in application.css. */
+
+.illustrate {
+  max-width: 600px;
+  margin: 0 auto 15px auto;
+
+  .slogan {
+    margin: 5px auto;
+    font-size: large;
+    font-style: italic;
+    text-align: center;
+    text-decoration: underline;
+  }
+
+  img {
+    width: 100%;
+  }
+}
