@@ -689,10 +689,6 @@ class Dictionary < ApplicationRecord
     self.user.username
   end
 
-  def dic_created_at
-    self.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
-  end
-
   def additional_entries(tags)
     self.entries
         .left_outer_joins(:tags)

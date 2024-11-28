@@ -28,7 +28,7 @@ class DictionariesController < ApplicationController
     respond_to do |format|
       format.html # index.html.erb
       format.json do
-        render json: dics.as_json(only: [:name, :entries_num], methods: [:maintainer, :dic_created_at])
+        render json: dics.as_json(only: [:name, :description, :entries_num, :created_at, :updated_at], methods: [:maintainer])
       end
     end
   end
