@@ -49,7 +49,7 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   def undo
-    entry = Entry.find(params[:id])
+    entry = Entry.find_by(id: params[:id])
 
     if entry.nil?
       render json: { error: "Cannot find the entry." }, status: :bad_request
