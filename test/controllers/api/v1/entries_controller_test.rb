@@ -45,7 +45,7 @@ class Api::V1::EntriesControllerTest < ActionDispatch::IntegrationTest
                             as: :json
 
     assert_response :bad_request
-     assert_includes @response.body, "An identifier should be supplied."
+    assert_includes @response.body, "An identifier should be supplied."
   end
 
   test "should return error when entry already exists" do
@@ -92,8 +92,8 @@ class Api::V1::EntriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_difference('Entry.count', -1) do
       put "/api/v1/entries/#{@entry.id}/undo", params: { dictionary_id: @dictionary.name },
-                                              headers: { 'Content-Type' => 'application/json', 'Authorization' => "Bearer #{@access_token}" },
-                                              as: :json
+                                               headers: { 'Content-Type' => 'application/json', 'Authorization' => "Bearer #{@access_token}" },
+                                               as: :json
     end
 
     assert_response :ok
@@ -101,8 +101,8 @@ class Api::V1::EntriesControllerTest < ActionDispatch::IntegrationTest
 
   test 'should return error when entry does not exist' do
     put "/api/v1/entries/9999/undo", params: { dictionary_id: @dictionary.name },
-                                             headers: { 'Content-Type' => 'application/json', 'Authorization' => "Bearer #{@access_token}" },
-                                             as: :json
+                                     headers: { 'Content-Type' => 'application/json', 'Authorization' => "Bearer #{@access_token}" },
+                                     as: :json
 
     assert_response :bad_request
     assert_includes @response.body, "Cannot find the entry."
@@ -175,8 +175,8 @@ class Api::V1::EntriesControllerTest < ActionDispatch::IntegrationTest
 
   test 'should not be able to change other users resources' do
     post "/api/v1/entries", params: { dictionary_id: @other_users_dictionary.name, label: 'abc', identifier: '123' },
-    headers: { 'Content-Type' => 'application/json', 'Authorization' => "Bearer #{@access_token}" },
-    as: :json
+                            headers: { 'Content-Type' => 'application/json', 'Authorization' => "Bearer #{@access_token}" },
+                            as: :json
 
     assert_response :not_found
   end
