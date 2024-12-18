@@ -1,5 +1,4 @@
 require 'test_helper'
-require 'byebug'
 
 class Api::V1::EntriesControllerTest < ActionDispatch::IntegrationTest
   include Devise::Test::IntegrationHelpers
