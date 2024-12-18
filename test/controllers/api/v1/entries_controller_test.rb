@@ -12,10 +12,10 @@ class Api::V1::EntriesControllerTest < ActionDispatch::IntegrationTest
     @dictionary = dictionaries(:one)
     @entry = entries(:one)
 
-    @empty_dictionary = dictionaries(:two)
+    @empty_dictionary = dictionaries(:empty_dictionary)
     @file = fixture_file_upload('sample_tsv_entries.tsv', 'text/tab-separated-values')
 
-    @other_users_dictionary = dictionaries(:three)
+    @other_users_dictionary = dictionaries(:two)
   end
 
   # Test #create

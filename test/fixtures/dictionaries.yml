@@ -6,15 +6,15 @@ one:
   entries_num: 1
 
 two:
-  id: 2
-  user_id: 1
-  name: TestDict2
-  description: TestDict2 dictionary
-  entries_num: 0
-
-three:
   id: 3
   user_id: 2
   name: TestDict3
   description: TestDict3 dictionary
+  entries_num: 0
+
+empty_dictionary:
+  id: 2
+  user_id: 1
+  name: TestDict2
+  description: TestDict2 dictionary
   entries_num: 0
