@@ -104,7 +104,7 @@ class Api::V1::EntriesControllerTest < ActionDispatch::IntegrationTest
                                      headers: { 'Content-Type' => 'application/json', 'Authorization' => "Bearer #{@access_token}" },
                                      as: :json
 
-    assert_response :bad_request
+    assert_response :not_found
     assert_includes @response.body, "Cannot find the entry."
   end
 
