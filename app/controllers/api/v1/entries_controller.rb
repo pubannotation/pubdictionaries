@@ -52,7 +52,7 @@ class Api::V1::EntriesController < ApplicationController
     entry = Entry.find_by(id: params[:id])
 
     if entry.nil?
-      render json: { error: "Cannot find the entry." }, status: :bad_request
+      render json: { error: "Cannot find the entry." }, status: :not_found
       return
     end
 
