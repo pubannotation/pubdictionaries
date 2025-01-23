@@ -16,6 +16,7 @@ development:
 
 test:
   <<: *default
+  host: http://elasticsearch:9200
 
 production:
   <<: *default
