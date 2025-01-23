@@ -292,7 +292,10 @@ class Dictionary < ApplicationRecord
         update_entries_num
         clean_sim_string_db
       when EntryMode::GRAY
-        entries.gray.destroy_all
+        transaction do
+          ActiveRecord::Base.connection.exec_query("DELETE FROM entries WHERE dictionary_id = #{id} AND mode = #{EntryMode::GRAY}")
+          update_entries_num
+        end
       when EntryMode::WHITE
         entries.white.destroy_all
       when EntryMode::BLACK
