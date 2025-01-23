@@ -39,28 +39,32 @@ class EntriesController < ApplicationController
       entry = dictionary.entries.where(label:label, identifier:identifier).first
       raise ArgumentError, "The entry #{entry} already exists in the dictionary." unless entry.nil?
 
-      message = nil
       ActiveRecord::Base.transaction do
         entry = dictionary.new_entry(label, identifier)
 
         tag_ids = params[:tags] || []
         entry.tag_ids = tag_ids
 
-        message = if entry.save
+        if entry.save
           # dictionary.update_tmp_sim_string_db
-          "The white entry #{entry} was created."
         else
-          "The white entry #{entry} could not be created."
+          raise "The white entry #{entry} could not be created."
         end
       end
+
+      respond_to do |format|
+        message = "The white entry #{entry} was created."
+        format.html { redirect_back fallback_location: root_path, notice: message}
+        format.json { render json: entry, status: :created }
+      end
+
     rescue => e
-      raise if Rails.env.development?
-      message = e.message
+      respond_to do |format|
+        format.html { redirect_back fallback_location: root_path, notice: e.message.slice(0, 1000)}
+        format.json { head :unprocessable_entity }
+      end
     end
 
-    respond_to do |format|
-      format.html { redirect_back fallback_location: root_path, notice: message.slice(0, 1000)}
-    end
   end
 
   def upload_tsv
