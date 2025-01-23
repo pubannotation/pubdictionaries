@@ -325,7 +325,7 @@ class DictionariesController < ApplicationController
         dictionary.empty_patterns
       else
         dictionary.empty_entries(mode)
-        dictionary.clear_tags
+        dictionary.clear_tags if mode == EntryMode::GRAY
       end
 
       respond_to do |format|
