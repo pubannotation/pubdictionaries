@@ -103,14 +103,14 @@ class TextAnnotator
     anns_col.each do |anns|
       denotations = []
       idx_span_positions = {}
-      idx_position_abbreviation_candidates = {}
+      locally_defined_abbreviations = []
 
       ## Beginning of pattern-based annotation
-      denotations, idx_position_abbreviation_candidates, idx_span_positions = pattern_based_annotation(anns, denotations, idx_position_abbreviation_candidates, idx_span_positions)
+      denotations, locally_defined_abbreviations, idx_span_positions = pattern_based_annotation(anns, denotations, locally_defined_abbreviations, idx_span_positions)
 
       ## Beginning of dictionary-based annotation
       # find denotation candidates
-      denotations, idx_position_abbreviation_candidates, idx_span_positions = candidate_denotations(anns, denotations, idx_position_abbreviation_candidates, idx_span_positions)
+      denotations, locally_defined_abbreviations, idx_span_positions = candidate_denotations(anns, denotations, locally_defined_abbreviations, idx_span_positions)
 
       next if denotations.empty?
 
@@ -209,11 +209,8 @@ class TextAnnotator
       # Local abbreviation annotation
       if @abbreviation
         # collection
-        denotations.each do |d|
-          if idx_position_abbreviation_candidates.has_key?(d[:span][:end])
-            abbr = idx_position_abbreviation_candidates[d[:span][:end]]
-            denotations += idx_span_positions[abbr[:span]].collect{|p| {span:p, obj:abbr[:obj], score:abbr[:type]}}
-          end
+        locally_defined_abbreviations.each do |abbr|
+          denotations += idx_span_positions[abbr[:span]].collect{|p| {span:{begin:p[:begin], end:p[:end]}, string:abbr[:span], obj:abbr[:obj], score:abbr[:type]}}
         end
 
         denotations.uniq!{|d| [d[:span][:begin], d[:span][:end], d[:obj]]}
@@ -237,9 +234,9 @@ class TextAnnotator
   private
 
   # find all the matching spans, store them in denotations, and make idx_span_positions
-  # if the abbreviation option is on, make idx_position_abbreviation_candidates
-  def pattern_based_annotation(anns, denotations = [], idx_position_abbreviation_candidates = {}, idx_span_positions = {})
-    return [denotations, idx_position_abbreviation_candidates, idx_span_positions] if @patterns.empty?
+  # if the abbreviation option is on, make locally_defined_abbreviations
+  def pattern_based_annotation(anns, denotations = [], locally_defined_abbreviations = [], idx_span_positions = {})
+    return [denotations, locally_defined_abbreviations, idx_span_positions] if @patterns.empty?
 
     text = anns[:text]
 
@@ -248,37 +245,15 @@ class TextAnnotator
       matches.map do |m|
         mbeg, mend = m.offset(0)[0, 2]
         span = {begin:mbeg, end:mend}
-
         str = text[mbeg ... mend]
-        idx_span_positions[str] = [] unless idx_span_positions.has_key? str
-        idx_span_positions[str] << span
-
-        # to find abbreviation definitions
-        if @abbreviation
-          pos = mend
-          pos += 1 while text[pos] =~ /\s/
-          if text[pos] == '('
-            pos += 1
-            abeg = pos
-            pos += 1 while text[pos] != ')' && pos - abeg < 10
-            aend = pos if text[pos] == ')'
-          end
-
-          if aend.present? && aend > abeg + 1
-            abbr_str = text[abeg ... aend]
-            abbreviation_type = determine_abbreviation(abbr_str, str)
-            idx_position_abbreviation_candidates[mend] = {span:abbr_str, obj:pattern.identifier, type: abbreviation_type} unless abbreviation_type.nil?
-          end
-        end
-
         {span:span, obj:pattern.identifier, score:1, string:str}
       end
     end.reduce(:union)
 
-    [denotations, idx_position_abbreviation_candidates, idx_span_positions]
+    [denotations, locally_defined_abbreviations, idx_span_positions]
   end
 
-  def candidate_denotations(anns, denotations = [], idx_position_abbreviation_candidates = {}, idx_span_positions = {})
+  def candidate_denotations(anns, denotations = [], locally_defined_abbreviations = [], idx_span_positions = {})
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
     text = anns[:text]
@@ -296,7 +271,7 @@ class TextAnnotator
       token_span = text[token_begin[:start_offset]...token_begin[:end_offset]]
 
       idx_span_positions[token_span] = [] unless idx_span_positions.has_key? token_span
-      idx_span_positions[token_span] << {begin:token_begin[:start_offset], end:token_begin[:end_offset]}
+      idx_span_positions[token_span] << {tidx: idx_token_begin, begin:token_begin[:start_offset], end:token_begin[:end_offset]}
 
       next if @no_term_words.include?(token_begin[:token])
       next if @no_begin_words.include?(token_begin[:token])
@@ -304,8 +279,8 @@ class TextAnnotator
       (@tokens_len_min .. @tokens_len_max).each do |tlen|
         break if idx_token_begin + tlen > tokens.length
 
-        idx_token_end = idx_token_begin + tlen - 1
-        token_end = tokens[idx_token_end]
+        idx_token_final = idx_token_begin + tlen - 1
+        token_end = tokens[idx_token_final]
         break if cross_sentence?(sbreaks, token_begin[:start_offset], token_end[:end_offset])
         break if @no_term_words.include?(token_end[:token])
         # next if tlen == 1 && token_begin[:token].length == 1
@@ -350,7 +325,8 @@ class TextAnnotator
         end
 
         entries.each do |entry|
-          d = {span:{begin:span_begin, end:span_end}, obj:entry[:identifier], score:entry[:score], string:span}
+          # idx_token_final is added for efficiency of finding locally defined abbreviations
+          d = {span:{begin:span_begin, end:span_end}, obj:entry[:identifier], score:entry[:score], string:span, idx_token_final: idx_token_final}
           if @verbose
             d[:label] = entry[:label]
             d[:norm1] = entry[:norm1]
@@ -358,25 +334,67 @@ class TextAnnotator
           end
           denotations << d
         end
+      end
+    end
 
-        # to find abbreviation definitions
-        if @abbreviation
-          if idx_token_begin > 0 && tlen == 1 && span.length > 1 && token_begin[:pars_open_p] && token_end[:pars_close_p]
-            di = denotations.length - 1
-            while di >= 0 && denotations[di][:span][:end] >= tokens[idx_token_begin - 1][:end_offset]
-              if denotations[di][:span][:end] == tokens[idx_token_begin - 1][:end_offset]
-                ff_denotation = denotations[di]
-                abbreviation_type = determine_abbreviation(span, ff_denotation[:string])
-                idx_position_abbreviation_candidates[ff_denotation[:span][:end]] = {span:span, obj:ff_denotation[:obj], type: abbreviation_type} unless abbreviation_type.nil?
-              end
-              di -= 1
+    # to find locally defined abbreviations
+    if @abbreviation
+      denotations.each do |d|
+        unless d[:idx_token_final]
+          d[:idx_token_final] = find_idx_token_final(d, tokens)
+        end
+
+        idx_abbr_token_first = d[:idx_token_final] + 1
+        base_pars_level = tokens[idx_abbr_token_first - 1][:pars_level]
+
+        if (idx_abbr_token_first  < tokens.length) && (tokens[idx_abbr_token_first][:pars_level] > base_pars_level)
+          idx_abbr_token_final = idx_abbr_token_first
+
+          # assumption: No case of immediately neighboring parentheses (...)(...)
+          while ((idx_abbr_token_final - idx_abbr_token_first) < 3) && ((idx_abbr_token_final < tokens.length - 1) && (tokens[idx_abbr_token_final + 1][:pars_level] > base_pars_level))
+            idx_abbr_token_final += 1
+          end
+
+          if (idx_abbr_token_final == tokens.length - 1) || (tokens[idx_abbr_token_final + 1][:pars_level] == base_pars_level)
+            span = text[tokens[idx_abbr_token_first][:start_offset] ... tokens[idx_abbr_token_final][:end_offset]]
+            # heuristic processing.
+            span += ')' if text[tokens[idx_abbr_token_final][:end_offset], 2] == '))'
+            abbreviation_type = determine_abbreviation(span, d[:string])
+            unless abbreviation_type.nil?
+              token1 = tokens[idx_abbr_token_first]
+              locally_defined_abbreviations << {span:span, obj:d[:obj], type: abbreviation_type, token1: text[token1[:start_offset]...token1[:end_offset]], tlen: idx_abbr_token_final - idx_abbr_token_first + 1}
+            end
+          end
+        end
+      end
+
+      # add additional necessary idx_span_positions
+      locally_defined_abbreviations.each do |abbr|
+        if abbr[:tlen] > 1
+          abbr_token1s = idx_span_positions[abbr[:token1]]
+          abbr_token1s.each do |token1|
+            idx_abbr_token_first = token1[:tidx]
+            idx_abbr_token_final = idx_abbr_token_first + abbr[:tlen] - 1
+            abbr_span_begin = tokens[idx_abbr_token_first][:start_offset]
+            abbr_span_begin -= 1 if abbr[:span][0] == '(' && tokens[idx_abbr_token_first][:pars_open_p]
+            abbr_span_end = tokens[idx_abbr_token_final][:end_offset]
+            abbr_span_end += 1 if abbr[:span][-1] == ')' && ((idx_abbr_token_final == tokens.length - 1) || (tokens[idx_abbr_token_final + 1][:pars_level] == (tokens[idx_abbr_token_first - 1][:pars_level])))
+            if text[abbr_span_begin ...abbr_span_end] == abbr[:span]
+              idx_span_positions[abbr[:span]] = [] unless idx_span_positions.has_key? abbr[:span]
+              idx_span_positions[abbr[:span]] << {begin: abbr_span_begin, end: abbr_span_end}
             end
           end
         end
       end
     end
 
-    [denotations, idx_position_abbreviation_candidates, idx_span_positions]
+    denotations.each{|d| d.delete(:idx_token_final)}
+    [denotations, locally_defined_abbreviations, idx_span_positions]
+  end
+
+  def find_idx_token_final(d, tokens)
+    idx = tokens.bsearch_index{|x| x[:start_offset] > d[:span][:end]}
+    idx - 1
   end
 
   def determine_abbreviation(abbr, ff)
@@ -391,7 +409,7 @@ class TextAnnotator
       'regAbbreviation'
 
     # test a liberal abbreviation form
-    elsif (abbr[0].downcase == ff[0].downcase) && (abbr.downcase.chars - ff.downcase.chars).empty?
+    elsif (abbr[0].downcase == ff[0].downcase) && (abbr.downcase.scan(/[0-9a-z]/) - ff.downcase.scan(/[0-9a-z]/)).empty?
       'freeAbbreviation'
     else
       nil
@@ -411,28 +429,27 @@ class TextAnnotator
   end
 
   # To add parenthesis information to each token
+  # (1(2)1)0((2)1)(1(2))(1(2)(2)1)
   def add_pars_info!(tokens, text, sbreaks)
     prev_token = nil
     pars_level = 0
-    tokens.each do |token|
-      if prev_token && cross_sentence?(sbreaks, prev_token[:end_offset], token[:start_offset])
-        prev_token = nil
+
+    (0 ... tokens.length).each do |idx_token|
+      if (idx_token > 0 ) && cross_sentence?(sbreaks, tokens[idx_token - 1][:end_offset], tokens[idx_token][:start_offset])
         pars_level = 0
       end
 
-      start_offset = token[:start_offset]
-      pars_open_p  = start_offset > 0 && text[start_offset - 1] == '('
-      pars_close_p = text[token[:end_offset]] == ')'
+      token = tokens[idx_token]
+      token_pre_span_begin = idx_token > 0 ? tokens[idx_token - 1][:end_offset] : 0
+      token_pre_span = text[token_pre_span_begin ... token[:start_offset]]
 
-      if prev_token
-        count_pars_open  = text[prev_token[:end_offset] ... start_offset].count('(')
-        count_pars_close = text[prev_token[:end_offset] ... start_offset].count(')')
-        pars_level += (count_pars_open - count_pars_close)
-        pars_level = 0 if pars_level < 0
-      end
+      count_pars_open  = token_pre_span.count('(')
+      count_pars_close = token_pre_span.count(')')
 
-      token.merge!({pars_open_p:pars_open_p, pars_close_p:pars_close_p, pars_level:pars_level})
-      prev_token = token
+      pars_level += (count_pars_open - count_pars_close)
+      pars_level = 0 if pars_level < 0
+
+      token.merge!({pars_level:pars_level})
     end
   end
 
@@ -472,7 +489,12 @@ class TextAnnotator
     # Analyze each chunk and collect the results
     tokens = chunk_spans.flat_map do |span|
       @tokenizer_post.body = {analyzer: analyzer, text: text[span[0] ... span[1]].tr('{}', '()')}.to_json
-      res = @es_connection.request @tokenizer_url, @tokenizer_post
+
+      begin
+        res = @es_connection.request @tokenizer_url, @tokenizer_post
+      rescue => e
+        raise "Bad gateway (ES). Please notify the administrator for a quick resolution."
+      end
 
       # Parse and extract tokens from the result
       (JSON.parse(res.body, symbolize_names: true)[:tokens])
