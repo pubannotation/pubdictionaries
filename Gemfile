@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 ruby '3.4.1'
 
-gem 'rails', '~> 8.0.0'
+gem 'rails', '~> 8.0.1'
 gem 'activerecord-import'
 
 gem 'csv'
