@@ -98,6 +98,7 @@ GEM
     concurrent-ruby (1.3.5)
     connection_pool (2.5.0)
     crass (1.0.6)
+    csv (3.3.2)
     daemons (1.4.1)
     date (3.4.1)
     devise (4.9.4)
@@ -354,6 +355,7 @@ DEPENDENCIES
   activerecord-import
   bootsnap
   clipboard-rails
+  csv
   daemons
   devise
   dotenv-rails
@@ -389,7 +391,7 @@ DEPENDENCIES
   wice_grid!
 
 RUBY VERSION
-   ruby 3.3.6p108
+   ruby 3.4.1p0
 
 BUNDLED WITH
    2.3.26

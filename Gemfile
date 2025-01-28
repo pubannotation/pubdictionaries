@@ -1,9 +1,10 @@
 source 'https://rubygems.org'
-ruby '3.3.6'
+ruby '3.4.1'
 
 gem 'rails', '~> 8.0.0'
 gem 'activerecord-import'
 
+gem 'csv'
 gem 'pg'
 gem 'wice_grid', github: 'yush-nh/wice_grid' # Grid viewer for tab-separated data view.
 gem 'jquery-rails'
