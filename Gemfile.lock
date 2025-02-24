@@ -126,6 +126,8 @@ GEM
       faraday (>= 1, < 3)
       multi_json
     erubi (1.13.1)
+    ethon (0.16.0)
+      ffi (>= 1.15.0)
     execjs (2.10.0)
     faker (3.5.1)
       i18n (>= 1.8.11, < 2)
@@ -135,6 +137,10 @@ GEM
       logger
     faraday-net_http (3.4.0)
       net-http (>= 0.5.0)
+    faraday-typhoeus (1.1.0)
+      faraday (~> 2.0)
+      typhoeus (~> 1.4)
+    ffi (1.17.1)
     globalid (1.2.1)
       activesupport (>= 6.1)
     hashie (5.0.0)
@@ -199,7 +205,6 @@ GEM
     net-protocol (0.2.2)
       timeout
     net-smtp (0.5.0)
-      net-protocol
     nio4r (2.7.4)
     nokogiri (1.18.2)
       mini_portile2 (~> 2.8.2)
@@ -211,6 +216,10 @@ GEM
       rack (>= 1.2, < 4)
       snaky_hash (~> 2.0)
       version_gem (~> 1.1)
+    ollama-ai (1.3.0)
+      faraday (~> 2.10)
+      faraday-typhoeus (~> 1.1)
+      typhoeus (~> 1.4, >= 1.4.1)
     omniauth (2.1.2)
       hashie (>= 3.4.6)
       rack (>= 2.2.3)
@@ -320,6 +329,8 @@ GEM
       power_assert
     thor (1.3.2)
     timeout (0.4.3)
+    typhoeus (1.4.1)
+      ethon (>= 0.9.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     uglifier (4.2.1)
@@ -368,6 +379,7 @@ DEPENDENCIES
   kaminari
   language_list (~> 1.2, >= 1.2.1)
   net-http-persistent
+  ollama-ai
   omniauth
   omniauth-google-oauth2
   pg
