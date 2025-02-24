@@ -1,0 +1,13 @@
+<fieldset class="dialog">
+	<legend>Update Embeddings</legend>
+
+	<p class="note">
+		Update the embedding of the entries
+	</p>
+	<%= link_to(
+		'Update Embedding',
+		update_embeddings_dictionary_path(@dictionary.name),
+		method: :post,
+		class: "button"
+	) %>
+</fieldset>

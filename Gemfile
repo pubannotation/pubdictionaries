@@ -35,6 +35,7 @@ gem 'webrick'
 gem 'activejob-cancel'
 gem 'sidekiq', '~> 7.2'
 gem 'select2-rails'
+gem "neighbor"
 gem 'ollama-ai'
 
 group :development do

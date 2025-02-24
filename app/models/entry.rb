@@ -93,7 +93,7 @@ class Entry < ApplicationRecord
     where(mode: EntryMode::WHITE, dirty: true)
   }
 
-  after_save :update_dictionary_entries_num
+  after_create :update_dictionary_entries_num
   after_destroy :update_dictionary_entries_num
 
   def to_s
@@ -180,6 +180,11 @@ class Entry < ApplicationRecord
 
   def is_black?
     mode == EntryMode::BLACK
+  end
+
+  def update_embedding
+    vector = OllamaLlm.fetch_embedding(label)
+    update_attribute(:embedding, vector)
   end
 
   private

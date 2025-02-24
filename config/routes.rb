@@ -55,6 +55,7 @@ Rails.application.routes.draw do
       get  'substring_completion', to: 'lookup#substring_completion'
       get  'mixed_completion', to: 'lookup#mixed_completion'
       get 'compile'
+      post 'update_embeddings'
       get 'downloadable'
       post 'downloadable', to: 'dictionaries#create_downloadable', as: 'create_downloadable'
       get 'openapi', to: 'dictionaries#openapi'
