@@ -192,11 +192,11 @@ ul.warning {
   text-decoration: none;
 }
 
-.button.disabled:hover {
+.button:disabled:hover {
   background: gray;
 }
 
-.button.disabled {
+.button:disabled {
   background: gray;
 }
 
