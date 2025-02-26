@@ -8,7 +8,7 @@ class DictionariesController < ApplicationController
   before_action :authenticate_user!, except: [
     :index, :show, :show_patterns,
     :downloadable, :create_downloadable,
-    :openapi
+    :openapi, :description
   ]
 
   # Disable CSRF check for REST-API action.
@@ -116,7 +116,6 @@ class DictionariesController < ApplicationController
         end
       }
     end
-
   rescue ActiveRecord::RecordNotFound
     respond_to do |format|
       message = "Could not find the dictionary: #{params[:id]}."
@@ -155,7 +154,6 @@ class DictionariesController < ApplicationController
         send_data @dictionary.patterns.as_tsv, filename: filename, type: :tsv
       }
     end
-
   rescue ArgumentError => e
     respond_to do |format|
       format.html {redirect_to dictionaries_path, notice: e.message}
@@ -407,6 +405,15 @@ class DictionariesController < ApplicationController
         format.html {redirect_to dictionaries_path, notice: e.message}
         format.json {head :no_content}
       end
+    end
+  end
+
+  def description
+    dictionary = Dictionary.find_by!(name: params[:id])
+    respond_to do |format|
+      format.any {
+        render plain: dictionary.description
+      }
     end
   end
 
