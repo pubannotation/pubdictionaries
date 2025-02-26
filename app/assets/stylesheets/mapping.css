@@ -20,7 +20,8 @@ fieldset:hover {
 }
 
 table.options {
-  margin: 4px auto;
+  display: inline-block;
+  margin: 4px 4px;
   border-width: 2px;
   text-align:center;
   th {
