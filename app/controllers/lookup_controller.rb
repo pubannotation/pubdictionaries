@@ -80,7 +80,9 @@ class LookupController < ApplicationController
 
       @result = if ids.present?
         raise ArgumentError, "At least one dictionary has to be specified for lookup." unless dictionaries_selected.present?
-        @result = Dictionary.find_labels_by_ids(ids, dictionaries_selected)
+        verbose = get_option_boolean(:verbose)
+        result = Dictionary.find_labels_by_ids(ids, dictionaries_selected)
+        verbose ? result : result.transform_values(&:first)
       else
         {}
       end

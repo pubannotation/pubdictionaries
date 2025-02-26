@@ -1,3 +1,7 @@
+<%
+	default_verbose = 'false'
+%>
+
 <% content_for :page_title do %>
 	<span class="page_title">Find Terms <span class="supplement">by their IDs</span></span>
 <% end %>
@@ -6,6 +10,20 @@
 	<legend>Demo</legend>
 	<%= form_tag 'find_terms', id: 'find_terms', method: :get do -%>
 		<%= text_area_tag :ids, params[:ids], required: true, placeholder: "List of IDs (Tab-, newline-, vertical bar('|')-, or comma(',')-delimited)" %>
+		<div class="center-align">
+			<table class="options">
+			<tr>
+				<th>
+					<%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include all the mapped terms." %>
+				</th>
+			</tr>
+			<tr>
+				<td>
+					<%= check_box_tag :verbose, true, (params[:verbose] ? params[:verbose] : default_verbose) == 'true' %>
+				</td>
+			</tr>
+			</table>
+		</div>
 
 		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>
 
