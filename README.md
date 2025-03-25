@@ -5,7 +5,7 @@ PubDictionaries aims to provide a platform in which users can easily share their
 
 ## Requirements
 * Ruby v3.4.x
-* Rails v7.2.x
+* Rails v8.0.x
 * SimString v1.0
   * [original version with documentation](http://www.chokkan.org/software/simstring/)
   * [modified version](https://github.com/pubannotation/simstring)
