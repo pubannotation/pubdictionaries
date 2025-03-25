@@ -13,7 +13,7 @@ services:
 
   db:
     platform: linux/amd64
-    image: postgres
+    image: ankane/pgvector
     environment:
       POSTGRES_PASSWORD: password
       PGPASSWORD: password
