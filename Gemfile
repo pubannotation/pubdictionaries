@@ -33,7 +33,7 @@ gem 'string-similarity', '~> 2.1'
 gem 'rubyzip'
 gem 'webrick'
 gem 'activejob-cancel'
-gem 'sidekiq', '~> 7.2'
+gem 'sidekiq', '~> 8.0'
 gem 'select2-rails'
 gem "neighbor"
 gem 'ollama-ai'
