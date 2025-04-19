@@ -450,6 +450,8 @@ class TextAnnotator
       pars_level = 0 if pars_level < 0
 
       token.merge!({pars_level:pars_level})
+      token.merge!({pars_open_p:true}) if text[token[:start_offset] - 1] == '('
+      token.merge!({pars_close_p:true}) if text[token[:end_offset]] == ')'
     end
   end
 
