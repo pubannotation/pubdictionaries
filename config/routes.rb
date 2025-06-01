@@ -7,6 +7,10 @@ Rails.application.routes.draw do
     end
   end
 
+  # MCP endpoint
+  post '/mcp', to: 'mcp#handle_request'
+  options '/mcp', to: 'mcp#options'  # For CORS preflight
+
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
   get "home/about", as: "about"
 
