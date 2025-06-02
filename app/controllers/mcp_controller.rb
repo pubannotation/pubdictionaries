@@ -21,6 +21,8 @@ class McpController < ApplicationController
 			request_id = request_data['id']
 			
 			result = case method_name
+							 when 'initialize'
+								 handle_initialize(params)
 							 when 'tools/list'
 								 list_tools
 							 when 'tools/call'
@@ -154,9 +156,28 @@ class McpController < ApplicationController
 			raise StandardError, "Unknown tool: #{tool_name}"
 		end
 	end
-	
+
+	def handle_initialize(params)
+		# MCP initialization handshake
+		protocol_version = params['protocolVersion']
+		client_info = params['clientInfo']
+
+		Rails.logger.info "MCP Initialize: Client #{client_info['name']} v#{client_info['version']}, Protocol: #{protocol_version}"
+
+		{
+			protocolVersion: "2024-11-05",  # The protocol version we support
+			capabilities: {
+				tools: {}  # We support tools
+			},
+			serverInfo: {
+				name: "PubDictionaries",
+				version: "1.0.0"
+			}
+		}
+	end
+
 	# Tool implementations using HTTP requests to existing endpoints
-	
+
 	def handle_list_dictionaries
 		response = make_internal_request('/dictionaries.json')
 		dictionaries = JSON.parse(response.body)
