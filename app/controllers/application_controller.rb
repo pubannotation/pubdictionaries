@@ -16,7 +16,7 @@ class ApplicationController < ActionController::Base
        and session.has_key? :previous_url
       return session[:previous_url]
     else
-      return root_path
+      return show_user_path(resource.username) || root_path
     end
   end
 end
