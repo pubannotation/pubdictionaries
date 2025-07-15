@@ -65,7 +65,7 @@ GEM
       activemodel (= 8.0.2)
       activesupport (= 8.0.2)
       timeout (>= 0.4.0)
-    activerecord-import (2.1.0)
+    activerecord-import (2.2.0)
       activerecord (>= 4.2)
     activestorage (8.0.2)
       actionpack (= 8.0.2)
@@ -86,19 +86,19 @@ GEM
       securerandom (>= 0.3)
       tzinfo (~> 2.0, >= 2.0.5)
       uri (>= 0.13.1)
-    base64 (0.2.0)
+    base64 (0.3.0)
     bcrypt (3.1.20)
-    benchmark (0.4.0)
-    bigdecimal (3.1.9)
+    benchmark (0.4.1)
+    bigdecimal (3.2.2)
     bindex (0.8.1)
-    bootsnap (1.18.4)
+    bootsnap (1.18.6)
       msgpack (~> 1.2)
     builder (3.3.0)
     clipboard-rails (1.7.1)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.3)
     crass (1.0.6)
-    csv (3.3.4)
+    csv (3.3.5)
     daemons (1.4.1)
     date (3.4.1)
     devise (4.9.4)
@@ -111,7 +111,7 @@ GEM
     dotenv-rails (3.1.8)
       dotenv (= 3.1.8)
       railties (>= 6.1)
-    drb (2.2.1)
+    drb (2.2.3)
     elastic-transport (8.4.0)
       faraday (< 3)
       multi_json
@@ -125,22 +125,30 @@ GEM
       elasticsearch (~> 8)
       hashie
     elasticsearch-rails (8.0.0)
+    erb (5.0.1)
     erubi (1.13.1)
     ethon (0.16.0)
       ffi (>= 1.15.0)
     execjs (2.10.0)
-    faker (3.5.1)
+    faker (3.5.2)
       i18n (>= 1.8.11, < 2)
-    faraday (2.13.1)
+    faraday (2.13.2)
       faraday-net_http (>= 2.0, < 3.5)
       json
       logger
-    faraday-net_http (3.4.0)
+    faraday-net_http (3.4.1)
       net-http (>= 0.5.0)
     faraday-typhoeus (1.1.0)
       faraday (~> 2.0)
       typhoeus (~> 1.4)
-    ffi (1.17.2)
+    ffi (1.17.2-aarch64-linux-gnu)
+    ffi (1.17.2-aarch64-linux-musl)
+    ffi (1.17.2-arm-linux-gnu)
+    ffi (1.17.2-arm-linux-musl)
+    ffi (1.17.2-arm64-darwin)
+    ffi (1.17.2-x86_64-darwin)
+    ffi (1.17.2-x86_64-linux-gnu)
+    ffi (1.17.2-x86_64-linux-musl)
     globalid (1.2.1)
       activesupport (>= 6.1)
     hashie (5.0.0)
@@ -148,7 +156,7 @@ GEM
       concurrent-ruby (~> 1.0)
     i18n_data (1.1.0)
       simple_po_parser (~> 1.1)
-    io-console (0.8.0)
+    io-console (0.8.1)
     irb (1.15.2)
       pp (>= 0.6.0)
       rdoc (>= 4.0.0)
@@ -159,8 +167,8 @@ GEM
       thor (>= 0.14, < 2.0)
     jquery-ui-rails (8.0.0)
       railties (>= 3.2.16)
-    json (2.12.0)
-    jwt (2.10.1)
+    json (2.12.2)
+    jwt (3.1.2)
       base64
     kaminari (1.2.2)
       activesupport (>= 4.1.0)
@@ -187,19 +195,18 @@ GEM
       net-smtp
     marcel (1.0.4)
     mini_mime (1.1.5)
-    mini_portile2 (2.8.9)
     minitest (5.25.5)
     msgpack (1.8.0)
-    multi_json (1.15.0)
+    multi_json (1.16.0)
     multi_xml (0.7.2)
       bigdecimal (~> 3.1)
-    neighbor (0.5.2)
-      activerecord (>= 7)
+    neighbor (0.6.0)
+      activerecord (>= 7.1)
     net-http (0.6.0)
       uri
-    net-http-persistent (4.0.5)
-      connection_pool (~> 2.2)
-    net-imap (0.5.8)
+    net-http-persistent (4.0.6)
+      connection_pool (~> 2.2, >= 2.2.4)
+    net-imap (0.5.9)
       date
       net-protocol
     net-pop (0.1.2)
@@ -209,16 +216,30 @@ GEM
     net-smtp (0.5.1)
       net-protocol
     nio4r (2.7.4)
-    nokogiri (1.18.8)
-      mini_portile2 (~> 2.8.2)
+    nokogiri (1.18.8-aarch64-linux-gnu)
       racc (~> 1.4)
-    oauth2 (2.0.9)
-      faraday (>= 0.17.3, < 3.0)
-      jwt (>= 1.0, < 3.0)
+    nokogiri (1.18.8-aarch64-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.18.8-arm-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.18.8-arm-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.18.8-arm64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.18.8-x86_64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.18.8-x86_64-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.18.8-x86_64-linux-musl)
+      racc (~> 1.4)
+    oauth2 (2.0.12)
+      faraday (>= 0.17.3, < 4.0)
+      jwt (>= 1.0, < 4.0)
+      logger (~> 1.2)
       multi_xml (~> 0.5)
       rack (>= 1.2, < 4)
-      snaky_hash (~> 2.0)
-      version_gem (~> 1.1)
+      snaky_hash (~> 2.0, >= 2.0.3)
+      version_gem (>= 1.1.8, < 3)
     ollama-ai (1.3.0)
       faraday (~> 2.10)
       faraday-typhoeus (~> 1.1)
@@ -247,8 +268,9 @@ GEM
     public_suffix (6.0.2)
     racc (1.8.1)
     rack (3.1.16)
-    rack-cors (2.0.2)
-      rack (>= 2.0.0)
+    rack-cors (3.0.0)
+      logger
+      rack (>= 3.0.14)
     rack-protection (4.1.1)
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
@@ -274,7 +296,7 @@ GEM
       activesupport (= 8.0.2)
       bundler (>= 1.15.0)
       railties (= 8.0.2)
-    rails-dom-testing (2.2.0)
+    rails-dom-testing (2.3.0)
       activesupport (>= 5.0.0)
       minitest
       nokogiri (>= 1.6)
@@ -294,11 +316,12 @@ GEM
       thor (~> 1.0, >= 1.2.2)
       zeitwerk (~> 2.6)
     raindrops (0.20.1)
-    rake (13.2.1)
-    rdoc (6.13.1)
+    rake (13.3.0)
+    rdoc (6.14.2)
+      erb
       psych (>= 4.0.0)
     recaptcha (5.19.0)
-    redis-client (0.24.0)
+    redis-client (0.25.1)
       connection_pool
     reline (0.6.1)
       io-console (~> 0.5)
@@ -309,16 +332,16 @@ GEM
     rubyzip (2.4.1)
     securerandom (0.4.1)
     select2-rails (4.0.13)
-    sidekiq (8.0.3)
+    sidekiq (8.0.5)
       connection_pool (>= 2.5.0)
       json (>= 2.9.0)
       logger (>= 1.6.2)
       rack (>= 3.1.0)
       redis-client (>= 0.23.2)
     simple_po_parser (1.1.6)
-    snaky_hash (2.0.1)
-      hashie
-      version_gem (~> 1.1, >= 1.1.1)
+    snaky_hash (2.0.3)
+      hashie (>= 0.1.0, < 6)
+      version_gem (>= 1.1.8, < 3)
     sprockets (4.2.2)
       concurrent-ruby (~> 1.0)
       logger
@@ -329,7 +352,7 @@ GEM
       sprockets (>= 3.0.0)
     string-similarity (2.1.0)
     stringio (3.1.7)
-    test-unit (3.6.8)
+    test-unit (3.7.0)
       power_assert
     thor (1.3.2)
     timeout (0.4.3)
@@ -356,14 +379,21 @@ GEM
       bindex (>= 0.4.0)
       railties (>= 6.0.0)
     webrick (1.9.1)
-    websocket-driver (0.7.7)
+    websocket-driver (0.8.0)
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
-    zeitwerk (2.7.2)
+    zeitwerk (2.7.3)
 
 PLATFORMS
-  ruby
+  aarch64-linux-gnu
+  aarch64-linux-musl
+  arm-linux-gnu
+  arm-linux-musl
+  arm64-darwin
+  x86_64-darwin
+  x86_64-linux-gnu
+  x86_64-linux-musl
 
 DEPENDENCIES
   activejob-cancel
@@ -408,7 +438,7 @@ DEPENDENCIES
   wice_grid!
 
 RUBY VERSION
-   ruby 3.4.2p28
+   ruby 3.4.4p34
 
 BUNDLED WITH
-   2.3.26
+   2.6.7
