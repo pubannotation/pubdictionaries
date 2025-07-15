@@ -256,6 +256,9 @@ GEM
     omniauth-oauth2 (1.8.0)
       oauth2 (>= 1.4, < 3)
       omniauth (~> 2.0)
+    omniauth-rails_csrf_protection (1.0.2)
+      actionpack (>= 4.2)
+      omniauth (~> 2.0)
     orm_adapter (0.5.0)
     pg (1.5.9)
     power_assert (2.0.5)
@@ -415,8 +418,8 @@ DEPENDENCIES
   neighbor
   net-http-persistent
   ollama-ai
-  omniauth
   omniauth-google-oauth2
+  omniauth-rails_csrf_protection
   pg
   rack-cors
   rails (~> 8.0.1)

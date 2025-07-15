@@ -32,7 +32,7 @@ Rails.application.routes.draw do
   get  'annotation_results/:filename', to: 'annotation#annotation_result', as: 'annotation_result'
 
   devise_for :users, controllers: {
-    :omniauth_callbacks => 'callbacks',
+    :omniauth_callbacks => 'users/omniauth_callbacks',
     :confirmations => 'confirmations',
     :registrations => 'users/registrations',
     :passwords => 'users/passwords'

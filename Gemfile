@@ -11,7 +11,7 @@ gem 'jquery-rails'
 gem 'jquery-ui-rails'
 gem 'devise'
 gem 'recaptcha'
-gem 'omniauth'
+gem "omniauth-rails_csrf_protection"
 gem 'omniauth-google-oauth2'
 gem 'net-http-persistent'
 gem 'ruby-stemmer'
