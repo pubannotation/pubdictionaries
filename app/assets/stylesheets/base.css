@@ -166,13 +166,14 @@ ul.warning {
 }
 
 .button {
-  margin: 2px 0;
+  display: inline-block;
+  margin: 2px;
   border: 2px outset #aaaaaa;
   border-radius: 5px;
   background: #99bbff;
   font-family: Arial;
   color: #444;
-  padding: 2px 6px 2px 6px;
+  padding: 2px 6px;
   text-decoration: none;
 }
 
