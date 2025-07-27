@@ -152,7 +152,7 @@ ul.note {
   color: #668;
 }
 
-ul.warning {
+.warning {
   font-style: italic;
   color: red;
 }
@@ -193,12 +193,12 @@ ul.warning {
   text-decoration: none;
 }
 
-.button:disabled:hover {
-  background: gray;
+.button.disabled:hover {
+  background: #aaa;
 }
 
-.button:disabled {
-  background: gray;
+.button.disabled {
+  background: #aaa;
 }
 
 .button:active {

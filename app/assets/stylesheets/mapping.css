@@ -21,7 +21,7 @@ fieldset:hover {
 
 table.options {
   display: inline-block;
-  margin: 4px 4px;
+  margin: 2px;
   border-width: 2px;
   text-align:center;
   th {
