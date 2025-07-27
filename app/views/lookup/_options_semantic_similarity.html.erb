@@ -1,0 +1,49 @@
+<table class="options">
+<tr>
+	<th colspan="2">Semantic Similarity</th>
+</tr>
+<tr>
+	<th>
+		<%= label_tag :use_semantic_similarity, "Use?", title: "When available, use semantic similarity to find synonyms that surface-level matching would miss." %>
+	</th>
+	<th>
+		<%= label_tag :semantic_threshold, "Threshold", title: "The output will include only the terms whose similarity is equal to or above the threshold. (default: #{TextAnnotator::OPTIONS_DEFAULT[:semantic_threshold]})" %>
+	</th>
+</tr>
+<tr>
+	<td>
+		<%= check_box_tag :use_semantic_similarity, true, params[:use_semantic_similarity] ? params[:use_semantic_similarity] == 'true' : TextAnnotator::OPTIONS_DEFAULT[:use_semantic_similarity] %>
+	</td>
+	<td>
+		<%= text_field_tag :semantic_threshold, params[:semantic_threshold] || TextAnnotator::OPTIONS_DEFAULT[:semantic_threshold], type: :number, min:0, max:1, step:0.01 %>
+	</td>
+</tr>
+</table>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	const checkbox = document.getElementById('use_semantic_similarity');
+	const textField = document.getElementById('semantic_threshold');
+
+	function toggleTextField() {
+		if (checkbox.checked) {
+			textField.disabled = false;
+			// Restore previously stored value if it exists
+			if (textField.dataset.previousValue) {
+				textField.value = textField.dataset.previousValue;
+			}
+		} else {
+			// Store current value before clearing
+			textField.dataset.previousValue = textField.value;
+			textField.disabled = true;
+			textField.value = '';
+		}
+	}
+
+	// Set initial state
+	toggleTextField();
+
+	// Listen for changes
+	checkbox.addEventListener('change', toggleTextField);
+});
+</script>

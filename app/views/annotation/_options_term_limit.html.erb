@@ -1,0 +1,13 @@
+<table class="options">
+<tr>
+	<th colspan="2">Term Limit</th>
+</tr>
+<tr>
+	<th><%= label_tag :tokens_len_min, "Min Length", title: "The minimum number of tokens to be considered. Leave it blank to use the default setting of individual dictionaries." %></th>
+	<th><%= label_tag :tokens_len_max, "Max Length", title: "The maximum number of tokens to be considered. Leave it blank to use the default setting of individual dictionaries" %></th>
+</tr>
+<tr>
+	<td><%= text_field_tag :tokens_len_min, params[:tokens_len_min], type: :number, min:1, max:3, step:1 %></td>
+	<td><%= text_field_tag :tokens_len_max, params[:tokens_len_max], type: :number, min:3, max:30, step:1 %></td>
+</tr>
+</table>

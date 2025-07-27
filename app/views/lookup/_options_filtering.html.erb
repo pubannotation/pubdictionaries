@@ -1,0 +1,12 @@
+<table class="options">
+	<tr>
+		<th>Filtering</th>
+	</tr>
+	<tr>
+		<th><%= label_tag :tags, "Tags" %></th>
+	</tr>
+	<tr>
+		<td><%= text_field_tag :tags, params[:tags], placeholder: "Pipe- or comma-separated tags." %></td>
+	</tr>
+</table>
+

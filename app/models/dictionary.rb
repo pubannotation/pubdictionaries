@@ -103,7 +103,25 @@ class Dictionary < ApplicationRecord
       dictionaries.collect{|d| d[1]}
     end
 
-    def find_ids_by_labels(labels, dictionaries = [], threshold = nil, superfluous = false, verbose = false, ngram = true, tags = [])
+    def find_dictionaries(dic_names)
+      dic_names.collect do |dic_name|
+        begin
+          Dictionary.find_by!(name: dic_name)
+        rescue => e
+          raise ArgumentError, "unknown dictionary: #{dic_name}."
+        end
+      end
+    end
+
+    def find_ids_by_labels(labels, dictionaries = [], options = {})
+      threshold = options[:threshold]
+      superfluous = options[:superfluous]
+      verbose = options[:verbose]
+      use_ngram_similarity = options[:use_ngram_similarity]
+      semantic_threshold = options[:semantic_threshold] # 'nil' indicates not to use semantic similarity
+      tags = options[:tags]
+
+      # search based on surface similarity
       sim_string_dbs = dictionaries.inject({}) do |h, dic|
         h[dic.name] = begin
           Simstring::Reader.new(dic.sim_string_db_path)
@@ -120,7 +138,7 @@ class Dictionary < ApplicationRecord
       search_method = superfluous ? Dictionary.method(:search_term_order) : Dictionary.method(:search_term_top)
 
       r = labels.inject({}) do |h, label|
-        h[label] = search_method.call(dictionaries, sim_string_dbs, threshold, ngram, label, tags)
+        h[label] = search_method.call(dictionaries, sim_string_dbs, threshold, use_ngram_similarity, semantic_threshold, label, tags)
         h[label].map!{|entry| entry[:identifier]} unless verbose
         h
       end
@@ -176,6 +194,10 @@ class Dictionary < ApplicationRecord
 
   def use_tags?
     !tags.empty?
+  end
+
+  def embeddings_populated?
+    entries.exists? && !entries.where(embedding: nil).exists?
   end
 
   def undo_entry(entry)
@@ -393,21 +415,21 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def self.search_term_order(dictionaries, ssdbs, threshold, ngram, term, tags, norm1 = nil, norm2 = nil)
+  def self.search_term_order(dictionaries, ssdbs, threshold, ngram, semantic_threshold, term, tags, norm1 = nil, norm2 = nil)
     return [] if term.empty?
 
     entries = dictionaries.inject([]) do |sum, dic|
-      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram)
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram, semantic_threshold)
     end
 
     entries.sort_by{|e| e[:score]}.reverse
   end
 
-  def self.search_term_top(dictionaries, ssdbs, threshold, ngram, term, tags, norm1 = nil, norm2 = nil)
+  def self.search_term_top(dictionaries, ssdbs, threshold, ngram, semantic_threshold, term, tags, norm1 = nil, norm2 = nil)
     return [] if term.empty?
 
     entries = dictionaries.inject([]) do |sum, dic|
-      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram)
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram, semantic_threshold)
     end
 
     return [] if entries.empty?
@@ -416,7 +438,80 @@ class Dictionary < ApplicationRecord
     entries.delete_if{|e| e[:score] < max_score}
   end
 
-  def search_term(ssdb, term, norm1, norm2, tags, threshold, ngram)
+  def self.search_term_semantic(dictionaries, term, sem_threshold, tags)
+    return [] if term.empty?
+
+    entries = dictionaries.inject([]) do |sum, dic|
+      sum + dic.search_term_semantic(term, sem_threshold, tags)
+    end
+
+    entries.sort_by{|e| e[:score]}.reverse
+  end
+
+  def search_term_semantic(term, threshold, tags)
+    return [] if term.empty?
+
+    embedding = OllamaLlm.fetch_embedding(term)
+    return [] unless embedding.present?
+
+    # Convert embedding to safe pg_vector format
+    embedding_vector = "[#{embedding.map(&:to_f).join(',')}]"
+
+    distance_threshold = 1.0 - threshold
+
+    query = build_semantic_query(embedding_vector, distance_threshold, tags)
+
+    # Execute and transform results in one pass
+    query.map do |result|
+      {
+        label: result['label'],
+        identifier: result['identifier'],
+        score: 1.0 - result['distance'].to_f,  # Convert distance back to similarity
+        dictionary: name,
+        search_type: 'Semantic'
+      }
+    end
+  end
+
+  def build_semantic_query(embedding_vector, distance_threshold, tags)
+    sql = <<~SQL
+      SELECT
+        e.id,
+        e.label,
+        e.identifier,
+        e.embedding,
+        e.embedding <=> $1 AS distance
+      FROM entries e
+      WHERE e.dictionary_id = $2
+        AND e.embedding <=> $1 <= $3
+    SQL
+
+    params = [embedding_vector, id, distance_threshold]
+    param_count = 3
+
+    # Add tag filtering if present
+    if tags.present?
+      tag_placeholders = tags.map { |_| "$#{param_count += 1}" }.join(',')
+      sql += <<~SQL
+        AND EXISTS (
+          SELECT 1 FROM entry_tags et
+          JOIN tags t ON t.id = et.tag_id
+          WHERE et.entry_id = e.id
+            AND t.value IN (#{tag_placeholders})
+        )
+      SQL
+      params.concat(tags)
+    end
+
+    sql += <<~SQL
+      ORDER BY e.embedding <=> $1
+      LIMIT 5
+    SQL
+
+    ActiveRecord::Base.connection.exec_query(sql, "semantic_search", params)
+  end
+
+  def search_term(ssdb, term, norm1, norm2, tags, threshold, ngram, semantic_threshold)
     return [] if term.empty? || entries_num == 0
 
     threshold ||= self.threshold
@@ -425,41 +520,53 @@ class Dictionary < ApplicationRecord
     # results = additional_entries tags
 
     if threshold < 1
-      results = []
-
       norm1 ||= normalize1(term)
       norm2 ||= normalize2(term)
       norm2s = ssdb.retrieve(norm2) if ngram && ssdb.present?
       norm2s = [norm2] unless norm2s.present?
 
-      norm2s.each do |n2|
-        results += additional_entries_for_norm2(n2, tags) if additional_entries_exists?
-        results += self.entries
+      results = []
+
+      if additional_entries_exists?
+        additional_results = norm2s.flat_map { |n2| additional_entries_for_norm2(n2, tags) }
+        results.concat(additional_results)
+      end
+
+      entry_results = self.entries
                        .left_outer_joins(:tags)
                        .without_black
-                       .where(norm2: n2)
-                       .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
-      end
+                       .where(norm2: norm2s)
 
-      if tags_exists?
-        results.map!(&:to_result_hash_with_tags)
-      else
-        results.map!(&:to_result_hash)
-      end
+      entry_results = entry_results.where(tags: { value: tags }) if tags.present?
+      results.concat(entry_results)
 
-      results.uniq!
-      results.each{|e| e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]), dictionary: name)}
-      results.delete_if{|e| e[:score] < threshold}
+      hash_method = tags_exists? ? :to_result_hash_with_tags : :to_result_hash
+      results = results.map(&hash_method)
+                      .uniq
+                      .map { |e|
+                        e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]), dictionary: name)
+                        e[:score] >= threshold ? e :nil
+                      }
+                      .compact
     else
-      results = additional_entries_for_label(term, tags)
-      results += self.entries
-                     .left_outer_joins(:tags)
-                     .without_black
-                     .where(label: term)
-                     .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
-                     .map(&:to_result_hash)
+      entry_results = self.entries
+                         .left_outer_joins(:tags)
+                         .without_black
+                         .where(label: term)
+
+      entry_results = entry_results.where(tags: { value: tags }) if tags.present?
+      results.concat(entry_results.map(&:to_result_hash))
       results.each{|e| e.merge!(score: 1, dictionary: name)}
     end
+
+    # Add semantic search results
+    if semantic_threshold.present? && semantic_threshold > 0
+      semantic_results = search_term_semantic(term, semantic_threshold, tags)
+      results.concat(semantic_results)
+      results.uniq! { |r| r[:identifier] } # Remove duplicates by identifier
+    end
+
+    results
   end
 
   def sim_string_db_dir
@@ -706,7 +813,6 @@ class Dictionary < ApplicationRecord
         .additional_entries
         .where(norm2: norm2)
         .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
-        .map(&:to_result_hash)
   end
 
   def additional_entries_for_label(label, tags)

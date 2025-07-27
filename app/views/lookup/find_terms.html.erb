@@ -1,28 +1,14 @@
-<%
-	default_verbose = 'false'
-%>
-
 <% content_for :page_title do %>
-	<span class="page_title">Find Terms <span class="supplement">by their IDs</span></span>
+	<span class="page_title">Find Terms <span class="supplement">by their identifiers</span></span>
 <% end %>
 
 <fieldset>
 	<legend>Demo</legend>
 	<%= form_tag 'find_terms', id: 'find_terms', method: :get do -%>
-		<%= text_area_tag :ids, params[:ids], required: true, placeholder: "List of IDs (Tab-, newline-, vertical bar('|')-, or comma(',')-delimited)" %>
+		<%= text_area_tag :identifiers, params[:identifiers], required: true, placeholder: "an identifier or a list of identifiers (comma(','), or newline-delimited)" %>
+
 		<div class="center-align">
-			<table class="options">
-			<tr>
-				<th>
-					<%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include all the mapped terms." %>
-				</th>
-			</tr>
-			<tr>
-				<td>
-					<%= check_box_tag :verbose, true, (params[:verbose] ? params[:verbose] : default_verbose) == 'true' %>
-				</td>
-			</tr>
-			</table>
+			<%= render 'lookup/options_output' %>
 		</div>
 
 		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>
@@ -105,22 +91,11 @@
 	</td>
 	</tr>
 
-	<tr>
-	<th>5</th>
-	<td><span class='http_method'>POST</span></td>
-	<td><div id="curl_command_post4"></div></td>
-	<td>
-		<button class="btn" id="clip-btn-post4" data-clipboard-action="copy" data-clipboard-target="#curl_command_post4">
-			<%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard' %>
-		</button>
-	</td>
-	</tr>
-
 	</table>
 
 	<ul class="note">
-		<li>In the case of 1, 2 and 4, either the <i>Tab</i>, or <i>vertical bar</i> ('|') letter can be used to delimit multiple IDs.</li>
-		<li>In the case of 5, the <i>newline</i> letter also can be used to delimit multiple IDs, which is convenient to read IDs from a file. For a more detail, you are recommended to read the manual of curl.</li>
+		<li>In the case of 1, 2 and 3, <i>comma</i> (',') can be used to delimit multiple identifiers.</li>
+		<li>In the case of 4, the <i>newline</i> letter also can be used to delimit multiple identifiers, which is convenient to read identifers from a file. For a more detail, you are recommended to read the manual of curl.</li>
 	</ul>
 </fieldset>
 
@@ -134,10 +109,21 @@
 		var clipboard_post1 = new Clipboard('#clip-btn-post1');
 		var clipboard_post2 = new Clipboard('#clip-btn-post2');
 		var clipboard_post3 = new Clipboard('#clip-btn-post3');
-		var clipboard_post4 = new Clipboard('#clip-btn-post4');
 	});
 
 	$('#dictionaries').change(function() {
+		set_url();
+	});
+
+	$("#identifiers").on('input', function() {
+		set_url();
+	});
+
+	$("#superfluous").change(function() {
+		set_url();
+	});
+
+	$("#verbose").change(function() {
 		set_url();
 	});
 
@@ -158,20 +144,33 @@
 			params.push(param_dics);
 		}
 
+		var superfluous = $('#superfluous').is(':checked');
+		if (superfluous) {
+			var param = 'superfluous=' + superfluous;
+			params.push(param);
+		}
+
+		var verbose = $('#verbose').is(':checked');
+		if (verbose) {
+			var param = 'verbose=' + verbose;
+			params.push(param);
+		}
+
 		var url = '<%= root_url %>find_terms.json';
 		if (params.length > 0) {url += '?' + params.join('&')}
 		$('#rest_url').text(url);
 
-		var command_get   = 'curl -G --data-urlencode ids="id1|id2" "' + url + '"';
-		var command_post1 = 'curl -d ids="id1|id2" "' + url + '"';
-		var command_post2 = 'curl -H "content-type:application/json" -d \'["id1", "id2"]\' "' + url + '"';
-		var command_post3 = 'curl -H "content-type:text/plain" -d "id1|id2" "' + url + '"';
-		var command_post4 = 'curl -H "content-type:text/plain" --data-binary @filename "' + url + '"';
+		var identifiers = $('#identifiers').val() || 'id1,id2';
+		var identifiersCsv = identifiers.split(/[\n,]/).map(s => s.trim()).filter(s => s).join(',');
+
+		var command_get   = 'curl -G --data-urlencode identifiers="' + identifiersCsv + '" "' + url + '"';
+		var command_post1 = 'curl -d identifiers="' + identifiersCsv + '" "' + url + '"';
+		var command_post2 = 'curl -H "content-type:text/csv" -d "' + identifiersCsv + '" "' + url + '"';
+		var command_post3 = 'curl -H "content-type:text/csv" --data-binary @filename "' + url + '"';
 
 		$('#curl_command_get').text(command_get);
 		$('#curl_command_post1').text(command_post1);
 		$('#curl_command_post2').text(command_post2);
 		$('#curl_command_post3').text(command_post3);
-		$('#curl_command_post4').text(command_post4);
 	}
 </script>

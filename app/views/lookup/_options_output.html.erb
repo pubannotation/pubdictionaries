@@ -1,0 +1,21 @@
+<table class="options">
+<tr>
+	<th colspan="2">Output Options</th>
+</tr>
+<tr>
+	<th>
+		<%= label_tag :superfluous, "Superfluous", title: "Superfluous output contains more than the optimal results." %>
+	</th>
+	<th>
+		<%= label_tag :verbose, "Verbose", title: "Verbose output shows more detailed information." %>
+	</th>
+</tr>
+<tr>
+	<td>
+		<%= check_box_tag :superfluous, true, params[:superfluous] ? params[:superfluous] == 'true' : TextAnnotator::OPTIONS_DEFAULT[:superfluous] %>
+	</td>
+	<td>
+		<%= check_box_tag :verbose, true, params[:verbose] ? params[:verbose] == 'true' : TextAnnotator::OPTIONS_DEFAULT[:verbose] %>
+	</td>
+</tr>
+</table>

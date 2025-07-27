@@ -2,43 +2,54 @@ require 'fileutils'
 require 'csv'
 
 class LookupController < ApplicationController
+  include ParameterParsing
+
   def find_ids_api
-    dictionary = Dictionary.find_by name:params[:dictionary]
-    labels = params[:labels].parse_csv
-    result = Dictionary.find_ids_by_labels(labels, [dictionary])
+    permitted = parse_params_for_find_ids_api
+
+    dictionaries = Dictionary.find_dictionaries(permitted[:dictionaries])
+    raise ArgumentError, "no valid dictionary was specified." unless dictionaries.present?
+
+    labels = permitted[:labels]
+    raise ArgumentError, "no label was supplied." unless labels.present?
+
+    result = Dictionary.find_ids_by_labels(labels, dictionaries)
 
     respond_to do |format|
       format.any {render plain: result.values.collect{|v| v.first}.to_csv, content_type: 'text/csv'}
     end
+
+  rescue ArgumentError => e
+    raise e if Rails.env.development?
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :bad_request}
+    end
+  rescue => e
+    raise e if Rails.env.development?
+    respond_to do |format|
+      format.any {render json: {message:e.message}, status: :internal_server_error}
+    end
   end
 
   def find_ids
-    dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
-    params[:labels] = params[:label] if params.has_key?(:label) && !params.has_key?(:labels)
-    labels = if params[:labels]
-      get_values(params[:labels])
-    elsif params[:_json]
-      params[:_json]
-    else
-      body = request.body.read.force_encoding('UTF-8')
-      get_values(body) if body.present?
-    end
+    permitted = parse_params_for_find_ids
 
-    @dictionary_names_all = Dictionary.order(:name).pluck(:name)
-    @dictionary_names_selected = dictionaries_selected.map{|d| d.name}
+    labels = permitted[:labels]
+    @dictionaries_selected = Dictionary.find_dictionaries(permitted[:dictionaries])
 
     @result = if labels.present?
-      raise ArgumentError, "At least one dictionary has to be specified for lookup." unless dictionaries_selected.present?
-      threshold = params[:threshold].present? ? params[:threshold].to_f : nil
-      superfluous = get_option_boolean(:superfluous)
-      verbose = get_option_boolean(:verbose)
-      ngram = if (params[:commit] == 'Submit')
-        get_option_boolean(:ngram)
-      else
-        params[:ngram] != 'false'
-      end
-      tags = params[:tags].present? ? get_values(params[:tags]) : []
-      @result = Dictionary.find_ids_by_labels(labels, dictionaries_selected, threshold, superfluous, verbose, ngram, tags)
+      raise ArgumentError, "At least one dictionary has to be specified for lookup." unless @dictionaries_selected.present?
+
+      search_options = permitted.slice(
+        :threshold,
+        :superfluous,
+        :verbose,
+        :use_ngram_similarity,
+        :semantic_threshold,
+        :tags
+      )
+
+      Dictionary.find_ids_by_labels(labels, @dictionaries_selected, search_options)
     else
       {}
     end
@@ -47,10 +58,11 @@ class LookupController < ApplicationController
       format.html
       format.json {
         raise ArgumentError, "no label was supplied." unless labels.present?
-        render json:@result
+        render json: @result
       }
     end
   rescue ArgumentError => e
+    raise e if Rails.env.development?
     respond_to do |format|
       format.html {flash.now[:notice] = e.message}
       format.any {render json: {message:e.message}, status: :bad_request}
@@ -64,46 +76,36 @@ class LookupController < ApplicationController
   end
 
   def find_terms
-    begin
-      dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
-      ids = if params[:ids]
-        get_values(params[:ids])
-      elsif params[:_json]
-        params[:_json]
-      else
-        body = request.body.read.force_encoding('UTF-8')
-        get_values(body) if body.present?
-      end
+    permitted = parse_params_for_find_terms
 
-      @dictionary_names_all = Dictionary.order(:name).pluck(:name)
-      @dictionary_names_selected = dictionaries_selected.map{|d| d.name}
+    identifiers = permitted[:identifiers]
+    @dictionaries_selected = Dictionary.find_dictionaries(permitted[:dictionaries])
 
-      @result = if ids.present?
-        raise ArgumentError, "At least one dictionary has to be specified for lookup." unless dictionaries_selected.present?
-        verbose = get_option_boolean(:verbose)
-        result = Dictionary.find_labels_by_ids(ids, dictionaries_selected)
-        verbose ? result : result.transform_values(&:first)
-      else
-        {}
-      end
+    @result = if identifiers.present?
+      raise ArgumentError, "At least one dictionary has to be specified for lookup." unless @dictionaries_selected.present?
 
-      respond_to do |format|
-        format.html
-        format.json {
-          raise ArgumentError, "no id was supplied." unless ids.present?
-          render json:@result
-        }
+      result = Dictionary.find_labels_by_ids(identifiers, @dictionaries_selected)
+      permitted[:verbose] ? result : result.transform_values(&:first)
+    else
+      {}
+    end
+
+    respond_to do |format|
+      format.html
+      format.json {
+        raise ArgumentError, "no identifier was supplied." unless identifiers.present?
+        render json:@result
+      }
+    end
+  rescue ArgumentError => e
+    respond_to do |format|
+      format.html {flash.now[:notice] = e.message}
+      format.any {render json: {message:e.message}, status: :bad_request}
       end
-    rescue ArgumentError => e
-      respond_to do |format|
-        format.html {flash.now[:notice] = e.message}
-        format.any {render json: {message:e.message}, status: :bad_request}
-      end
-    rescue => e
-      respond_to do |format|
-        format.html {flash.now[:notice] = e.message}
-        format.any {render json: {message:e.message}, status: :internal_server_error}
-      end
+  rescue => e
+    respond_to do |format|
+      format.html {flash.now[:notice] = e.message}
+      format.any {render json: {message:e.message}, status: :internal_server_error}
     end
   end
 
@@ -189,4 +191,64 @@ class LookupController < ApplicationController
     symbol_separated_values.strip.split(/[\n\t\r|,]+/).map(&:strip)
   end
 
+  def parse_params_for_find_ids_api
+    permitted = params.permit(:dictionary, :dictionaries, :label, :labels, :tags,
+                              :use_ngram_similarity, :threshold, :semantic_threshold)
+
+    parse_labels_in_csv!(permitted)
+    parse_dictionaries!(permitted)
+
+    permitted[:use_ngram_similarity] = to_boolean(permitted[:use_ngram_similarity])
+    permitted[:threshold] = to_float(permitted[:threshold])
+    permitted[:semantic_threshold] = to_float(permitted[:semantic_threshold])
+
+    permitted[:tags] = to_array(permitted[:tags])
+
+    permitted
+  end
+
+  def parse_params_for_find_ids
+    permitted = params.permit(:dictionary, :dictionaries, :label, :labels, :tags,
+                              :use_ngram_similarity, :threshold,
+                              :use_semantic_similarity, :semantic_threshold,
+                              :verbose, :superfluous,
+                              :commit)
+
+    # Handle text/csv content type
+    if request.content_type == 'text/csv' && request.raw_post.present?
+      permitted[:labels] = request.raw_post.strip.split(/[\n,]/).map(&:strip).reject(&:blank?)
+    else
+      parse_labels!(permitted)
+    end
+
+    parse_dictionaries!(permitted)
+
+    permitted[:use_ngram_similarity] = to_boolean(permitted[:use_ngram_similarity])
+    permitted[:threshold] = to_float(permitted[:threshold])
+    permitted[:semantic_threshold] = to_float(permitted[:semantic_threshold])
+
+    permitted[:tags] = to_array(permitted[:tags])
+
+    permitted[:superfluous] = to_boolean(permitted[:superfluous])
+    permitted[:verbose] = to_boolean(permitted[:verbose])
+
+    permitted
+  end
+
+  def parse_params_for_find_terms
+    permitted = params.permit(:dictionary, :dictionaries, :identifier, :identifiers, :verbose, :commit)
+
+    # Handle text/csv content type
+    if request.content_type == 'text/csv' && request.raw_post.present?
+      permitted[:identifiers] = request.raw_post.strip.split(/[\n,]/).map(&:strip).reject(&:blank?)
+    else
+      parse_identifiers!(permitted)
+    end
+
+    parse_dictionaries!(permitted)
+
+    permitted[:verbose] = to_boolean(permitted[:verbose])
+
+    permitted
+  end
 end

@@ -19,12 +19,13 @@ class TextAnnotator
 
     tokens_len_min: 1,
     tokens_len_max: 6,
+    use_ngram_similarity: false,
     threshold: 0.85,
-    longest: false,
-    superfluous: false,
-    verbose: false,
+    semantic_threshold: 0.85,
     abbreviation: true,
-    ngram: true
+    longest: true,
+    superfluous: false,
+    verbose: false
   }
 
   # Initialize the text annotator instance.
@@ -44,12 +45,13 @@ class TextAnnotator
     @no_end_words = dictionaries.flat_map{|d| d.no_end_words || OPTIONS_DEFAULT[:no_end_words]}.to_set
     @tokens_len_min = options[:tokens_len_min] || dictionaries.collect{|d| d.tokens_len_min}.min
     @tokens_len_max = options[:tokens_len_max] || dictionaries.collect{|d| d.tokens_len_max}.max
+    @use_ngram_similarity = options.has_key?(:use_ngram_similarity) ? options[:use_ngram_similarity] : OPTIONS_DEFAULT[:use_ngram_similarity]
     @threshold = options[:threshold]
+    @semantic_threshold = options[:semantic_threshold]
     @abbreviation = options.has_key?(:abbreviation) ? options[:abbreviation] : OPTIONS_DEFAULT[:abbreviation]
     @longest = options.has_key?(:longest) ? options[:longest] : OPTIONS_DEFAULT[:longest]
     @superfluous = options.has_key?(:superfluous) ? options[:superfluous] : OPTIONS_DEFAULT[:superfluous]
     @verbose = options.has_key?(:verbose) ? options[:verbose] : OPTIONS_DEFAULT[:verbose]
-    @ngram = options.has_key?(:ngram) ? options[:ngram] : OPTIONS_DEFAULT[:ngram]
 
     @es_connection = Net::HTTP::Persistent.new
 
@@ -319,7 +321,7 @@ class TextAnnotator
 
         if entries.nil?
           norm1 = norm1s[idx_token_begin, tlen].join
-          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, @ngram, span, [], norm1, norm2)
+          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, @ngram, nil, span, [], norm1, norm2)
 
           @cache_span_search[span] = entries
         end

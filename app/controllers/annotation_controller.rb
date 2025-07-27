@@ -1,16 +1,41 @@
 class AnnotationController < ApplicationController
+  include ParameterParsing
+
   skip_before_action :verify_authenticity_token, only: [:annotation_request, :annotation_task]
 
   # GET / POST
   def text_annotation
-    @dictionary_names_all = Dictionary.order(:name).pluck(:name)
-    dictionaries_selected = Dictionary.find_dictionaries_from_params(params)
-    @dictionary_names_selected = dictionaries_selected.map{|d| d.name}
+    @permitted = parse_params_for_text_annotation
 
-    text = get_text_from_params
-    if text.present?
-      raise ArgumentError, "At least one dictionary has to be specified for annotation." unless dictionaries_selected.present?
-      @result = annotate(text, dictionaries_selected)
+    @dictionaries_selected = Dictionary.find_dictionaries(@permitted[:dictionaries])
+    text = @permitted[:text]
+
+    @result = if text.present?
+      raise ArgumentError, "At least one dictionary has to be specified for annotation." unless @dictionaries_selected.present?
+
+      options = @permitted.slice(
+        :tokens_len_min,
+        :tokens_len_max,
+        :use_ngram_similarity,
+        :semantic_threshold,
+        :threshold,
+        :longest,
+        :superfluous,
+        :verbose,
+        :no_text,
+        :abbreviation,
+        :tags
+      )
+
+      annotator = if options[:semantic_similarity]
+        TextAnnotatorSem.new(@dictionaries_selected, options)
+      else
+        TextAnnotator.new(@dictionaries_selected, options)
+      end
+      r = annotator.annotate_batch([{text: text}]).first
+      annotator.dispose
+      r.delete(:text) if options[:no_text]
+      r
     end
 
     respond_to do |format|
@@ -21,11 +46,13 @@ class AnnotationController < ApplicationController
       end
     end
   rescue ArgumentError => e
+    raise e if Rails.env.development?
     respond_to do |format|
       format.html {flash.now[:notice] = e.message}
       format.any  {render json: {message:e.message}, status: :bad_request}
     end
   rescue => e
+    raise e if Rails.env.development?
     respond_to do |format|
       format.html {flash.now[:notice] = e.message}
       format.any {render json: {message:e.message}, status: :internal_server_error}
@@ -125,16 +152,6 @@ class AnnotationController < ApplicationController
     fn
   end
 
-  def annotate(text, dictionaries_selected)
-    options = get_options_from_params
-
-    annotator = TextAnnotator.new(dictionaries_selected, options)
-    r = annotator.annotate_batch([{text: text}]).first
-    annotator.dispose
-    r.delete(:text) if options[:no_text]
-    r
-  end
-
   def enqueue_job(target, num_items, time_for_annotation, callback_url = nil)
     dictionaries = Dictionary.find_dictionaries_from_params(params)
     options = get_options_from_params
@@ -218,8 +235,9 @@ class AnnotationController < ApplicationController
     options[:tokens_len_min] = get_option_integer(:tokens_len_min)
     options[:tokens_len_max] = get_option_integer(:tokens_len_max)
     options[:threshold] = get_option_float(:threshold)
+    options[:semantic_threshold] = get_option_float(:semantic_threshold)
 
-    [:longest, :superfluous, :verbose, :no_text, :abbreviation, :ngram].each do |key|
+    [:longest, :superfluous, :verbose, :no_text, :abbreviation, :use_ngram_similarity].each do |key|
       options[key] = if (params[:commit] != 'Submit') && TextAnnotator::OPTIONS_DEFAULT[key]
         params[key] != 'false'
       else
@@ -244,5 +262,33 @@ class AnnotationController < ApplicationController
 
   def get_option_boolean(key)
     (params[key] == 'true' || params[key] == '1') ? true : false
+  end
+
+  def parse_params_for_text_annotation
+    permitted = params.permit(:dictionary, :dictionaries, :text, :tags,
+                              :tokens_len_min, :tokens_len_max,
+                              :use_ngram_similarity, :threshold,
+                              :use_semantic_similarity, :semantic_threshold,
+                              :longest, :verbose, :superfluous, :no_text, :abbreviation,
+                              :commit)
+
+    parse_dictionaries!(permitted)
+
+    permitted[:tokens_len_min] = to_integer(permitted[:tokens_len_min])
+    permitted[:tokens_len_max] = to_integer(permitted[:tokens_len_max])
+
+    permitted[:threshold] = to_float(permitted[:threshold])
+    permitted[:semantic_threshold] = to_float(permitted[:semantic_threshold])
+
+    permitted[:longest] = to_boolean(permitted[:longest])
+    permitted[:superfluous] = to_boolean(permitted[:superfluous])
+    permitted[:verbose] = to_boolean(permitted[:verbose])
+    permitted[:no_text] = to_boolean(permitted[:no_text])
+    permitted[:abbreviation] = to_boolean(permitted[:abbreviation])
+    permitted[:use_ngram_similarity] = to_boolean(permitted[:use_ngram_similarity])
+
+    permitted[:tags] = to_array(permitted[:tags])
+
+    permitted
   end
 end

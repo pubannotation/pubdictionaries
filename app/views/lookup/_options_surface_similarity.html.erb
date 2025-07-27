@@ -1,0 +1,21 @@
+<table class="options">
+<tr>
+	<th colspan="2">Surface Similarity</th>
+</tr>
+<tr>
+	<th>
+		<%= label_tag :use_ngram_similarity, "Use ngram?", title: "If unchecked, the search will only include terms that have the same normalized form." %>
+	</th>
+	<th>
+		<%= label_tag :threshold, "Threshold", title: "The output will include only the terms whose matching score is above the threshold. Leave it blank to use the default setting of individual dictionaries." %>
+	</th>
+</tr>
+<tr>
+	<td>
+		<%= check_box_tag :use_ngram_similarity, true, params[:use_ngram_similarity] == 'true' %>
+	</td>
+	<td>
+		<%= text_field_tag :threshold, params[:threshold], type: :number, min:0.5, max:1, step:0.01 %>
+	</td>
+</tr>
+</table>

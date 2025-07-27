@@ -1,10 +1,3 @@
-<%
-	default_threshold = '0.85'
-	default_superfluous = 'false'
-	default_verbose = 'false'
-	default_ngram = 'true'
-%>
-
 <% content_for :page_title do %>
 	<span class="page_title">Find IDs <span class="supplement">of terms</span></span>
 <% end %>
@@ -12,48 +5,12 @@
 <fieldset>
 	<legend>Demo</legend>
 	<%= form_tag 'find_ids', id: 'find_ids', method: :get do -%>
-		<%= text_area_tag :labels, params[:labels], required: true, placeholder: "List of labels (Tab-, newline-, vertical bar('|')-, or comma(',')-delimited)" %>
+		<%= text_area_tag :label, params[:label], required: true, placeholder: "a label or a list of labels (comma(','), or newline-delimited)" %>
 		<div class="center-align">
-			<table class="options">
-			<tr>
-				<th>
-					<%= label_tag :threshold, nil, title: "The output will include only the terms whose matching score is above the threshold. Leave it blank to use the default setting of individual dictionaries." %>
-				</th>
-				<th>
-					<%= label_tag :superfluous, "Superfluous", title: "Superfluous output: the output will include all the entries with score higher than the threshold, while, in the default mode, it will include only the ones with the highest score." %>
-				</th>
-				<th>
-					<%= label_tag :verbose, "Verbose", title: "Verbose output: the output will include information for debugging." %>
-				</th>
-				<th>
-					<%= label_tag :ngram, "N-gram", title: "Use n-gram similarity. Use it together with a low threshold for a higher sensitivity. However, it will slow the speed." %>
-				</th>
-			</tr>
-			<tr>
-				<td>
-					<%= text_field_tag :threshold, params[:threshold], type: :number, min:0.5, max:1, step:0.01 %>
-				</td>
-				<td>
-					<%= check_box_tag :superfluous, true, (params[:superfluous] ? params[:superfluous] : default_superfluous) == 'true' %>
-				</td>
-				<td>
-					<%= check_box_tag :verbose, true, (params[:verbose] ? params[:verbose] : default_verbose) == 'true' %>
-				</td>
-				<td>
-					<%= check_box_tag :ngram, true, (params[:labels] ? params[:ngram] : default_ngram) == 'true' %>
-				</td>
-			</tr>
-			</table>
-
-			<table class="options">
-			<tr>
-				<th><%= label_tag :tags, "Tags" %></th>
-			</tr>
-			<tr>
-				<td><%= text_field_tag :tags, params[:tags], placeholder: "Pipe- or comma-separated tags." %></td>
-			</tr>
-			</table>
-
+			<%= render 'lookup/options_surface_similarity' %>
+			<%= render 'lookup/options_semantic_similarity' %>
+			<%= render 'lookup/options_filtering' %>
+			<%= render 'lookup/options_output' %>
 		</div>
 
 		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>
@@ -92,6 +49,7 @@
 
 	<h2>Example cURL command</h2>
 	<table>
+
 	<tr>
 	<th>1</th>
 	<td style="text-align:center"><span class='http_method'>GET</span></td>
@@ -136,22 +94,11 @@
 	</td>
 	</tr>
 
-	<tr>
-	<th>5</th>
-	<td><span class='http_method'>POST</span></td>
-	<td><div id="curl_command_post4"></div></td>
-	<td>
-		<button class="btn" id="clip-btn-post4" data-clipboard-action="copy" data-clipboard-target="#curl_command_post4">
-			<%= image_tag 'clippy.svg', class: 'clippy', width: 13, alt: 'Copy to clipboard' %>
-		</button>
-	</td>
-	</tr>
-
 	</table>
 
 	<ul class="note">
-		<li>In the case of 1, 2 and 4, either the <i>Tab</i>, or <i>vertical bar</i> ('|') letter can be used to delimit multiple labels.</li>
-		<li>In the case of 5, the <i>newline</i> letter also can be used to delimit multiple labels, which is convenient to read labels from a file. For a more detail, you are recommended to read the manual of curl.</li>
+		<li>In the case of 1, 2 and 3, <i>comma</i> (',') can be used to delimit multiple labels.</li>
+		<li>In the case of 4, the <i>newline</i> letter also can be used to delimit multiple labels, which is convenient to read labels from a file. For a more detail, you are recommended to read the manual of curl.</li>
 	</ul>
 </fieldset>
 
@@ -165,14 +112,25 @@
 		var clipboard_post1 = new Clipboard('#clip-btn-post1');
 		var clipboard_post2 = new Clipboard('#clip-btn-post2');
 		var clipboard_post3 = new Clipboard('#clip-btn-post3');
-		var clipboard_post4 = new Clipboard('#clip-btn-post4');
 	});
 
 	$('#dictionaries').change(function() {
 		set_url();
 	});
 
+	$("#use_ngram_similarity").change(function() {
+		set_url();
+	});
+
 	$('#threshold').change(function() {
+		set_url();
+	});
+
+	$("#use_semantic_similarity").change(function() {
+		set_url();
+	});
+
+	$('#semantic_threshold').change(function() {
 		set_url();
 	});
 
@@ -184,11 +142,11 @@
 		set_url();
 	});
 
-	$("#ngram").change(function() {
+	$("#tags").change(function() {
 		set_url();
 	});
 
-	$("#tags").change(function() {
+	$("#label").on('input', function() {
 		set_url();
 	});
 
@@ -215,31 +173,38 @@
 			params.push(param);
 		}
 
+		var use_ngram_similarity = $('#use_ngram_similarity').is(':checked');
+		var default_use_ngram_similarity = <%= TextAnnotator::OPTIONS_DEFAULT[:use_ngram_similarity] %>;
+		if (use_ngram_similarity != default_use_ngram_similarity) {
+			var param = 'use_ngram_similarity=' + use_ngram_similarity;
+			params.push(param);
+		}
+
 		var threshold = $('#threshold').val();
-		var default_threshold = <%= default_threshold %>;
-		if (threshold && threshold != <%= default_threshold %>) {
+		var default_threshold = <%= TextAnnotator::OPTIONS_DEFAULT[:threshold] %>;
+		if (threshold && threshold != default_threshold) {
 			var param = 'threshold=' + threshold;
 			params.push(param);
 		}
 
+		var use_semantic_similarity = $('#use_semantic_similarity').is(':checked');
+		var semantic_threshold = $('#semantic_threshold').val();
+		if (use_semantic_similarity && semantic_threshold) {
+			var param = 'semantic_threshold=' + semantic_threshold;
+			params.push(param);
+		}
+
 		var superfluous = $('#superfluous').is(':checked');
-		var default_superfluous = <%= default_superfluous == 'true' %>;
+		var default_superfluous = <%= TextAnnotator::OPTIONS_DEFAULT[:superfluous] %>;
 		if (superfluous != default_superfluous) {
 			var param = 'superfluous=' + superfluous;
 			params.push(param);
 		}
 
 		var verbose = $('#verbose').is(':checked');
-		var default_verbose = <%= default_verbose == 'true' %>;
+		var default_verbose = <%= TextAnnotator::OPTIONS_DEFAULT[:verbose] %>;
 		if (verbose != default_verbose) {
 			var param = 'verbose=' + verbose;
-			params.push(param);
-		}
-
-		var ngram = $('#ngram').is(':checked');
-		var default_ngram = <%= default_ngram == 'true' %>;
-		if (ngram != default_ngram) {
-			var param = 'ngram=' + ngram;
 			params.push(param);
 		}
 
@@ -247,16 +212,17 @@
 		if (params.length > 0) {url += '?' + params.join('&')}
 		$('#rest_url').text(url);
 
-		var command_get   = 'curl -G --data-urlencode labels="label1|label2" "' + url + '"';
-		var command_post1 = 'curl -d labels="label1|label2" "' + url + '"';
-		var command_post2 = 'curl -H "content-type:application/json" -d \'["label1", "label2"]\' "' + url + '"';
-		var command_post3 = 'curl -H "content-type:text/plain" -d "label1|label2" "' + url + '"';
-		var command_post4 = 'curl -H "content-type:text/plain" --data-binary @filename "' + url + '"';
+		var label = $('#label').val() || 'label1,label2';
+		var labelCsv = label.split(/[\n,]/).map(s => s.trim()).filter(s => s).join(',');
+
+		var command_get   = 'curl -G --data-urlencode label="' + labelCsv + '" "' + url + '"';
+		var command_post1 = 'curl -d label="' + labelCsv + '" "' + url + '"';
+		var command_post2 = 'curl -H "content-type:text/csv" -d "' + labelCsv + '" "' + url + '"';
+		var command_post3 = 'curl -H "content-type:text/csv" --data-binary @filename "' + url + '"';
 
 		$('#curl_command_get').text(command_get);
 		$('#curl_command_post1').text(command_post1);
 		$('#curl_command_post2').text(command_post2);
 		$('#curl_command_post3').text(command_post3);
-		$('#curl_command_post4').text(command_post4);
 	}
 </script>

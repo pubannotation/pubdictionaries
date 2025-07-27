@@ -1,0 +1,13 @@
+<table class="options">
+<tr>
+	<th colspan="2">Search Options</th>
+</tr>
+	<tr>
+		<th><%= label_tag :abbreviation, "Abbreviation", title: "Abbreviations which are locally defined in an input document will be automatically detected. It defaults to true." %></th>
+		<th><%= label_tag :longest, "Longest", title: "Longest only annotation: the output will not include embedded annotations." %></th>
+	</tr>
+	<tr>
+		<td><%= check_box_tag :abbreviation, true, @permitted[:abbreviation] ? @permitted[:abbreviation] : TextAnnotator::OPTIONS_DEFAULT[:abbreviation] %></td>
+		<td><%= check_box_tag :longest, true, @permitted[:longest] ? @permitted[:longest] : TextAnnotator::OPTIONS_DEFAULT[:longest] %></td>
+	</tr>
+</table>

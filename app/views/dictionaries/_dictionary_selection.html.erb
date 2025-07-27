@@ -1,5 +1,11 @@
 <!-- It updates the value of the input element, 'dictionaries' which should be defined outside of this partial -->
 
+<%
+	dictionary_names_all = Dictionary.order(:name).pluck(:name)
+	dictionary_names_selected = @dictionaries_selected.map{|d| d.name}
+%>
+
+
 <table class="dictionary_selection">
 	<tr>
 		<th class="pane selected">Selected</th>
@@ -13,7 +19,7 @@
 	<tr>
 		<td class="pane">
 			<div class="pane_box" id='selected_dictionaries'>
-				<%= render partial: 'dictionaries/selected_dictionary', collection: @dictionary_names_all -%>
+				<%= render partial: 'dictionaries/selected_dictionary', collection: dictionary_names_all -%>
 			</div>
 		</td>
 
@@ -21,7 +27,7 @@
 
 		<td class="pane">
 			<div class="pane_box" id='unselected_dictionaries'>
-				<%= render partial: 'dictionaries/unselected_dictionary', collection: @dictionary_names_all -%>
+				<%= render partial: 'dictionaries/unselected_dictionary', collection: dictionary_names_all -%>
 			</div>
 		</td>
 	</tr>
@@ -41,7 +47,7 @@
     $("#unselected_dictionaries > .dictionary > i").hover(function(){$(this).parent().css("border-style", "inset")});
     $("#unselected_dictionaries > .dictionary > i").mouseleave(function(){$(this).parent().css("border-style", "solid")});
 
-    $.each(<%= raw @dictionary_names_selected %>, function(i, v){selectDictionary(v)});
+    $.each(<%= raw dictionary_names_selected %>, function(i, v){selectDictionary(v)});
 		setParamDics();
   }
 
@@ -49,7 +55,7 @@
     $('#selected_dictionaries > .dictionary').hide();
     $('#unselected_dictionaries > .dictionary').show();
 		$('#unselected_dictionaries > .dictionary').attr('selected', false);
-    $.each(<%= raw @dictionary_names_selected %>, function(i, v){selectDictionary(v)});
+    $.each(<%= raw dictionary_names_selected %>, function(i, v){selectDictionary(v)});
 		setParamDics();
   }
 
