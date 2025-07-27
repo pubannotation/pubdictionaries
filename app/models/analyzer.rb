@@ -18,7 +18,11 @@ class Analyzer
 
   def tokenize(body)
     @post.body = body
-    response = @http.request(@post)
+    begin
+      response = @http.request(@post)
+    rescue => e
+      raise 'Certain NLP components are malfunctioning. Please contact the system administrator.'
+    end
 
     raise response.body unless response.kind_of? Net::HTTPSuccess
     response
