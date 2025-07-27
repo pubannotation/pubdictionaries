@@ -24,7 +24,7 @@ class ApplicationJob < ActiveJob::Base
       ActiveRecord::Base.connection.clear_query_cache
       @job = Job.find_by(active_job_id: active_job.job_id)
     end
-    # raise "Could not find its job object" if @job.nil?
+    raise "Could not find its job object" if @job.nil?
   end
 
   def set_begun_at
@@ -32,7 +32,9 @@ class ApplicationJob < ActiveJob::Base
   end
 
   def set_ended_at
-    @job&.update_attribute(:ended_at, Time.now)
+    ActiveRecord::Base.connection_pool.with_connection do
+      @job&.update_attribute(:ended_at, Time.now)
+    end
   end
 
   def check_suspend_flag
@@ -52,4 +54,18 @@ class ApplicationJob < ActiveJob::Base
   def destroy_job_record
     @job&.destroy
   end
+
+  def prepare_progress_record(count_scheduled)
+    ActiveRecord::Base.connection_pool.with_connection do
+      @job&.update_attribute(:num_items, count_scheduled)
+      @job&.update_attribute(:num_dones, 0)
+    end
+  end
+
+  def update_progress_record(count_completed)
+    ActiveRecord::Base.connection_pool.with_connection do
+      @job&.update_attribute(:num_dones, count_completed)
+    end
+  end
+
 end

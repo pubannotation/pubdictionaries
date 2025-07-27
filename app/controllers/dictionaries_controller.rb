@@ -10,6 +10,7 @@ class DictionariesController < ApplicationController
     :downloadable, :create_downloadable,
     :openapi, :description
   ]
+  before_action :require_admin, only: [:update_embeddings]
 
   # Disable CSRF check for REST-API action.
   skip_before_action :verify_authenticity_token, only: :create, :if => Proc.new { |c| c.request.format == 'application/json' }
@@ -362,7 +363,7 @@ class DictionariesController < ApplicationController
       dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
-      active_job = UpdateDictionaryWithEmbeddingsJob.perform_later(dictionary)
+      active_job = UpdateDictionaryEmbeddingsJob.perform_later(dictionary)
       active_job.create_job_record("Update Dictionary With Embeddings")
 
       respond_to do |format|
@@ -431,7 +432,12 @@ class DictionariesController < ApplicationController
       :tokens_len_min,
       :tokens_len_max,
       :threshold,
-      :associated_annotation_project
+      :associated_annotation_project,
+      :semantic_threshold
     )
+  end
+
+  def require_admin
+    redirect_to root_path, alert: "Access denied" unless current_user&.admin?
   end
 end

@@ -104,4 +104,15 @@ module DictionariesHelper
       method: :delete,
       data: {confirm: 'Are you sure to completely delete this dictionary?'}
   end
+
+  def badge_embedding(project)
+    badge, btitle = if project.embeddings_populated?
+      ['<i class="fa fa-snowflake-o" aria-hidden="true"></i>', 'Embeddings are ready']
+    else
+      ['<i class="fa fa-bars" aria-hidden="true"></i>', 'Embeddings are not ready']
+    end
+
+    badge.present? ? "<span class='badge' title='#{btitle}'>#{badge}</span>" : ""
+  end
+
 end

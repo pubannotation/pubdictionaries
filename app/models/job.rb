@@ -78,8 +78,8 @@ class Job < ApplicationRecord
   end
 
   def stop_if_running
-    if running?
-      update(suspend_flag: true)
+    ActiveRecord::Base.connection_pool.with_connection do
+      update(suspend_flag: true) if running?
     end
   end
 

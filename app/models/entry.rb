@@ -43,6 +43,7 @@ class Entry < ApplicationRecord
   belongs_to :dictionary
   has_many :entry_tags, dependent: :destroy
   has_many :tags, through: :entry_tags
+  has_neighbors :embedding
 
   validates :label, presence: true
   validates :identifier, presence: true
@@ -107,6 +108,7 @@ class Entry < ApplicationRecord
     }
   end
 
+  def to_semantic_result_hash = { label:, identifier: }
   def to_result_hash = { label:, norm1:, norm2:, identifier: }
   def to_result_hash_with_tags = { label:, norm1:, norm2:, identifier:, tags: tag_values }
   def tag_values = tags.map(&:value).join('|')
@@ -154,7 +156,7 @@ class Entry < ApplicationRecord
 
   def self.get_tags(tags)
     return [] unless tags.present?
-    raise ArgumentError, 'invalid tags' unless !!(tags =~ /^([a-zA-Z0-9]+)(\|[a-zA-Z0-9]+)*$/)
+    raise ArgumentError, "invalid tags: #{tags}" unless !!(tags =~ /^([a-zA-Z0-9]+)(\|[a-zA-Z0-9]+)*$/)
     tags.split('|')
   end
 
@@ -187,7 +189,30 @@ class Entry < ApplicationRecord
     update_attribute(:embedding, vector)
   end
 
+  def self.terms_sim_cosine(term1, term2)
+    e1 = OllamaLlm.fetch_embedding(term1)
+    e2 = OllamaLlm.fetch_embedding(term2)
+    sim = embedding_sim_cosine(e1, e2)
+  end
+
   private
+
+  # Compute cosine similarity of two embeddings
+  #
+  # * (string) string1
+  # * (string) string2
+  #
+  def self.embedding_sim_cosine(embedding1, embedding2)
+    1 - self.embedding_distance_cosine(embedding1, embedding2)
+  end
+
+  def self.embedding_distance_cosine(embedding1, embedding2)
+    ActiveRecord::Base.connection.select_value <<~SQL.squish
+      SELECT CAST('#{embedding1}' AS vector) <=> CAST('#{embedding2}' AS vector)
+      FROM entries
+      AS distance
+    SQL
+  end
 
   # Compute similarity of two strings
   #

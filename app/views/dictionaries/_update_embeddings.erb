@@ -1,13 +1,24 @@
 <fieldset class="dialog">
 	<legend>Update Embeddings</legend>
 
+	<% if @dictionary.embeddings_populated? %>
+		<p class="note">Semantic search ready.</p>
+	<% else %>
+		<p class="note">Semantic search not ready.</p>
+	<% end %>
+
 	<p class="note">
-		Update the embedding of the entries
+		Update the embedding of the entries.
 	</p>
-	<%= link_to(
-		'Update Embedding',
-		update_embeddings_dictionary_path(@dictionary.name),
-		method: :post,
-		class: "button"
-	) %>
+
+	<% if current_user&.admin? %>
+		<%= link_to(
+			'Update Embedding',
+			update_embeddings_dictionary_path(@dictionary.name),
+			method: :post,
+			class: "button"
+		) %>
+	<% else %>
+		<%= content_tag :span, 'Update Embedding', class: "button disabled", title: "It is an experimental feature. Consult the admin to try it." %>
+	<% end %>
 </fieldset>
