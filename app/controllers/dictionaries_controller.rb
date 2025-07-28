@@ -323,8 +323,8 @@ class DictionariesController < ApplicationController
       if mode == EntryMode::PATTERN
         dictionary.empty_patterns
       else
-        dictionary.empty_entries(mode)
-        dictionary.clear_tags if mode == EntryMode::GRAY
+        active_job = EmptyJob.perform_later(dictionary, mode)
+        active_job.create_job_record("Empty the dictionary")
       end
 
       respond_to do |format|
@@ -392,9 +392,9 @@ class DictionariesController < ApplicationController
     begin
       dictionary = Dictionary.administrable(current_user).find_by_name(params[:id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
+      raise ArgumentError, "The dictionary is not empty. Only empty dictionaries can be deleted for safety." unless dictionary.empty?
       raise RuntimeError, "The last task is not yet dismissed. Please dismiss it and try again." if dictionary.jobs.count > 0
 
-      dictionary.empty_entries
       dictionary.destroy
 
       respond_to do |format|
@@ -403,8 +403,8 @@ class DictionariesController < ApplicationController
       end
     rescue => e
       respond_to do |format|
-        format.html {redirect_to dictionaries_path, notice: e.message}
-        format.json {head :no_content}
+        format.html {redirect_to dictionary_path(dictionary), notice: e.message}
+        format.json {render json: {message: e.message}, status: :bad_request}
       end
     end
   end
