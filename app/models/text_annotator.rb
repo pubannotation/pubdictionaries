@@ -261,7 +261,7 @@ class TextAnnotator
         str = text[mbeg ... mend]
         {span:span, obj:pattern.identifier, score:1, string:str}
       end
-    end.reduce(:union)
+    end.flatten
 
     [denotations, locally_defined_abbreviations, idx_span_positions]
   end
