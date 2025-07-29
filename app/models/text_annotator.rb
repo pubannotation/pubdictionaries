@@ -7,6 +7,7 @@ require 'simstring'
 class TextAnnotator
   CHUNK_SIZE = 50_000
   BUFFER_SIZE = 1024
+  MAX_CACHE_SIZE = 10_000
 
   OPTIONS_DEFAULT = {
     # terms will never include these words
@@ -40,9 +41,17 @@ class TextAnnotator
       d.tags_existency_update
     end
     @patterns = Pattern.active.where(dictionary_id: @dictionaries.map{|d| d.id})
-    @no_term_words = dictionaries.flat_map{|d| d.no_term_words || OPTIONS_DEFAULT[:no_term_words]}.to_set
-    @no_begin_words = dictionaries.flat_map{|d| d.no_begin_words || OPTIONS_DEFAULT[:no_begin_words]}.to_set
-    @no_end_words = dictionaries.flat_map{|d| d.no_end_words || OPTIONS_DEFAULT[:no_end_words]}.to_set
+    no_term_words = []
+    no_begin_words = []
+    no_end_words = []
+    dictionaries.each do |d|
+      no_term_words.concat(d.no_term_words || OPTIONS_DEFAULT[:no_term_words])
+      no_begin_words.concat(d.no_begin_words || OPTIONS_DEFAULT[:no_begin_words])
+      no_end_words.concat(d.no_end_words || OPTIONS_DEFAULT[:no_end_words])
+    end
+    @no_term_words = no_term_words.to_set
+    @no_begin_words = no_begin_words.to_set
+    @no_end_words = no_end_words.to_set
     @tokens_len_min = options[:tokens_len_min] || dictionaries.collect{|d| d.tokens_len_min}.min
     @tokens_len_max = options[:tokens_len_max] || dictionaries.collect{|d| d.tokens_len_max}.max
     @use_ngram_similarity = options.has_key?(:use_ngram_similarity) ? options[:use_ngram_similarity] : OPTIONS_DEFAULT[:use_ngram_similarity]
@@ -66,6 +75,7 @@ class TextAnnotator
     # [] means the search result was empty
     # nil means there is no cache for the span
     @cache_span_search = {}
+    @cache_access_order = []
 
     @soft_match = @threshold.nil? || (@threshold < 1)
 
@@ -100,6 +110,7 @@ class TextAnnotator
     end
 
     @cache_span_search.clear
+    @cache_access_order.clear
 
     # To remove redundant denotations
     anns_col.each do |anns|
@@ -319,11 +330,24 @@ class TextAnnotator
         # to find terms
         entries = @cache_span_search[span]
 
+        # Update access order for LRU
+        if entries
+          @cache_access_order.delete(span)
+          @cache_access_order << span
+        end
+
         if entries.nil?
           norm1 = norm1s[idx_token_begin, tlen].join
-          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, @ngram, nil, span, [], norm1, norm2)
+          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, @use_ngram_similarity, nil, span, [], norm1, norm2)
 
           @cache_span_search[span] = entries
+          @cache_access_order << span
+
+          # Implement LRU cache cleanup when size exceeds limit
+          if @cache_span_search.size > MAX_CACHE_SIZE
+            oldest_span = @cache_access_order.shift
+            @cache_span_search.delete(oldest_span)
+          end
         end
 
         entries.each do |entry|
