@@ -8,7 +8,20 @@ class McpController < ApplicationController
 	
 	def handle_request
 		begin
-			request_data = JSON.parse(request.body.read)
+			# Handle both GET and POST requests
+			if request.get?
+				render json: { status: "MCP Server Running", version: "1.0.0" }
+				return
+			end
+
+			# Get request data from Rails params or request body
+			if params[:mcp].present?
+				request_data = params[:mcp].to_unsafe_h
+			else
+				request.body.rewind if request.body.respond_to?(:rewind)
+				raw_body = request.body.read
+				request_data = raw_body.present? ? JSON.parse(raw_body) : {}
+			end
 			
 			# Validate JSON-RPC format
 			unless valid_jsonrpc_request?(request_data)
@@ -20,6 +33,13 @@ class McpController < ApplicationController
 			params = request_data['params'] || {}
 			request_id = request_data['id']
 			
+			# Handle notifications (no response required)
+			if method_name.start_with?('notifications/')
+				handle_notification(method_name, params)
+				render json: {}
+				return
+			end
+
 			result = case method_name
 							 when 'initialize'
 								 handle_initialize(params)
@@ -157,15 +177,22 @@ class McpController < ApplicationController
 		end
 	end
 
+	def handle_notification(method_name, params)
+		case method_name
+		when 'notifications/initialized'
+			Rails.logger.info "MCP Client initialized"
+		else
+			Rails.logger.info "Received notification: #{method_name}"
+		end
+	end
+
 	def handle_initialize(params)
 		# MCP initialization handshake
 		protocol_version = params['protocolVersion']
 		client_info = params['clientInfo']
 
-		Rails.logger.info "MCP Initialize: Client #{client_info['name']} v#{client_info['version']}, Protocol: #{protocol_version}"
-
-		{
-			protocolVersion: "2024-11-05",  # The protocol version we support
+		response = {
+			protocolVersion: "2025-06-18",  # The protocol version we support
 			capabilities: {
 				tools: {}  # We support tools
 			},
@@ -174,6 +201,10 @@ class McpController < ApplicationController
 				version: "1.0.0"
 			}
 		}
+
+		Rails.logger.info "MCP Initialize: Client #{client_info['name']} v#{client_info['version']}, Protocol: #{protocol_version}\n#{response}"
+
+		response
 	end
 
 	# Tool implementations using HTTP requests to existing endpoints
@@ -318,4 +349,5 @@ class McpController < ApplicationController
 			'http://localhost:3000'
 		end
 	end
+
 end
