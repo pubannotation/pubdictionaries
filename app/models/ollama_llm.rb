@@ -2,7 +2,7 @@ class OllamaLlm
 	def self.fetch_embedding(text)
 		client.embeddings(
 			{
-				model: PubDic::Ollama::EmbeddingModel,
+				model: PubDic::EmbeddingServer::DefaultModel,
 				prompt: text
 			}
 		).first["embedding"]
@@ -12,7 +12,7 @@ class OllamaLlm
 
 	def self.client
 		@client ||= Ollama.new(
-			credentials: { address: PubDic::Ollama::Address },
+			credentials: { address: PubDic::EmbeddingServer::URL },
 			options: { server_sent_events: true }
 		)
 	end

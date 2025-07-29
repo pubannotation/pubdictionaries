@@ -451,7 +451,8 @@ class Dictionary < ApplicationRecord
   def search_term_semantic(term, threshold, tags)
     return [] if term.empty?
 
-    embedding = OllamaLlm.fetch_embedding(term)
+
+    embedding = EmbeddingServer.fetch_embedding(term)
     return [] unless embedding.present?
 
     # Convert embedding to safe pg_vector format

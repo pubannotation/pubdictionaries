@@ -185,13 +185,13 @@ class Entry < ApplicationRecord
   end
 
   def update_embedding
-    vector = OllamaLlm.fetch_embedding(label)
+    vector = EmbeddingServer.fetch_embedding(label)
     update_attribute(:embedding, vector)
   end
 
   def self.terms_sim_cosine(term1, term2)
-    e1 = OllamaLlm.fetch_embedding(term1)
-    e2 = OllamaLlm.fetch_embedding(term2)
+    e1 = EmbeddingServer.fetch_embedding(term1)
+    e2 = EmbeddingServer.fetch_embedding(term2)
     sim = embedding_sim_cosine(e1, e2)
   end
 
