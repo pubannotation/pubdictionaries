@@ -75,7 +75,8 @@ class TextAnnotator
     # [] means the search result was empty
     # nil means there is no cache for the span
     @cache_span_search = {}
-    @cache_access_order = []
+    @cache_access_count = 0
+    @cache_access_timestamps = {}
 
     @soft_match = @threshold.nil? || (@threshold < 1)
 
@@ -110,7 +111,8 @@ class TextAnnotator
     end
 
     @cache_span_search.clear
-    @cache_access_order.clear
+    @cache_access_timestamps.clear
+    @cache_access_count = 0
 
     # To remove redundant denotations
     anns_col.each do |anns|
@@ -330,10 +332,9 @@ class TextAnnotator
         # to find terms
         entries = @cache_span_search[span]
 
-        # Update access order for LRU
+        # Update access timestamp for LRU
         if entries
-          @cache_access_order.delete(span)
-          @cache_access_order << span
+          @cache_access_timestamps[span] = @cache_access_count += 1
         end
 
         if entries.nil?
@@ -341,12 +342,13 @@ class TextAnnotator
           entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, @use_ngram_similarity, nil, span, [], norm1, norm2)
 
           @cache_span_search[span] = entries
-          @cache_access_order << span
+          @cache_access_timestamps[span] = @cache_access_count += 1
 
           # Implement LRU cache cleanup when size exceeds limit
           if @cache_span_search.size > MAX_CACHE_SIZE
-            oldest_span = @cache_access_order.shift
+            oldest_span = @cache_access_timestamps.min_by { |_, timestamp| timestamp }[0]
             @cache_span_search.delete(oldest_span)
+            @cache_access_timestamps.delete(oldest_span)
           end
         end
 
