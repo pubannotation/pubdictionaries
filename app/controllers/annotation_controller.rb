@@ -32,7 +32,12 @@ class AnnotationController < ApplicationController
       else
         TextAnnotator.new(@dictionaries_selected, options)
       end
+      Rails.logger.debug "About to call annotate_batch"
       r = annotator.annotate_batch([{text: text}]).first
+      Rails.logger.debug "Annotate_batch completed"
+      Rails.logger.debug "Annotator responds to context_similarities: #{annotator.respond_to?(:context_similarities)}"
+      @context_similarities = annotator.context_similarities if annotator.respond_to?(:context_similarities)
+      Rails.logger.debug "Context similarities assigned: #{@context_similarities.inspect}"
       annotator.dispose
       r.delete(:text) if options[:no_text]
       r

@@ -211,7 +211,6 @@ class DictionariesController < ApplicationController
   def edit
     @dictionary = Dictionary.editable(current_user).find_by!(name: params[:id])
     @submit_text = 'Update'
-    @tag_list = @dictionary.tags.map(&:value).join('|')
   end
 
   def update
@@ -424,6 +423,7 @@ class DictionariesController < ApplicationController
     @dictionary_params ||= params.require(:dictionary).permit(
       :name,
       :description,
+      :context,
       :language,
       :public,
       :license,

@@ -8,6 +8,7 @@ Rails.application.routes.draw do
   end
 
   # MCP endpoint
+  get '/mcp', to: 'mcp#handle_request'
   post '/mcp', to: 'mcp#handle_request'
   options '/mcp', to: 'mcp#options'  # For CORS preflight
 

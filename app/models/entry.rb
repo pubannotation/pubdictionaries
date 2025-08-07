@@ -111,28 +111,55 @@ class Entry < ApplicationRecord
   def to_semantic_result_hash = { label:, identifier: }
   def to_result_hash = { label:, norm1:, norm2:, identifier: }
   def to_result_hash_with_tags = { label:, norm1:, norm2:, identifier:, tags: tag_values }
-  def tag_values = tags.map(&:value).join('|')
+  def tag_values
+    return nil if tags.empty?
+    tags.map(&:value).join(',')
+  end
 
   def self.as_tsv
+    has_tags = joins("LEFT JOIN entry_tags ON entries.id = entry_tags.entry_id").where("entry_tags.entry_id IS NOT NULL").exists?
+
     CSV.generate(col_sep: "\t") do |tsv|
-      tsv << ['#label', :id, '#tags']
-      all.each do |entry|
-        tsv << [entry.label, entry.identifier, entry.tag_values]
+      if has_tags
+        tsv << ['#label', :id, '#tags']
+        all.each do |entry|
+          tsv << [entry.label, entry.identifier, entry.tag_values]
+        end
+      else
+        tsv << ['#label', :id]
+        all.each do |entry|
+          tsv << [entry.label, entry.identifier]
+        end
       end
     end
   end
 
   def self.as_tsv_v
+    has_tags = joins("LEFT JOIN entry_tags ON entries.id = entry_tags.entry_id").where("entry_tags.entry_id IS NOT NULL").exists?
+
     CSV.generate(col_sep: "\t") do |tsv|
-      tsv << ['#label', :id, '#tags', :operator]
-      all.each do |entry|
-        operator = case entry.mode
-        when EntryMode::WHITE
-          '+'
-        when EntryMode::BLACK
-          '-'
+      if has_tags
+        tsv << ['#label', :id, '#tags', :operator]
+        all.each do |entry|
+          operator = case entry.mode
+          when EntryMode::WHITE
+            '+'
+          when EntryMode::BLACK
+            '-'
+          end
+          tsv << [entry.label, entry.identifier, entry.tag_values, operator]
         end
-        tsv << [entry.label, entry.identifier, entry.tag_values, operator]
+      else
+        tsv << ['#label', :id, :operator]
+        all.each do |entry|
+          operator = case entry.mode
+          when EntryMode::WHITE
+            '+'
+          when EntryMode::BLACK
+            '-'
+          end
+          tsv << [entry.label, entry.identifier, operator]
+        end
       end
     end
   end
@@ -150,14 +177,16 @@ class Entry < ApplicationRecord
 
     return nil if items[1].length > 255
 
-    tags = get_tags(items[2])
+    tags = get_tags((items[2] || "").strip)
     [items[0], items[1], tags]
   end
 
   def self.get_tags(tags)
     return [] unless tags.present?
-    raise ArgumentError, "invalid tags: #{tags}" unless !!(tags =~ /^([a-zA-Z0-9]+)(\|[a-zA-Z0-9]+)*$/)
-    tags.split('|')
+    # Handle literal empty quotes
+    return [] if tags == '""'
+    raise ArgumentError, "invalid tags: #{tags}" unless !!(tags =~ /^([a-zA-Z0-9]+)(,[a-zA-Z0-9]+)*$/)
+    tags.split(',')
   end
 
   def self.decapitalize(text)

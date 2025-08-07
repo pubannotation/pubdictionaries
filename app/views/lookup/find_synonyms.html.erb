@@ -1,76 +1,116 @@
 <% content_for :page_title do %>
-	<span class="page_title">Text annotation</span>
+	<span class="page_title">Find synonyms</span>
 <% end %>
 
 <% options_default = TextAnnotator::OPTIONS_DEFAULT %>
 
 <fieldset>
 	<legend>Demo</legend>
-	<%= form_tag '/text_annotation', id: 'text_annotation', method: :get do -%>
-		<%= text_area_tag :text, params[:text], required: true, placeholder: 'text', style: "height:50px" %>
+	<%= form_tag '/find_synonyms', id: 'find_synonyms', method: :post do -%>
+		<%= text_area_tag :text, params[:text], required: true, placeholder: 'text', style: "height:100px" %>
+		<%= text_field_tag :term, params[:term], type: :text, required: true, placeholder: 'term', style: "width:100%" %>
 
 		<div class="center-align">
-			<%= render 'options_term_limit' %>
-			<%= render 'lookup/options_surface_similarity' %>
-			<%#= render 'lookup/options_semantic_similarity' %>
-			<%= render 'options_search' %>
-			<%= render 'lookup/options_output' %>
+			<table class="options">
+			<tr>
+				<th>
+					<%= label_tag :semantic, nil, title: "Use semantic similarity. Use it together with a low threshold for a higher sensitivity. However, it will slow the speed." %>
+				</th>
+				<th>
+					<%= label_tag :threshold_document, nil, title: "The output will include only the terms whose matching score is above the threshold. Leave it blank to use the default setting of individual dictionaries." %>
+				</th>
+				<th>
+					<%= label_tag :threshold_sentence, nil, title: "The output will include only the terms whose matching score is above the threshold. Leave it blank to use the default setting of individual dictionaries." %>
+				</th>
+				<th>
+					<%= label_tag :threshold_term, nil, title: "The output will include only the terms whose matching score is above the threshold. Leave it blank to use the default setting of individual dictionaries." %>
+				</th>
+			</tr>
+			<tr>
+				<td>
+					<%= check_box_tag :semantic, true, (params[:semantic] ? params[:semantic] : false) == 'true' %>
+				</td>
+				<td>
+					<%= text_field_tag :threshold_document, params[:threshold_document], type: :number, min:0, max:1, step:0.01 %>
+				</td>
+				<td>
+					<%= text_field_tag :threshold_sentence, params[:threshold_sentence], type: :number, min:0, max:1, step:0.01 %>
+				</td>
+				<td>
+					<%= text_field_tag :threshold_term, params[:sem_term], type: :number, min:0, max:1, step:0.01 %>
+				</td>
+			</tr>
+			</table>
+
+			<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>
+
+			<div>
+				<%= button_tag 'Reset', type: :reset, id: :reset, class: :button, style: 'width: 10em' %>
+				<%= submit_tag 'Submit', class: :button, style: 'width: 18em' %>
+			</div>
 		</div>
-
-		<textarea id="dictionaries" name="dictionaries" style="display:none"></textarea>
-
-		<div class="center-align">
-			<%= button_tag 'Reset', type: :reset, id: :reset, class: :button, style: 'width: 10em' %>
-			<%= submit_tag 'Submit', class: :button, style: 'width: 18em' %>
-			<%= button_tag 'Submit (POST)', id: :get_text_annotation, type: :button, class: :button, style: 'width: 10em', onclick: 'submit_get_text_annotation()', title: 'Use it for long text. The result cannot be bookmarked.' %>
-		</div>
-
-		<script type="text/javascript">
-			function submit_get_text_annotation() {
-				var form = document.getElementById('text_annotation');
-				form.method = 'post';
-				form.submit()
-			}
-		</script>
 
 		<% unless @result.nil? || @result.empty? %>
-			<% if false && @context_similarities && !@context_similarities.empty? %>
-				<h2>Context Similarity Scores</h2>
-				<table style="border: 1px solid #ccc; margin-bottom: 20px;">
-					<thead>
+<!--
+			<% if @result[:text].present? %>
+				<h2>Text-term distance</h2>
+				<table>
+					<tr>
+						<td> - </td>
+						<td><%= @result[:text][:length] %></td>
+						<td><%= @result[:text][:distance]%></td>
+					</tr>
+				</table>
+			<% end %>
+			<% if @result[:sentences].present? %>
+				<h2>Sentences</h2>
+				<table>
+					<% @result[:sentences].each do |sentence| %>
 						<tr>
-							<th style="padding: 8px; border: 1px solid #ccc; background-color: #f5f5f5;">Dictionary</th>
-							<th style="padding: 8px; border: 1px solid #ccc; background-color: #f5f5f5;">Context Similarity</th>
+							<td><%= sentence[:text] %></td>
+							<td><%= sentence[:length] %></td>
+							<td><%= sentence[:distance]%></td>
 						</tr>
-					</thead>
-					<tbody>
-						<% @dictionaries_selected.each do |dictionary| %>
+					<% end %>	
+				</table>
+			<% end %>
+			<% if @result[:words].present? %>
+				<h2>Words</h2>
+				<table>
+					<% @result[:words].each do |word| %>
+						<% if word[:distance] < 0.6 %>
+							<tr style="background-color: #faf;">
+						<% else %>
 							<tr>
-								<td style="padding: 8px; border: 1px solid #ccc;"><%= dictionary.name %></td>
-								<td style="padding: 8px; border: 1px solid #ccc;">
-									<% similarity = @context_similarities[dictionary.name] %>
-									<% if similarity.nil? %>
-										<span style="color: #999;">No context</span>
-									<% else %>
-										<span style="color: <%= similarity >= 0.7 ? 'green' : 'orange' %>;">
-											<%= sprintf("%.3f", similarity) %>
-										</span>
-									<% end %>
-								</td>
-							</tr>
 						<% end %>
-					</tbody>
+							<td><%= word[:text] %></td>
+							<td><%= word[:length] %></td>
+							<td><%= word[:distance] %></td>
+						</tr>
+					<% end %>	
+				</table>
+			<% end %>
+-->
+			<% if @result[:candidates].present? %>
+				<h2>Candidates</h2>
+				<table>
+					<% @result[:candidates].each do |candidate| %>
+						<% if candidate[:distance] < 0.3 %>
+							<% if candidate[:distance] < 0.2 %>
+								<tr style="background-color: #eaf;">
+							<% else %>
+								<tr>
+							<% end %>
+									<td><%= candidate[:span] %></td>
+									<td><%= candidate[:length] %></td>
+									<td><%= candidate[:distance] %></td>
+								</tr>
+						<% end %>
+					<% end %>	
 				</table>
 			<% end %>
 
-			<h2>Result in <%= link_to 'TextAE', 'https://textae.pubannotation.org' %></h2>
-			<%= render :partial => 'textae_css_js'-%>
-			<div class="textae-editor"><%= @result.to_json %></div>
-
-			<h2>Result in <%= link_to 'JSON', 'https://www.pubannotation.org/docs/annotation-format/' %></h2>
-			<pre style="white-space:pre-wrap; border:1px solid black"><%= JSON.pretty_generate @result %></pre>
 		<% end %>
-
 	<% end %>
 </fieldset>
 
@@ -279,7 +319,7 @@
 		}
 
 		var ngram = $('#ngram').is(':checked');
-		if (ngram != <%= options_default[:use_ngram_similarity] %>) {
+		if (ngram != <%= options_default[:ngram] %>) {
 			var param = 'ngram=' + ngram;
 			params.push(param);
 		}

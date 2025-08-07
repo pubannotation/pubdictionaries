@@ -26,6 +26,8 @@ class Dictionary < ApplicationRecord
   # validates :associated_annotation_project, length: { minimum: 5, maximum: 40 }
   # validates_format_of :associated_annotation_project, :with => /\A[a-z0-9\-_]+\z/i
 
+  before_save :update_context_embedding, if: :context_changed?
+
   DOWNLOADABLES_DIR = 'db/downloadables/'
 
   SIM_STRING_DB_DIR = "db/simstring/"
@@ -855,5 +857,14 @@ class Dictionary < ApplicationRecord
     values = entry_tags.flatten(1)
     result = EntryTag.bulk_import columns, values, validate: false
     raise "Error during import of entry_tags" unless result.failed_instances.empty?
+  end
+
+  def update_context_embedding
+    return if context.blank?
+
+    embedding = EmbeddingServer.fetch_embedding(context)
+    return unless embedding.present?
+
+    self.context_embedding = "[#{embedding.map(&:to_f).join(',')}]"
   end
 end

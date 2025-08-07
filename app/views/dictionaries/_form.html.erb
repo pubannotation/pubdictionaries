@@ -74,16 +74,23 @@
   <table style="width: 100%;">
     <tr>
       <th colspan="2" class="section">
-        Tags
-         <span class="note">(Experimental feature. You can restrict search by specifying tags)</span>
+        Filtering
+        <span class="note">(Experimental feature. You can restrict search by specifying context or tags)</span>
       </th>
     </tr>
-
+    <tr>
+      <th style="width: 6em;"><%= f.label :context, "Context" %></th>
+      <td>
+        <p class="note" style="margin-top:0">Context description (Only the text in the context will be annotated).</p>
+        <%= f.text_field :context,  placeholder: 'context description', style: "box-sizing: border-box; width:25em", value: @dictionary.context %>
+      </td>
+    </tr>
     <tr>
       <th style="width: 6em;"><%= f.label :tag_values, "Tags" %></th>
       <td>
-        <p class="note" style="margin-top:0">Pipe('|')-separated list of tags.</p>
-        <%= f.text_field :tag_values,  placeholder: 'e.g., tag1|tag2', style: "box-sizing: border-box; width:25em", value: @tag_list %>
+        <p class="note" style="margin-top:0">Comma(',')-separated list of tags.</p>
+        <% tag_list = @dictionary.tags.map(&:value).join(',') %>
+        <%= f.text_field :tag_values,  placeholder: 'e.g., tag1,tag2', style: "box-sizing: border-box; width:25em", value: tag_list %>
       </td>
     </tr>
   </table>

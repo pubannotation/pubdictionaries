@@ -22,7 +22,7 @@ class TextAnnotator
     tokens_len_max: 6,
     use_ngram_similarity: false,
     threshold: 0.85,
-    semantic_threshold: 0.85,
+    semantic_threshold: 0.7,
     abbreviation: true,
     longest: true,
     superfluous: false,
@@ -120,12 +120,16 @@ class TextAnnotator
       idx_span_positions = {}
       locally_defined_abbreviations = []
 
+      # Filter dictionaries by context similarity
+      filtered_dictionaries = @semantic_threshold.present? ? filter_dictionaries_by_context(anns[:text]) : @dictionaries
+      next if filtered_dictionaries.empty?
+
       ## Beginning of pattern-based annotation
-      denotations, locally_defined_abbreviations, idx_span_positions = pattern_based_annotation(anns, denotations, locally_defined_abbreviations, idx_span_positions)
+      denotations, locally_defined_abbreviations, idx_span_positions = pattern_based_annotation(anns, denotations, locally_defined_abbreviations, idx_span_positions, filtered_dictionaries)
 
       ## Beginning of dictionary-based annotation
       # find denotation candidates
-      denotations, locally_defined_abbreviations, idx_span_positions = candidate_denotations(anns, denotations, locally_defined_abbreviations, idx_span_positions)
+      denotations, locally_defined_abbreviations, idx_span_positions = candidate_denotations(anns, denotations, locally_defined_abbreviations, idx_span_positions, filtered_dictionaries)
 
       next if denotations.empty?
 
@@ -246,16 +250,67 @@ class TextAnnotator
     1 + length * 0.00001
   end
 
+  def context_similarities
+    Rails.logger.debug "context_similarities called, returning: #{(@context_similarities || {}).inspect}"
+    @context_similarities || {}
+  end
+
   private
+
+  def filter_dictionaries_by_context(text)
+    Rails.logger.debug "filter_dictionaries_by_context called with text length: #{text.length}"
+    text_embedding = EmbeddingServer.fetch_embedding(text)
+
+    # Always calculate similarities for display, even if no threshold is set
+    if text_embedding.blank?
+      Rails.logger.debug "No text embedding available"
+      @context_similarities = {}
+      return @dictionaries
+    end
+
+    text_embedding_vector = "[#{text_embedding.map(&:to_f).join(',')}]"
+
+    # Initialize similarity scores storage
+    @context_similarities = {}
+    Rails.logger.debug "Initialized context_similarities: #{@context_similarities}"
+
+    filtered = @dictionaries.select do |dictionary|
+      if dictionary.context_embedding.blank?
+        @context_similarities[dictionary.name] = nil
+        next true
+      end
+
+      # Calculate cosine similarity (1 - cosine distance)
+      begin
+        result = ActiveRecord::Base.connection.exec_query(
+          "SELECT $1::vector <=> $2::vector AS distance",
+          "context_similarity",
+          [text_embedding_vector, dictionary.context_embedding.to_s]
+        )
+        similarity = 1.0 - result.first['distance'].to_f
+        @context_similarities[dictionary.name] = similarity
+        # Only filter if semantic_threshold is set
+        @semantic_threshold.nil? || similarity >= @semantic_threshold
+      rescue => e
+        # If there's an error with vector comparison, include the dictionary
+        Rails.logger.warn "Error comparing context embeddings: #{e.message}"
+        @context_similarities[dictionary.name] = nil
+        true
+      end
+    end
+
+    filtered
+  end
 
   # find all the matching spans, store them in denotations, and make idx_span_positions
   # if the abbreviation option is on, make locally_defined_abbreviations
-  def pattern_based_annotation(anns, denotations = [], locally_defined_abbreviations = [], idx_span_positions = {})
-    return [denotations, locally_defined_abbreviations, idx_span_positions] if @patterns.empty?
+  def pattern_based_annotation(anns, denotations = [], locally_defined_abbreviations = [], idx_span_positions = {}, dictionaries = @dictionaries)
+    filtered_patterns = @patterns.select { |p| dictionaries.any? { |d| d.id == p.dictionary_id } }
+    return [denotations, locally_defined_abbreviations, idx_span_positions] if filtered_patterns.empty?
 
     text = anns[:text]
 
-    denotations = @patterns.map do |pattern|
+    denotations = filtered_patterns.map do |pattern|
       matches = text.scan_offset(/#{pattern.expression}/)
       matches.map do |m|
         mbeg, mend = m.offset(0)[0, 2]
@@ -268,7 +323,7 @@ class TextAnnotator
     [denotations, locally_defined_abbreviations, idx_span_positions]
   end
 
-  def candidate_denotations(anns, denotations = [], locally_defined_abbreviations = [], idx_span_positions = {})
+  def candidate_denotations(anns, denotations = [], locally_defined_abbreviations = [], idx_span_positions = {}, dictionaries = @dictionaries)
     # tokens are produced in the order of their position.
     # tokens are normalzed, but stopwords are preserved.
     text = anns[:text]
@@ -339,7 +394,11 @@ class TextAnnotator
 
         if entries.nil?
           norm1 = norm1s[idx_token_begin, tlen].join
-          entries = @search_method.call(@dictionaries, @sub_string_dbs, @threshold, @use_ngram_similarity, nil, span, [], norm1, norm2)
+
+          # Filter sub_string_dbs to match the filtered dictionaries
+          filtered_sub_string_dbs = @sub_string_dbs.select { |name, _| dictionaries.any? { |d| d.name == name } }
+
+          entries = @search_method.call(dictionaries, filtered_sub_string_dbs, @threshold, @use_ngram_similarity, nil, span, [], norm1, norm2)
 
           @cache_span_search[span] = entries
           @cache_access_timestamps[span] = @cache_access_count += 1

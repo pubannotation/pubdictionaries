@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_02_17_065259) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_29_151420) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -52,6 +52,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_02_17_065259) do
     t.string "language"
     t.integer "patterns_num", default: 0
     t.string "associated_annotation_project"
+    t.text "context"
+    t.vector "context_embedding", limit: 768
+    t.index ["context_embedding"], name: "index_dictionaries_on_context_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["user_id"], name: "index_dictionaries_on_user_id"
   end
 
@@ -67,10 +70,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_02_17_065259) do
     t.datetime "updated_at", precision: nil, null: false
     t.boolean "dirty", default: false
     t.decimal "score", precision: 5, scale: 4
-    t.vector "embedding", limit: 4096
+    t.vector "embedding", limit: 768
     t.index ["dictionary_id", "label", "identifier"], name: "index_entries_on_dictionary_id_and_label_and_identifier"
     t.index ["dictionary_id"], name: "index_entries_on_dictionary_id"
     t.index ["dirty"], name: "index_entries_on_dirty"
+    t.index ["embedding"], name: "index_entries_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["identifier"], name: "index_entries_on_identifier"
     t.index ["label"], name: "index_entries_on_label"
     t.index ["label_length"], name: "index_entries_on_label_length"
