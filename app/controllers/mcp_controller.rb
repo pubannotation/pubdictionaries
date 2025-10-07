@@ -168,7 +168,25 @@ class McpController < ApplicationController
 				},
 				{
 					name: 'find_ids',
-					description: 'Find identifiers of terms by referencing a specified dictionary. Only English terms are supported.',
+					description: 'Find identifiers of terms by referencing a specified dictionary.',
+					inputSchema: {
+						type: 'object',
+						properties: {
+							labels: {
+								type: 'string',
+								description: 'A comma-separated list of terms (English only)'
+							},
+							dictionary: {
+								type: 'string',
+								description: 'The name of the dictionary to lookup'
+							}
+						},
+						required: ['labels', 'dictionary']
+					}
+				},
+				{
+					name: 'search',
+					description: 'Search for identifiers of terms by referencing a specified dictionary.',
 					inputSchema: {
 						type: 'object',
 						properties: {
@@ -212,7 +230,7 @@ class McpController < ApplicationController
 			handle_list_dictionaries
 		when 'get_dictionary_description'
 			handle_get_dictionary_description(arguments['name'])
-		when 'find_ids'
+		when 'find_ids', 'search'
 			handle_find_ids(arguments['labels'], arguments['dictionary'])
 		when 'find_terms'
 			handle_find_terms(arguments['ids'], arguments['dictionary'])
