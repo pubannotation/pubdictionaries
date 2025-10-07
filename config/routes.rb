@@ -7,15 +7,10 @@ Rails.application.routes.draw do
     end
   end
 
-  # MCP endpoints
-  get '/mcp', to: 'mcp#handle_request'
-  post '/mcp', to: 'mcp#handle_request'
+  # MCP StreamableHttp endpoint (single endpoint for GET streaming and POST messages)
+  get '/mcp', to: 'mcp#streamable_http'
+  post '/mcp', to: 'mcp#streamable_http'
   options '/mcp', to: 'mcp#options'  # For CORS preflight
-
-  # MCP SSE endpoints
-  get '/mcp/sse', to: 'mcp#sse'  # SSE stream for MCP
-  post '/mcp/message', to: 'mcp#message'  # POST endpoint for messages
-  options '/mcp/message', to: 'mcp#options'  # CORS preflight
 
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
   get "home/about", as: "about"
