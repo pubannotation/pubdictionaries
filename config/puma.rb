@@ -30,6 +30,23 @@ threads threads_count, threads_count
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 3000)
 
+# Specifies the `environment` that Puma will run in.
+environment ENV.fetch("RAILS_ENV", "development")
+
+# In production, use unix socket instead of port
+if ENV.fetch("RAILS_ENV", "development") == "production"
+  bind "unix://#{ENV.fetch("APP_ROOT", File.expand_path("../..", __dir__))}/tmp/sockets/puma.sock"
+
+  # Puma workers for production (preload app for better performance)
+  workers ENV.fetch("WEB_CONCURRENCY", 2)
+  preload_app!
+
+  # Set up proper logging
+  stdout_redirect "#{ENV.fetch("APP_ROOT", File.expand_path("../..", __dir__))}/log/puma.stdout.log",
+                  "#{ENV.fetch("APP_ROOT", File.expand_path("../..", __dir__))}/log/puma.stderr.log",
+                  true
+end
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
@@ -38,4 +55,4 @@ plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
 
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.
-pidfile ENV["PIDFILE"] if ENV["PIDFILE"]
+pidfile ENV.fetch("PIDFILE", ENV.fetch("RAILS_ENV", "development") == "production" ? "tmp/pids/puma.pid" : nil)

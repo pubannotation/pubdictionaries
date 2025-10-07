@@ -182,7 +182,6 @@ GEM
       activerecord
       kaminari-core (= 1.2.2)
     kaminari-core (1.2.2)
-    kgio (2.11.4)
     language_list (1.2.1)
     logger (1.7.0)
     loofah (2.24.1)
@@ -320,7 +319,6 @@ GEM
       rake (>= 12.2)
       thor (~> 1.0, >= 1.2.2)
       zeitwerk (~> 2.6)
-    raindrops (0.20.1)
     rake (13.3.0)
     rdoc (6.14.2)
       erb
@@ -367,9 +365,6 @@ GEM
       concurrent-ruby (~> 1.0)
     uglifier (4.2.1)
       execjs (>= 0.3.0, < 3)
-    unicorn (6.1.0)
-      kgio (~> 2.6)
-      raindrops (~> 0.7)
     uri (1.0.3)
     useragent (0.16.11)
     validate_url (1.0.15)
@@ -437,7 +432,6 @@ DEPENDENCIES
   string-similarity (~> 2.1)
   test-unit
   uglifier
-  unicorn
   validate_url
   web-console
   webrick
