@@ -1,11 +1,117 @@
 class McpController < ApplicationController
+	include ActionController::Live
+
 	skip_before_action :verify_authenticity_token
 	before_action :set_cors_headers
+
+	# SSE helper class
+	class SSE
+		def initialize(stream)
+			@stream = stream
+		end
+
+		def write(object, options = {})
+			event = options[:event] || "message"
+			@stream.write("event: #{event}\n")
+			@stream.write("data: #{object.to_json}\n\n")
+			# Force flush to ensure immediate delivery
+			@stream.flush if @stream.respond_to?(:flush)
+		end
+
+		def close
+			@stream.close rescue nil
+		end
+	end
 	
 	def options
 		head :ok
 	end
 	
+	def sse
+		# Set up SSE headers
+		response.headers['Content-Type'] = 'text/event-stream'
+		response.headers['Cache-Control'] = 'no-cache'
+		response.headers['X-Accel-Buffering'] = 'no'
+
+		# Important: Disable buffering in Rack
+		response.stream.autoflush = true if response.stream.respond_to?(:autoflush=)
+
+		# Send initial endpoint message
+		sse_stream = SSE.new(response.stream)
+
+		begin
+			# Send endpoint information
+			endpoint_message = {
+				jsonrpc: "2.0",
+				method: "endpoint",
+				params: {
+					endpoint: "#{request.base_url}/mcp/message"
+				}
+			}
+			sse_stream.write(endpoint_message)
+
+			# Keep connection alive with heartbeat
+			loop do
+				sleep 15
+				sse_stream.write({ type: "ping" }, event: "ping")
+			end
+		rescue IOError, Errno::EPIPE, ActionController::Live::ClientDisconnected
+			# Client disconnected
+			Rails.logger.info "SSE client disconnected"
+		ensure
+			sse_stream.close
+		end
+	end
+
+	def message
+		begin
+			# Get request data from Rails params or request body
+			if params[:mcp].present?
+				request_data = params[:mcp].to_unsafe_h
+			else
+				request.body.rewind if request.body.respond_to?(:rewind)
+				raw_body = request.body.read
+				request_data = raw_body.present? ? JSON.parse(raw_body) : {}
+			end
+
+			# Validate JSON-RPC format
+			unless valid_jsonrpc_request?(request_data)
+				render json: error_response(request_data['id'], -32600, "Invalid Request")
+				return
+			end
+
+			method_name = request_data['method']
+			params = request_data['params'] || {}
+			request_id = request_data['id']
+
+			# Handle notifications (no response required)
+			if method_name.start_with?('notifications/')
+				handle_notification(method_name, params)
+				render json: {}
+				return
+			end
+
+			result = case method_name
+							 when 'initialize'
+								 handle_initialize(params)
+							 when 'tools/list'
+								 list_tools
+							 when 'tools/call'
+								 call_tool(params['name'], params['arguments'] || {})
+							 else
+								 raise StandardError, "Method not found: #{method_name}"
+							 end
+
+			render json: success_response(request_id, result)
+
+		rescue JSON::ParserError
+			render json: error_response(nil, -32700, "Parse error")
+		rescue StandardError => e
+			Rails.logger.error "MCP Error: #{e.message}"
+			render json: error_response(request_data&.dig('id'), -32603, e.message)
+		end
+	end
+
 	def handle_request
 		begin
 			# Handle both GET and POST requests
