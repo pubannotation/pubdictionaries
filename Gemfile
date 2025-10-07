@@ -48,7 +48,3 @@ end
 group :test do
   gem 'test-unit'
 end
-
-group :production do
- gem 'puma', '~> 6.0'
-end
