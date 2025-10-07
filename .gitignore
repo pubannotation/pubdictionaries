@@ -44,3 +44,5 @@ Thumbs.db
 
 # Ignore all files for rvm
 .env
+config/master.key
+
