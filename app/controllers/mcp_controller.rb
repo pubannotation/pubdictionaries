@@ -92,7 +92,22 @@ class McpController < ApplicationController
 							 when 'tools/list'
 								 list_tools
 							 when 'tools/call'
-								 call_tool(params['name'], params['arguments'] || {})
+								 # Tool execution errors should be returned with isError: true
+								 # so the LLM can see them and self-correct
+								 begin
+									 call_tool(params['name'], params['arguments'] || {})
+								 rescue StandardError => e
+									 Rails.logger.error "Tool execution error: #{e.message}"
+									 {
+										 content: [
+											 {
+												 type: 'text',
+												 text: "Error: #{e.message}"
+											 }
+										 ],
+										 isError: true
+									 }
+								 end
 							 else
 								 raise StandardError, "Method not found: #{method_name}"
 							 end
@@ -102,7 +117,8 @@ class McpController < ApplicationController
 		rescue JSON::ParserError
 			render json: error_response(nil, -32700, "Parse error")
 		rescue StandardError => e
-			Rails.logger.error "MCP Error: #{e.message}"
+			# Protocol-level errors (invalid request, method not found, etc.)
+			Rails.logger.error "MCP Protocol Error: #{e.message}"
 			render json: error_response(request_data&.dig('id'), -32603, e.message)
 		end
 	end
@@ -381,15 +397,26 @@ class McpController < ApplicationController
 		# Handle response
 		unless response.is_a?(Net::HTTPSuccess)
 			error_message = "Internal API request failed: #{response.code} #{response.message}"
+
+			# Try to parse JSON error response
 			if response.body && !response.body.empty?
-				error_message += " - #{response.body[0, 200]}"
+				begin
+					error_data = JSON.parse(response.body)
+					if error_data['message']
+						error_message = error_data['message']
+					end
+				rescue JSON::ParserError
+					# Not JSON, use first 200 chars of response
+					error_message += " - #{response.body[0, 200]}"
+				end
 			end
+
 			raise StandardError, error_message
 		end
-		
+
 		response
 		
-	rescue Net::TimeoutError
+	rescue Net::OpenTimeout, Net::ReadTimeout
 		raise StandardError, "Request timeout"
 	rescue Net::HTTPError => e
 		raise StandardError, "HTTP error: #{e.message}"
