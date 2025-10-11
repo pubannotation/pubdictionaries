@@ -107,6 +107,7 @@ GEM
       railties (>= 4.1.0)
       responders
       warden (~> 1.2.3)
+    diff-lcs (1.6.2)
     dotenv (3.1.8)
     dotenv-rails (3.1.8)
       dotenv (= 3.1.8)
@@ -130,6 +131,11 @@ GEM
     ethon (0.16.0)
       ffi (>= 1.15.0)
     execjs (2.10.0)
+    factory_bot (6.5.5)
+      activesupport (>= 6.1.0)
+    factory_bot_rails (6.5.1)
+      factory_bot (~> 6.5)
+      railties (>= 6.1.0)
     faker (3.5.2)
       i18n (>= 1.8.11, < 2)
     faraday (2.13.2)
@@ -260,7 +266,6 @@ GEM
       omniauth (~> 2.0)
     orm_adapter (0.5.0)
     pg (1.5.9)
-    power_assert (2.0.5)
     pp (0.6.2)
       prettyprint
     prettyprint (0.2.0)
@@ -331,6 +336,23 @@ GEM
     responders (3.1.1)
       actionpack (>= 5.2)
       railties (>= 5.2)
+    rspec-core (3.13.5)
+      rspec-support (~> 3.13.0)
+    rspec-expectations (3.13.5)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-mocks (3.13.5)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-rails (8.0.2)
+      actionpack (>= 7.2)
+      activesupport (>= 7.2)
+      railties (>= 7.2)
+      rspec-core (~> 3.13)
+      rspec-expectations (~> 3.13)
+      rspec-mocks (~> 3.13)
+      rspec-support (~> 3.13)
+    rspec-support (3.13.6)
     ruby-stemmer (3.0.0)
     rubyzip (2.4.1)
     securerandom (0.4.1)
@@ -355,8 +377,6 @@ GEM
       sprockets (>= 3.0.0)
     string-similarity (2.1.0)
     stringio (3.1.7)
-    test-unit (3.7.0)
-      power_assert
     thor (1.4.0)
     timeout (0.4.3)
     typhoeus (1.4.1)
@@ -406,6 +426,7 @@ DEPENDENCIES
   dotenv-rails
   elasticsearch-model
   elasticsearch-rails
+  factory_bot_rails
   faker
   i18n_data
   jquery-rails
@@ -424,13 +445,13 @@ DEPENDENCIES
   rails-jquery-autocomplete
   rails3-jquery-autocomplete
   recaptcha
+  rspec-rails
   ruby-stemmer
   rubyzip
   select2-rails
   sidekiq (~> 8.0)
   sprockets-rails
   string-similarity (~> 2.1)
-  test-unit
   uglifier
   validate_url
   web-console

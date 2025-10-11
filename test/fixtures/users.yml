@@ -1,6 +1,0 @@
-one:
-  id: 1
-  username: "test1"
-  email: "test1@example.com"
-  encrypted_password: "password"
-  confirmed_at: <%= Time.now - 100 %>

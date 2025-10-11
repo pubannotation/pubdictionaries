@@ -27,6 +27,7 @@ class Dictionary < ApplicationRecord
   # validates_format_of :associated_annotation_project, :with => /\A[a-z0-9\-_]+\z/i
 
   before_save :update_context_embedding, if: :context_changed?
+  before_destroy :ensure_entries_empty, prepend: true
 
   DOWNLOADABLES_DIR = 'db/downloadables/'
 
@@ -311,21 +312,27 @@ class Dictionary < ApplicationRecord
     transaction do
       case mode
       when nil
-        EntryTag.where(entry_id: entries.pluck(:id)).delete_all
+        # Use subquery to avoid loading all IDs into memory
+        EntryTag.where("entry_id IN (SELECT id FROM entries WHERE dictionary_id = ?)", id).delete_all
         entries.delete_all
         update_entries_num
         clean_sim_string_db
       when EntryMode::GRAY
-        transaction do
-          ActiveRecord::Base.connection.exec_query("DELETE FROM entries WHERE dictionary_id = #{id} AND mode = #{EntryMode::GRAY}")
-          update_entries_num
-        end
+        # Use ActiveRecord method for security and consistency
+        entries.gray.delete_all
+        update_entries_num
       when EntryMode::WHITE
-        entries.white.destroy_all
+        # Use delete_all for bulk deletion without callbacks
+        entries.white.delete_all
+        update_entries_num
       when EntryMode::BLACK
-        entries.black.each{|e| cancel_black(e)}
+        # Use single UPDATE instead of iterating through each entry
+        entries.black.update_all(mode: EntryMode::GRAY)
+        update_entries_num
       when EntryMode::AUTO_EXPANDED
-        entries.auto_expanded.destroy_all
+        # Use delete_all for bulk deletion without callbacks
+        entries.auto_expanded.delete_all
+        update_entries_num
       else
         raise ArgumentError, "Unexpected mode: #{mode}"
       end
@@ -866,5 +873,14 @@ class Dictionary < ApplicationRecord
     return unless embedding.present?
 
     self.context_embedding = "[#{embedding.map(&:to_f).join(',')}]"
+  end
+
+  def ensure_entries_empty
+    if entries.exists?
+      errors.add(:base, "Cannot destroy dictionary with entries. " \
+                        "Please empty all entries first using empty_entries(nil). " \
+                        "Current entries count: #{entries_num}")
+      throw :abort
+    end
   end
 end
