@@ -117,17 +117,21 @@ class Entry < ApplicationRecord
   end
 
   def self.as_tsv
-    has_tags = joins("LEFT JOIN entry_tags ON entries.id = entry_tags.entry_id").where("entry_tags.entry_id IS NOT NULL").exists?
+    # Check if current relation has entries with tags (properly scoped)
+    has_tags = joins(:entry_tags).exists?
 
     CSV.generate(col_sep: "\t") do |tsv|
       if has_tags
         tsv << ['#label', :id, '#tags']
-        all.each do |entry|
+        # Use includes to eager load tags (prevents N+1 queries)
+        # Use find_each to process in batches (prevents memory exhaustion)
+        includes(:tags).find_each(batch_size: 1000) do |entry|
           tsv << [entry.label, entry.identifier, entry.tag_values]
         end
       else
         tsv << ['#label', :id]
-        all.each do |entry|
+        # Use find_each to process in batches (prevents memory exhaustion)
+        find_each(batch_size: 1000) do |entry|
           tsv << [entry.label, entry.identifier]
         end
       end
@@ -135,12 +139,15 @@ class Entry < ApplicationRecord
   end
 
   def self.as_tsv_v
-    has_tags = joins("LEFT JOIN entry_tags ON entries.id = entry_tags.entry_id").where("entry_tags.entry_id IS NOT NULL").exists?
+    # Check if current relation has entries with tags (properly scoped)
+    has_tags = joins(:entry_tags).exists?
 
     CSV.generate(col_sep: "\t") do |tsv|
       if has_tags
         tsv << ['#label', :id, '#tags', :operator]
-        all.each do |entry|
+        # Use includes to eager load tags (prevents N+1 queries)
+        # Use find_each to process in batches (prevents memory exhaustion)
+        includes(:tags).find_each(batch_size: 1000) do |entry|
           operator = case entry.mode
           when EntryMode::WHITE
             '+'
@@ -151,7 +158,8 @@ class Entry < ApplicationRecord
         end
       else
         tsv << ['#label', :id, :operator]
-        all.each do |entry|
+        # Use find_each to process in batches (prevents memory exhaustion)
+        find_each(batch_size: 1000) do |entry|
           operator = case entry.mode
           when EntryMode::WHITE
             '+'
