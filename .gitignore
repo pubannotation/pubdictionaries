@@ -46,3 +46,6 @@ Thumbs.db
 .env
 config/master.key
 
+# Documentation
+docs/
+
