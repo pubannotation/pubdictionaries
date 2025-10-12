@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_29_151420) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_12_121709) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -71,7 +71,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_29_151420) do
     t.boolean "dirty", default: false
     t.decimal "score", precision: 5, scale: 4
     t.vector "embedding", limit: 768
-    t.index ["dictionary_id", "label", "identifier"], name: "index_entries_on_dictionary_id_and_label_and_identifier"
+    t.index ["dictionary_id", "label", "identifier"], name: "index_entries_on_dictionary_id_and_label_and_identifier_unique", unique: true
     t.index ["dictionary_id"], name: "index_entries_on_dictionary_id"
     t.index ["dirty"], name: "index_entries_on_dirty"
     t.index ["embedding"], name: "index_entries_on_embedding", opclass: :vector_cosine_ops, using: :hnsw

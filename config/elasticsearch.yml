@@ -12,11 +12,11 @@ default: &default
 development:
   <<: *default
 #  host: 'http://host.docker.internal:9200'
-  host: http://elasticsearch:9200
+#  host: http://elasticsearch:9200
 
 test:
   <<: *default
-  host: http://elasticsearch:9200
+  host: http://localhost:9200
 
 production:
   <<: *default

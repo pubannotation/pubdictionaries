@@ -922,7 +922,9 @@ class Dictionary < ApplicationRecord
 
     columns = [:label, :identifier, :norm1, :norm2, :label_length, :mode, :dirty, :dictionary_id]
     values = entries
-    result = Entry.bulk_import columns, values, validate: false
+    result = Entry.bulk_import columns, values,
+                               validate: false,
+                               on_duplicate_key_ignore: true
     raise "Error during import of entries" unless result.failed_instances.empty?
 
     result
@@ -931,11 +933,14 @@ class Dictionary < ApplicationRecord
   def import_entry_tags!(tag_set, entries_result, raw_entries)
     tag_map = tags.where(value: tag_set).pluck(:value, :id).to_h
     entry_tags = raw_entries.map.with_index do |(_, _, tags), i|
-      tags.map{|tag| [entries_result.ids[i], tag_map[tag]]}
+      entry_id = entries_result.ids[i]
+      # Skip if entry was ignored due to duplicate (entry_id will be nil)
+      next if entry_id.nil?
+      tags.map{|tag| [entry_id, tag_map[tag]]}
     end
 
     columns = [:entry_id, :tag_id]
-    values = entry_tags.flatten(1)
+    values = entry_tags.compact.flatten(1)
     result = EntryTag.bulk_import columns, values, validate: false
     raise "Error during import of entry_tags" unless result.failed_instances.empty?
   end

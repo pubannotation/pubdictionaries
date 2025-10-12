@@ -12,41 +12,54 @@ class LoadEntriesFromFileJob < ApplicationJob
     active_job.create_job_record("Upload dictionary entries")
   end
 
+  BATCH_SIZE = 10_000
+
   def perform(dictionary, filename, mode = nil)
     raise ArgumentError, "Dictionary upload is only available when there are no dictionary entries." unless dictionary.entries.empty?
 
-    # file preprocessing
-    format_and_rewrite(filename)
+    # First pass: count total entries for progress tracking
+    num_entries = File.foreach(filename).count
+    @job.update(num_items: num_entries, num_dones: 0)
 
-    num_entries = File.read(filename).each_line.count
+    # Second pass: process entries in batches
+    batch = []
+    analyzer = BatchAnalyzer.new(dictionary)
 
-    @job.update_attribute(:num_items, num_entries)
-    @job.update_attribute(:num_dones, 0)
+    File.foreach(filename) do |line|
+      label, id, tags = Entry.read_entry_line(line)
+      next if label.nil?
 
-    gate = LoadEntriesFromFileJob::FloodGate.new(dictionary)
+      batch << [label, id, tags]
 
-    File.open(filename, 'r') do |f|
-      f.each_line do |line|
-        label, id, tags = Entry.read_entry_line(line)
-        next if label.nil?
-
-        is_flushed = gate.add_entry(label, id, tags) do
-          if suspended?
-            remnants_count = gate.flush
-            @job.increment!(:num_dones, remnants_count)
-            raise Exceptions::JobSuspendError
-          end
-        end
-
-        @job.increment!(:num_dones, FloodGate::CAPACITY) if is_flushed
+      # Flush batch when it reaches capacity
+      if batch.size >= BATCH_SIZE
+        check_suspension
+        flush_batch(batch, analyzer)
+        @job.increment!(:num_dones, BATCH_SIZE)
+        batch.clear
       end
     end
 
-    remnants_count = gate.flush
-    @job.increment!(:num_dones, remnants_count)
+    # Flush remaining entries
+    unless batch.empty?
+      flush_batch(batch, analyzer)
+      @job.increment!(:num_dones, batch.size)
+    end
   ensure
-    gate.close
-    File.delete(filename)
+    analyzer&.shutdown
+    File.delete(filename) if File.exist?(filename)
+  end
+
+  private
+
+  def flush_batch(batch, analyzer)
+    analyzer.add_entries(batch)
+  rescue => e
+    raise ArgumentError, "Entries are rejected: #{e.message} #{e.backtrace.join("\n")}."
+  end
+
+  def check_suspension
+    raise Exceptions::JobSuspendError if suspended?
   end
 
   before_perform do |active_job|
@@ -56,25 +69,5 @@ class LoadEntriesFromFileJob < ApplicationJob
 
   after_perform do
     set_ended_at
-  end
-
-  private
-
-  def format_and_rewrite(filename)
-    lines = File.readlines(filename)
-
-    cut_lines = lines.map do |line|
-      fields = line.split("\t")
-      fields[0..2].join("\t")
-    end
-
-    sorted_lines = cut_lines.uniq.sort_by do |line|
-      fields = line.split("\t")
-      fields[2]
-    end
-
-    File.open(filename, "w") do |file|
-      sorted_lines.each { |line| file.puts(line) }
-    end
   end
 end
