@@ -126,8 +126,8 @@ class DictionariesController < ApplicationController
   rescue => e
     respond_to do |format|
       format.html { redirect_to dictionaries_url, notice: e.message }
-      format.json { head :unprocessable_entity }
-      format.tsv  { head :unprocessable_entity }
+      format.json { head :unprocessable_content }
+      format.tsv  { head :unprocessable_content }
     end
   end
 
@@ -163,8 +163,8 @@ class DictionariesController < ApplicationController
   rescue => e
     respond_to do |format|
       format.html { redirect_to dictionaries_url, notice: e.message }
-      format.json { head :unprocessable_entity }
-      format.tsv  { head :unprocessable_entity }
+      format.json { head :unprocessable_content }
+      format.tsv  { head :unprocessable_content }
     end
   end
 

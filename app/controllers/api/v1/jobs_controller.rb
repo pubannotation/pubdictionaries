@@ -5,7 +5,7 @@ class Api::V1::JobsController < ApplicationController
     job = Job.find(params[:id])
 
     if job.running?
-      render json: { message: "Job #{params[:id]} is currently running and cannot be deleted." }, status: :unprocessable_entity
+      render json: { message: "Job #{params[:id]} is currently running and cannot be deleted." }, status: :unprocessable_content
       return
     end
 

@@ -148,7 +148,7 @@ class LookupController < ApplicationController
       end
     rescue => e
       respond_to do |format|
-        format.any {render json: {notice:e.message}, status: :unprocessable_entity}
+        format.any {render json: {notice:e.message}, status: :unprocessable_content}
       end
     end
   end
@@ -172,7 +172,7 @@ class LookupController < ApplicationController
       end
     rescue => e
       respond_to do |format|
-        format.any {render json: {notice:e.message}, status: :unprocessable_entity}
+        format.any {render json: {notice:e.message}, status: :unprocessable_content}
       end
     end
   end

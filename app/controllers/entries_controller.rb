@@ -20,8 +20,8 @@ class EntriesController < ApplicationController
   rescue => e
     respond_to do |format|
       format.html { redirect_to dictionaries_url, notice: e.message }
-      format.json { head :unprocessable_entity }
-      format.tsv  { head :unprocessable_entity }
+      format.json { head :unprocessable_content }
+      format.tsv  { head :unprocessable_content }
     end
   end
 
@@ -61,7 +61,7 @@ class EntriesController < ApplicationController
     rescue => e
       respond_to do |format|
         format.html { redirect_back fallback_location: root_path, notice: e.message.slice(0, 1000)}
-        format.json { head :unprocessable_entity }
+        format.json { head :unprocessable_content }
       end
     end
 
