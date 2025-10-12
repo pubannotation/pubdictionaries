@@ -7,6 +7,7 @@ class ApplicationJob < ActiveJob::Base
     if @job
       # message = "'#{exception.message}'\n#{exception.backtrace.join("\n")}"
       @job.update(message: exception.message, ended_at: Time.now)
+      @job.clear_suspend_flag  # Clean up suspend file on error
     else
       raise exception
     end
@@ -34,6 +35,7 @@ class ApplicationJob < ActiveJob::Base
   def set_ended_at
     ActiveRecord::Base.connection_pool.with_connection do
       @job&.update_attribute(:ended_at, Time.now)
+      @job&.clear_suspend_flag  # Clean up suspend file when job finishes
     end
   end
 
@@ -44,11 +46,7 @@ class ApplicationJob < ActiveJob::Base
   end
 
   def suspended?
-    if @job
-      Job.find(@job.id)&.suspended?
-    else
-      false
-    end
+    @job&.suspended?
   end
 
   def destroy_job_record

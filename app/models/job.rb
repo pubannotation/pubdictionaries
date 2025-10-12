@@ -74,21 +74,31 @@ class Job < ApplicationRecord
   end
 
   def suspended?
-    running? && suspend_flag == true
+    return false unless running?
+    suspend_file = Rails.root.join('tmp', "suspend_job_#{id}")
+    File.exist?(suspend_file)
   end
 
   def stop_if_running
-    ActiveRecord::Base.connection_pool.with_connection do
-      update(suspend_flag: true) if running?
-    end
+    return unless running?
+    suspend_file = Rails.root.join('tmp', "suspend_job_#{id}")
+    FileUtils.touch(suspend_file)
+    Rails.logger.info "[Job #{id}] Created suspension file: #{suspend_file}"
+  end
+
+  def clear_suspend_flag
+    suspend_file = Rails.root.join('tmp', "suspend_job_#{id}")
+    File.delete(suspend_file) if File.exist?(suspend_file)
   end
 
   def destroy_if_not_running
     case status
     when :in_queue
       ApplicationJob.cancel_adapter_class.new.cancel(active_job_id, queue_name)
+      clear_suspend_flag  # Clean up suspend file before destroying
       destroy
     when :error, :done
+      clear_suspend_flag  # Clean up suspend file before destroying
       destroy
     when :in_progress
       # do nothing
