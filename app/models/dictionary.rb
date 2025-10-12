@@ -107,13 +107,20 @@ class Dictionary < ApplicationRecord
     end
 
     def find_dictionaries(dic_names)
-      dic_names.collect do |dic_name|
-        begin
-          Dictionary.find_by!(name: dic_name)
-        rescue => e
-          raise ArgumentError, "unknown dictionary: #{dic_name}."
-        end
+      # Use single WHERE IN query instead of N separate queries
+      found_dicts = Dictionary.where(name: dic_names).index_by(&:name)
+
+      # Check for missing dictionaries and maintain original order
+      missing = []
+      result = dic_names.map do |name|
+        dict = found_dicts[name]
+        missing << name unless dict
+        dict
       end
+
+      raise ArgumentError, "unknown dictionary: #{missing.join(', ')}." if missing.any?
+
+      result
     end
 
     def find_ids_by_labels(labels, dictionaries = [], options = {})
@@ -152,15 +159,22 @@ class Dictionary < ApplicationRecord
     end
 
     def find_labels_by_ids(ids, dictionaries = [])
-      entries = if dictionaries.present?
-        Entry.where(identifier: ids, dictionary_id: dictionaries)
+      # When dictionaries are provided, use them directly to avoid duplicate loading
+      # Otherwise, eager load dictionary association to avoid N+1 queries
+      if dictionaries.present?
+        # Build dictionary name map from already-loaded dictionaries
+        dict_names = dictionaries.index_by(&:id).transform_values(&:name)
+        entries = Entry.where(identifier: ids, dictionary_id: dictionaries.map(&:id))
       else
-        Entry.where(identifier: ids)
+        dict_names = nil
+        entries = Entry.includes(:dictionary).where(identifier: ids)
       end
 
       entries.each_with_object({}) do |entry, h|
         h[entry.identifier] = [] unless h.has_key? entry.identifier
-        h[entry.identifier] << {label: entry.label, dictionary: entry.dictionary.name}
+        # Use pre-loaded dictionary names when available, otherwise access association
+        dict_name = dict_names ? dict_names[entry.dictionary_id] : entry.dictionary.name
+        h[entry.identifier] << {label: entry.label, dictionary: dict_name}
       end
     end
   end
@@ -542,29 +556,55 @@ class Dictionary < ApplicationRecord
         results.concat(additional_results)
       end
 
-      entry_results = self.entries
-                       .left_outer_joins(:tags)
-                       .without_black
-                       .where(norm2: norm2s)
+      # Use EXISTS subquery to avoid duplicate rows from JOIN when filtering by tags
+      if tags.present?
+        entry_results = self.entries
+                         .without_black
+                         .where(norm2: norm2s)
+                         .where("EXISTS (
+                           SELECT 1 FROM entry_tags et
+                           JOIN tags t ON t.id = et.tag_id
+                           WHERE et.entry_id = entries.id
+                             AND t.value IN (?)
+                         )", tags)
+      else
+        entry_results = self.entries
+                         .without_black
+                         .where(norm2: norm2s)
+      end
 
-      entry_results = entry_results.where(tags: { value: tags }) if tags.present?
+      # Eager load tags if needed for to_result_hash_with_tags
+      entry_results = entry_results.includes(:tags) if tags_exists?
       results.concat(entry_results)
 
       hash_method = tags_exists? ? :to_result_hash_with_tags : :to_result_hash
       results = results.map(&hash_method)
-                      .uniq
                       .map { |e|
                         e.merge!(score: str_sim.call(term, e[:label], norm1, e[:norm1], norm2, e[:norm2]), dictionary: name)
                         e[:score] >= threshold ? e :nil
                       }
                       .compact
     else
-      entry_results = self.entries
-                         .left_outer_joins(:tags)
-                         .without_black
-                         .where(label: term)
+      # Exact match path (threshold == 1)
+      results = []
 
-      entry_results = entry_results.where(tags: { value: tags }) if tags.present?
+      # Use EXISTS subquery to avoid duplicate rows from JOIN when filtering by tags
+      if tags.present?
+        entry_results = self.entries
+                           .without_black
+                           .where(label: term)
+                           .where("EXISTS (
+                             SELECT 1 FROM entry_tags et
+                             JOIN tags t ON t.id = et.tag_id
+                             WHERE et.entry_id = entries.id
+                               AND t.value IN (?)
+                           )", tags)
+      else
+        entry_results = self.entries
+                           .without_black
+                           .where(label: term)
+      end
+
       results.concat(entry_results.map(&:to_result_hash))
       results.each{|e| e.merge!(score: 1, dictionary: name)}
     end
@@ -810,28 +850,62 @@ class Dictionary < ApplicationRecord
   end
 
   def additional_entries(tags)
-    self.entries
-        .left_outer_joins(:tags)
-        .additional_entries
-        .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
-        .map(&:to_result_hash)
+    # Use EXISTS subquery to avoid duplicate rows from JOIN when filtering by tags
+    if tags.present?
+      self.entries
+          .additional_entries
+          .where("EXISTS (
+            SELECT 1 FROM entry_tags et
+            JOIN tags t ON t.id = et.tag_id
+            WHERE et.entry_id = entries.id
+              AND t.value IN (?)
+          )", tags)
+          .map(&:to_result_hash)
+    else
+      self.entries
+          .additional_entries
+          .map(&:to_result_hash)
+    end
   end
 
   def additional_entries_for_norm2(norm2, tags)
-    self.entries
-        .left_outer_joins(:tags)
-        .additional_entries
-        .where(norm2: norm2)
-        .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
+    # Use EXISTS subquery to avoid duplicate rows from JOIN when filtering by tags
+    if tags.present?
+      self.entries
+          .additional_entries
+          .where(norm2: norm2)
+          .where("EXISTS (
+            SELECT 1 FROM entry_tags et
+            JOIN tags t ON t.id = et.tag_id
+            WHERE et.entry_id = entries.id
+              AND t.value IN (?)
+          )", tags)
+    else
+      self.entries
+          .additional_entries
+          .where(norm2: norm2)
+    end
   end
 
   def additional_entries_for_label(label, tags)
-    self.entries
-        .left_outer_joins(:tags)
-        .additional_entries
-        .where(label: label)
-        .then{ tags.present? ? _1.where(tags: { value: tags }) : _1 }
-        .map(&:to_result_hash)
+    # Use EXISTS subquery to avoid duplicate rows from JOIN when filtering by tags
+    if tags.present?
+      self.entries
+          .additional_entries
+          .where(label: label)
+          .where("EXISTS (
+            SELECT 1 FROM entry_tags et
+            JOIN tags t ON t.id = et.tag_id
+            WHERE et.entry_id = entries.id
+              AND t.value IN (?)
+          )", tags)
+          .map(&:to_result_hash)
+    else
+      self.entries
+          .additional_entries
+          .where(label: label)
+          .map(&:to_result_hash)
+    end
   end
 
   def import_tags!(new_tags)
