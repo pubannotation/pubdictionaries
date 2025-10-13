@@ -202,7 +202,7 @@ class Dictionary < ApplicationRecord
   end
 
   def uploadable?
-    entries.empty?
+    empty?  # Uses cached entries_num column instead of querying database
   end
 
   def locked?

@@ -15,7 +15,7 @@ class LoadEntriesFromFileJob < ApplicationJob
   BATCH_SIZE = 10_000
 
   def perform(dictionary, filename, mode = nil)
-    raise ArgumentError, "Dictionary upload is only available when there are no dictionary entries." unless dictionary.entries.empty?
+    raise ArgumentError, "Dictionary upload is only available when there are no dictionary entries." unless dictionary.empty?
 
     # First pass: count total entries for progress tracking
     num_entries = File.foreach(filename).count
