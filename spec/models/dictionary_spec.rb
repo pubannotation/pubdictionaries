@@ -264,10 +264,10 @@ RSpec.describe Dictionary, type: :model do
         }.to change { EntryTag.count }.by(-2)
       end
 
-      it 'keeps tags in the dictionary' do
+      it 'deletes all tags in the dictionary' do
         expect {
           dictionary.empty_entries(nil)
-        }.not_to change { dictionary.tags.count }
+        }.to change { dictionary.tags.count }.from(2).to(0)
       end
     end
   end

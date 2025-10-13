@@ -329,6 +329,7 @@ class Dictionary < ApplicationRecord
         # Use subquery to avoid loading all IDs into memory
         EntryTag.where("entry_id IN (SELECT id FROM entries WHERE dictionary_id = ?)", id).delete_all
         entries.delete_all
+        tags.delete_all  # Delete all dictionary tags since there are no entries
         update_entries_num
         clean_sim_string_db
       when EntryMode::GRAY
