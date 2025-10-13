@@ -1,11 +1,14 @@
 class BatchAnalyzer
   INCREMENT_NUM_PER_TEXT = 100
 
+  attr_reader :skipped_entries
+
   def initialize(dictionary)
     @dictionary = dictionary
     @uri = URI.parse("#{Rails.configuration.elasticsearch[:host]}/entries/_analyze")
     @http = Net::HTTP::Persistent.new
     @post = Net::HTTP::Post.new(@uri.request_uri, 'Content-Type' => 'application/json')
+    @skipped_entries = []
   end
 
   def add_entries(entries)
@@ -14,6 +17,48 @@ class BatchAnalyzer
                                      @dictionary.normalizer1,
                                      @dictionary.normalizer2)
     @dictionary.add_entries(entries, norm1list, norm2list)
+  rescue => e
+    # If batch normalization fails due to token limit, use binary search to find problematic entry
+    if e.message.include?('max_token_count') || e.message.include?('illegal_state_exception')
+      Rails.logger.warn "[BatchAnalyzer] Batch of #{entries.size} entries failed token limit, using binary search"
+      add_entries_with_binary_search(entries)
+    else
+      raise
+    end
+  end
+
+  # Use binary search to efficiently find and skip entries that exceed Elasticsearch token limit
+  def add_entries_with_binary_search(entries, depth = 0)
+    return if entries.empty?
+
+    # Try processing the batch
+    begin
+      labels = entries.map(&:first)
+      norm1list, norm2list = normalize(labels, @dictionary.normalizer1, @dictionary.normalizer2)
+      @dictionary.add_entries(entries, norm1list, norm2list)
+    rescue => e
+      if e.message.include?('max_token_count') || e.message.include?('illegal_state_exception')
+        # If only one entry, it's the problematic one - skip it and log
+        if entries.size == 1
+          label, identifier, _ = entries.first
+          @skipped_entries << { label: label, identifier: identifier, reason: 'token_limit' }
+          Rails.logger.warn "[BatchAnalyzer] Skipped entry (token limit): '#{label}' (#{identifier})"
+          return
+        end
+
+        # Split in half and process recursively
+        mid = entries.size / 2
+        left_half = entries[0...mid]
+        right_half = entries[mid..-1]
+
+        Rails.logger.debug "[BatchAnalyzer] Splitting batch (#{entries.size} -> #{left_half.size} + #{right_half.size}) at depth #{depth}"
+
+        add_entries_with_binary_search(left_half, depth + 1)
+        add_entries_with_binary_search(right_half, depth + 1)
+      else
+        raise
+      end
+    end
   end
 
   def shutdown

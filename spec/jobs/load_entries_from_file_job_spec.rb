@@ -319,6 +319,97 @@ RSpec.describe LoadEntriesFromFileJob, type: :job do
       end
     end
 
+    context 'skipped entries tracking' do
+      it 'stores skipped entries in job metadata when entries exceed token limit' do
+        write_tsv_file(temp_file, [
+          ['glucose', 'CHEBI:17234', ''],
+          ['problematic_entry', 'PROB:001', ''],
+          ['fructose', 'CHEBI:28757', '']
+        ])
+
+        # Mock BatchAnalyzer to simulate a skipped entry
+        allow_any_instance_of(BatchAnalyzer).to receive(:add_entries).and_wrap_original do |original, entries|
+          analyzer = original.receiver
+
+          # Simulate skipping the problematic entry
+          if entries.any? { |e| e[0] == 'problematic_entry' }
+            entries.reject! { |e| e[0] == 'problematic_entry' }
+            analyzer.instance_variable_get(:@skipped_entries) << {
+              label: 'problematic_entry',
+              identifier: 'PROB:001',
+              reason: 'token_limit'
+            }
+          end
+
+          original.call(entries) unless entries.empty?
+        end
+
+        perform_job(dictionary, temp_file.path)
+
+        # Should have imported 2 entries, skipped 1
+        expect(dictionary.entries.count).to eq(2)
+        expect(dictionary.entries.pluck(:label)).to contain_exactly('glucose', 'fructose')
+
+        # Should store skipped entry in job metadata
+        job_record.reload
+        expect(job_record.metadata).to be_present
+        expect(job_record.metadata['skipped_entries']).to be_an(Array)
+        expect(job_record.metadata['skipped_entries'].size).to eq(1)
+
+        skipped = job_record.metadata['skipped_entries'].first
+        expect(skipped['label']).to eq('problematic_entry')
+        expect(skipped['identifier']).to eq('PROB:001')
+        expect(skipped['reason']).to eq('token_limit')
+      end
+
+      it 'stores multiple skipped entries in metadata' do
+        write_tsv_file(temp_file, [
+          ['good1', 'GOOD:001', ''],
+          ['bad1', 'BAD:001', ''],
+          ['good2', 'GOOD:002', ''],
+          ['bad2', 'BAD:002', '']
+        ])
+
+        # Mock to skip entries with 'bad' prefix
+        allow_any_instance_of(BatchAnalyzer).to receive(:add_entries).and_wrap_original do |original, entries|
+          analyzer = original.receiver
+
+          bad_entries = entries.select { |e| e[0].start_with?('bad') }
+          good_entries = entries.reject { |e| e[0].start_with?('bad') }
+
+          bad_entries.each do |entry|
+            analyzer.instance_variable_get(:@skipped_entries) << {
+              label: entry[0],
+              identifier: entry[1],
+              reason: 'token_limit'
+            }
+          end
+
+          original.call(good_entries) unless good_entries.empty?
+        end
+
+        perform_job(dictionary, temp_file.path)
+
+        # Should track both skipped entries
+        job_record.reload
+        expect(job_record.metadata['skipped_entries'].size).to eq(2)
+        expect(job_record.metadata['skipped_entries'].map { |e| e['identifier'] }).to contain_exactly('BAD:001', 'BAD:002')
+      end
+
+      it 'does not create metadata when no entries are skipped' do
+        write_tsv_file(temp_file, [
+          ['glucose', 'CHEBI:17234', ''],
+          ['fructose', 'CHEBI:28757', '']
+        ])
+
+        perform_job(dictionary, temp_file.path)
+
+        # No skipped entries, metadata should be nil
+        job_record.reload
+        expect(job_record.metadata).to be_nil
+      end
+    end
+
     context 'edge cases' do
       it 'handles empty file' do
         File.open(temp_file.path, 'w') { |f| f.write('') }

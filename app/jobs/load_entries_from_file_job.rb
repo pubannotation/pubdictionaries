@@ -24,10 +24,19 @@ class LoadEntriesFromFileJob < ApplicationJob
     # Second pass: process entries in batches
     batch = []
     analyzer = BatchAnalyzer.new(dictionary)
+    validation_skipped = []
+    line_number = 0
 
     File.foreach(filename) do |line|
+      line_number += 1
+      original_line = line.dup
       label, id, tags = Entry.read_entry_line(line)
-      next if label.nil?
+
+      if label.nil?
+        # Track validation-skipped entries
+        validation_skipped << { line_number: line_number, line: original_line.strip, reason: 'validation' }
+        next
+      end
 
       batch << [label, id, tags]
 
@@ -44,6 +53,30 @@ class LoadEntriesFromFileJob < ApplicationJob
     unless batch.empty?
       flush_batch(batch, analyzer)
       @job.increment!(:num_dones, batch.size)
+    end
+
+    # Collect all skipped entries
+    all_skipped = []
+
+    # Add token-limit skipped entries
+    all_skipped += analyzer.skipped_entries.map { |e| e.merge(reason: 'token_limit') }
+
+    # Add validation-skipped entries (limit to first 100 to avoid huge metadata)
+    all_skipped += validation_skipped.first(100)
+
+    # Report skipped entries if any
+    if all_skipped.any?
+      Rails.logger.warn "[LoadEntriesFromFileJob] #{all_skipped.size} entries were skipped:"
+      all_skipped.each do |entry|
+        if entry[:reason] == 'token_limit'
+          Rails.logger.warn "  - [Token limit] '#{entry[:label]}' (#{entry[:identifier]})"
+        else
+          Rails.logger.warn "  - [Validation] Line #{entry[:line_number]}: #{entry[:line].truncate(100)}"
+        end
+      end
+
+      # Store skipped entries in job metadata for display in UI
+      @job.update(metadata: { skipped_entries: all_skipped })
     end
   ensure
     analyzer&.shutdown

@@ -27,7 +27,22 @@
 				<% if job.message.nil? %>
 					<li>finished at <%= job.ended_at %></li>
 					<li>took <%= time_duration(job.begun_at, job.ended_at) %></li>
-					<li>without problem.</li>
+					<% if job.metadata&.[]('skipped_entries')&.any? %>
+						<li style="color: #d9534f;">
+							<strong><%= job.metadata['skipped_entries'].size %> <%= 'entry'.pluralize(job.metadata['skipped_entries'].size) %> skipped:</strong>
+							<ul style="margin-top: 5px; font-size: 0.9em;">
+								<% job.metadata['skipped_entries'].each do |entry| %>
+									<% if entry['reason'] == 'token_limit' %>
+										<li><strong>[Token limit]</strong> <%= entry['label'].truncate(60) %> (<%= entry['identifier'] %>)</li>
+									<% else %>
+										<li><strong>[Validation]</strong> Line <%= entry['line_number'] %>: <%= entry['line'].truncate(80) %></li>
+									<% end %>
+								<% end %>
+							</ul>
+						</li>
+					<% else %>
+						<li>without problem.</li>
+					<% end %>
 				<% else %>
 					<li>failed at <%= job.ended_at %></li>
 					<li>with the message, "<%= job.message %>".</li>
