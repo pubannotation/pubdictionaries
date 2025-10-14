@@ -1,25 +1,25 @@
-require 'concurrent-ruby'
-
 class EmbeddingServerError < StandardError; end
 class EmbeddingClientError < StandardError; end
 
 class UpdateDictionaryEmbeddingsJob < ApplicationJob
 	queue_as :upload
 
-	# Add retry logic with exponential backoff
-	retry_on StandardError, wait: :exponentially_longer, attempts: 3
+	# Note: No job-level retry is configured. Transient errors (network timeouts, connection
+	# failures) are handled by fetch_embeddings_with_retry with proper exponential backoff.
+	# Non-transient errors (client/server errors) should not be automatically retried as they
+	# require manual intervention to fix configuration or server issues.
 
 	BATCH_SIZE = 50 # Optimal batch size for embedding API calls
 
 	def perform(dictionary)
 		@dictionary = dictionary
 		@total_entries = dictionary.entries.count
+		@count_completed = 0
+		@count_failed = 0
+		@failed_entries = []
+		@batch_count = 0
 
 		return if @total_entries.zero?
-
-		count_completed = Concurrent::AtomicFixnum.new(0)
-		count_failed = Concurrent::AtomicFixnum.new(0)
-		suspended_flag = Concurrent::AtomicBoolean.new(false)
 
 		prepare_progress_record(@total_entries)
 
@@ -27,23 +27,12 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 		# Process entries in batches to leverage batch embedding API
 		dictionary.entries.find_in_batches(batch_size: BATCH_SIZE) do |batch|
-			if suspended_flag.true?
-				Rails.logger.info "Job suspended - terminating batch processing"
-				raise StandardError, "Job was cancelled by user"
-			end
-
-			process_batch(batch, count_completed, count_failed, suspended_flag)
-
-				# Check suspension status periodically
-			if suspended?
-				suspended_flag.make_true
-				Rails.logger.info "Job suspended by user request"
-				raise StandardError, "Job was cancelled by user"
-			end
+			check_suspension
+			process_batch(batch)
 		end
 
-			# Final logging
-		Rails.logger.info "Embedding update completed: #{count_completed.value} succeeded, #{count_failed.value} failed"
+		# Final logging
+		Rails.logger.info "Embedding update completed: #{@count_completed} succeeded, #{@count_failed} failed"
 
 	rescue StandardError => e
 		# Explicitly handle errors to ensure job record is updated
@@ -61,19 +50,33 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 		raise e
 	ensure
-		update_progress_record(count_completed&.value || 0)
+		update_progress_record(@count_completed)
+
+		# Log performance metrics
+		if @start_time && @total_entries && @total_entries > 0
+			duration = Time.current - @start_time
+			rate = (@count_completed / duration).round(2)
+			Rails.logger.info "Performance: #{duration.round(2)}s total, #{rate} entries/sec"
+		end
+
+		# Store failed entries in job metadata for display in UI
+		if @failed_entries.any?
+			Rails.logger.warn "[UpdateDictionaryEmbeddingsJob] #{@failed_entries.size} entries failed"
+			@failed_entries.first(100).each do |entry|
+				Rails.logger.warn "  - Entry #{entry[:entry_id]} (#{entry[:label]}): #{entry[:error]}"
+			end
+
+			# Limit to first 100 to avoid huge metadata
+			@job&.update(metadata: { failed_entries: @failed_entries.first(100) })
+		end
+
 		# Only set ended_at if not already set by error handling
 		set_ended_at unless @job&.ended_at.present?
 	end
 
 	private
 
-	def process_batch(batch, count_completed, count_failed, suspended_flag)
-		if suspended_flag.true?
-			Rails.logger.info "Batch processing suspended"
-			raise StandardError, "Job was cancelled by user"
-		end
-
+	def process_batch(batch)
 		begin
 			# Extract labels for batch embedding generation
 			labels = batch.map(&:label)
@@ -84,45 +87,60 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 			# Perform bulk database update using transaction for consistency
 			ActiveRecord::Base.transaction do
 				bulk_update_embeddings(batch, embeddings)
-				count_completed.increment(batch.size)
+				@count_completed += batch.size
 			end
 
+			@batch_count += 1
+
 			# Log progress
-			Rails.logger.info "Processed batch: #{count_completed.value}/#{@total_entries} entries completed, #{count_failed.value} failed"
+			Rails.logger.info "Processed batch: #{@count_completed}/#{@total_entries} entries completed, #{@count_failed} failed"
 
 		rescue EmbeddingClientError => e
 			# Handle client errors (4xx) - don't retry, fail fast
 			Rails.logger.error "Embedding client error (configuration issue) for batch of #{batch.size} entries: #{e.message}"
-			handle_client_error(batch, count_completed, count_failed, e)
+			handle_batch_error(batch, e,
+				"Embedding client error detected - this likely indicates a configuration issue (wrong model, API key, etc.)",
+				"Configuration error")
 
 		rescue EmbeddingServerError => e
 			# Handle embedding server specific errors (5xx) - can retry
 			Rails.logger.error "Embedding server error for batch of #{batch.size} entries: #{e.message}"
-			handle_embedding_server_failure(batch, count_completed, count_failed, e)
+			handle_batch_error(batch, e,
+				"Embedding server error detected - terminating job immediately",
+				"Embedding server error")
 
 		rescue Net::ReadTimeout, Net::OpenTimeout, Timeout::Error => e
 			# Handle network timeout errors
 			Rails.logger.error "Network timeout error for batch of #{batch.size} entries: #{e.message}"
-			handle_network_failure(batch, count_completed, count_failed, e)
+			handle_batch_error(batch, e,
+				"Network timeout error detected - terminating job immediately",
+				"Network timeout")
 
 		rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH => e
 			# Handle connection errors when server is down
 			Rails.logger.error "Connection error - embedding server may be down: #{e.message}"
-			handle_server_unavailable(batch, count_completed, count_failed, e)
+			handle_batch_error(batch, e,
+				"Embedding server unavailable - terminating job immediately",
+				"Server unavailable")
 
 		rescue JSON::ParserError => e
 			# Handle malformed JSON responses
 			Rails.logger.error "Invalid JSON response from embedding server: #{e.message}"
-			handle_malformed_response(batch, count_completed, count_failed, e)
+			handle_batch_error(batch, e,
+				"Malformed response from embedding server - terminating job immediately",
+				"Malformed response")
 
 		rescue StandardError => e
 			# Handle any other unexpected errors
 			Rails.logger.error "Unexpected error in batch processing: #{e.message}"
 			Rails.logger.error e.backtrace.join("\n")
-			handle_unexpected_error(batch, count_completed, count_failed, e)
+			handle_batch_error(batch, e,
+				"Unexpected error in batch processing - terminating job immediately",
+				"Unexpected error")
 		end
 
-		update_progress_record(count_completed.value)
+		# Update progress every 5 batches to reduce database writes
+		update_progress_record(@count_completed) if @batch_count % 5 == 0
 	end
 
 
@@ -176,80 +194,15 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 		Rails.logger.debug "Bulk updated #{batch.size} entries with embeddings"
 	end
 
-	def handle_client_error(batch, count_completed, count_failed, error)
-		# Client errors indicate configuration issues - fail fast, don't retry
-		Rails.logger.fatal "CRITICAL: Embedding client error detected - this likely indicates a configuration issue (wrong model, API key, etc.)"
+	def handle_batch_error(batch, error, error_description, error_prefix)
+		# Consolidated error handler for all batch processing errors
+		Rails.logger.fatal "CRITICAL: #{error_description}"
 		Rails.logger.fatal "Error details: #{error.message}"
-		Rails.logger.fatal "JOB TERMINATING - Fix configuration before retrying"
+		Rails.logger.fatal "JOB TERMINATING - Fix issues before retrying"
 
-		# Mark all remaining entries as failed and terminate the job
-		count_failed.increment(batch.size)
-		batch.each { |entry| record_failed_entry(entry, "Configuration error: #{error.message}") }
-
-		# Raise to terminate the entire job - don't continue processing
-		raise error
-	end
-
-	def handle_embedding_server_failure(batch, count_completed, count_failed, error)
-		# For server errors, mark all entries as failed and terminate job
-		Rails.logger.fatal "CRITICAL: Embedding server error detected - terminating job immediately"
-		Rails.logger.fatal "Error details: #{error.message}"
-		Rails.logger.fatal "JOB TERMINATING - Fix server issues before retrying"
-
-		count_failed.increment(batch.size)
-		batch.each { |entry| record_failed_entry(entry, "Embedding server error: #{error.message}") }
-
-		# Raise to terminate the entire job
-		raise error
-	end
-
-	def handle_network_failure(batch, count_completed, count_failed, error)
-		# For network timeouts, terminate job immediately
-		Rails.logger.fatal "CRITICAL: Network timeout error detected - terminating job immediately"
-		Rails.logger.fatal "Error details: #{error.message}"
-		Rails.logger.fatal "JOB TERMINATING - Fix network/server connectivity before retrying"
-
-		count_failed.increment(batch.size)
-		batch.each { |entry| record_failed_entry(entry, "Network timeout: #{error.message}") }
-
-		# Raise to terminate the entire job
-		raise error
-	end
-
-	def handle_server_unavailable(batch, count_completed, count_failed, error)
-		# Server is completely down - terminate job immediately
-		Rails.logger.fatal "CRITICAL: Embedding server unavailable - terminating job immediately"
-		Rails.logger.fatal "Error details: #{error.message}"
-		Rails.logger.fatal "JOB TERMINATING - Ensure embedding server is running before retrying"
-
-		count_failed.increment(batch.size)
-		batch.each { |entry| record_failed_entry(entry, "Server unavailable: #{error.message}") }
-
-		# Raise to terminate the entire job
-		raise error
-	end
-
-	def handle_malformed_response(batch, count_completed, count_failed, error)
-		# Malformed response - terminate job immediately
-		Rails.logger.fatal "CRITICAL: Malformed response from embedding server - terminating job immediately"
-		Rails.logger.fatal "Error details: #{error.message}"
-		Rails.logger.fatal "JOB TERMINATING - Check server response format"
-
-		count_failed.increment(batch.size)
-		batch.each { |entry| record_failed_entry(entry, "Malformed response: #{error.message}") }
-
-		# Raise to terminate the entire job
-		raise error
-	end
-
-	def handle_unexpected_error(batch, count_completed, count_failed, error)
-		# For unexpected errors, terminate job immediately
-		Rails.logger.fatal "CRITICAL: Unexpected error in batch processing - terminating job immediately"
-		Rails.logger.fatal "Error details: #{error.message}"
-		Rails.logger.fatal "JOB TERMINATING - Review error details before retrying"
-
-		count_failed.increment(batch.size)
-		batch.each { |entry| record_failed_entry(entry, "Unexpected error: #{error.message}") }
+		# Mark all entries in batch as failed
+		@count_failed += batch.size
+		batch.each { |entry| record_failed_entry(entry, "#{error_prefix}: #{error.message}") }
 
 		# Raise to terminate the entire job
 		raise error
@@ -257,17 +210,23 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 
 	def record_failed_entry(entry, error_message)
-		# Store failed entries for potential retry or manual review
-		Rails.cache.write(
-			"failed_embedding_#{@dictionary.id}_#{entry.id}",
-			{ entry_id: entry.id, error: error_message, timestamp: Time.current },
-			expires_in: 1.week
-		)
+		# Store failed entries in memory for later persistence to Job metadata
+		@failed_entries << {
+			entry_id: entry.id,
+			label: entry.label,
+			identifier: entry.identifier,
+			error: error_message,
+			timestamp: Time.current.iso8601
+		}
 	end
 
 	def prepare_progress_record(total)
 		@start_time = Time.current
 		super(total)
+	end
+
+	def check_suspension
+		raise Exceptions::JobSuspendError if suspended?
 	end
 
 	# Callbacks
