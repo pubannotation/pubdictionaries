@@ -410,6 +410,74 @@ RSpec.describe LoadEntriesFromFileJob, type: :job do
       end
     end
 
+    context 'CSV format support' do
+      it 'imports entries from CSV file' do
+        File.open(temp_file.path, 'w') do |f|
+          f.puts('glucose,CHEBI:17234,')
+          f.puts('fructose,CHEBI:28757,')
+          f.puts('sucrose,CHEBI:17992,')
+        end
+
+        perform_job(dictionary, temp_file.path)
+
+        expect(dictionary.entries.count).to eq(3)
+        expect(dictionary.entries.pluck(:label)).to contain_exactly('glucose', 'fructose', 'sucrose')
+        expect(dictionary.entries.pluck(:identifier)).to contain_exactly('CHEBI:17234', 'CHEBI:28757', 'CHEBI:17992')
+      end
+
+      it 'handles CSV with quoted fields containing commas' do
+        File.open(temp_file.path, 'w') do |f|
+          f.puts('"glucose, alpha-D-",CHEBI:17925,')
+          f.puts('"fructose, beta-D-",CHEBI:28757,')
+        end
+
+        perform_job(dictionary, temp_file.path)
+
+        expect(dictionary.entries.count).to eq(2)
+        expect(dictionary.entries.pluck(:label)).to contain_exactly('glucose, alpha-D-', 'fructose, beta-D-')
+      end
+
+      it 'handles CSV with tags' do
+        File.open(temp_file.path, 'w') do |f|
+          f.puts('glucose,CHEBI:17234,chemistry')
+          f.puts('fructose,CHEBI:28757,"chemistry,biology"')
+        end
+
+        perform_job(dictionary, temp_file.path)
+
+        expect(dictionary.entries.count).to eq(2)
+        glucose = dictionary.entries.find_by(label: 'glucose')
+        fructose = dictionary.entries.find_by(label: 'fructose')
+
+        expect(glucose.tags.pluck(:value)).to eq(['chemistry'])
+        expect(fructose.tags.pluck(:value)).to contain_exactly('chemistry', 'biology')
+      end
+
+      it 'handles CSV without tags column' do
+        File.open(temp_file.path, 'w') do |f|
+          f.puts('glucose,CHEBI:17234')
+          f.puts('fructose,CHEBI:28757')
+        end
+
+        perform_job(dictionary, temp_file.path)
+
+        expect(dictionary.entries.count).to eq(2)
+        expect(dictionary.entries.first.tags).to be_empty
+      end
+
+      it 'handles CSV with quoted identifiers' do
+        File.open(temp_file.path, 'w') do |f|
+          f.puts('glucose,"CHEBI:17234",')
+          f.puts('fructose,"MESH:D005947",')
+        end
+
+        perform_job(dictionary, temp_file.path)
+
+        expect(dictionary.entries.count).to eq(2)
+        expect(dictionary.entries.pluck(:identifier)).to contain_exactly('CHEBI:17234', 'MESH:D005947')
+      end
+    end
+
     context 'edge cases' do
       it 'handles empty file' do
         File.open(temp_file.path, 'w') { |f| f.write('') }

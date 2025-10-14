@@ -178,7 +178,20 @@ class Entry < ApplicationRecord
     return nil if line == ''
     return nil if line.start_with? '#'
 
-    items = line.split(/\t/)
+    # Detect format: if line contains a tab, parse as TSV; otherwise parse as CSV
+    if line.include?("\t")
+      # TSV format
+      items = line.split(/\t/)
+    else
+      # CSV format
+      begin
+        items = CSV.parse_line(line)
+        return nil if items.nil?
+      rescue CSV::MalformedCSVError
+        return nil
+      end
+    end
+
     return nil if items.size < 2
     return nil if items[0].length < 2 || items[0].length > 127
     return nil if items[0].empty? || items[1].empty?
