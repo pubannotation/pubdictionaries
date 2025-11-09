@@ -439,21 +439,21 @@ class Dictionary < ApplicationRecord
     end
   end
 
-  def self.search_term_order(dictionaries, ssdbs, threshold, ngram, semantic_threshold, term, tags, norm1 = nil, norm2 = nil)
+  def self.search_term_order(dictionaries, ssdbs, threshold, ngram, semantic_threshold, term, tags, norm1 = nil, norm2 = nil, embedding_cache = nil)
     return [] if term.empty?
 
     entries = dictionaries.inject([]) do |sum, dic|
-      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram, semantic_threshold)
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram, semantic_threshold, embedding_cache)
     end
 
     entries.sort_by{|e| e[:score]}.reverse
   end
 
-  def self.search_term_top(dictionaries, ssdbs, threshold, ngram, semantic_threshold, term, tags, norm1 = nil, norm2 = nil)
+  def self.search_term_top(dictionaries, ssdbs, threshold, ngram, semantic_threshold, term, tags, norm1 = nil, norm2 = nil, embedding_cache = nil)
     return [] if term.empty?
 
     entries = dictionaries.inject([]) do |sum, dic|
-      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram, semantic_threshold)
+      sum + dic.search_term(ssdbs[dic.name], term, norm1, norm2, tags, threshold, ngram, semantic_threshold, embedding_cache)
     end
 
     return [] if entries.empty?
@@ -472,11 +472,15 @@ class Dictionary < ApplicationRecord
     entries.sort_by{|e| e[:score]}.reverse
   end
 
-  def search_term_semantic(term, threshold, tags)
+  def search_term_semantic(term, threshold, tags, embedding_cache = nil)
     return [] if term.empty?
 
-
-    embedding = EmbeddingServer.fetch_embedding(term)
+    # Use cached embedding if available, otherwise fetch from server
+    embedding = if embedding_cache && embedding_cache.has_key?(term)
+      embedding_cache[term]
+    else
+      EmbeddingServer.fetch_embedding(term)
+    end
     return [] unless embedding.present?
 
     # Convert embedding to safe pg_vector format
@@ -509,6 +513,7 @@ class Dictionary < ApplicationRecord
       FROM entries e
       WHERE e.dictionary_id = $2
         AND e.embedding <=> $1 <= $3
+        AND e.searchable = true
     SQL
 
     params = [embedding_vector, id, distance_threshold]
@@ -536,7 +541,72 @@ class Dictionary < ApplicationRecord
     ActiveRecord::Base.connection.exec_query(sql, "semantic_search", params)
   end
 
-  def search_term(ssdb, term, norm1, norm2, tags, threshold, ngram, semantic_threshold)
+  # Update searchable column to include only specified tags
+  # This method efficiently updates the searchable status for entries
+  # based on their tags, enabling flexible semantic search filtering.
+  #
+  # @param tag_values [Array<String>] Array of tag values to mark as searchable (e.g., ['Label', 'ExactSynonym'])
+  # @return [Hash] Statistics about the update operation
+  #
+  # Example:
+  #   dictionary.update_searchable_by_tags(['Label'])  # Only labels searchable
+  #   dictionary.update_searchable_by_tags(['Label', 'ExactSynonym'])  # Labels + ExactSynonyms searchable
+  #   dictionary.update_searchable_by_tags([])  # All entries searchable (no filtering)
+  #
+  def update_searchable_by_tags(tag_values)
+    return { error: "Dictionary has no entries" } if entries_num == 0
+
+    stats = {}
+
+    transaction do
+      # If no tags specified, make all entries searchable
+      if tag_values.empty?
+        updated = entries.where(searchable: false).update_all(searchable: true)
+        stats[:made_searchable] = updated
+        stats[:made_unsearchable] = 0
+        return stats
+      end
+
+      # First, mark all entries as non-searchable
+      updated_false = entries.where(searchable: true).update_all(searchable: false)
+      stats[:made_unsearchable] = updated_false
+
+      # Then mark entries with specified tags as searchable using efficient JOIN
+      sql = <<~SQL
+        UPDATE entries
+        SET searchable = true
+        FROM entry_tags et
+        JOIN tags t ON t.id = et.tag_id
+        WHERE et.entry_id = entries.id
+          AND entries.dictionary_id = ?
+          AND t.value IN (?)
+          AND entries.searchable = false
+      SQL
+
+      result = ActiveRecord::Base.connection.exec_update(
+        ActiveRecord::Base.send(:sanitize_sql_array, [sql, id, tag_values]),
+        "update_searchable",
+        []
+      )
+
+      stats[:made_searchable] = result
+    end
+
+    stats
+  end
+
+  # Make all entries in this dictionary searchable
+  def make_all_searchable
+    entries.update_all(searchable: true)
+  end
+
+  # Make only entries with specific tags searchable, others unsearchable
+  # This is an alias for update_searchable_by_tags for better readability
+  def set_searchable_tags(tag_values)
+    update_searchable_by_tags(tag_values)
+  end
+
+  def search_term(ssdb, term, norm1, norm2, tags, threshold, ngram, semantic_threshold, embedding_cache = nil)
     return [] if term.empty? || entries_num == 0
 
     threshold ||= self.threshold
@@ -612,7 +682,7 @@ class Dictionary < ApplicationRecord
 
     # Add semantic search results
     if semantic_threshold.present? && semantic_threshold > 0
-      semantic_results = search_term_semantic(term, semantic_threshold, tags)
+      semantic_results = search_term_semantic(term, semantic_threshold, tags, embedding_cache)
       results.concat(semantic_results)
       results.uniq! { |r| r[:identifier] } # Remove duplicates by identifier
     end

@@ -78,6 +78,10 @@ class TextAnnotator
     @cache_access_count = 0
     @cache_access_timestamps = {}
 
+    # to cache embeddings for semantic search (separate from search results)
+    # This avoids redundant API calls for the same text spans
+    @cache_embeddings = {}
+
     @soft_match = @threshold.nil? || (@threshold < 1)
 
     @sub_string_dbs = @dictionaries.inject({}) do |h, dic|
@@ -335,6 +339,12 @@ class TextAnnotator
     sbreaks = sentence_break(text)
     add_pars_info!(tokens, text, sbreaks)
 
+    # Pre-generate embeddings for all possible spans if semantic search is enabled
+    # This batch approach is much faster than generating embeddings one-by-one
+    if @semantic_threshold.present? && @semantic_threshold > 0
+      collect_and_cache_embeddings(text, tokens, sbreaks)
+    end
+
     (0 ... tokens.length - @tokens_len_min + 1).each do |idx_token_begin|
       token_begin = tokens[idx_token_begin]
 
@@ -398,7 +408,7 @@ class TextAnnotator
           # Filter sub_string_dbs to match the filtered dictionaries
           filtered_sub_string_dbs = @sub_string_dbs.select { |name, _| dictionaries.any? { |d| d.name == name } }
 
-          entries = @search_method.call(dictionaries, filtered_sub_string_dbs, @threshold, @use_ngram_similarity, nil, span, [], norm1, norm2)
+          entries = @search_method.call(dictionaries, filtered_sub_string_dbs, @threshold, @use_ngram_similarity, @semantic_threshold, span, [], norm1, norm2, @cache_embeddings)
 
           @cache_span_search[span] = entries
           @cache_access_timestamps[span] = @cache_access_count += 1
@@ -608,6 +618,78 @@ class TextAnnotator
       '_ja'
     else
       ''
+    end
+  end
+
+  # Collect all possible spans and batch-generate embeddings
+  # This significantly improves performance by:
+  # 1. Collecting all spans first (avoiding duplicate API calls)
+  # 2. Batch-generating embeddings in one API call
+  # 3. Caching results for reuse across dictionaries
+  def collect_and_cache_embeddings(text, tokens, sbreaks)
+    spans_to_embed = []
+
+    (0 ... tokens.length - @tokens_len_min + 1).each do |idx_token_begin|
+      token_begin = tokens[idx_token_begin]
+
+      next if @no_term_words.include?(token_begin[:token])
+      next if @no_begin_words.include?(token_begin[:token])
+
+      (@tokens_len_min .. @tokens_len_max).each do |tlen|
+        break if idx_token_begin + tlen > tokens.length
+
+        idx_token_final = idx_token_begin + tlen - 1
+        token_end = tokens[idx_token_final]
+        break if cross_sentence?(sbreaks, token_begin[:start_offset], token_end[:end_offset])
+        break if @no_term_words.include?(token_end[:token])
+        next if @no_end_words.include?(token_end[:token])
+
+        # Calculate span boundaries
+        span_begin = token_begin[:start_offset]
+        span_end   = token_end[:end_offset]
+
+        case token_begin[:pars_level] - token_end[:pars_level]
+        when 0
+        when -1
+          if token_end[:pars_close_p]
+            span_end += 1
+          else
+            next
+          end
+        when 1
+          if token_begin[:pars_open_p]
+            span_begin -= 1
+          else
+            break
+          end
+        else
+          next
+        end
+
+        span = text[span_begin...span_end]
+
+        # Only collect spans we haven't cached yet
+        unless @cache_embeddings.has_key?(span)
+          spans_to_embed << span
+        end
+      end
+    end
+
+    # Batch generate embeddings for all unique spans
+    if spans_to_embed.any?
+      unique_spans = spans_to_embed.uniq
+      Rails.logger.debug "Batch generating embeddings for #{unique_spans.size} unique spans"
+
+      begin
+        embeddings = EmbeddingServer.fetch_embeddings(unique_spans)
+        unique_spans.each_with_index do |span, idx|
+          @cache_embeddings[span] = embeddings[idx]
+        end
+        Rails.logger.debug "Successfully cached #{embeddings.size} embeddings"
+      rescue => e
+        Rails.logger.warn "Failed to batch generate embeddings: #{e.message}"
+        # Don't fail the entire annotation, just proceed without semantic search
+      end
     end
   end
 

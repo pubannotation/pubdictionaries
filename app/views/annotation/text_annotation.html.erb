@@ -12,7 +12,7 @@
 		<div class="center-align">
 			<%= render 'options_term_limit' %>
 			<%= render 'lookup/options_surface_similarity' %>
-			<%#= render 'lookup/options_semantic_similarity' %>
+			<%= render 'lookup/options_semantic_similarity' %>
 			<%= render 'options_search' %>
 			<%= render 'lookup/options_output' %>
 		</div>
@@ -201,6 +201,14 @@
 		set_url();
 	});
 
+	$("#use_semantic_similarity").change(function() {
+		set_url();
+	});
+
+	$('#semantic_threshold').change(function() {
+		set_url();
+	});
+
 	$("#abbreviation").change(function() {
 		set_url();
 	});
@@ -251,6 +259,13 @@
 		var threshold = $('#threshold').val();
 		if (threshold != '') {
 			var param = 'threshold=' + threshold;
+			params.push(param);
+		}
+
+		var use_semantic_similarity = $('#use_semantic_similarity').is(':checked');
+		var semantic_threshold = $('#semantic_threshold').val();
+		if (use_semantic_similarity && semantic_threshold) {
+			var param = 'semantic_threshold=' + semantic_threshold;
 			params.push(param);
 		}
 
