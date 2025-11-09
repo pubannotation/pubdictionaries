@@ -11,13 +11,21 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 	BATCH_SIZE = 50 # Optimal batch size for embedding API calls
 
-	def perform(dictionary)
+	def perform(dictionary, clean_embeddings: true, clean_two_stage: false,
+	            global_distance_threshold: 0.75, local_z_threshold: 2.0,
+	            min_cluster_size: 3, origin_terms: ['DNA', 'protein'])
 		@dictionary = dictionary
 		@total_entries = dictionary.entries.count
 		@count_completed = 0
 		@count_failed = 0
 		@failed_entries = []
 		@batch_count = 0
+		@clean_embeddings = clean_embeddings
+		@clean_two_stage = clean_two_stage
+		@global_distance_threshold = global_distance_threshold
+		@local_z_threshold = local_z_threshold
+		@min_cluster_size = min_cluster_size
+		@origin_terms = origin_terms
 
 		return if @total_entries.zero?
 
@@ -33,6 +41,16 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 		# Final logging
 		Rails.logger.info "Embedding update completed: #{@count_completed} succeeded, #{@count_failed} failed"
+
+		# Clean embeddings after successful update
+		@cleanup_stats = nil
+		if @clean_embeddings && @count_completed > 0
+			Rails.logger.info "Starting post-update embedding cleanup..."
+			@cleanup_stats = perform_embedding_cleanup
+		end
+
+		# Generate and log summary report
+		generate_summary_report
 
 	rescue StandardError => e
 		# Explicitly handle errors to ensure job record is updated
@@ -75,6 +93,199 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 	end
 
 	private
+
+	def perform_embedding_cleanup
+		begin
+			# Reset all searchable flags before cleaning
+			Rails.logger.info "Resetting searchable flags for all entries..."
+			@dictionary.entries.where.not(embedding: nil).update_all(searchable: true)
+
+			# Initialize analyzer
+			analyzer = DictionaryEmbeddingAnalyzer.new(@dictionary.name)
+
+			# Perform cleaning
+			if @clean_two_stage
+				Rails.logger.info "Performing two-stage cleaning (global + local outliers)..."
+				stats = analyzer.clean_dictionary_two_stage(
+					origin_terms: @origin_terms,
+					global_distance_threshold: @global_distance_threshold,
+					local_z_threshold: @local_z_threshold,
+					min_cluster_size: @min_cluster_size,
+					dry_run: false
+				)
+
+				Rails.logger.info "Two-stage cleaning completed:"
+				Rails.logger.info "  Stage 1 (global): #{stats[:stage1_global][:outliers_found]} outliers"
+				Rails.logger.info "  Stage 2 (local): #{stats[:stage2_local][:outliers_found]} outliers"
+				Rails.logger.info "  Total marked non-searchable: #{stats[:marked_unsearchable]}"
+			else
+				Rails.logger.info "Performing single-stage cleaning (global outliers only)..."
+				stats = analyzer.clean_by_origin_proximity(
+					origin_terms: @origin_terms,
+					distance_threshold: @global_distance_threshold,
+					dry_run: false
+				)
+
+				Rails.logger.info "Single-stage cleaning completed:"
+				Rails.logger.info "  Outliers found: #{stats[:outliers_found]}"
+				Rails.logger.info "  Marked non-searchable: #{stats[:marked_unsearchable]}"
+			end
+
+			# Return stats for summary report
+			stats
+
+		rescue => e
+			Rails.logger.error "Embedding cleanup failed: #{e.message}"
+			Rails.logger.error e.backtrace.join("\n")
+			# Return error info
+			{ error: e.message }
+		end
+	end
+
+	def generate_summary_report
+		# Calculate final statistics
+		total_with_embeddings = @dictionary.entries.where.not(embedding: nil).count
+		total_searchable = @dictionary.entries.where(searchable: true).where.not(embedding: nil).count
+		total_non_searchable = total_with_embeddings - total_searchable
+
+		# Build summary
+		summary = {
+			dictionary: @dictionary.name,
+			total_entries: @total_entries,
+			embedding_update: {
+				completed: @count_completed,
+				failed: @count_failed,
+				success_rate: @total_entries > 0 ? (@count_completed.to_f / @total_entries * 100).round(2) : 0
+			},
+			embedding_status: {
+				total_with_embeddings: total_with_embeddings,
+				searchable: total_searchable,
+				non_searchable: total_non_searchable,
+				searchable_percentage: total_with_embeddings > 0 ? (total_searchable.to_f / total_with_embeddings * 100).round(2) : 0
+			}
+		}
+
+		# Add cleaning summary if performed
+		if @clean_embeddings
+			if @cleanup_stats && !@cleanup_stats[:error]
+				if @clean_two_stage
+					summary[:cleaning] = {
+						enabled: true,
+						mode: 'two-stage',
+						stage1_global: {
+							outliers_found: @cleanup_stats[:stage1_global][:outliers_found],
+							distribution: @cleanup_stats[:stage1_global][:distribution]
+						},
+						stage2_local: {
+							outliers_found: @cleanup_stats[:stage2_local][:outliers_found],
+							z_threshold: @cleanup_stats[:stage2_local][:z_threshold],
+							min_cluster_size: @cleanup_stats[:stage2_local][:min_cluster_size]
+						},
+						total_outliers: @cleanup_stats[:total_outliers],
+						marked_non_searchable: @cleanup_stats[:marked_unsearchable],
+						parameters: {
+							global_threshold: @global_distance_threshold,
+							local_z_threshold: @local_z_threshold,
+							min_cluster_size: @min_cluster_size,
+							origin_terms: @origin_terms
+						}
+					}
+				else
+					summary[:cleaning] = {
+						enabled: true,
+						mode: 'single-stage',
+						outliers_found: @cleanup_stats[:outliers_found],
+						distribution: @cleanup_stats[:distribution],
+						marked_non_searchable: @cleanup_stats[:marked_unsearchable],
+						parameters: {
+							global_threshold: @global_distance_threshold,
+							origin_terms: @origin_terms
+						}
+					}
+				end
+			elsif @cleanup_stats && @cleanup_stats[:error]
+				summary[:cleaning] = {
+					enabled: true,
+					error: @cleanup_stats[:error]
+				}
+			end
+		else
+			summary[:cleaning] = { enabled: false }
+		end
+
+		# Store summary in job metadata
+		@job&.update(metadata: (@job.metadata || {}).merge(summary: summary))
+
+		# Log formatted summary
+		log_summary(summary)
+
+		summary
+	end
+
+	def log_summary(summary)
+		Rails.logger.info ""
+		Rails.logger.info "=" * 80
+		Rails.logger.info "EMBEDDING UPDATE JOB SUMMARY"
+		Rails.logger.info "=" * 80
+		Rails.logger.info ""
+		Rails.logger.info "Dictionary: #{summary[:dictionary]}"
+		Rails.logger.info "Total entries: #{summary[:total_entries]}"
+		Rails.logger.info ""
+		Rails.logger.info "Embedding Update:"
+		Rails.logger.info "  Completed: #{summary[:embedding_update][:completed]}"
+		Rails.logger.info "  Failed: #{summary[:embedding_update][:failed]}"
+		Rails.logger.info "  Success rate: #{summary[:embedding_update][:success_rate]}%"
+		Rails.logger.info ""
+		Rails.logger.info "Embedding Status:"
+		Rails.logger.info "  Total with embeddings: #{summary[:embedding_status][:total_with_embeddings]}"
+		Rails.logger.info "  Searchable: #{summary[:embedding_status][:searchable]}"
+		Rails.logger.info "  Non-searchable: #{summary[:embedding_status][:non_searchable]}"
+		Rails.logger.info "  Searchable percentage: #{summary[:embedding_status][:searchable_percentage]}%"
+		Rails.logger.info ""
+
+		if summary[:cleaning][:enabled]
+			if summary[:cleaning][:error]
+				Rails.logger.info "Cleaning: FAILED"
+				Rails.logger.info "  Error: #{summary[:cleaning][:error]}"
+			else
+				Rails.logger.info "Cleaning: #{summary[:cleaning][:mode].upcase}"
+
+				if summary[:cleaning][:mode] == 'two-stage'
+					Rails.logger.info "  Stage 1 (Global):"
+					Rails.logger.info "    Outliers found: #{summary[:cleaning][:stage1_global][:outliers_found]}"
+					summary[:cleaning][:stage1_global][:distribution]&.each do |origin, count|
+						Rails.logger.info "      #{origin}: #{count}"
+					end
+					Rails.logger.info "  Stage 2 (Local):"
+					Rails.logger.info "    Outliers found: #{summary[:cleaning][:stage2_local][:outliers_found]}"
+					Rails.logger.info "    Z-threshold: #{summary[:cleaning][:stage2_local][:z_threshold]}"
+					Rails.logger.info "    Min cluster size: #{summary[:cleaning][:stage2_local][:min_cluster_size]}"
+					Rails.logger.info "  Total outliers: #{summary[:cleaning][:total_outliers]}"
+					Rails.logger.info "  Marked non-searchable: #{summary[:cleaning][:marked_non_searchable]}"
+				else
+					Rails.logger.info "  Outliers found: #{summary[:cleaning][:outliers_found]}"
+					summary[:cleaning][:distribution]&.each do |origin, count|
+						Rails.logger.info "    #{origin}: #{count}"
+					end
+					Rails.logger.info "  Marked non-searchable: #{summary[:cleaning][:marked_non_searchable]}"
+				end
+
+				Rails.logger.info "  Parameters:"
+				Rails.logger.info "    Global threshold: #{summary[:cleaning][:parameters][:global_threshold]}"
+				Rails.logger.info "    Origin terms: #{summary[:cleaning][:parameters][:origin_terms].join(', ')}"
+				if summary[:cleaning][:mode] == 'two-stage'
+					Rails.logger.info "    Local z-threshold: #{summary[:cleaning][:parameters][:local_z_threshold]}"
+					Rails.logger.info "    Min cluster size: #{summary[:cleaning][:parameters][:min_cluster_size]}"
+				end
+			end
+		else
+			Rails.logger.info "Cleaning: DISABLED"
+		end
+
+		Rails.logger.info ""
+		Rails.logger.info "=" * 80
+		Rails.logger.info ""
+	end
 
 	def process_batch(batch)
 		begin

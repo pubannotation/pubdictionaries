@@ -1,5 +1,5 @@
 <fieldset class="dialog">
-	<legend>Update Embeddings</legend>
+	<legend>Update Embedding</legend>
 
 	<% if @dictionary.embeddings_populated? %>
 		<p class="note">Semantic search ready.</p>
@@ -8,16 +8,74 @@
 	<% end %>
 
 	<p class="note">
-		Update the embedding of the entries.
+		Update the embedding of the entries using PubMedBERT.
+		Optionally clean outliers after updating.
 	</p>
 
 	<% if current_user&.admin? %>
-		<%= link_to(
-			'Update Embedding',
-			update_embeddings_dictionary_path(@dictionary.name),
-			method: :post,
-			class: "button"
-		) %>
+		<%= form_tag update_embeddings_dictionary_path(@dictionary.name), method: :post, id: "update_embeddings_form" do %>
+			<div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">
+				<div style="margin-bottom: 12px;">
+					<label style="display: inline-block; font-weight: bold;">
+						<%= check_box_tag 'clean_embeddings', '1', true, onchange: "document.getElementById('clean_options').style.display = this.checked ? 'block' : 'none';" %>
+						Clean outliers after update
+					</label>
+				</div>
+
+				<div id="clean_options" style="margin-left: 20px;">
+					<!-- Global Outlier Cleaning Section -->
+					<div style="margin-bottom: 15px; padding: 10px; border: 1px solid #007bff; border-radius: 4px; background-color: #f0f8ff;">
+						<div style="margin-bottom: 10px;">
+							<strong style="color: #007bff;">1. Global Outlier Cleaning</strong>
+							<p class="note" style="margin: 5px 0; font-size: 0.9em;">
+								Removes entries close to PubMedBERT semantic origin (molecular biology terms, ambiguous acronyms)
+							</p>
+						</div>
+
+						<div style="margin-bottom: 8px; margin-left: 10px;">
+							<label style="display: inline-block; width: 180px;">Distance threshold:</label>
+							<%= text_field_tag 'global_distance_threshold', '0.75', size: 8, style: "width: 80px;" %>
+							<span class="note" style="font-size: 0.9em;">Default: 0.75 (range: 0.6-0.8, lower = more strict)</span>
+						</div>
+
+						<div style="margin-bottom: 8px; margin-left: 10px;">
+							<label style="display: inline-block; width: 180px;">Origin terms:</label>
+							<%= text_field_tag 'origin_terms', 'DNA,protein', size: 30, style: "width: 200px;" %>
+							<span class="note" style="font-size: 0.9em;">Comma-separated (e.g., DNA,protein,cell)</span>
+						</div>
+					</div>
+
+					<!-- Local Outlier Cleaning Section -->
+					<div style="margin-bottom: 10px; padding: 10px; border: 1px solid #28a745; border-radius: 4px; background-color: #f0fff0;">
+						<div style="margin-bottom: 10px;">
+							<label style="font-weight: bold; color: #28a745;">
+								<%= check_box_tag 'clean_two_stage', '1', false, onchange: "document.getElementById('local_options').style.display = this.checked ? 'block' : 'none';" %>
+								2. Local Outlier Cleaning (optional)
+							</label>
+							<p class="note" style="margin: 5px 0; font-size: 0.9em;">
+								Additionally removes entries distant from their identifier cluster (synonym assignment errors, typos)
+							</p>
+						</div>
+
+						<div id="local_options" style="display: none; margin-left: 10px;">
+							<div style="margin-bottom: 8px;">
+								<label style="display: inline-block; width: 180px;">Z-score threshold:</label>
+								<%= text_field_tag 'local_z_threshold', '2.0', size: 8, style: "width: 80px;" %>
+								<span class="note" style="font-size: 0.9em;">Default: 2.0 (range: 1.5-2.5, higher = more strict)</span>
+							</div>
+
+							<div style="margin-bottom: 8px;">
+								<label style="display: inline-block; width: 180px;">Min cluster size:</label>
+								<%= text_field_tag 'min_cluster_size', '3', size: 8, style: "width: 80px;" %>
+								<span class="note" style="font-size: 0.9em;">Default: 3 (minimum entries per identifier)</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<%= submit_tag 'Update Embedding', class: "button", style: "margin-top: 10px;" %>
+		<% end %>
 	<% else %>
 		<%= content_tag :span, 'Update Embedding', class: "button disabled", title: "It is an experimental feature. Consult the admin to try it." %>
 	<% end %>

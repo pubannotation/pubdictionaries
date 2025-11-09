@@ -362,7 +362,28 @@ class DictionariesController < ApplicationController
       dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
-      active_job = UpdateDictionaryEmbeddingsJob.perform_later(dictionary)
+      # Parse cleaning parameters
+      clean_embeddings = params[:clean_embeddings] == '1'
+      clean_two_stage = params[:clean_two_stage] == '1'
+      global_distance_threshold = params[:global_distance_threshold].to_f
+      local_z_threshold = params[:local_z_threshold].to_f
+      min_cluster_size = params[:min_cluster_size].to_i
+      origin_terms = params[:origin_terms]&.split(',')&.map(&:strip) || ['DNA', 'protein']
+
+      # Validate parameters
+      global_distance_threshold = 0.75 if global_distance_threshold <= 0 || global_distance_threshold > 2
+      local_z_threshold = 2.0 if local_z_threshold <= 0 || local_z_threshold > 10
+      min_cluster_size = 3 if min_cluster_size < 2
+
+      active_job = UpdateDictionaryEmbeddingsJob.perform_later(
+        dictionary,
+        clean_embeddings: clean_embeddings,
+        clean_two_stage: clean_two_stage,
+        global_distance_threshold: global_distance_threshold,
+        local_z_threshold: local_z_threshold,
+        min_cluster_size: min_cluster_size,
+        origin_terms: origin_terms
+      )
       active_job.create_job_record("Update Dictionary With Embeddings")
 
       respond_to do |format|
