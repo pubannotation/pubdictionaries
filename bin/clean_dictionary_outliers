@@ -1,0 +1,226 @@
+#!/usr/bin/env ruby
+# Script to clean dictionary by removing origin-proximity outliers from semantic search
+# Usage: bin/clean_dictionary_outliers <dictionary_name> [--threshold=0.75] [--execute]
+
+require_relative '../config/environment'
+
+def print_usage
+  puts "Usage: bin/clean_dictionary_outliers <dictionary_name> [options]"
+  puts
+  puts "Options:"
+  puts "  --threshold=FLOAT       Distance threshold for global outlier detection (default: 0.75)"
+  puts "  --origins=DNA,protein   Origin terms to use (default: DNA,protein)"
+  puts "  --two-stage             Enable two-stage cleaning (global + local outliers)"
+  puts "  --local-z=FLOAT         Z-score threshold for local outliers (default: 2.0)"
+  puts "  --min-cluster=INT       Minimum cluster size for local detection (default: 3)"
+  puts "  --execute               Actually perform cleaning (default: dry-run)"
+  puts
+  puts "Examples:"
+  puts "  # Single-stage (global outliers only)"
+  puts "  bin/clean_dictionary_outliers mondo"
+  puts "  bin/clean_dictionary_outliers mondo --threshold=0.70 --execute"
+  puts
+  puts "  # Two-stage (global + local outliers)"
+  puts "  bin/clean_dictionary_outliers mondo --two-stage"
+  puts "  bin/clean_dictionary_outliers mondo --two-stage --local-z=2.5 --execute"
+  puts "  bin/clean_dictionary_outliers mondo --two-stage --threshold=0.70 --local-z=2.0 --execute"
+end
+
+# Parse arguments
+if ARGV.empty? || ARGV.include?('--help') || ARGV.include?('-h')
+  print_usage
+  exit(0)
+end
+
+dictionary_name = ARGV[0]
+threshold = 0.75
+origin_terms = ['DNA', 'protein']
+two_stage = false
+local_z = 2.0
+min_cluster = 3
+execute = false
+
+ARGV[1..].each do |arg|
+  if arg.start_with?('--threshold=')
+    threshold = arg.split('=')[1].to_f
+  elsif arg.start_with?('--origins=')
+    origin_terms = arg.split('=')[1].split(',')
+  elsif arg == '--two-stage'
+    two_stage = true
+  elsif arg.start_with?('--local-z=')
+    local_z = arg.split('=')[1].to_f
+  elsif arg.start_with?('--min-cluster=')
+    min_cluster = arg.split('=')[1].to_i
+  elsif arg == '--execute'
+    execute = true
+  end
+end
+
+puts "=" * 100
+puts "DICTIONARY OUTLIER CLEANING"
+puts "=" * 100
+puts
+puts "Dictionary: #{dictionary_name}"
+puts "Mode: #{two_stage ? 'TWO-STAGE' : 'SINGLE-STAGE (global only)'}"
+puts "Origin terms: #{origin_terms.join(', ')}"
+puts "Global distance threshold: #{threshold}"
+if two_stage
+  puts "Local z-score threshold: #{local_z}"
+  puts "Minimum cluster size: #{min_cluster}"
+end
+puts "Execution mode: #{execute ? 'EXECUTE' : 'DRY RUN'}"
+puts
+puts "=" * 100
+puts
+
+begin
+  analyzer = DictionaryEmbeddingAnalyzer.new(dictionary_name)
+
+  # Run cleaning (single-stage or two-stage)
+  if two_stage
+    stats = analyzer.clean_dictionary_two_stage(
+      origin_terms: origin_terms,
+      global_distance_threshold: threshold,
+      local_z_threshold: local_z,
+      min_cluster_size: min_cluster,
+      dry_run: !execute
+    )
+  else
+    stats = analyzer.clean_by_origin_proximity(
+      origin_terms: origin_terms,
+      distance_threshold: threshold,
+      dry_run: !execute
+    )
+  end
+
+  if stats[:error]
+    puts "ERROR: #{stats[:error]}"
+    exit(1)
+  end
+
+  # Display results
+  puts
+  puts "RESULTS:"
+  puts "-" * 100
+
+  if two_stage
+    # Two-stage results
+    puts "Stage 1 - Global Outliers (close to PubMedBERT origin):"
+    puts "  Found: #{stats[:stage1_global][:outliers_found]}"
+    if stats[:stage1_global][:distribution]
+      stats[:stage1_global][:distribution].each do |origin, count|
+        puts "    #{origin}: #{count}"
+      end
+    end
+
+    puts
+    puts "Stage 2 - Local Outliers (distant from identifier cluster):"
+    puts "  Found: #{stats[:stage2_local][:outliers_found]}"
+    puts "  Z-score threshold: #{stats[:stage2_local][:z_threshold]}"
+    puts "  Min cluster size: #{stats[:stage2_local][:min_cluster_size]}"
+
+    puts
+    puts "Combined Total: #{stats[:total_outliers]} outliers"
+
+    if execute
+      puts
+      puts "✓ Two-stage cleaning executed:"
+      puts "  Marked as non-searchable: #{stats[:marked_unsearchable]}"
+      puts "  Already non-searchable: #{stats[:already_unsearchable]}"
+      puts "  Remaining searchable entries: #{stats[:remaining_searchable]}"
+    else
+      puts
+      puts "DRY RUN - No changes made:"
+      puts "  Would mark as non-searchable: #{stats[:would_mark_unsearchable]}"
+      puts "  Already non-searchable: #{stats[:already_unsearchable]}"
+
+      puts
+      puts "Sample Stage 1 outliers (top 10):"
+      puts "-" * 100
+      stats[:stage1_global][:sample_outliers]&.each_with_index do |outlier, idx|
+        marker = outlier[:closest_origin] == 'DNA' ? '[DNA]' : '[PRO]'
+        puts "#{(idx+1).to_s.rjust(3)}. #{marker} #{outlier[:label]}"
+        puts "     [#{outlier[:identifier]}] Distance: #{outlier[:distance]}"
+      end
+
+      puts
+      puts "Sample Stage 2 outliers (top 10):"
+      puts "-" * 100
+      stats[:stage2_local][:sample_outliers]&.each_with_index do |outlier, idx|
+        puts "#{(idx+1).to_s.rjust(3)}. #{outlier[:label]}"
+        puts "     [#{outlier[:identifier]}] Z-score: #{outlier[:z_score]}"
+      end
+    end
+  else
+    # Single-stage results
+    puts "Total entries: #{stats[:total_entries]}"
+    puts "Outliers found: #{stats[:outliers_found]} (#{(stats[:outliers_found].to_f / stats[:total_entries] * 100).round(2)}%)"
+    puts
+
+    puts "Distribution by origin:"
+    stats[:distribution].each do |origin, count|
+      percentage = (count.to_f / stats[:outliers_found] * 100).round(1)
+      puts "  #{origin.ljust(15)}: #{count} (#{percentage}%)"
+    end
+    puts
+
+    if execute
+      puts "✓ Cleaning executed:"
+      puts "  Marked as non-searchable: #{stats[:marked_unsearchable]}"
+      puts "  Already non-searchable: #{stats[:already_unsearchable]}"
+      puts "  Remaining searchable entries: #{stats[:remaining_searchable]}"
+      puts
+      puts "✓ Semantic search quality improved!"
+      puts "  - Molecular biology terms (DNA, protein) excluded from semantic search"
+      puts "  - Ambiguous acronyms removed from semantic matching"
+      puts "  - Surface similarity search unaffected"
+    else
+      puts "DRY RUN - No changes made:"
+      puts "  Would mark as non-searchable: #{stats[:would_mark_unsearchable]}"
+      puts "  Already non-searchable: #{stats[:already_unsearchable]}"
+      puts
+
+      if stats[:sample_outliers]
+        puts "Sample outliers (top 20):"
+        puts "-" * 100
+        stats[:sample_outliers].each_with_index do |outlier, idx|
+          marker = outlier[:closest_origin] == 'DNA' ? '[DNA]' : '[PRO]'
+          puts "#{(idx+1).to_s.rjust(3)}. #{marker} #{outlier[:label]}"
+          puts "     [#{outlier[:identifier]}] Distance: #{outlier[:min_distance]}"
+        end
+        puts
+      end
+    end
+  end
+
+  unless execute
+    puts
+    cmd = "bin/clean_dictionary_outliers #{dictionary_name}"
+    cmd += " --two-stage" if two_stage
+    cmd += " --threshold=#{threshold}"
+    cmd += " --local-z=#{local_z}" if two_stage
+    cmd += " --execute"
+
+    puts "To execute cleaning, run with --execute flag:"
+    puts "  #{cmd}"
+  end
+
+  puts
+  puts "=" * 100
+
+  # Reversal instructions
+  if execute
+    puts
+    puts "To reverse this operation (make all entries searchable again):"
+    puts "  Entry.where(dictionary: Dictionary.find_by(name: '#{dictionary_name}')).update_all(searchable: true)"
+    puts
+  end
+
+rescue ArgumentError => e
+  puts "ERROR: #{e.message}"
+  exit(1)
+rescue => e
+  puts "ERROR: #{e.class} - #{e.message}"
+  puts e.backtrace.first(5).join("\n")
+  exit(1)
+end
