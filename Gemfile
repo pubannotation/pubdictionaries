@@ -14,6 +14,7 @@ gem 'recaptcha'
 gem "omniauth-rails_csrf_protection"
 gem 'omniauth-google-oauth2'
 gem 'net-http-persistent'
+gem 'connection_pool'
 gem 'ruby-stemmer'
 gem 'validate_url'
 gem 'daemons'

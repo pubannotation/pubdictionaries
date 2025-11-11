@@ -2,6 +2,7 @@
 using StringScanOffset
 
 require 'simstring'
+require_relative '../lib/lru_cache'
 
 # Provide functionalities for text annotation.
 class TextAnnotator
@@ -71,12 +72,10 @@ class TextAnnotator
     @tokenizer_post = Net::HTTP::Post.new @tokenizer_url.request_uri
     @tokenizer_post['content-type'] = 'application/json'
 
-    # to cache the results of span search
+    # Use optimized LRU cache for span search results
+    # Provides O(1) access and eviction instead of O(n)
     # [] means the search result was empty
-    # nil means there is no cache for the span
-    @cache_span_search = {}
-    @cache_access_count = 0
-    @cache_access_timestamps = {}
+    @cache_span_search = LruCache.new(MAX_CACHE_SIZE)
 
     # to cache embeddings for semantic search (separate from search results)
     # This avoids redundant API calls for the same text spans
@@ -114,9 +113,8 @@ class TextAnnotator
       anns.delete(:modifications)
     end
 
+    # Clear LRU cache between batches
     @cache_span_search.clear
-    @cache_access_timestamps.clear
-    @cache_access_count = 0
 
     # To remove redundant denotations
     anns_col.each do |anns|
@@ -394,13 +392,8 @@ class TextAnnotator
 
         ## A rough checking for early break was attempted here but abandoned because it turned out the overhead was too big
 
-        # to find terms
-        entries = @cache_span_search[span]
-
-        # Update access timestamp for LRU
-        if entries
-          @cache_access_timestamps[span] = @cache_access_count += 1
-        end
+        # to find terms - use optimized LRU cache with O(1) access
+        entries = @cache_span_search.get(span)
 
         if entries.nil?
           norm1 = norm1s[idx_token_begin, tlen].join
@@ -410,15 +403,8 @@ class TextAnnotator
 
           entries = @search_method.call(dictionaries, filtered_sub_string_dbs, @threshold, @use_ngram_similarity, @semantic_threshold, span, [], norm1, norm2, @cache_embeddings)
 
-          @cache_span_search[span] = entries
-          @cache_access_timestamps[span] = @cache_access_count += 1
-
-          # Implement LRU cache cleanup when size exceeds limit
-          if @cache_span_search.size > MAX_CACHE_SIZE
-            oldest_span = @cache_access_timestamps.min_by { |_, timestamp| timestamp }[0]
-            @cache_span_search.delete(oldest_span)
-            @cache_access_timestamps.delete(oldest_span)
-          end
+          # Cache result (LRU cache automatically handles eviction)
+          @cache_span_search.put(span, entries)
         end
 
         entries.each do |entry|
