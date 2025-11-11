@@ -3,7 +3,8 @@ module ParameterParsing
 
   private
 
-  def to_boolean(value)
+  def to_boolean(value, default: nil)
+    return default if value.nil?
     value == 'true' || value == '1'
   end
 

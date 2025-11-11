@@ -38,6 +38,11 @@ document.addEventListener('DOMContentLoaded', function() {
 			textField.disabled = true;
 			textField.value = '';
 		}
+
+		// Trigger URL update after toggling
+		if (typeof set_url === 'function') {
+			set_url();
+		}
 	}
 
 	// Set initial state

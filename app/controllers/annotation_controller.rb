@@ -285,12 +285,13 @@ class AnnotationController < ApplicationController
     permitted[:threshold] = to_float(permitted[:threshold])
     permitted[:semantic_threshold] = to_float(permitted[:semantic_threshold])
 
-    permitted[:longest] = to_boolean(permitted[:longest])
-    permitted[:superfluous] = to_boolean(permitted[:superfluous])
-    permitted[:verbose] = to_boolean(permitted[:verbose])
-    permitted[:no_text] = to_boolean(permitted[:no_text])
-    permitted[:abbreviation] = to_boolean(permitted[:abbreviation])
-    permitted[:use_ngram_similarity] = to_boolean(permitted[:use_ngram_similarity])
+    # Use TextAnnotator defaults when parameter is not provided
+    permitted[:longest] = to_boolean(permitted[:longest], default: TextAnnotator::OPTIONS_DEFAULT[:longest])
+    permitted[:superfluous] = to_boolean(permitted[:superfluous], default: TextAnnotator::OPTIONS_DEFAULT[:superfluous])
+    permitted[:verbose] = to_boolean(permitted[:verbose], default: TextAnnotator::OPTIONS_DEFAULT[:verbose])
+    permitted[:no_text] = to_boolean(permitted[:no_text], default: false)
+    permitted[:abbreviation] = to_boolean(permitted[:abbreviation], default: TextAnnotator::OPTIONS_DEFAULT[:abbreviation])
+    permitted[:use_ngram_similarity] = to_boolean(permitted[:use_ngram_similarity], default: TextAnnotator::OPTIONS_DEFAULT[:use_ngram_similarity])
 
     permitted[:tags] = to_array(permitted[:tags])
 
