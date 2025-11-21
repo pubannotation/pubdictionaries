@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_11_151212) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_21_080000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -81,7 +81,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_11_151212) do
     t.index ["dictionary_id", "searchable"], name: "index_entries_on_dictionary_id_and_searchable", where: "(searchable = true)"
     t.index ["dictionary_id"], name: "index_entries_on_dictionary_id"
     t.index ["dirty"], name: "index_entries_on_dirty"
-    t.index ["embedding"], name: "index_entries_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["embedding"], name: "index_entries_on_embedding_searchable", opclass: :vector_cosine_ops, where: "((searchable = true) AND (embedding IS NOT NULL))", using: :hnsw, comment: "Partial HNSW index for semantic search - only indexes searchable entries with embeddings"
     t.index ["identifier"], name: "index_entries_on_identifier"
     t.index ["label"], name: "index_entries_on_label"
     t.index ["label_length"], name: "index_entries_on_label_length"
