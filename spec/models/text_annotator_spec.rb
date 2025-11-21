@@ -431,6 +431,99 @@ RSpec.describe TextAnnotator, type: :model do
     end
   end
 
+  describe 'string similarity early-exit optimization' do
+    let(:annotator) { TextAnnotator.new([dictionary], { threshold: 0.85 }) }
+
+    it 'assigns score 1.0 when norm2 matches exactly' do
+      # Create a span_index with a span whose norm2 matches an entry exactly
+      span_index = {
+        'Fever' => {
+          span_begin: 0,
+          span_end: 5,
+          idx_token_begin: 0,
+          idx_token_final: 0,
+          norm1: 'fever',
+          norm2: 'fever',  # Matches entry's norm2 exactly
+          entries: []
+        }
+      }
+
+      # Get filtered sub_string_dbs (matching the annotator's internal structure)
+      filtered_sub_string_dbs = annotator.instance_variable_get(:@sub_string_dbs)
+
+      results = annotator.send(:batch_surface_match, span_index, [dictionary], filtered_sub_string_dbs)
+
+      # Should find the 'Fever' entry with score 1.0
+      expect(results['Fever']).not_to be_empty
+      fever_result = results['Fever'].find { |r| r[:identifier] == 'HP:0001945' }
+      expect(fever_result).not_to be_nil
+      expect(fever_result[:score]).to eq(1.0)
+    end
+
+    it 'computes string similarity when norm2 does not match exactly' do
+      # Create an entry with a different norm2
+      Entry.create!(
+        dictionary: dictionary,
+        label: 'High fever',
+        identifier: 'HP:0001234',
+        norm1: 'highfever',
+        norm2: 'highfever',
+        label_length: 10,
+        mode: EntryMode::GRAY
+      )
+
+      span_index = {
+        'high fever' => {
+          span_begin: 0,
+          span_end: 10,
+          idx_token_begin: 0,
+          idx_token_final: 1,
+          norm1: 'highfever',
+          norm2: 'high fever',  # Different from entry's norm2 'highfever'
+          entries: []
+        }
+      }
+
+      filtered_sub_string_dbs = annotator.instance_variable_get(:@sub_string_dbs)
+
+      results = annotator.send(:batch_surface_match, span_index, [dictionary], filtered_sub_string_dbs)
+
+      # The span's norm2 'high fever' won't match entry's norm2 'highfever'
+      # so no results expected from exact norm2 matching
+      # (unless SimString expands to include it, which is disabled by default)
+      expect(results['high fever']).to be_empty
+    end
+
+    it 'returns score 1.0 for all exact norm2 matches in batch' do
+      # Test that multiple spans with exact norm2 matches all get score 1.0
+      span_index = {
+        'Fever' => {
+          span_begin: 0, span_end: 5,
+          idx_token_begin: 0, idx_token_final: 0,
+          norm1: 'fever', norm2: 'fever',
+          entries: []
+        },
+        'Headache' => {
+          span_begin: 10, span_end: 18,
+          idx_token_begin: 2, idx_token_final: 2,
+          norm1: 'headache', norm2: 'headache',
+          entries: []
+        }
+      }
+
+      filtered_sub_string_dbs = annotator.instance_variable_get(:@sub_string_dbs)
+
+      results = annotator.send(:batch_surface_match, span_index, [dictionary], filtered_sub_string_dbs)
+
+      # Both should have score 1.0
+      fever_result = results['Fever'].find { |r| r[:identifier] == 'HP:0001945' }
+      headache_result = results['Headache'].find { |r| r[:identifier] == 'HP:0002315' }
+
+      expect(fever_result[:score]).to eq(1.0)
+      expect(headache_result[:score]).to eq(1.0)
+    end
+  end
+
   describe 'parallel embedding fetching' do
     let(:annotator) { TextAnnotator.new([dictionary], { semantic_threshold: 0.6 }) }
 

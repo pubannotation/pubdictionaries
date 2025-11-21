@@ -854,7 +854,12 @@ class TextAnnotator
                 span = span_info[:span]
                 info = span_info[:info]
 
-                score = str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
+                # Early exit: if norm2 matches exactly, score is 1.0 (skip expensive str_sim calculation)
+                score = if info[:norm2] == entry_hash[:norm2]
+                  1.0
+                else
+                  str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
+                end
                 if score >= threshold
                   results[span] << entry_hash.merge(score: score, dictionary: dictionary.name)
                 end
@@ -880,7 +885,12 @@ class TextAnnotator
                   span = span_info[:span]
                   info = span_info[:info]
 
-                  score = str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
+                  # Early exit: if norm2 matches exactly, score is 1.0 (skip expensive str_sim calculation)
+                  score = if info[:norm2] == entry_hash[:norm2]
+                    1.0
+                  else
+                    str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
+                  end
                   if score >= threshold
                     results[span] << entry_hash.merge(score: score, dictionary: dictionary.name)
                   end
