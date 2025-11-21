@@ -6,6 +6,9 @@
 # temp tables with HNSW indexes for semantic search during text annotation.
 class DropHasHnswIndexFromDictionaries < ActiveRecord::Migration[8.0]
   def change
-    remove_column :dictionaries, :has_hnsw_index, :boolean, default: false, null: false
+    # Only remove if column exists (it may not exist in production)
+    if column_exists?(:dictionaries, :has_hnsw_index)
+      remove_column :dictionaries, :has_hnsw_index, :boolean, default: false, null: false
+    end
   end
 end
