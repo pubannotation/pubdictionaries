@@ -18,7 +18,7 @@ class TextAnnotator
     no_end_words: %w(about above across after against and along amid among around at before behind below beneath beside besides between beyond by concerning considering despite except excepting excluding for from in inside into like of off on onto regarding since through to toward towards under underneath unlike until upon versus via with within without during),
 
     tokens_len_min: 1,
-    tokens_len_max: 6,
+    tokens_len_max: 5,
     use_ngram_similarity: false,
     threshold: 0.85,
     semantic_threshold: 0.7,
