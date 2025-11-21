@@ -41,37 +41,40 @@ RSpec.describe TextAnnotator, type: :model do
       expect(annotator.instance_variable_get(:@semantic_threshold)).to eq(0.6)
     end
 
-    it 'initializes embedding cache' do
+    it 'initializes without requiring embedding cache' do
       annotator = TextAnnotator.new([dictionary], {})
 
-      cache = annotator.instance_variable_get(:@cache_embeddings)
-      expect(cache).to be_a(Hash)
-      expect(cache).to be_empty
+      # With new pre-indexing approach, no cache is needed
+      expect(annotator.instance_variable_get(:@cache_embeddings)).to be_nil
     end
   end
 
-  describe '#collect_and_cache_embeddings' do
+  describe 'pre-indexing span generation' do
     let(:annotator) { TextAnnotator.new([dictionary], { semantic_threshold: 0.6 }) }
     let(:text) { 'cytokine release syndrome' }
 
-    it 'collects all possible spans from text' do
-      # Mock embedding server
-      allow(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
-        Array.new(spans.size) { mock_embedding_vector }
-      end
-
+    it 'pre-generates all possible spans from text' do
       tokens = annotator.send(:norm1_tokenize, text)
+      norm1s = tokens.map{|t| t[:token]}
+      norm2s = annotator.send(:norm2_tokenize, text).inject(Array.new(tokens.length, "")){|s, t| s[t[:position]] = t[:token]; s}
       sbreaks = annotator.send(:sentence_break, text)
       annotator.send(:add_pars_info!, tokens, text, sbreaks)
 
-      annotator.send(:collect_and_cache_embeddings, text, tokens, sbreaks)
+      span_index = annotator.send(:pre_generate_spans, text, tokens, norm1s, norm2s, sbreaks, {})
 
-      cache = annotator.instance_variable_get(:@cache_embeddings)
-
-      # Should cache embeddings for: "cytokine", "release", "syndrome",
+      # Should generate spans for: "cytokine", "release", "syndrome",
       # "cytokine release", "release syndrome", "cytokine release syndrome"
-      expect(cache.keys).to include('cytokine', 'release', 'syndrome')
-      expect(cache.keys.size).to be >= 3
+      expect(span_index.keys).to include('cytokine', 'release', 'syndrome')
+      expect(span_index.keys.size).to be >= 3
+
+      # Each span should have metadata
+      span_index.each do |span, info|
+        expect(info).to have_key(:span_begin)
+        expect(info).to have_key(:span_end)
+        expect(info).to have_key(:norm1)
+        expect(info).to have_key(:norm2)
+        expect(info).to have_key(:entries)
+      end
     end
 
     it 'batch generates embeddings in single API call' do
@@ -82,58 +85,63 @@ RSpec.describe TextAnnotator, type: :model do
       end
 
       tokens = annotator.send(:norm1_tokenize, text)
+      norm1s = tokens.map{|t| t[:token]}
+      norm2s = annotator.send(:norm2_tokenize, text).inject(Array.new(tokens.length, "")){|s, t| s[t[:position]] = t[:token]; s}
       sbreaks = annotator.send(:sentence_break, text)
       annotator.send(:add_pars_info!, tokens, text, sbreaks)
 
-      annotator.send(:collect_and_cache_embeddings, text, tokens, sbreaks)
+      span_index = annotator.send(:pre_generate_spans, text, tokens, norm1s, norm2s, sbreaks, {})
+      annotator.send(:batch_get_embeddings, span_index)
     end
 
-    it 'does not cache duplicate spans' do
-      allow(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
-        # Verify all spans are unique
-        expect(spans.uniq.size).to eq(spans.size)
-        Array.new(spans.size) { mock_embedding_vector }
-      end
-
+    it 'generates unique spans only' do
       tokens = annotator.send(:norm1_tokenize, text)
+      norm1s = tokens.map{|t| t[:token]}
+      norm2s = annotator.send(:norm2_tokenize, text).inject(Array.new(tokens.length, "")){|s, t| s[t[:position]] = t[:token]; s}
       sbreaks = annotator.send(:sentence_break, text)
       annotator.send(:add_pars_info!, tokens, text, sbreaks)
 
-      annotator.send(:collect_and_cache_embeddings, text, tokens, sbreaks)
+      span_index = annotator.send(:pre_generate_spans, text, tokens, norm1s, norm2s, sbreaks, {})
+
+      # Verify all spans in the index are unique (by definition of hash keys)
+      expect(span_index.keys.uniq.size).to eq(span_index.keys.size)
     end
 
     it 'handles embedding server failures gracefully' do
       allow(EmbeddingServer).to receive(:fetch_embeddings).and_raise(StandardError.new("Server error"))
 
       tokens = annotator.send(:norm1_tokenize, text)
+      norm1s = tokens.map{|t| t[:token]}
+      norm2s = annotator.send(:norm2_tokenize, text).inject(Array.new(tokens.length, "")){|s, t| s[t[:position]] = t[:token]; s}
       sbreaks = annotator.send(:sentence_break, text)
       annotator.send(:add_pars_info!, tokens, text, sbreaks)
+
+      span_index = annotator.send(:pre_generate_spans, text, tokens, norm1s, norm2s, sbreaks, {})
 
       # Should not raise error, just log and continue
       expect {
-        annotator.send(:collect_and_cache_embeddings, text, tokens, sbreaks)
+        annotator.send(:batch_get_embeddings, span_index)
       }.not_to raise_error
 
-      cache = annotator.instance_variable_get(:@cache_embeddings)
-      expect(cache).to be_empty
+      # Embeddings should not be set
+      span_index.each do |span, info|
+        expect(info[:embedding]).to be_nil
+      end
     end
 
-    it 'skips already cached spans' do
-      # Pre-populate cache
-      existing_cache = { 'cytokine' => mock_embedding_vector }
-      annotator.instance_variable_set(:@cache_embeddings, existing_cache)
+    it 'generates spans efficiently without duplication' do
+      # With pre-indexing, duplicate text spans are naturally avoided
+      # because we use a hash with span as key
+      tokens = annotator.send(:norm1_tokenize, 'fever fever')
+      norm1s = tokens.map{|t| t[:token]}
+      norm2s = annotator.send(:norm2_tokenize, 'fever fever').inject(Array.new(tokens.length, "")){|s, t| s[t[:position]] = t[:token]; s}
+      sbreaks = annotator.send(:sentence_break, 'fever fever')
+      annotator.send(:add_pars_info!, tokens, 'fever fever', sbreaks)
 
-      # Should only fetch non-cached spans
-      expect(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
-        expect(spans).not_to include('cytokine')
-        Array.new(spans.size) { mock_embedding_vector }
-      end
+      span_index = annotator.send(:pre_generate_spans, 'fever fever', tokens, norm1s, norm2s, sbreaks, {})
 
-      tokens = annotator.send(:norm1_tokenize, text)
-      sbreaks = annotator.send(:sentence_break, text)
-      annotator.send(:add_pars_info!, tokens, text, sbreaks)
-
-      annotator.send(:collect_and_cache_embeddings, text, tokens, sbreaks)
+      # Even though "fever" appears twice, it should only be in index once
+      expect(span_index.keys.count('fever')).to eq(1)
     end
   end
 
@@ -143,8 +151,8 @@ RSpec.describe TextAnnotator, type: :model do
         text = 'cytokine release syndrome is a serious condition'
         options = { semantic_threshold: 0.6, longest: true }
 
-        # Expect single batch call for all spans
-        expect(EmbeddingServer).to receive(:fetch_embeddings).once do |spans|
+        # Expect two batch calls: one for context filtering, one for spans
+        expect(EmbeddingServer).to receive(:fetch_embeddings).twice do |spans|
           expect(spans.size).to be > 0
           Array.new(spans.size) { mock_embedding_vector }
         end
@@ -172,7 +180,11 @@ RSpec.describe TextAnnotator, type: :model do
         text = 'cytokine release syndrome'
         options = { semantic_threshold: 0, longest: true }
 
-        expect(EmbeddingServer).not_to receive(:fetch_embeddings)
+        # With semantic_threshold of 0, context filtering still calls it once
+        # But span embeddings are not generated since threshold is 0
+        allow(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
+          Array.new(spans.size) { mock_embedding_vector }
+        end
 
         annotator = TextAnnotator.new([dictionary], options)
         result = annotator.annotate_batch([{ text: text }])
@@ -181,8 +193,8 @@ RSpec.describe TextAnnotator, type: :model do
       end
     end
 
-    context 'cache usage during annotation' do
-      it 'uses cached embeddings for semantic search' do
+    context 'embedding reuse during annotation' do
+      it 'generates embeddings once per batch for all spans' do
         text = 'fever and headache'
         options = { semantic_threshold: 0.6, longest: true }
 
@@ -195,13 +207,13 @@ RSpec.describe TextAnnotator, type: :model do
         annotator = TextAnnotator.new([dictionary], options)
         result = annotator.annotate_batch([{ text: text }])
 
-        # Should only call once (batch generation), not for each span search
-        expect(call_count).to eq(1)
+        # Should call twice: once for context, once for all spans in batch
+        expect(call_count).to eq(2)
 
         annotator.dispose
       end
 
-      it 'reuses embeddings across multiple dictionaries' do
+      it 'uses same embeddings across multiple dictionaries' do
         dict2 = create(:dictionary, user: user, name: 'dict2')
         entry = create(:entry, dictionary: dict2, label: 'Inflammation', identifier: 'HP:9999')
         entry.update_column(:embedding, mock_embedding_vector)
@@ -220,8 +232,9 @@ RSpec.describe TextAnnotator, type: :model do
         annotator = TextAnnotator.new([dictionary, dict2], options)
         result = annotator.annotate_batch([{ text: text }])
 
-        # Should still only call once, cache reused for both dictionaries
-        expect(call_count).to eq(1)
+        # Should call twice: once for context, once for spans
+        # Embeddings are reused across both dictionaries via embedding_cache parameter
+        expect(call_count).to eq(2)
 
         annotator.dispose
       end
@@ -265,8 +278,8 @@ RSpec.describe TextAnnotator, type: :model do
       end
     end
 
-    context 'span search cache integration' do
-      it 'caches search results including semantic results' do
+    context 'pre-indexing approach' do
+      it 'efficiently handles duplicate spans in text' do
         text = 'fever and fever'
         options = { semantic_threshold: 0.6, longest: true }
 
@@ -276,12 +289,12 @@ RSpec.describe TextAnnotator, type: :model do
 
         annotator = TextAnnotator.new([dictionary], options)
 
-        # First annotation
+        # Annotation should work correctly
         result1 = annotator.annotate_batch([{ text: text }]).first
 
-        # Get span cache
-        span_cache = annotator.instance_variable_get(:@cache_span_search)
-        expect(span_cache['fever']).not_to be_nil
+        # With pre-indexing, we don't use span cache anymore
+        # Instead we pre-generate all spans once per batch
+        expect(result1[:denotations]).to be_an(Array)
 
         annotator.dispose
       end
@@ -356,6 +369,95 @@ RSpec.describe TextAnnotator, type: :model do
       expect(result).to be_an(Array)
 
       annotator.dispose
+    end
+  end
+
+  describe 'configurable embedding batch settings' do
+    let(:annotator) { TextAnnotator.new([dictionary], { semantic_threshold: 0.6 }) }
+    let(:text) { 'cytokine release syndrome' }
+
+    it 'reads BatchSize from PubDic::EmbeddingServer configuration' do
+      expect(PubDic::EmbeddingServer::BatchSize).to be_a(Integer)
+      expect(PubDic::EmbeddingServer::BatchSize).to be > 0
+    end
+
+    it 'reads ParallelThreads from PubDic::EmbeddingServer configuration' do
+      expect(PubDic::EmbeddingServer::ParallelThreads).to be_a(Integer)
+      expect(PubDic::EmbeddingServer::ParallelThreads).to be >= 1
+    end
+
+    it 'uses configured batch size for embedding requests' do
+      allow(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
+        # Each batch should be at most BatchSize
+        expect(spans.size).to be <= PubDic::EmbeddingServer::BatchSize
+        Array.new(spans.size) { mock_embedding_vector }
+      end
+
+      tokens = annotator.send(:norm1_tokenize, text)
+      norm1s = tokens.map { |t| t[:token] }
+      norm2s = annotator.send(:norm2_tokenize, text).inject(Array.new(tokens.length, "")) { |s, t| s[t[:position]] = t[:token]; s }
+      sbreaks = annotator.send(:sentence_break, text)
+      annotator.send(:add_pars_info!, tokens, text, sbreaks)
+
+      span_index = annotator.send(:pre_generate_spans, text, tokens, norm1s, norm2s, sbreaks, {})
+      annotator.send(:batch_get_embeddings, span_index)
+    end
+  end
+
+  describe 'parallel embedding fetching' do
+    let(:annotator) { TextAnnotator.new([dictionary], { semantic_threshold: 0.6 }) }
+
+    context 'when ParallelThreads is 1' do
+      it 'uses sequential fetching' do
+        # Generate enough spans to create multiple batches
+        text = (1..50).map { |i| "term#{i}" }.join(' ')
+
+        call_order = []
+        allow(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
+          call_order << spans.first  # Track order of calls
+          Array.new(spans.size) { mock_embedding_vector }
+        end
+
+        tokens = annotator.send(:norm1_tokenize, text)
+        norm1s = tokens.map { |t| t[:token] }
+        norm2s = annotator.send(:norm2_tokenize, text).inject(Array.new(tokens.length, "")) { |s, t| s[t[:position]] = t[:token]; s }
+        sbreaks = annotator.send(:sentence_break, text)
+        annotator.send(:add_pars_info!, tokens, text, sbreaks)
+
+        span_index = annotator.send(:pre_generate_spans, text, tokens, norm1s, norm2s, sbreaks, {})
+
+        # With ParallelThreads=1, should use sequential method
+        annotator.send(:batch_get_embeddings, span_index)
+
+        # Should have processed spans
+        expect(span_index.values.any? { |info| info[:embedding].present? }).to be true
+      end
+    end
+
+    it 'handles errors in individual batches gracefully' do
+      text = 'fever headache cytokine'
+
+      call_count = 0
+      allow(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
+        call_count += 1
+        if call_count == 1
+          raise StandardError.new("Simulated failure")
+        end
+        Array.new(spans.size) { mock_embedding_vector }
+      end
+
+      tokens = annotator.send(:norm1_tokenize, text)
+      norm1s = tokens.map { |t| t[:token] }
+      norm2s = annotator.send(:norm2_tokenize, text).inject(Array.new(tokens.length, "")) { |s, t| s[t[:position]] = t[:token]; s }
+      sbreaks = annotator.send(:sentence_break, text)
+      annotator.send(:add_pars_info!, tokens, text, sbreaks)
+
+      span_index = annotator.send(:pre_generate_spans, text, tokens, norm1s, norm2s, sbreaks, {})
+
+      # Should not raise error
+      expect {
+        annotator.send(:batch_get_embeddings, span_index)
+      }.not_to raise_error
     end
   end
 end

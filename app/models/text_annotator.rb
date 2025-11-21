@@ -2,13 +2,11 @@
 using StringScanOffset
 
 require 'simstring'
-require_relative '../lib/lru_cache'
 
 # Provide functionalities for text annotation.
 class TextAnnotator
   CHUNK_SIZE = 50_000
   BUFFER_SIZE = 1024
-  MAX_CACHE_SIZE = 10_000
 
   OPTIONS_DEFAULT = {
     # terms will never include these words
@@ -72,16 +70,26 @@ class TextAnnotator
     @tokenizer_post = Net::HTTP::Post.new @tokenizer_url.request_uri
     @tokenizer_post['content-type'] = 'application/json'
 
-    # Use optimized LRU cache for span search results
-    # Provides O(1) access and eviction instead of O(n)
-    # [] means the search result was empty
-    @cache_span_search = LruCache.new(MAX_CACHE_SIZE)
-
-    # to cache embeddings for semantic search (separate from search results)
-    # This avoids redundant API calls for the same text spans
-    @cache_embeddings = {}
-
     @soft_match = @threshold.nil? || (@threshold < 1)
+
+    # Create semantic temp tables for dictionaries with embeddings (for fast HNSW-based search)
+    # Only create temp tables if semantic search is enabled
+    @semantic_temp_tables = {}
+    if @semantic_threshold.present? && @semantic_threshold > 0
+      @dictionaries.each do |dic|
+        # Only create temp table for dictionaries with embeddings populated
+        if dic.entries_num > 0 && dic.embeddings_populated?
+          begin
+            table_name = dic.create_semantic_temp_table!
+            @semantic_temp_tables[dic.id] = table_name
+            Rails.logger.info "Created semantic temp table for dictionary #{dic.name}"
+          rescue => e
+            Rails.logger.warn "Failed to create semantic temp table for #{dic.name}: #{e.message}"
+            # Fall back to regular batch_search_semantic
+          end
+        end
+      end
+    end
 
     @sub_string_dbs = @dictionaries.inject({}) do |h, dic|
       sdb = if (dic.entries_num > 0) && @soft_match
@@ -103,6 +111,16 @@ class TextAnnotator
 
   def dispose
     @sub_string_dbs.each{|name, db| db.close if db}
+
+    # Clean up semantic temp tables
+    @semantic_temp_tables.each do |dict_id, table_name|
+      begin
+        ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS #{table_name}")
+        Rails.logger.debug "Dropped semantic temp table #{table_name}"
+      rescue => e
+        Rails.logger.warn "Failed to drop temp table #{table_name}: #{e.message}"
+      end
+    end
   end
 
   def annotate_batch(anns_col)
@@ -112,9 +130,6 @@ class TextAnnotator
       anns.delete(:relations)
       anns.delete(:modifications)
     end
-
-    # Clear LRU cache between batches
-    @cache_span_search.clear
 
     # To remove redundant denotations
     anns_col.each do |anns|
@@ -337,88 +352,19 @@ class TextAnnotator
     sbreaks = sentence_break(text)
     add_pars_info!(tokens, text, sbreaks)
 
-    # Pre-generate embeddings for all possible spans if semantic search is enabled
-    # This batch approach is much faster than generating embeddings one-by-one
+    # Step 1: Pre-generate all valid spans with their boundary information
+    span_index = pre_generate_spans(text, tokens, norm1s, norm2s, sbreaks, idx_span_positions)
+
+    # Step 2: Batch get embeddings for all spans
     if @semantic_threshold.present? && @semantic_threshold > 0
-      collect_and_cache_embeddings(text, tokens, sbreaks)
+      batch_get_embeddings(span_index)
     end
 
-    (0 ... tokens.length - @tokens_len_min + 1).each do |idx_token_begin|
-      token_begin = tokens[idx_token_begin]
+    # Step 3: Batch get identifiers for all spans from dictionaries
+    batch_get_identifiers(span_index, dictionaries)
 
-      token_span = text[token_begin[:start_offset]...token_begin[:end_offset]]
-
-      idx_span_positions[token_span] = [] unless idx_span_positions.has_key? token_span
-      idx_span_positions[token_span] << {tidx: idx_token_begin, begin:token_begin[:start_offset], end:token_begin[:end_offset]}
-
-      next if @no_term_words.include?(token_begin[:token])
-      next if @no_begin_words.include?(token_begin[:token])
-
-      (@tokens_len_min .. @tokens_len_max).each do |tlen|
-        break if idx_token_begin + tlen > tokens.length
-
-        idx_token_final = idx_token_begin + tlen - 1
-        token_end = tokens[idx_token_final]
-        break if cross_sentence?(sbreaks, token_begin[:start_offset], token_end[:end_offset])
-        break if @no_term_words.include?(token_end[:token])
-        # next if tlen == 1 && token_begin[:token].length == 1
-        next if @no_end_words.include?(token_end[:token])
-
-        # find the span considering the paranthesis level
-        span_begin = token_begin[:start_offset]
-        span_end   = token_end[:end_offset]
-
-        case token_begin[:pars_level] - token_end[:pars_level]
-        when 0
-        when -1
-          if token_end[:pars_close_p]
-            span_end += 1
-          else
-            next
-          end
-        when 1
-          if token_begin[:pars_open_p]
-            span_begin -= 1
-          else
-            break
-          end
-        else
-          next
-        end
-        span = text[span_begin...span_end]
-
-        norm2 = norm2s[idx_token_begin, tlen].join
-        next unless norm2.present?
-
-        ## A rough checking for early break was attempted here but abandoned because it turned out the overhead was too big
-
-        # to find terms - use optimized LRU cache with O(1) access
-        entries = @cache_span_search.get(span)
-
-        if entries.nil?
-          norm1 = norm1s[idx_token_begin, tlen].join
-
-          # Filter sub_string_dbs to match the filtered dictionaries
-          filtered_sub_string_dbs = @sub_string_dbs.select { |name, _| dictionaries.any? { |d| d.name == name } }
-
-          entries = @search_method.call(dictionaries, filtered_sub_string_dbs, @threshold, @use_ngram_similarity, @semantic_threshold, span, [], norm1, norm2, @cache_embeddings)
-
-          # Cache result (LRU cache automatically handles eviction)
-          @cache_span_search.put(span, entries)
-        end
-
-        entries.each do |entry|
-          # idx_token_final is added for efficiency of finding locally defined abbreviations
-          d = {span:{begin:span_begin, end:span_end}, obj:entry[:identifier], score:entry[:score], string:span, idx_token_final: idx_token_final}
-          if @verbose
-            d[:label] = entry[:label]
-            d[:norm1] = entry[:norm1]
-            d[:norm2] = entry[:norm2]
-          end
-          denotations << d
-        end
-      end
-    end
+    # Step 4: Generate denotations from spans with found identifiers (single pass)
+    generate_denotations_from_spans(span_index, denotations)
 
     # to find locally defined abbreviations
     if @abbreviation
@@ -607,16 +553,23 @@ class TextAnnotator
     end
   end
 
-  # Collect all possible spans and batch-generate embeddings
-  # This significantly improves performance by:
-  # 1. Collecting all spans first (avoiding duplicate API calls)
-  # 2. Batch-generating embeddings in one API call
-  # 3. Caching results for reuse across dictionaries
-  def collect_and_cache_embeddings(text, tokens, sbreaks)
-    spans_to_embed = []
+  # Pre-generate all valid spans with their boundary information
+  # Returns a hash where keys are span strings and values contain:
+  #   - span_begin, span_end: character offsets
+  #   - idx_token_begin, idx_token_final: token indices
+  #   - norm1, norm2: normalized forms
+  #   - entries: (to be filled by batch_get_identifiers)
+  #   - embedding: (to be filled by batch_get_embeddings)
+  def pre_generate_spans(text, tokens, norm1s, norm2s, sbreaks, idx_span_positions)
+    span_index = {}
 
     (0 ... tokens.length - @tokens_len_min + 1).each do |idx_token_begin|
       token_begin = tokens[idx_token_begin]
+
+      # Track single token positions
+      token_span = text[token_begin[:start_offset]...token_begin[:end_offset]]
+      idx_span_positions[token_span] = [] unless idx_span_positions.has_key? token_span
+      idx_span_positions[token_span] << {tidx: idx_token_begin, begin:token_begin[:start_offset], end:token_begin[:end_offset]}
 
       next if @no_term_words.include?(token_begin[:token])
       next if @no_begin_words.include?(token_begin[:token])
@@ -630,7 +583,7 @@ class TextAnnotator
         break if @no_term_words.include?(token_end[:token])
         next if @no_end_words.include?(token_end[:token])
 
-        # Calculate span boundaries
+        # find the span considering the parenthesis level
         span_begin = token_begin[:start_offset]
         span_end   = token_end[:end_offset]
 
@@ -653,28 +606,310 @@ class TextAnnotator
         end
 
         span = text[span_begin...span_end]
+        norm1 = norm1s[idx_token_begin, tlen].join
+        norm2 = norm2s[idx_token_begin, tlen].join
+        next unless norm2.present?
 
-        # Only collect spans we haven't cached yet
-        unless @cache_embeddings.has_key?(span)
-          spans_to_embed << span
+        # Store span with all its boundary information
+        span_index[span] = {
+          span_begin: span_begin,
+          span_end: span_end,
+          idx_token_begin: idx_token_begin,
+          idx_token_final: idx_token_final,
+          norm1: norm1,
+          norm2: norm2,
+          entries: []  # to be filled by batch_get_identifiers
+        }
+      end
+    end
+
+    span_index
+  end
+
+  # Batch get embeddings for all spans in span_index
+  # Configuration is read from PubDic::EmbeddingServer (config/initializers/embedding_server.rb)
+  def batch_get_embeddings(span_index)
+    return if span_index.empty?
+
+    unique_spans = span_index.keys
+    batch_size = PubDic::EmbeddingServer::BatchSize
+    parallel_threads = PubDic::EmbeddingServer::ParallelThreads
+
+    Rails.logger.debug "Batch generating embeddings for #{unique_spans.size} unique spans (batch_size=#{batch_size}, threads=#{parallel_threads})"
+
+    # Create batches
+    batches = unique_spans.each_slice(batch_size).to_a
+
+    if batches.size > 1 && parallel_threads > 1
+      fetch_embeddings_parallel(span_index, batches, parallel_threads)
+    else
+      fetch_embeddings_sequential(span_index, batches)
+    end
+  end
+
+  def fetch_embeddings_sequential(span_index, batches)
+    total_fetched = 0
+    batches.each_with_index do |batch_spans, batch_idx|
+      begin
+        embeddings = EmbeddingServer.fetch_embeddings(batch_spans)
+        batch_spans.each_with_index do |span, idx|
+          span_index[span][:embedding] = embeddings[idx]
+        end
+        total_fetched += embeddings.size
+        Rails.logger.debug "Embedding batch #{batch_idx + 1}/#{batches.size}: fetched #{embeddings.size} embeddings"
+      rescue => e
+        Rails.logger.warn "Failed to fetch embedding batch #{batch_idx + 1}: #{e.message}"
+        # Continue with remaining batches, spans without embeddings will be skipped
+      end
+    end
+    Rails.logger.debug "Successfully fetched #{total_fetched} embeddings total"
+  end
+
+  def fetch_embeddings_parallel(span_index, batches, parallel_threads)
+    total_fetched = 0
+    results_mutex = Mutex.new
+
+    # Group batches for parallel processing
+    batch_groups = batches.each_slice((batches.size.to_f / parallel_threads).ceil).to_a
+
+    threads = batch_groups.map.with_index do |batch_group, group_idx|
+      Thread.new do
+        thread_results = {}
+        thread_fetched = 0
+
+        batch_group.each_with_index do |batch_spans, local_idx|
+          begin
+            embeddings = EmbeddingServer.fetch_embeddings(batch_spans)
+            batch_spans.each_with_index do |span, idx|
+              thread_results[span] = embeddings[idx]
+            end
+            thread_fetched += embeddings.size
+          rescue => e
+            Rails.logger.warn "Failed to fetch embedding batch (thread #{group_idx}, batch #{local_idx}): #{e.message}"
+          end
+        end
+
+        { results: thread_results, fetched: thread_fetched }
+      end
+    end
+
+    # Collect results from all threads
+    threads.each do |thread|
+      thread_data = thread.value
+      results_mutex.synchronize do
+        thread_data[:results].each do |span, embedding|
+          span_index[span][:embedding] = embedding
+        end
+        total_fetched += thread_data[:fetched]
+      end
+    end
+
+    Rails.logger.debug "Successfully fetched #{total_fetched} embeddings total (#{parallel_threads} threads)"
+  end
+
+  # Batch get identifiers for all spans from dictionaries
+  # Uses batch semantic search and batch surface matching to reduce database round-trips
+  def batch_get_identifiers(span_index, dictionaries)
+    return if span_index.empty?
+
+    # Filter sub_string_dbs to match the filtered dictionaries
+    filtered_sub_string_dbs = @sub_string_dbs.select { |name, _| dictionaries.any? { |d| d.name == name } }
+
+    # Step 1: Batch semantic search first (if enabled)
+    # Uses temp tables with HNSW indexes for fast approximate nearest neighbor search
+    semantic_results = {}
+    if @semantic_threshold.present? && @semantic_threshold > 0
+      # Build span_embeddings hash from span_index
+      span_embeddings = {}
+      span_index.each do |span, info|
+        span_embeddings[span] = info[:embedding] if info[:embedding]
+      end
+
+      # Perform batch semantic search for each dictionary
+      # Use temp table if available (faster HNSW-based search), otherwise fall back to regular search
+      dictionaries.each do |dictionary|
+        next unless dictionary.entries_num > 0
+
+        temp_table_name = @semantic_temp_tables[dictionary.id]
+        dict_results = if temp_table_name
+          # Use temp table with dedicated HNSW index for fast semantic search
+          dictionary.batch_search_semantic_temp(temp_table_name, span_embeddings, @semantic_threshold, [])
+        else
+          # Fall back to regular batch semantic search
+          dictionary.batch_search_semantic(span_embeddings, @semantic_threshold, [])
+        end
+
+        dict_results.each do |span, entries|
+          semantic_results[span] ||= []
+          semantic_results[span].concat(entries)
         end
       end
     end
 
-    # Batch generate embeddings for all unique spans
-    if spans_to_embed.any?
-      unique_spans = spans_to_embed.uniq
-      Rails.logger.debug "Batch generating embeddings for #{unique_spans.size} unique spans"
+    # Step 2: Batch surface matching
+    surface_results = batch_surface_match(span_index, dictionaries, filtered_sub_string_dbs)
 
-      begin
-        embeddings = EmbeddingServer.fetch_embeddings(unique_spans)
-        unique_spans.each_with_index do |span, idx|
-          @cache_embeddings[span] = embeddings[idx]
+    # Step 3: Combine results for each span
+    span_index.each do |span, info|
+      all_entries = surface_results[span] || []
+
+      # Add semantic results
+      if semantic_results[span].present?
+        all_entries.concat(semantic_results[span])
+        all_entries.uniq! { |r| r[:identifier] }
+      end
+
+      # Apply sorting based on search method
+      if @superfluous
+        all_entries.sort_by! { |e| -e[:score] }  # search_term_order: sort by score desc
+      else
+        # search_term_top: keep only entries with max score
+        unless all_entries.empty?
+          max_score = all_entries.max_by { |e| e[:score] }[:score]
+          all_entries.delete_if { |e| e[:score] < max_score }
         end
-        Rails.logger.debug "Successfully cached #{embeddings.size} embeddings"
-      rescue => e
-        Rails.logger.warn "Failed to batch generate embeddings: #{e.message}"
-        # Don't fail the entire annotation, just proceed without semantic search
+      end
+
+      info[:entries] = all_entries
+    end
+  end
+
+  # Batch surface matching for all spans
+  # Collects all unique norm2 values, queries entries in bulk, then matches back to spans
+  def batch_surface_match(span_index, dictionaries, filtered_sub_string_dbs)
+    results = Hash.new { |h, k| h[k] = [] }
+
+    dictionaries.each do |dictionary|
+      next if dictionary.entries_num == 0
+
+      ssdb = filtered_sub_string_dbs[dictionary.name]
+      threshold = @threshold || dictionary.threshold
+      str_sim_method = dictionary.send(:str_sim)
+      hash_method = dictionary.tags_exists? ? :to_result_hash_with_tags : :to_result_hash
+
+      if threshold < 1
+        # Collect all norm2s for this dictionary (with SimString expansion if enabled)
+        # Build a mapping: norm2 -> [spans that need this norm2]
+        norm2_to_spans = Hash.new { |h, k| h[k] = [] }
+
+        span_index.each do |span, info|
+          norm2 = info[:norm2]
+          if @use_ngram_similarity && ssdb.present?
+            expanded_norm2s = ssdb.retrieve(norm2)
+            expanded_norm2s = [norm2] unless expanded_norm2s.present?
+          else
+            expanded_norm2s = [norm2]
+          end
+
+          expanded_norm2s.each do |n2|
+            norm2_to_spans[n2] << { span: span, info: info }
+          end
+        end
+
+        # Batch query: get all entries matching any of these norm2s
+        all_norm2s = norm2_to_spans.keys
+        next if all_norm2s.empty?
+
+        # Query in batches to avoid overly large IN clauses
+        all_norm2s.each_slice(1000) do |norm2_batch|
+          entry_results = dictionary.entries.without_black.where(norm2: norm2_batch)
+          entry_results = entry_results.includes(:tags) if dictionary.tags_exists?
+
+          # Group entries by norm2 for fast lookup
+          entries_by_norm2 = entry_results.group_by(&:norm2)
+
+          # Match entries back to spans
+          entries_by_norm2.each do |norm2, entries|
+            span_infos = norm2_to_spans[norm2]
+            next unless span_infos
+
+            entries.each do |entry|
+              entry_hash = entry.send(hash_method)
+
+              span_infos.each do |span_info|
+                span = span_info[:span]
+                info = span_info[:info]
+
+                score = str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
+                if score >= threshold
+                  results[span] << entry_hash.merge(score: score, dictionary: dictionary.name)
+                end
+              end
+            end
+          end
+        end
+
+        # Handle additional entries if they exist
+        if dictionary.additional_entries_exists?
+          all_norm2s.each_slice(1000) do |norm2_batch|
+            additional_entries = dictionary.entries.additional_entries.where(norm2: norm2_batch)
+            entries_by_norm2 = additional_entries.group_by(&:norm2)
+
+            entries_by_norm2.each do |norm2, entries|
+              span_infos = norm2_to_spans[norm2]
+              next unless span_infos
+
+              entries.each do |entry|
+                entry_hash = entry.to_result_hash
+
+                span_infos.each do |span_info|
+                  span = span_info[:span]
+                  info = span_info[:info]
+
+                  score = str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
+                  if score >= threshold
+                    results[span] << entry_hash.merge(score: score, dictionary: dictionary.name)
+                  end
+                end
+              end
+            end
+          end
+        end
+      else
+        # Exact match path - batch query by label
+        all_spans = span_index.keys
+
+        all_spans.each_slice(1000) do |span_batch|
+          entry_results = dictionary.entries.without_black.where(label: span_batch)
+
+          # Group entries by label for fast lookup
+          entries_by_label = entry_results.group_by(&:label)
+
+          entries_by_label.each do |label, entries|
+            entries.each do |entry|
+              entry_hash = entry.to_result_hash.merge(score: 1, dictionary: dictionary.name)
+              results[label] << entry_hash
+            end
+          end
+        end
+      end
+    end
+
+    results
+  end
+
+  # Generate denotations from pre-indexed spans with found identifiers
+  # Single pass through span_index to create denotations
+  def generate_denotations_from_spans(span_index, denotations)
+    span_index.each do |span, info|
+      next if info[:entries].empty?
+
+      info[:entries].each do |entry|
+        d = {
+          span: {begin: info[:span_begin], end: info[:span_end]},
+          obj: entry[:identifier],
+          score: entry[:score],
+          string: span,
+          idx_token_final: info[:idx_token_final]
+        }
+
+        if @verbose
+          d[:label] = entry[:label]
+          d[:norm1] = entry[:norm1]
+          d[:norm2] = entry[:norm2]
+        end
+
+        denotations << d
       end
     end
   end

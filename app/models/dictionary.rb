@@ -217,6 +217,184 @@ class Dictionary < ApplicationRecord
     entries.exists? && !entries.where(embedding: nil).exists?
   end
 
+  # Session-scoped Temp Table for Semantic Search
+  # Creates a temporary table with dictionary entries and HNSW index for fast semantic search.
+  # The temp table exists only for the current database session, eliminating index contention.
+  # This approach guarantees HNSW index usage because there's no competing B-tree index on dictionary_id.
+
+  # Generate unique temp table name for this dictionary
+  def semantic_temp_table_name
+    "temp_semantic_dict_#{id}"
+  end
+
+  # Check if the semantic temp table exists in current session
+  def semantic_temp_table_exists?
+    result = ActiveRecord::Base.connection.exec_query(
+      "SELECT 1 FROM pg_tables WHERE tablename = $1 AND schematype = 'TEMPORARY'",
+      "check_temp_table",
+      [semantic_temp_table_name]
+    )
+    result.rows.any?
+  rescue
+    # Try a simpler check - attempt to query the table
+    begin
+      ActiveRecord::Base.connection.exec_query(
+        "SELECT 1 FROM #{semantic_temp_table_name} LIMIT 0"
+      )
+      true
+    rescue
+      false
+    end
+  end
+
+  # Create a session-scoped temp table with HNSW index for fast semantic search.
+  # This table contains only the entries from this dictionary that have embeddings,
+  # with an HNSW index that PostgreSQL will use for approximate nearest neighbor search.
+  #
+  # @param m [Integer] HNSW max connections per layer
+  # @param ef_construction [Integer] HNSW construction parameter
+  # @return [String] The temp table name for use in queries
+  def create_semantic_temp_table!(m: 16, ef_construction: 64)
+    table_name = semantic_temp_table_name
+    conn = ActiveRecord::Base.connection
+
+    # Drop existing temp table if any
+    conn.execute("DROP TABLE IF EXISTS #{table_name}")
+
+    # Create temp table by selecting directly from entries
+    # This automatically inherits the correct embedding dimension from the source data
+    create_sql = <<~SQL
+      CREATE TEMPORARY TABLE #{table_name} ON COMMIT PRESERVE ROWS AS
+      SELECT id, label, identifier, embedding
+      FROM entries
+      WHERE dictionary_id = #{id}
+        AND searchable = true
+        AND embedding IS NOT NULL
+    SQL
+    conn.execute(create_sql)
+
+    # Add primary key constraint
+    conn.execute("ALTER TABLE #{table_name} ADD PRIMARY KEY (id)")
+
+    # Create HNSW index on the temp table - no WHERE clause needed since all rows are relevant
+    index_sql = <<~SQL
+      CREATE INDEX idx_#{table_name}_hnsw
+      ON #{table_name} USING hnsw (embedding vector_cosine_ops)
+      WITH (m = #{m}, ef_construction = #{ef_construction})
+    SQL
+    conn.execute(index_sql)
+
+    # Get count for logging
+    count = conn.exec_query("SELECT COUNT(*) as cnt FROM #{table_name}").first['cnt']
+    Rails.logger.info "Created semantic temp table #{table_name} with #{count} entries and HNSW index"
+
+    table_name
+  end
+
+  # Drop the session-scoped semantic temp table
+  def drop_semantic_temp_table!
+    table_name = semantic_temp_table_name
+    ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS #{table_name}")
+    Rails.logger.info "Dropped semantic temp table #{table_name}"
+  end
+
+  # Batch semantic search using the temp table with HNSW index.
+  # This method is optimized for large text annotation where we have many spans to search.
+  # The temp table approach guarantees HNSW usage because there's no competing dictionary_id index.
+  #
+  # @param temp_table_name [String] Name of the temp table (from create_semantic_temp_table!)
+  # @param span_embeddings [Hash] Hash mapping span strings to their embeddings
+  # @param threshold [Float] Minimum similarity score (0.0-1.0)
+  # @param tags [Array] Tag filters (not applicable for temp table - already filtered at creation)
+  # @return [Hash] Hash mapping span strings to arrays of matching entries
+  def batch_search_semantic_temp(temp_table_name, span_embeddings, threshold, _tags = [])
+    return {} if span_embeddings.empty?
+
+    distance_threshold = 1.0 - threshold
+    results = {}
+
+    # Filter out spans without valid embeddings
+    valid_spans = span_embeddings.select { |_, emb| emb.present? }
+    return {} if valid_spans.empty?
+
+    span_list = valid_spans.keys
+    span_list.each { |span| results[span] = [] }
+
+    # Process in batches
+    batches = span_list.each_slice(BATCH_SEMANTIC_SIZE).to_a
+
+    batches.each do |batch_spans|
+      batch_results = execute_temp_table_semantic_query(temp_table_name, batch_spans, valid_spans, distance_threshold)
+      batch_results.each do |span, entries|
+        results[span].concat(entries)
+      end
+    end
+
+    results
+  end
+
+  private
+
+  # Execute semantic query against temp table with HNSW index
+  # The query uses ORDER BY + LIMIT to leverage HNSW approximate nearest neighbor search
+  def execute_temp_table_semantic_query(temp_table_name, batch_spans, valid_spans, distance_threshold)
+    results = {}
+    batch_spans.each { |span| results[span] = [] }
+
+    # Build VALUES clause for this batch
+    embedding_values = batch_spans.map.with_index do |span, idx|
+      embedding = valid_spans[span]
+      embedding_str = "[#{embedding.map(&:to_f).join(',')}]"
+      "(#{idx}, '#{embedding_str}'::vector)"
+    end.join(",\n")
+
+    # Query optimized for HNSW - uses ORDER BY + LIMIT pattern
+    # Since the temp table only has this dictionary's entries, no dictionary_id filter needed
+    # Note: Use distinct alias (sub) for LATERAL subquery to avoid column reference issues
+    sql = <<~SQL
+      WITH query_embeddings(query_idx, query_embedding) AS (
+        VALUES #{embedding_values}
+      )
+      SELECT
+        qe.query_idx,
+        sub.id,
+        sub.label,
+        sub.identifier,
+        sub.distance
+      FROM query_embeddings qe
+      CROSS JOIN LATERAL (
+        SELECT t.id, t.label, t.identifier, t.embedding <=> qe.query_embedding AS distance
+        FROM #{temp_table_name} t
+        ORDER BY t.embedding <=> qe.query_embedding
+        LIMIT 10
+      ) sub
+      WHERE sub.distance <= $1
+      ORDER BY qe.query_idx, sub.distance
+    SQL
+
+    begin
+      query_results = ActiveRecord::Base.connection.exec_query(sql, "temp_table_semantic_search", [distance_threshold])
+
+      query_results.each do |row|
+        query_idx = row['query_idx'].to_i
+        span = batch_spans[query_idx]
+        results[span] << {
+          label: row['label'],
+          identifier: row['identifier'],
+          score: 1.0 - row['distance'].to_f,
+          dictionary: name,
+          search_type: 'Semantic'
+        }
+      end
+    rescue => e
+      Rails.logger.warn "Temp table semantic search failed: #{e.message}"
+    end
+
+    results
+  end
+
+  public
+
   def undo_entry(entry)
     if entry.is_white?
       entry.destroy
@@ -540,6 +718,180 @@ class Dictionary < ApplicationRecord
 
     ActiveRecord::Base.connection.exec_query(sql, "semantic_search", params)
   end
+
+  # Batch semantic search for multiple spans at once
+  # This significantly reduces database round-trips by processing embeddings in batches
+  #
+  # @param span_embeddings [Hash] Hash mapping span strings to their embeddings
+  # @param threshold [Float] Minimum similarity score (default 0.7)
+  # @param tags [Array] Optional tag filters
+  # @return [Hash] Hash mapping span strings to arrays of matching entries
+  #
+  # Example:
+  #   span_embeddings = { "fever" => [0.1, 0.2, ...], "headache" => [0.3, 0.4, ...] }
+  #   results = dictionary.batch_search_semantic(span_embeddings, 0.7)
+  #   # => { "fever" => [{label: "Fever", identifier: "HP:001", score: 0.95}, ...], "headache" => [...] }
+  #
+  BATCH_SEMANTIC_SIZE = 500  # Process 500 embeddings per query for optimal performance
+  PARALLEL_THREADS = 4  # Number of parallel threads for semantic search
+
+  def batch_search_semantic(span_embeddings, threshold, tags = [])
+    return {} if span_embeddings.empty? || entries_num == 0
+
+    distance_threshold = 1.0 - threshold
+    results = {}
+
+    # Filter out spans without valid embeddings
+    valid_spans = span_embeddings.select { |_, emb| emb.present? }
+    return {} if valid_spans.empty?
+
+    span_list = valid_spans.keys
+
+    # Initialize results hash
+    span_list.each { |span| results[span] = [] }
+
+    # Create batches
+    batches = span_list.each_slice(BATCH_SEMANTIC_SIZE).to_a
+
+    if batches.size > 1 && PARALLEL_THREADS > 1
+      # Process batches in parallel using thread pool
+      results_mutex = Mutex.new
+      dictionary_id = id
+      dictionary_name = name
+
+      # Group batches for parallel processing
+      batch_groups = batches.each_slice((batches.size.to_f / PARALLEL_THREADS).ceil).to_a
+
+      threads = batch_groups.map do |batch_group|
+        Thread.new do
+          thread_results = {}
+
+          # Each thread gets its own database connection
+          ActiveRecord::Base.connection_pool.with_connection do
+            batch_group.each do |batch_spans|
+              batch_result = execute_batch_semantic_query_static(
+                batch_spans, valid_spans, distance_threshold, tags,
+                dictionary_id, dictionary_name
+              )
+              batch_result.each do |span, entries|
+                thread_results[span] ||= []
+                thread_results[span].concat(entries)
+              end
+            end
+          end
+
+          thread_results
+        end
+      end
+
+      # Collect results from all threads
+      threads.each do |thread|
+        thread_results = thread.value
+        results_mutex.synchronize do
+          thread_results.each do |span, entries|
+            results[span].concat(entries)
+          end
+        end
+      end
+    else
+      # Sequential processing for small batch counts
+      batches.each do |batch_spans|
+        batch_results = execute_batch_semantic_query(batch_spans, valid_spans, distance_threshold, tags)
+        batch_results.each do |span, entries|
+          results[span].concat(entries)
+        end
+      end
+    end
+
+    results
+  end
+
+  private
+
+  def execute_batch_semantic_query(batch_spans, valid_spans, distance_threshold, tags)
+    execute_batch_semantic_query_static(batch_spans, valid_spans, distance_threshold, tags, id, name)
+  end
+
+  # Static version for thread-safe parallel execution
+  # Takes dictionary_id and dictionary_name as parameters instead of using instance variables
+  def execute_batch_semantic_query_static(batch_spans, valid_spans, distance_threshold, tags, dictionary_id, dictionary_name)
+    results = {}
+    batch_spans.each { |span| results[span] = [] }
+
+    # Build VALUES clause for this batch
+    embedding_values = batch_spans.map.with_index do |span, idx|
+      embedding = valid_spans[span]
+      embedding_str = "[#{embedding.map(&:to_f).join(',')}]"
+      "(#{idx}, '#{embedding_str}'::vector)"
+    end.join(",\n")
+
+    # Query uses distance filter directly (no HNSW optimization - use temp table for that)
+    sql = <<~SQL
+      WITH query_embeddings(query_idx, query_embedding) AS (
+        VALUES #{embedding_values}
+      )
+      SELECT
+        qe.query_idx,
+        e.id,
+        e.label,
+        e.identifier,
+        e.embedding <=> qe.query_embedding AS distance
+      FROM query_embeddings qe
+      CROSS JOIN LATERAL (
+        SELECT e.id, e.label, e.identifier, e.embedding
+        FROM entries e
+        WHERE e.dictionary_id = $1
+          AND e.embedding <=> qe.query_embedding <= $2
+          AND e.searchable = true
+    SQL
+
+    params = [dictionary_id, distance_threshold]
+    param_count = 2
+
+    # Add tag filtering if present
+    if tags.present?
+      tag_placeholders = tags.map { |_| "$#{param_count += 1}" }.join(',')
+      sql += <<~SQL
+          AND EXISTS (
+            SELECT 1 FROM entry_tags et
+            JOIN tags t ON t.id = et.tag_id
+            WHERE et.entry_id = e.id
+              AND t.value IN (#{tag_placeholders})
+          )
+      SQL
+      params.concat(tags)
+    end
+
+    sql += <<~SQL
+        ORDER BY e.embedding <=> qe.query_embedding
+        LIMIT 5
+      ) e
+      ORDER BY qe.query_idx, distance
+    SQL
+
+    begin
+      query_results = ActiveRecord::Base.connection.exec_query(sql, "batch_semantic_search", params)
+
+      query_results.each do |row|
+        query_idx = row['query_idx'].to_i
+        span = batch_spans[query_idx]
+        results[span] << {
+          label: row['label'],
+          identifier: row['identifier'],
+          score: 1.0 - row['distance'].to_f,
+          dictionary: dictionary_name,
+          search_type: 'Semantic'
+        }
+      end
+    rescue => e
+      Rails.logger.warn "Batch semantic search failed for batch: #{e.message}"
+      # Results already initialized to empty arrays
+    end
+
+    results
+  end
+
+  public
 
   # Update searchable column to include only specified tags
   # This method efficiently updates the searchable status for entries

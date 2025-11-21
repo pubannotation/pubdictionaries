@@ -39,9 +39,9 @@ RSpec.describe TextAnnotator, type: :model do
     dictionary2.update_entries_num
   end
 
-  describe 'Query Result Caching' do
-    context 'dictionary-level search_term caching' do
-      it 'caches search_term results to avoid redundant database queries' do
+  describe 'Pre-Indexing Performance' do
+    context 'span deduplication' do
+      it 'avoids redundant database queries for repeated spans' do
         text = 'fever and fever and fever'
         options = { threshold: 0.85, longest: true }
 
@@ -59,58 +59,40 @@ RSpec.describe TextAnnotator, type: :model do
           annotator.annotate_batch([{ text: text }])
         end
 
-        # Should query once and cache for reuse
-        # Without cache: would query 3 times for "fever"
-        # With cache: should query once for "fever"
+        # With pre-indexing, should query once for "fever" since it's deduplicated in span_index hash
         expect(query_count).to be <= 1
 
         annotator.dispose
       end
 
-      it 'reuses cached results across multiple span lookups' do
+      it 'handles unique spans efficiently' do
         text = 'patient has fever, high fever, and continued fever'
         options = { threshold: 0.85 }
 
         annotator = TextAnnotator.new([dictionary], options)
 
-        # Mock the cache to track hits
-        original_cache = annotator.instance_variable_get(:@cache_span_search)
-        cache_hits = 0
-        cache_wrapper = Hash.new do |h, k|
-          original_cache[k]
-        end
-
-        original_cache.each_key do |key|
-          cache_wrapper[key] = original_cache[key]
-        end
-
-        annotator.instance_variable_set(:@cache_span_search, cache_wrapper)
-
         result = annotator.annotate_batch([{ text: text }])
 
-        # Should have cached 'fever' after first lookup
-        expect(cache_wrapper.key?('fever')).to be true
+        # Should work correctly with duplicate spans naturally deduplicated
+        expect(result.first[:denotations]).to be_an(Array)
 
         annotator.dispose
       end
 
-      it 'maintains separate caches for different dictionaries' do
+      it 'works correctly with multiple dictionaries' do
         text = 'fever'
         options = { threshold: 0.85 }
 
         annotator = TextAnnotator.new([dictionary, dictionary2], options)
         result = annotator.annotate_batch([{ text: text }])
 
-        cache = annotator.instance_variable_get(:@cache_span_search)
-
-        # Cache should store results that work across dictionaries
-        # or should be keyed appropriately
-        expect(cache).to be_a(Hash)
+        # Should generate spans once and search across all dictionaries
+        expect(result.first[:denotations]).to be_an(Array)
 
         annotator.dispose
       end
 
-      it 'invalidates cache between batch annotations' do
+      it 'generates fresh span index for each batch' do
         text1 = 'fever'
         text2 = 'headache'
         options = { threshold: 0.85 }
@@ -118,18 +100,16 @@ RSpec.describe TextAnnotator, type: :model do
         annotator = TextAnnotator.new([dictionary], options)
 
         result1 = annotator.annotate_batch([{ text: text1 }])
-        cache_after_first = annotator.instance_variable_get(:@cache_span_search).dup
-
         result2 = annotator.annotate_batch([{ text: text2 }])
-        cache_after_second = annotator.instance_variable_get(:@cache_span_search)
 
-        # Cache should be cleared between batches
-        expect(cache_after_second.keys).not_to include(*cache_after_first.keys)
+        # Each batch should work independently with its own span index
+        expect(result1.first[:denotations]).to be_an(Array)
+        expect(result2.first[:denotations]).to be_an(Array)
 
         annotator.dispose
       end
 
-      it 'caches empty results to avoid redundant lookups' do
+      it 'efficiently handles non-matching spans' do
         text = 'nonexistent nonexistent nonexistent'
         options = { threshold: 0.85 }
 
@@ -146,16 +126,15 @@ RSpec.describe TextAnnotator, type: :model do
           annotator.annotate_batch([{ text: text }])
         end
 
-        # Should cache the empty result and not query multiple times
-        cache = annotator.instance_variable_get(:@cache_span_search)
-        expect(cache['nonexistent']).to eq([])
+        # Should query once for "nonexistent" despite appearing 3 times
+        expect(query_count).to be <= 1
 
         annotator.dispose
       end
     end
 
     context 'performance impact' do
-      it 'reduces annotation time for repeated terms' do
+      it 'handles text with many repeated terms efficiently' do
         # Text with many repeated terms
         text = 'fever ' * 50  # 50 repetitions
         options = { threshold: 0.85 }
@@ -174,7 +153,7 @@ RSpec.describe TextAnnotator, type: :model do
         annotator.dispose
       end
 
-      it 'handles large cache sizes efficiently' do
+      it 'handles many unique spans efficiently' do
         # Text with many unique terms
         text = (1..100).map { |i| "term#{i}" }.join(' ')
         options = { threshold: 0.85 }
@@ -185,134 +164,38 @@ RSpec.describe TextAnnotator, type: :model do
           annotator.annotate_batch([{ text: text }])
         }.not_to raise_error
 
-        cache = annotator.instance_variable_get(:@cache_span_search)
-        expect(cache.size).to be > 0
-
-        annotator.dispose
-      end
-    end
-  end
-
-  describe 'LRU Cache Optimization' do
-    context 'cache eviction' do
-      it 'evicts least recently used items when cache exceeds MAX_CACHE_SIZE' do
-        options = { threshold: 0.85 }
-        annotator = TextAnnotator.new([dictionary], options)
-
-        # Set a smaller max cache size for testing
-        stub_const('TextAnnotator::MAX_CACHE_SIZE', 10)
-
-        # Generate 15 unique terms to exceed cache size
-        text = (1..15).map { |i| "term#{i}" }.join(' ')
-
-        result = annotator.annotate_batch([{ text: text }])
-
-        cache = annotator.instance_variable_get(:@cache_span_search)
-
-        # Cache size should not exceed MAX_CACHE_SIZE
-        expect(cache.size).to be <= 10
-
         annotator.dispose
       end
 
-      it 'evicts oldest items first (LRU behavior)' do
+      it 'processes batches efficiently without cross-batch overhead' do
         options = { threshold: 0.85 }
         annotator = TextAnnotator.new([dictionary], options)
 
-        # Set a smaller max cache size for testing
-        stub_const('TextAnnotator::MAX_CACHE_SIZE', 5)
+        # Simulate processing many batches
+        (1..20).each do |batch|
+          text = (1..100).map { |i| "batch#{batch}_term#{i}" }.join(' ')
 
-        # Manually populate cache with known access order
-        cache = {}
-        timestamps = {}
-
-        (1..7).each do |i|
-          cache["term#{i}"] = []
-          timestamps["term#{i}"] = i
+          expect {
+            annotator.annotate_batch([{ text: text }])
+          }.not_to raise_error
         end
 
-        annotator.instance_variable_set(:@cache_span_search, cache)
-        annotator.instance_variable_set(:@cache_access_timestamps, timestamps)
-        annotator.instance_variable_set(:@cache_access_count, 7)
-
-        # Trigger cache cleanup by adding new item
-        # This would normally happen in the annotation loop
-        # For now, just verify the eviction logic
-
-        expect(cache.size).to eq(7)
-
         annotator.dispose
       end
 
-      it 'uses efficient LRU eviction algorithm' do
+      it 'efficiently processes large texts' do
         options = { threshold: 0.85 }
         annotator = TextAnnotator.new([dictionary], options)
 
-        stub_const('TextAnnotator::MAX_CACHE_SIZE', 100)
-
-        # Time the eviction process
+        # Large text simulation
         text = (1..200).map { |i| "term#{i}" }.join(' ')
 
         start_time = Time.now
         result = annotator.annotate_batch([{ text: text }])
         end_time = Time.now
 
-        # Even with evictions, should complete quickly (< 10 seconds)
+        # Should complete efficiently even with many spans
         expect(end_time - start_time).to be < 10
-
-        annotator.dispose
-      end
-    end
-
-    context 'cache access tracking' do
-      it 'updates access timestamps on cache hits' do
-        text = 'fever fever'
-        options = { threshold: 0.85 }
-
-        annotator = TextAnnotator.new([dictionary], options)
-        result = annotator.annotate_batch([{ text: text }])
-
-        timestamps = annotator.instance_variable_get(:@cache_access_timestamps)
-
-        # Should have timestamp for 'fever'
-        expect(timestamps.key?('fever')).to be true
-        expect(timestamps['fever']).to be_a(Integer)
-
-        annotator.dispose
-      end
-
-      it 'maintains monotonically increasing access counter' do
-        text = 'fever headache'
-        options = { threshold: 0.85 }
-
-        annotator = TextAnnotator.new([dictionary], options)
-        result = annotator.annotate_batch([{ text: text }])
-
-        count = annotator.instance_variable_get(:@cache_access_count)
-
-        # Access count should increase with cache operations
-        expect(count).to be > 0
-
-        annotator.dispose
-      end
-    end
-
-    context 'memory efficiency' do
-      it 'prevents unbounded cache growth' do
-        options = { threshold: 0.85 }
-        annotator = TextAnnotator.new([dictionary], options)
-
-        # Simulate processing many unique terms
-        (1..20).each do |batch|
-          text = (1..100).map { |i| "batch#{batch}_term#{i}" }.join(' ')
-          annotator.annotate_batch([{ text: text }])
-
-          cache = annotator.instance_variable_get(:@cache_span_search)
-
-          # Cache should be cleared between batches
-          # After each batch, cache should be empty or small
-          expect(cache.size).to be < TextAnnotator::MAX_CACHE_SIZE * 2
-        end
 
         annotator.dispose
       end

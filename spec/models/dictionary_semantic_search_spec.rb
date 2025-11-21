@@ -326,5 +326,158 @@ RSpec.describe Dictionary, type: :model do
         expect(EmbeddingServer).not_to have_received(:fetch_embedding)
       end
     end
+
+    describe 'temp table semantic search' do
+      describe '#create_semantic_temp_table!' do
+        it 'creates a temporary table with dictionary entries' do
+          table_name = dictionary.create_semantic_temp_table!
+
+          expect(table_name).to start_with('temp_semantic_dict_')
+
+          # Table should exist
+          count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{table_name}"
+          ).first['cnt']
+          expect(count).to eq(dictionary.entries.where(searchable: true).count)
+
+          dictionary.drop_semantic_temp_table!
+        end
+
+        it 'includes only searchable entries with embeddings' do
+          # Mark one entry as non-searchable
+          dictionary.entries.first.update_column(:searchable, false)
+
+          table_name = dictionary.create_semantic_temp_table!
+
+          count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{table_name}"
+          ).first['cnt']
+
+          expect(count).to eq(dictionary.entries.where(searchable: true).where.not(embedding: nil).count)
+
+          dictionary.drop_semantic_temp_table!
+        end
+
+        it 'creates HNSW index on the temp table' do
+          table_name = dictionary.create_semantic_temp_table!
+
+          # Check for index existence
+          indexes = ActiveRecord::Base.connection.exec_query(
+            "SELECT indexname FROM pg_indexes WHERE tablename = '#{table_name}'"
+          )
+          index_names = indexes.map { |r| r['indexname'] }
+
+          expect(index_names.any? { |name| name.include?('hnsw') }).to be true
+
+          dictionary.drop_semantic_temp_table!
+        end
+      end
+
+      describe '#batch_search_semantic_temp' do
+        let(:table_name) { dictionary.create_semantic_temp_table! }
+
+        after do
+          dictionary.drop_semantic_temp_table!
+        end
+
+        it 'returns matching entries for valid embeddings' do
+          query_embedding = mock_embedding_vector
+          span_embeddings = { 'test query' => query_embedding }
+
+          results = dictionary.batch_search_semantic_temp(table_name, span_embeddings, 0.0, [])
+
+          expect(results).to be_a(Hash)
+          expect(results['test query']).to be_an(Array)
+        end
+
+        it 'returns empty hash for empty span_embeddings' do
+          results = dictionary.batch_search_semantic_temp(table_name, {}, 0.7, [])
+
+          expect(results).to eq({})
+        end
+
+        it 'filters out spans without valid embeddings' do
+          span_embeddings = {
+            'valid query' => mock_embedding_vector,
+            'invalid query' => nil,
+            'empty query' => []
+          }
+
+          results = dictionary.batch_search_semantic_temp(table_name, span_embeddings, 0.0, [])
+
+          expect(results.keys).to include('valid query')
+          expect(results['valid query']).to be_an(Array)
+        end
+
+        it 'returns results with correct structure' do
+          query_embedding = mock_embedding_vector
+          span_embeddings = { 'test query' => query_embedding }
+
+          results = dictionary.batch_search_semantic_temp(table_name, span_embeddings, 0.0, [])
+
+          results['test query'].each do |result|
+            expect(result).to include(:label, :identifier, :score, :dictionary, :search_type)
+            expect(result[:search_type]).to eq('Semantic')
+            expect(result[:dictionary]).to eq(dictionary.name)
+            expect(result[:score]).to be_between(0, 1)
+          end
+        end
+
+        it 'respects similarity threshold' do
+          query_embedding = mock_embedding_vector
+          span_embeddings = { 'test query' => query_embedding }
+
+          # Very high threshold should return fewer or no results
+          results_high = dictionary.batch_search_semantic_temp(table_name, span_embeddings, 0.99, [])
+          # Low threshold should return more results
+          results_low = dictionary.batch_search_semantic_temp(table_name, span_embeddings, 0.0, [])
+
+          expect(results_low['test query'].size).to be >= results_high['test query'].size
+        end
+
+        it 'handles multiple spans in batch' do
+          span_embeddings = {
+            'query1' => mock_embedding_vector,
+            'query2' => mock_embedding_vector,
+            'query3' => mock_embedding_vector
+          }
+
+          results = dictionary.batch_search_semantic_temp(table_name, span_embeddings, 0.0, [])
+
+          expect(results.keys).to contain_exactly('query1', 'query2', 'query3')
+        end
+      end
+
+      describe '#execute_temp_table_semantic_query (SQL correctness)' do
+        let(:table_name) { dictionary.create_semantic_temp_table! }
+
+        after do
+          dictionary.drop_semantic_temp_table!
+        end
+
+        it 'executes without SQL errors' do
+          query_embedding = mock_embedding_vector
+          span_embeddings = { 'test' => query_embedding }
+
+          # This should not raise any SQL errors
+          expect {
+            dictionary.batch_search_semantic_temp(table_name, span_embeddings, 0.5, [])
+          }.not_to raise_error
+        end
+
+        it 'returns correct distance calculations' do
+          # Use an entry's own embedding to query - should get very high similarity
+          entry = dictionary.entries.where.not(embedding: nil).first
+          span_embeddings = { 'exact match test' => entry.embedding }
+
+          results = dictionary.batch_search_semantic_temp(table_name, span_embeddings, 0.9, [])
+
+          # Should find the entry with very high score (close to 1.0)
+          matching_result = results['exact match test'].find { |r| r[:identifier] == entry.identifier }
+          expect(matching_result).to be_present
+          expect(matching_result[:score]).to be > 0.99  # Almost exact match
+        end
+      end
+    end
   end
 end
