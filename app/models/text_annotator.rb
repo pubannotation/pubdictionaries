@@ -626,19 +626,43 @@ class TextAnnotator
     span_index
   end
 
+  # Filter spans that are unlikely to match dictionary entries semantically
+  # This reduces embedding API calls and semantic search overhead
+  # Configuration is read from PubDic::EmbeddingServer
+  def filter_spans_for_semantic(spans)
+    min_length = PubDic::EmbeddingServer::MinSpanLength
+    skip_numeric = PubDic::EmbeddingServer::SkipNumericSpans
+
+    spans.select do |span|
+      # Skip spans that are too short
+      next false if span.length < min_length
+
+      # Skip purely numeric spans
+      next false if skip_numeric && span.match?(/\A[\d\.\-\+\,\s]+\z/)
+
+      true
+    end
+  end
+
   # Batch get embeddings for all spans in span_index
   # Configuration is read from PubDic::EmbeddingServer (config/initializers/embedding_server.rb)
   def batch_get_embeddings(span_index)
     return if span_index.empty?
 
-    unique_spans = span_index.keys
+    # Pre-filter spans to reduce embedding requests
+    all_spans = span_index.keys
+    filtered_spans = filter_spans_for_semantic(all_spans)
+    skipped_count = all_spans.size - filtered_spans.size
+
     batch_size = PubDic::EmbeddingServer::BatchSize
     parallel_threads = PubDic::EmbeddingServer::ParallelThreads
 
-    Rails.logger.debug "Batch generating embeddings for #{unique_spans.size} unique spans (batch_size=#{batch_size}, threads=#{parallel_threads})"
+    Rails.logger.debug "Batch generating embeddings: #{filtered_spans.size} spans (#{skipped_count} filtered out, batch_size=#{batch_size}, threads=#{parallel_threads})"
 
-    # Create batches
-    batches = unique_spans.each_slice(batch_size).to_a
+    return if filtered_spans.empty?
+
+    # Create batches from filtered spans
+    batches = filtered_spans.each_slice(batch_size).to_a
 
     if batches.size > 1 && parallel_threads > 1
       fetch_embeddings_parallel(span_index, batches, parallel_threads)

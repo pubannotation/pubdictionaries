@@ -372,6 +372,33 @@ RSpec.describe TextAnnotator, type: :model do
     end
   end
 
+  describe 'span pre-filtering for semantic search' do
+    let(:annotator) { TextAnnotator.new([dictionary], { semantic_threshold: 0.6 }) }
+
+    it 'filters out short spans' do
+      spans = ['a', 'ab', 'abc', 'abcd', 'fever']
+      filtered = annotator.send(:filter_spans_for_semantic, spans)
+
+      # MinSpanLength is 3, so 'a' and 'ab' should be filtered
+      expect(filtered).not_to include('a', 'ab')
+      expect(filtered).to include('abc', 'abcd', 'fever')
+    end
+
+    it 'filters out purely numeric spans' do
+      spans = ['123', '45.67', '1,234', 'abc123', 'test', '12 34']
+      filtered = annotator.send(:filter_spans_for_semantic, spans)
+
+      # Purely numeric spans should be filtered
+      expect(filtered).not_to include('123', '45.67', '1,234', '12 34')
+      expect(filtered).to include('abc123', 'test')
+    end
+
+    it 'reads configuration from PubDic::EmbeddingServer' do
+      expect(PubDic::EmbeddingServer::MinSpanLength).to be_a(Integer)
+      expect(PubDic::EmbeddingServer::SkipNumericSpans).to be_in([true, false])
+    end
+  end
+
   describe 'configurable embedding batch settings' do
     let(:annotator) { TextAnnotator.new([dictionary], { semantic_threshold: 0.6 }) }
     let(:text) { 'cytokine release syndrome' }
