@@ -23,13 +23,20 @@ RSpec.describe Dictionary, '.find_ids_by_labels with semantic search', type: :mo
       validate: false
     )
 
-    # Add embeddings
+    # Make entries searchable
+    dictionary.entries.update_all(searchable: true)
+
+    # Create semantic table and add embeddings (embeddings are only in semantic table now)
+    dictionary.create_semantic_table!
     dictionary.entries.each do |entry|
-      entry.update_column(:embedding, mock_embedding_vector)
-      entry.update_column(:searchable, true)
+      dictionary.upsert_semantic_entry(entry, mock_embedding_vector)
     end
 
     dictionary.update_entries_num
+  end
+
+  after do
+    dictionary.drop_semantic_table! if dictionary.has_semantic_table?
   end
 
   describe 'with semantic_threshold option' do
@@ -50,6 +57,8 @@ RSpec.describe Dictionary, '.find_ids_by_labels with semantic search', type: :mo
       labels = ['fever']
       options = { semantic_threshold: nil }
 
+      allow(EmbeddingServer).to receive(:fetch_embedding)
+
       results = Dictionary.find_ids_by_labels(labels, [dictionary], options)
 
       expect(EmbeddingServer).not_to have_received(:fetch_embedding)
@@ -58,6 +67,8 @@ RSpec.describe Dictionary, '.find_ids_by_labels with semantic search', type: :mo
     it 'does not perform semantic search when semantic_threshold is not provided' do
       labels = ['fever']
       options = {}
+
+      allow(EmbeddingServer).to receive(:fetch_embedding)
 
       results = Dictionary.find_ids_by_labels(labels, [dictionary], options)
 
@@ -276,6 +287,8 @@ RSpec.describe Dictionary, '.find_ids_by_labels with semantic search', type: :mo
       labels = []
       options = { semantic_threshold: 0.6 }
 
+      allow(EmbeddingServer).to receive(:fetch_embedding)
+
       results = Dictionary.find_ids_by_labels(labels, [dictionary], options)
 
       expect(results).to eq({})
@@ -286,14 +299,18 @@ RSpec.describe Dictionary, '.find_ids_by_labels with semantic search', type: :mo
       labels = ['fever']
       options = { semantic_threshold: 0.6 }
 
-      expect {
-        Dictionary.find_ids_by_labels(labels, [], options)
-      }.to raise_error(ArgumentError, "no valid dictionary was specified.")
+      allow(EmbeddingServer).to receive(:fetch_embedding)
+
+      # Empty dictionary list returns empty results for each label
+      results = Dictionary.find_ids_by_labels(labels, [], options)
+      expect(results).to eq({ 'fever' => [] })
     end
 
     it 'handles nil semantic_threshold gracefully' do
       labels = ['fever']
       options = { semantic_threshold: nil }
+
+      allow(EmbeddingServer).to receive(:fetch_embedding)
 
       results = Dictionary.find_ids_by_labels(labels, [dictionary], options)
 

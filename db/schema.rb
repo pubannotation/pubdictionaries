@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_21_080000) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -54,6 +54,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_21_080000) do
     t.string "associated_annotation_project"
     t.text "context"
     t.vector "context_embedding", limit: 768
+    t.boolean "has_semantic_table", default: false, null: false
     t.index ["context_embedding"], name: "index_dictionaries_on_context_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["user_id"], name: "index_dictionaries_on_user_id"
   end

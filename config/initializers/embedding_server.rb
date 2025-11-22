@@ -14,7 +14,7 @@ module PubDic
     #
     # Development (local server with limited resources):
     BatchSize = 1000
-    ParallelThreads = 1
+    ParallelThreads = 2
     #
     # Production example (powerful server with 4 GPU workers):
     # BatchSize = 2000

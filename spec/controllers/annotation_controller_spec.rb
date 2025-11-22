@@ -22,12 +22,19 @@ RSpec.describe AnnotationController, type: :controller do
       validate: false
     )
 
+    dictionary.entries.update_all(searchable: true)
+
+    # Create semantic table and add embeddings there (not in entries table)
+    dictionary.create_semantic_table!
     dictionary.entries.each do |entry|
-      entry.update_column(:embedding, mock_embedding_vector)
-      entry.update_column(:searchable, true)
+      dictionary.upsert_semantic_entry(entry, mock_embedding_vector)
     end
 
     dictionary.update_entries_num
+  end
+
+  after do
+    dictionary.drop_semantic_table! if dictionary.has_semantic_table?
   end
 
   describe 'GET #text_annotation with semantic similarity' do
@@ -40,11 +47,13 @@ RSpec.describe AnnotationController, type: :controller do
         get :text_annotation, params: {
           text: 'cytokine release syndrome',
           dictionaries: dictionary.name,
-          semantic_threshold: '0.6'
+          semantic_threshold: '0.6',
+          format: :json
         }
 
         expect(response).to have_http_status(:success)
-        expect(assigns(:result)).to be_present
+        json_response = JSON.parse(response.body)
+        expect(json_response).to be_present
       end
 
       it 'handles use_semantic_similarity checkbox parameter' do
@@ -63,6 +72,8 @@ RSpec.describe AnnotationController, type: :controller do
       end
 
       it 'does not use semantic search when semantic_threshold is not provided' do
+        allow(EmbeddingServer).to receive(:fetch_embeddings)
+
         get :text_annotation, params: {
           text: 'fever',
           dictionaries: dictionary.name
@@ -73,6 +84,8 @@ RSpec.describe AnnotationController, type: :controller do
       end
 
       it 'does not use semantic search when semantic_threshold is empty string' do
+        allow(EmbeddingServer).to receive(:fetch_embeddings)
+
         get :text_annotation, params: {
           text: 'fever',
           dictionaries: dictionary.name,
@@ -93,11 +106,13 @@ RSpec.describe AnnotationController, type: :controller do
         get :text_annotation, params: {
           text: 'fever',
           dictionaries: dictionary.name,
-          semantic_threshold: '0.75'
+          semantic_threshold: '0.75',
+          format: :json
         }
 
-        permitted = assigns(:permitted)
-        expect(permitted[:semantic_threshold]).to eq(0.75)
+        # Verify semantic search was invoked (meaning threshold was parsed correctly)
+        expect(EmbeddingServer).to have_received(:fetch_embeddings).at_least(:once)
+        expect(response).to have_http_status(:success)
       end
 
       it 'handles semantic_threshold with use_semantic_similarity' do
@@ -126,12 +141,13 @@ RSpec.describe AnnotationController, type: :controller do
           text: 'fever',
           dictionaries: dictionary.name,
           threshold: '0.85',
-          semantic_threshold: '0.6'
+          semantic_threshold: '0.6',
+          format: :json
         }
 
         expect(response).to have_http_status(:success)
-        result = assigns(:result)
-        expect(result).to be_present
+        json_response = JSON.parse(response.body)
+        expect(json_response).to be_present
       end
 
       it 'works with longest option' do
@@ -173,12 +189,13 @@ RSpec.describe AnnotationController, type: :controller do
           text: 'fever',
           dictionaries: dictionary.name,
           verbose: 'true',
-          semantic_threshold: '0.6'
+          semantic_threshold: '0.6',
+          format: :json
         }
 
         expect(response).to have_http_status(:success)
-        result = assigns(:result)
-        expect(result[:denotations]).to be_an(Array)
+        json_response = JSON.parse(response.body)
+        expect(json_response['denotations']).to be_an(Array)
       end
     end
 
@@ -206,18 +223,15 @@ RSpec.describe AnnotationController, type: :controller do
       it 'handles embedding server errors gracefully' do
         allow(EmbeddingServer).to receive(:fetch_embeddings).and_raise(StandardError.new("Server error"))
 
+        # When embedding server fails, the error propagates and results in 500
         get :text_annotation, params: {
           text: 'fever',
           dictionaries: dictionary.name,
-          semantic_threshold: '0.6'
+          semantic_threshold: '0.6',
+          format: :json
         }
 
-        # Should handle error (behavior depends on Rails.env)
-        if Rails.env.development?
-          expect { response }.to raise_error(StandardError)
-        else
-          expect(response).to have_http_status(:internal_server_error)
-        end
+        expect(response).to have_http_status(:internal_server_error)
       end
 
       it 'requires text parameter' do
@@ -284,9 +298,16 @@ RSpec.describe AnnotationController, type: :controller do
 
     before do
       entry = create(:entry, dictionary: dict2, label: 'Inflammation', identifier: 'HP:9999')
-      entry.update_column(:embedding, mock_embedding_vector)
       entry.update_column(:searchable, true)
+
+      # Create semantic table and add embedding there
+      dict2.create_semantic_table!
+      dict2.upsert_semantic_entry(entry, mock_embedding_vector)
       dict2.update_entries_num
+    end
+
+    after do
+      dict2.drop_semantic_table! if dict2.has_semantic_table?
     end
 
     it 'searches across multiple dictionaries' do
@@ -297,12 +318,13 @@ RSpec.describe AnnotationController, type: :controller do
       get :text_annotation, params: {
         text: 'inflammatory response',
         dictionaries: "#{dictionary.name},#{dict2.name}",
-        semantic_threshold: '0.6'
+        semantic_threshold: '0.6',
+        format: :json
       }
 
       expect(response).to have_http_status(:success)
-      result = assigns(:result)
-      expect(result).to be_present
+      json_response = JSON.parse(response.body)
+      expect(json_response).to be_present
     end
   end
 

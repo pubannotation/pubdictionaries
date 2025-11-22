@@ -28,6 +28,7 @@ class Dictionary < ApplicationRecord
 
   before_save :update_context_embedding, if: :context_changed?
   before_destroy :ensure_entries_empty, prepend: true
+  before_destroy :drop_semantic_table!
 
   DOWNLOADABLES_DIR = 'db/downloadables/'
 
@@ -214,7 +215,14 @@ class Dictionary < ApplicationRecord
   end
 
   def embeddings_populated?
-    entries.exists? && !entries.where(embedding: nil).exists?
+    return false unless has_semantic_table?
+
+    count = ActiveRecord::Base.connection.exec_query(
+      "SELECT COUNT(*) as cnt FROM #{semantic_table_name}"
+    ).first['cnt']
+    count > 0
+  rescue ActiveRecord::StatementInvalid
+    false
   end
 
   # Session-scoped Temp Table for Semantic Search
@@ -261,20 +269,32 @@ class Dictionary < ApplicationRecord
     # Drop existing temp table if any
     conn.execute("DROP TABLE IF EXISTS #{table_name}")
 
-    # Create temp table by selecting directly from entries
-    # This automatically inherits the correct embedding dimension from the source data
-    create_sql = <<~SQL
-      CREATE TEMPORARY TABLE #{table_name} ON COMMIT PRESERVE ROWS AS
-      SELECT id, label, identifier, embedding
-      FROM entries
-      WHERE dictionary_id = #{id}
-        AND searchable = true
-        AND embedding IS NOT NULL
-    SQL
+    # Create temp table from persistent semantic table (where embeddings are stored)
+    # If no semantic table exists, create empty temp table
+    if has_semantic_table?
+      create_sql = <<~SQL
+        CREATE TEMPORARY TABLE #{table_name} ON COMMIT PRESERVE ROWS AS
+        SELECT id, label, identifier, searchable, embedding
+        FROM #{semantic_table_name}
+      SQL
+    else
+      # No semantic table - create empty temp table structure
+      create_sql = <<~SQL
+        CREATE TEMPORARY TABLE #{table_name} (
+          id BIGINT PRIMARY KEY,
+          label TEXT,
+          identifier TEXT,
+          searchable BOOLEAN DEFAULT TRUE,
+          embedding VECTOR(768)
+        )
+      SQL
+    end
     conn.execute(create_sql)
 
-    # Add primary key constraint
-    conn.execute("ALTER TABLE #{table_name} ADD PRIMARY KEY (id)")
+    # Add primary key constraint (only for CREATE TABLE ... AS SELECT, not for empty table)
+    if has_semantic_table?
+      conn.execute("ALTER TABLE #{table_name} ADD PRIMARY KEY (id)")
+    end
 
     # Create HNSW index on the temp table - no WHERE clause needed since all rows are relevant
     index_sql = <<~SQL
@@ -365,6 +385,7 @@ class Dictionary < ApplicationRecord
       CROSS JOIN LATERAL (
         SELECT t.id, t.label, t.identifier, t.embedding <=> qe.query_embedding AS distance
         FROM #{temp_table_name} t
+        WHERE t.searchable = true
         ORDER BY t.embedding <=> qe.query_embedding
         LIMIT 10
       ) sub
@@ -393,7 +414,162 @@ class Dictionary < ApplicationRecord
     results
   end
 
+  # ============================================================================
+  # Persistent Semantic Table Methods
+  # ============================================================================
+  # These methods manage persistent per-dictionary tables for semantic search.
+  # Unlike temp tables, these persist across requests and don't require
+  # rebuilding the HNSW index on each annotation request.
+
   public
+
+  # Name for the persistent semantic table
+  def semantic_table_name
+    "semantic_dict_#{id}"
+  end
+
+  # Create the persistent semantic table with HNSW index
+  # @param m [Integer] HNSW max connections per layer
+  # @param ef_construction [Integer] HNSW construction parameter
+  def create_semantic_table!(m: 16, ef_construction: 64)
+    return if has_semantic_table?
+
+    conn = ActiveRecord::Base.connection
+    table = semantic_table_name
+
+    conn.execute(<<~SQL)
+      CREATE TABLE #{table} (
+        id BIGINT PRIMARY KEY,
+        label VARCHAR(255) NOT NULL,
+        identifier VARCHAR(255) NOT NULL,
+        searchable BOOLEAN NOT NULL DEFAULT TRUE,
+        embedding vector(768) NOT NULL
+      )
+    SQL
+
+    conn.execute(<<~SQL)
+      CREATE INDEX idx_#{table}_hnsw
+      ON #{table} USING hnsw (embedding vector_cosine_ops)
+      WITH (m = #{m}, ef_construction = #{ef_construction})
+    SQL
+
+    update_column(:has_semantic_table, true)
+    Rails.logger.info "Created persistent semantic table #{table}"
+  end
+
+  # Drop the persistent semantic table
+  def drop_semantic_table!
+    return unless has_semantic_table?
+
+    conn = ActiveRecord::Base.connection
+    conn.execute("DROP TABLE IF EXISTS #{semantic_table_name}")
+    update_column(:has_semantic_table, false)
+    Rails.logger.info "Dropped persistent semantic table #{semantic_table_name}"
+  end
+
+  # Rebuild the semantic table structure (drop and recreate empty)
+  # Call this when you need a fresh table, then use bulk_upsert_semantic_embeddings to populate
+  def rebuild_semantic_table!
+    conn = ActiveRecord::Base.connection
+    table = semantic_table_name
+
+    # Drop if exists
+    conn.execute("DROP TABLE IF EXISTS #{table}")
+    update_column(:has_semantic_table, false) if has_semantic_table?
+
+    create_semantic_table!
+  end
+
+  # Bulk upsert embeddings to semantic table
+  # @param entries_data [Array<Hash>] Array of {id:, label:, identifier:, searchable:, embedding:}
+  def bulk_upsert_semantic_embeddings(entries_data)
+    return if entries_data.empty?
+
+    # Ensure semantic table exists
+    create_semantic_table! unless has_semantic_table?
+
+    conn = ActiveRecord::Base.connection
+    table = semantic_table_name
+
+    # Build VALUES clause
+    values = entries_data.map do |data|
+      emb_str = "[#{data[:embedding].join(',')}]"
+      searchable = data[:searchable].nil? ? true : data[:searchable]
+      "(#{data[:id]}, #{conn.quote(data[:label])}, #{conn.quote(data[:identifier])}, #{searchable}, '#{emb_str}'::vector)"
+    end.join(",\n")
+
+    conn.execute(<<~SQL)
+      INSERT INTO #{table} (id, label, identifier, searchable, embedding)
+      VALUES #{values}
+      ON CONFLICT (id) DO UPDATE SET
+        label = EXCLUDED.label,
+        identifier = EXCLUDED.identifier,
+        searchable = EXCLUDED.searchable,
+        embedding = EXCLUDED.embedding
+    SQL
+  end
+
+  # Upsert a single entry with embedding to semantic table
+  # @param entry [Entry] the entry
+  # @param embedding [Array<Float>] the embedding vector
+  def upsert_semantic_entry(entry, embedding)
+    return if embedding.blank?
+
+    # Ensure semantic table exists
+    create_semantic_table! unless has_semantic_table?
+
+    conn = ActiveRecord::Base.connection
+    table = semantic_table_name
+    emb_str = "[#{embedding.join(',')}]"
+
+    conn.execute(<<~SQL)
+      INSERT INTO #{table} (id, label, identifier, searchable, embedding)
+      VALUES (#{entry.id}, #{conn.quote(entry.label)},
+              #{conn.quote(entry.identifier)}, #{entry.searchable?}, '#{emb_str}'::vector)
+      ON CONFLICT (id) DO UPDATE SET
+        label = EXCLUDED.label,
+        identifier = EXCLUDED.identifier,
+        searchable = EXCLUDED.searchable,
+        embedding = EXCLUDED.embedding
+    SQL
+  end
+
+  # Update label/identifier/searchable for an entry in semantic table (without changing embedding)
+  def update_semantic_entry_metadata(entry)
+    return unless has_semantic_table?
+
+    conn = ActiveRecord::Base.connection
+    table = semantic_table_name
+
+    # Only update if entry exists in semantic table
+    conn.execute(<<~SQL)
+      UPDATE #{table}
+      SET label = #{conn.quote(entry.label)},
+          identifier = #{conn.quote(entry.identifier)},
+          searchable = #{entry.searchable?}
+      WHERE id = #{entry.id}
+    SQL
+  end
+
+  # Remove a single entry from the semantic table
+  def remove_entry_from_semantic_table(entry_id)
+    return unless has_semantic_table?
+
+    ActiveRecord::Base.connection.execute(
+      "DELETE FROM #{semantic_table_name} WHERE id = #{entry_id.to_i}"
+    )
+  end
+
+  # Batch semantic search using the persistent table
+  # Uses the same query pattern as temp table search
+  def batch_search_semantic_persistent(span_embeddings, threshold, tags = [])
+    return {} unless has_semantic_table?
+
+    # Delegate to the same query logic used for temp tables
+    batch_search_semantic_temp(semantic_table_name, span_embeddings, threshold, tags)
+  end
+
+  # ============================================================================
 
   def undo_entry(entry)
     if entry.is_white?
@@ -510,22 +686,31 @@ class Dictionary < ApplicationRecord
         tags.delete_all  # Delete all dictionary tags since there are no entries
         update_entries_num
         clean_sim_string_db
+        # Drop semantic table since all entries are gone
+        drop_semantic_table! if has_semantic_table?
       when EntryMode::GRAY
         # Use ActiveRecord method for security and consistency
         entries.gray.delete_all
         update_entries_num
+        # Rebuild semantic table to reflect changes (bulk delete bypasses callbacks)
+        rebuild_semantic_table! if has_semantic_table?
       when EntryMode::WHITE
         # Use delete_all for bulk deletion without callbacks
         entries.white.delete_all
         update_entries_num
+        # Rebuild semantic table to reflect changes (bulk delete bypasses callbacks)
+        rebuild_semantic_table! if has_semantic_table?
       when EntryMode::BLACK
         # Use single UPDATE instead of iterating through each entry
         entries.black.update_all(mode: EntryMode::GRAY)
         update_entries_num
+        # No semantic table rebuild needed - BLACK entries weren't in semantic table
       when EntryMode::AUTO_EXPANDED
         # Use delete_all for bulk deletion without callbacks
         entries.auto_expanded.delete_all
         update_entries_num
+        # Rebuild semantic table to reflect changes (bulk delete bypasses callbacks)
+        rebuild_semantic_table! if has_semantic_table?
       else
         raise ArgumentError, "Unexpected mode: #{mode}"
       end
@@ -681,30 +866,30 @@ class Dictionary < ApplicationRecord
   end
 
   def build_semantic_query(embedding_vector, distance_threshold, tags)
+    # Query from semantic table where embeddings are stored
+    return [] unless has_semantic_table?
+
     sql = <<~SQL
       SELECT
-        e.id,
-        e.label,
-        e.identifier,
-        e.embedding,
-        e.embedding <=> $1 AS distance
-      FROM entries e
-      WHERE e.dictionary_id = $2
-        AND e.embedding <=> $1 <= $3
-        AND e.searchable = true
+        s.id,
+        s.label,
+        s.identifier,
+        s.embedding <=> $1 AS distance
+      FROM #{semantic_table_name} s
+      WHERE s.embedding <=> $1 <= $2
     SQL
 
-    params = [embedding_vector, id, distance_threshold]
-    param_count = 3
+    params = [embedding_vector, distance_threshold]
+    param_count = 2
 
-    # Add tag filtering if present
+    # Add tag filtering if present (requires join with entries for tag lookup)
     if tags.present?
       tag_placeholders = tags.map { |_| "$#{param_count += 1}" }.join(',')
       sql += <<~SQL
         AND EXISTS (
           SELECT 1 FROM entry_tags et
           JOIN tags t ON t.id = et.tag_id
-          WHERE et.entry_id = e.id
+          WHERE et.entry_id = s.id
             AND t.value IN (#{tag_placeholders})
         )
       SQL
@@ -712,7 +897,7 @@ class Dictionary < ApplicationRecord
     end
 
     sql += <<~SQL
-      ORDER BY e.embedding <=> $1
+      ORDER BY s.embedding <=> $1
       LIMIT 5
     SQL
 
@@ -842,7 +1027,6 @@ class Dictionary < ApplicationRecord
         FROM entries e
         WHERE e.dictionary_id = $1
           AND e.embedding <=> qe.query_embedding <= $2
-          AND e.searchable = true
     SQL
 
     params = [dictionary_id, distance_threshold]
@@ -944,12 +1128,17 @@ class Dictionary < ApplicationRecord
       stats[:made_searchable] = result
     end
 
+    # Rebuild semantic table since searchable field changed (bulk update bypasses callbacks)
+    rebuild_semantic_table! if has_semantic_table?
+
     stats
   end
 
   # Make all entries in this dictionary searchable
   def make_all_searchable
     entries.update_all(searchable: true)
+    # Rebuild semantic table since searchable field changed (bulk update bypasses callbacks)
+    rebuild_semantic_table! if has_semantic_table?
   end
 
   # Make only entries with specific tags searchable, others unsearchable

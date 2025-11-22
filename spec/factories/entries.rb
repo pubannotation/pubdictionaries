@@ -7,6 +7,7 @@ FactoryBot.define do
     label_length { label.length }
     mode { EntryMode::GRAY }
     dirty { false }
+    searchable { true }
     association :dictionary
 
     trait :gray do

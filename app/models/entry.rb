@@ -97,6 +97,10 @@ class Entry < ApplicationRecord
   after_create :update_dictionary_entries_num
   after_destroy :update_dictionary_entries_num
 
+  # Semantic table sync callbacks
+  after_save :sync_to_semantic_table, if: :should_sync_semantic?
+  after_destroy :remove_from_semantic_table
+
   def to_s
     "('#{label}', '#{identifier}')"
   end
@@ -234,15 +238,43 @@ class Entry < ApplicationRecord
     mode == EntryMode::BLACK
   end
 
-  def update_embedding
-    vector = EmbeddingServer.fetch_embedding(label)
-    update_attribute(:embedding, vector)
-  end
-
   def self.terms_sim_cosine(term1, term2)
     e1 = EmbeddingServer.fetch_embedding(term1)
     e2 = EmbeddingServer.fetch_embedding(term2)
     sim = embedding_sim_cosine(e1, e2)
+  end
+
+  # Semantic table sync methods
+  # Note: Embeddings are stored only in semantic table, not in entries table.
+  # These callbacks sync metadata (label, identifier) and handle searchable changes.
+  def should_sync_semantic?
+    dictionary.has_semantic_table? &&
+      (saved_change_to_searchable? || saved_change_to_label? || saved_change_to_identifier?)
+  end
+
+  def sync_to_semantic_table
+    # Update metadata (label, identifier, searchable) in semantic table
+    # The searchable flag is now stored in the semantic table itself
+    dictionary.update_semantic_entry_metadata(self)
+  end
+
+  def remove_from_semantic_table
+    dictionary.remove_entry_from_semantic_table(id)
+  end
+
+  # Fetch and store embedding for this entry in the semantic table
+  # @return [Boolean] true if embedding was successfully stored
+  def update_embedding
+    return false unless searchable?
+
+    embedding = EmbeddingServer.fetch_embedding(label)
+    return false unless embedding
+
+    dictionary.upsert_semantic_entry(self, embedding)
+    true
+  rescue => e
+    Rails.logger.error "Failed to update embedding for entry #{id}: #{e.message}"
+    false
   end
 
   private

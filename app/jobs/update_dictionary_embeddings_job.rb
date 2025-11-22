@@ -33,8 +33,12 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 		Rails.logger.info "Starting embedding update for dictionary #{dictionary.id} with #{@total_entries} entries using PubMedBERT"
 
+		# Ensure semantic table exists before processing
+		@dictionary.create_semantic_table! unless @dictionary.has_semantic_table?
+
 		# Process entries in batches to leverage batch embedding API
-		dictionary.entries.find_in_batches(batch_size: BATCH_SIZE) do |batch|
+		# Only process searchable entries
+		dictionary.entries.where(searchable: true).find_in_batches(batch_size: BATCH_SIZE) do |batch|
 			check_suspension
 			process_batch(batch)
 		end
@@ -96,9 +100,14 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 	def perform_embedding_cleanup
 		begin
-			# Reset all searchable flags before cleaning
-			Rails.logger.info "Resetting searchable flags for all entries..."
-			@dictionary.entries.where.not(embedding: nil).update_all(searchable: true)
+			# Reset all searchable flags for entries that have embeddings in semantic table
+			Rails.logger.info "Resetting searchable flags for entries with embeddings..."
+			if @dictionary.has_semantic_table?
+				entry_ids = ActiveRecord::Base.connection.exec_query(
+					"SELECT id FROM #{@dictionary.semantic_table_name}"
+				).map { |r| r['id'] }
+				@dictionary.entries.where(id: entry_ids).update_all(searchable: true)
+			end
 
 			# Initialize analyzer
 			analyzer = DictionaryEmbeddingAnalyzer.new(@dictionary.name)
@@ -143,10 +152,16 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 	end
 
 	def generate_summary_report
-		# Calculate final statistics
-		total_with_embeddings = @dictionary.entries.where.not(embedding: nil).count
-		total_searchable = @dictionary.entries.where(searchable: true).where.not(embedding: nil).count
-		total_non_searchable = total_with_embeddings - total_searchable
+		# Calculate final statistics from semantic table
+		total_with_embeddings = if @dictionary.has_semantic_table?
+			ActiveRecord::Base.connection.exec_query(
+				"SELECT COUNT(*) as cnt FROM #{@dictionary.semantic_table_name}"
+			).first['cnt']
+		else
+			0
+		end
+		total_searchable = total_with_embeddings  # Semantic table only contains searchable entries
+		total_non_searchable = @dictionary.entries.where(searchable: false).count
 
 		# Build summary
 		summary = {
@@ -382,27 +397,19 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 	def bulk_update_embeddings(batch, embeddings)
 		return if batch.empty? || embeddings.empty?
 
-		# Prepare the bulk update using PostgreSQL's UPDATE ... FROM with VALUES
-		connection = ActiveRecord::Base.connection
+		# Prepare bulk upsert to semantic table
+		entries_data = batch.zip(embeddings).map do |entry, embedding|
+			{
+				id: entry.id,
+				label: entry.label,
+				identifier: entry.identifier,
+				embedding: embedding
+			}
+		end
 
-		# Build values list for the query
-		values_list = batch.zip(embeddings).map do |entry, embedding|
-			# Safely format the embedding vector and escape entry ID
-			embedding_str = connection.quote("[#{embedding.join(',')}]")
-			"(#{entry.id}, #{embedding_str}::vector)"
-		end.join(', ')
+		@dictionary.bulk_upsert_semantic_embeddings(entries_data)
 
-		# Execute bulk update using VALUES clause for better performance
-		sql = <<~SQL
-			UPDATE entries
-			SET embedding = updates.embedding_data
-			FROM (VALUES #{values_list}) AS updates(id, embedding_data)
-			WHERE entries.id = updates.id
-		SQL
-
-		connection.execute(sql)
-
-		Rails.logger.debug "Bulk updated #{batch.size} entries with embeddings"
+		Rails.logger.debug "Bulk upserted #{batch.size} entries to semantic table"
 	end
 
 	def handle_batch_error(batch, error, error_description, error_prefix)

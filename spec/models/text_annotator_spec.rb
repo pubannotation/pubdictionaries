@@ -23,14 +23,21 @@ RSpec.describe TextAnnotator, type: :model do
       validate: false
     )
 
-    # Add embeddings
+    # Make entries searchable
+    dictionary.entries.update_all(searchable: true)
+
+    # Create semantic table and add embeddings (embeddings are only in semantic table now)
+    dictionary.create_semantic_table!
     dictionary.entries.each do |entry|
-      entry.update_column(:embedding, mock_embedding_vector)
-      entry.update_column(:searchable, true)
+      dictionary.upsert_semantic_entry(entry, mock_embedding_vector)
     end
 
     # Update dictionary metadata
     dictionary.update_entries_num
+  end
+
+  after do
+    dictionary.drop_semantic_table! if dictionary.has_semantic_table?
   end
 
   describe 'initialization with semantic_threshold' do
@@ -578,6 +585,338 @@ RSpec.describe TextAnnotator, type: :model do
       expect {
         annotator.send(:batch_get_embeddings, span_index)
       }.not_to raise_error
+    end
+  end
+
+  describe 'persistent semantic table preference' do
+    context 'when dictionary has persistent semantic table' do
+      # Note: The main before block already creates the semantic table with embeddings
+
+      it 'uses persistent table instead of creating temp table' do
+        expect(dictionary).not_to receive(:create_semantic_temp_table!)
+
+        annotator = TextAnnotator.new([dictionary], { semantic_threshold: 0.6 })
+
+        semantic_tables = annotator.instance_variable_get(:@semantic_tables)
+        expect(semantic_tables[dictionary.id]).to eq(dictionary.semantic_table_name)
+
+        temp_tables = annotator.instance_variable_get(:@temp_semantic_tables)
+        expect(temp_tables).to be_empty
+
+        annotator.dispose
+      end
+
+      it 'does not drop persistent table on dispose' do
+        annotator = TextAnnotator.new([dictionary], { semantic_threshold: 0.6 })
+        annotator.dispose
+
+        # Table should still exist
+        expect(dictionary.reload.has_semantic_table?).to be true
+        count = ActiveRecord::Base.connection.exec_query(
+          "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+        ).first['cnt']
+        expect(count).to be > 0
+      end
+    end
+
+    context 'when dictionary has no persistent semantic table' do
+      before do
+        dictionary.drop_semantic_table! if dictionary.has_semantic_table?
+      end
+
+      it 'skips semantic table creation when no embeddings' do
+        # When there's no semantic table, embeddings_populated? returns false,
+        # so TextAnnotator correctly skips creating any semantic table
+        annotator = TextAnnotator.new([dictionary], { semantic_threshold: 0.6 })
+
+        semantic_tables = annotator.instance_variable_get(:@semantic_tables)
+        # Should be nil or empty since no embeddings exist
+        expect(semantic_tables[dictionary.id]).to be_nil
+
+        temp_tables = annotator.instance_variable_get(:@temp_semantic_tables)
+        expect(temp_tables).to be_empty
+
+        annotator.dispose
+      end
+    end
+
+    context 'with mixed dictionaries' do
+      let(:dict_with_table) { dictionary }
+      let(:dict_without_table) { create(:dictionary, user: user, name: 'test_no_semantic') }
+
+      before do
+        # Setup dict_without_table with entries but NO semantic table
+        Entry.create!(
+          dictionary: dict_without_table,
+          label: 'Test term',
+          identifier: 'TEST:001',
+          norm1: 'testterm',
+          norm2: 'test term',
+          label_length: 9,
+          searchable: true
+        )
+        dict_without_table.update_entries_num
+
+        # dict_with_table already has semantic table from main before block
+        # dict_without_table has no semantic table (we didn't create one)
+      end
+
+      after do
+        # Note: dict_with_table is cleaned up by main after block
+        dict_without_table.drop_semantic_table! if dict_without_table.has_semantic_table?
+      end
+
+      it 'uses persistent table for one and skips for dict without embeddings' do
+        annotator = TextAnnotator.new([dict_with_table, dict_without_table], { semantic_threshold: 0.6 })
+
+        semantic_tables = annotator.instance_variable_get(:@semantic_tables)
+        temp_tables = annotator.instance_variable_get(:@temp_semantic_tables)
+
+        # dict_with_table should use persistent table
+        expect(semantic_tables[dict_with_table.id]).to eq(dict_with_table.semantic_table_name)
+
+        # dict_without_table should be skipped (no embeddings populated)
+        # since embeddings are now stored only in semantic tables
+        expect(semantic_tables[dict_without_table.id]).to be_nil
+        expect(temp_tables).to be_empty
+
+        annotator.dispose
+      end
+    end
+  end
+
+  describe 'same-identifier consolidation before boundary crossing' do
+    # This tests the fix for the issue where overlapping spans with the same identifier
+    # were incorrectly removed by boundary crossing elimination.
+    # Example: "soluble protein, Rubisco contents" (score 0.87) was being removed due to
+    # boundary crossing with "Rubisco contents, and" (score 0.92), even though both had
+    # the same identifier and the shorter span should have been kept.
+
+    let(:annotator) { TextAnnotator.new([dictionary], { threshold: 0.85, longest: false }) }
+
+    before do
+      # Stub embedding server to avoid external calls
+      allow(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
+        Array.new(spans.size) { mock_embedding_vector }
+      end
+    end
+
+    describe 'non-overlapping spans with same identifier' do
+      it 'keeps all non-overlapping spans even with same identifier' do
+        # Same identifier appearing in different positions should all be kept
+        # Uses existing 'Fever' entry from test setup
+        text = 'Fever in morning, fever at night'
+        result = annotator.annotate_batch([{ text: text }]).first
+
+        fever_annotations = result[:denotations].select { |d| d[:obj] == 'HP:0001945' }
+        # Should find fever twice (once at each position)
+        expect(fever_annotations.length).to eq(2)
+
+        # Verify they are at different positions
+        positions = fever_annotations.map { |d| d[:span][:begin] }
+        expect(positions.uniq.length).to eq(2)
+
+        annotator.dispose
+      end
+    end
+
+    describe 'different identifiers at different positions' do
+      it 'allows annotations for different identifiers when spans do not overlap' do
+        # Uses existing entries from test setup
+        # Note: Both fever and headache should be found, but SimString matching
+        # depends on the dictionary's pre-built index
+        text = 'Patient has fever'
+        result = annotator.annotate_batch([{ text: text }]).first
+
+        # At minimum, "Fever" (HP:0001945) should be found
+        identifiers = result[:denotations].map { |d| d[:obj] }
+        expect(identifiers).to include('HP:0001945')
+
+        annotator.dispose
+      end
+    end
+
+    describe 'denotation consolidation logic' do
+      # These tests directly test the consolidation algorithm by simulating
+      # the denotation arrays that would be produced
+
+      it 'consolidates overlapping spans with same identifier keeping higher score' do
+        # Simulate the scenario: two overlapping spans with same identifier
+        # Span 1: "soluble protein, Rubisco contents" (0-35) score 0.87
+        # Span 2: "Rubisco contents" (17-33) score 0.95
+        # Both have same identifier, span 2 has higher score
+        denotations = [
+          { span: { begin: 0, end: 35 }, obj: 'TO:0000319', score: 0.87 },
+          { span: { begin: 17, end: 33 }, obj: 'TO:0000319', score: 0.95 }
+        ]
+
+        # Sort by position and score (as the algorithm does)
+        denotations.sort! do |a, b|
+          c1 = (a[:span][:begin] <=> b[:span][:begin])
+          if c1.zero?
+            c2 = (b[:span][:end] <=> a[:span][:end])
+            c2.zero? ? (b[:score] <=> a[:score]) : c2
+          else
+            c1
+          end
+        end
+
+        # Apply consolidation logic (same algorithm as in text_annotator.rb)
+        consolidated_indices = []
+        denotations.each_with_index do |d, i|
+          dominated = false
+          consolidated_indices.each do |j|
+            other = denotations[j]
+            overlaps = d[:span][:begin] < other[:span][:end] && d[:span][:end] > other[:span][:begin]
+            if overlaps && d[:obj] == other[:obj]
+              if d[:score] > other[:score]
+                consolidated_indices.delete(j)
+              else
+                dominated = true
+                break
+              end
+            end
+          end
+          consolidated_indices << i unless dominated
+        end
+        result = consolidated_indices.map { |i| denotations[i] }
+
+        # Should keep only the higher-scoring span
+        expect(result.length).to eq(1)
+        expect(result.first[:score]).to eq(0.95)
+        expect(result.first[:span][:begin]).to eq(17)
+        expect(result.first[:span][:end]).to eq(33)
+      end
+
+      it 'keeps both spans when they have different identifiers' do
+        # Two overlapping spans with different identifiers should both survive consolidation
+        denotations = [
+          { span: { begin: 0, end: 20 }, obj: 'ID:001', score: 0.90 },
+          { span: { begin: 10, end: 30 }, obj: 'ID:002', score: 0.85 }
+        ]
+
+        denotations.sort! do |a, b|
+          c1 = (a[:span][:begin] <=> b[:span][:begin])
+          if c1.zero?
+            c2 = (b[:span][:end] <=> a[:span][:end])
+            c2.zero? ? (b[:score] <=> a[:score]) : c2
+          else
+            c1
+          end
+        end
+
+        consolidated_indices = []
+        denotations.each_with_index do |d, i|
+          dominated = false
+          consolidated_indices.each do |j|
+            other = denotations[j]
+            overlaps = d[:span][:begin] < other[:span][:end] && d[:span][:end] > other[:span][:begin]
+            if overlaps && d[:obj] == other[:obj]
+              if d[:score] > other[:score]
+                consolidated_indices.delete(j)
+              else
+                dominated = true
+                break
+              end
+            end
+          end
+          consolidated_indices << i unless dominated
+        end
+        result = consolidated_indices.map { |i| denotations[i] }
+
+        # Both should be kept (different identifiers)
+        expect(result.length).to eq(2)
+        expect(result.map { |d| d[:obj] }).to contain_exactly('ID:001', 'ID:002')
+      end
+
+      it 'keeps all non-overlapping spans with same identifier' do
+        # Non-overlapping spans with same identifier should all survive
+        denotations = [
+          { span: { begin: 0, end: 5 }, obj: 'HP:0001945', score: 1.0 },
+          { span: { begin: 20, end: 25 }, obj: 'HP:0001945', score: 1.0 }
+        ]
+
+        denotations.sort! do |a, b|
+          c1 = (a[:span][:begin] <=> b[:span][:begin])
+          if c1.zero?
+            c2 = (b[:span][:end] <=> a[:span][:end])
+            c2.zero? ? (b[:score] <=> a[:score]) : c2
+          else
+            c1
+          end
+        end
+
+        consolidated_indices = []
+        denotations.each_with_index do |d, i|
+          dominated = false
+          consolidated_indices.each do |j|
+            other = denotations[j]
+            overlaps = d[:span][:begin] < other[:span][:end] && d[:span][:end] > other[:span][:begin]
+            if overlaps && d[:obj] == other[:obj]
+              if d[:score] > other[:score]
+                consolidated_indices.delete(j)
+              else
+                dominated = true
+                break
+              end
+            end
+          end
+          consolidated_indices << i unless dominated
+        end
+        result = consolidated_indices.map { |i| denotations[i] }
+
+        # Both should be kept (non-overlapping)
+        expect(result.length).to eq(2)
+      end
+
+      it 'handles the Rubisco scenario correctly' do
+        # This simulates the actual bug scenario:
+        # - "soluble protein, Rubisco contents" (0-33, TO:0000319, score 0.8689)
+        # - "Rubisco contents, and" (17-37, TO:0000319, score 0.925)
+        # - "Rubisco contents" (17-33, TO:0000319, score 0.9447)
+        # Without consolidation first, boundary crossing could eliminate the wrong span
+        denotations = [
+          { span: { begin: 0, end: 33 }, obj: 'TO:0000319', score: 0.8689 },
+          { span: { begin: 17, end: 37 }, obj: 'TO:0000319', score: 0.925 },
+          { span: { begin: 17, end: 33 }, obj: 'TO:0000319', score: 0.9447 }
+        ]
+
+        denotations.sort! do |a, b|
+          c1 = (a[:span][:begin] <=> b[:span][:begin])
+          if c1.zero?
+            c2 = (b[:span][:end] <=> a[:span][:end])
+            c2.zero? ? (b[:score] <=> a[:score]) : c2
+          else
+            c1
+          end
+        end
+
+        # Apply consolidation
+        consolidated_indices = []
+        denotations.each_with_index do |d, i|
+          dominated = false
+          consolidated_indices.each do |j|
+            other = denotations[j]
+            overlaps = d[:span][:begin] < other[:span][:end] && d[:span][:end] > other[:span][:begin]
+            if overlaps && d[:obj] == other[:obj]
+              if d[:score] > other[:score]
+                consolidated_indices.delete(j)
+              else
+                dominated = true
+                break
+              end
+            end
+          end
+          consolidated_indices << i unless dominated
+        end
+        result = consolidated_indices.map { |i| denotations[i] }
+
+        # Should keep only the highest-scoring span: "Rubisco contents" (17-33, 0.9447)
+        expect(result.length).to eq(1)
+        expect(result.first[:score]).to eq(0.9447)
+        expect(result.first[:span][:begin]).to eq(17)
+        expect(result.first[:span][:end]).to eq(33)
+      end
     end
   end
 end

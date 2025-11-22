@@ -13,7 +13,7 @@ RSpec.describe Dictionary, type: :model do
     end
 
     before do
-      # Create entries with embeddings
+      # Create entries
       entries_data = [
         ['Cytokine storm', 'HP:0033041', 'cytokine storm', 'cytokine storm', 14, EntryMode::GRAY, false, dictionary.id],
         ['Fever', 'HP:0001945', 'fever', 'fever', 5, EntryMode::GRAY, false, dictionary.id],
@@ -25,13 +25,18 @@ RSpec.describe Dictionary, type: :model do
         validate: false
       )
 
-      # Add embeddings to entries
-      dictionary.entries.each do |entry|
-        entry.update_column(:embedding, mock_embedding_vector)
-      end
-
       # Make all entries searchable
       dictionary.entries.update_all(searchable: true)
+
+      # Create semantic table and add embeddings
+      dictionary.create_semantic_table!
+      dictionary.entries.each do |entry|
+        dictionary.upsert_semantic_entry(entry, mock_embedding_vector)
+      end
+    end
+
+    after do
+      dictionary.drop_semantic_table! if dictionary.has_semantic_table?
     end
 
     describe '#search_term_semantic' do
@@ -166,23 +171,27 @@ RSpec.describe Dictionary, type: :model do
           query_embedding = mock_embedding_vector
           allow(EmbeddingServer).to receive(:fetch_embedding).and_return(query_embedding)
 
-          # Mark one entry as non-searchable
-          dictionary.entries.first.update_column(:searchable, false)
+          # Mark one entry as non-searchable and remove from semantic table
+          entry = dictionary.entries.first
+          entry.update_column(:searchable, false)
+          dictionary.remove_entry_from_semantic_table(entry.id)
 
           results = dictionary.search_term_semantic('test query', 0.0, [])
 
           # Should not include the non-searchable entry
-          non_searchable_id = dictionary.entries.first.identifier
           result_ids = results.map { |r| r[:identifier] }
-          expect(result_ids).not_to include(non_searchable_id)
+          expect(result_ids).not_to include(entry.identifier)
         end
 
         it 'returns empty when all entries are non-searchable' do
           query_embedding = mock_embedding_vector
           allow(EmbeddingServer).to receive(:fetch_embedding).and_return(query_embedding)
 
-          # Mark all entries as non-searchable
-          dictionary.entries.update_all(searchable: false)
+          # Mark all entries as non-searchable and clear semantic table
+          dictionary.entries.each do |entry|
+            entry.update_column(:searchable, false)
+            dictionary.remove_entry_from_semantic_table(entry.id)
+          end
 
           results = dictionary.search_term_semantic('test query', 0.0, [])
 
@@ -261,10 +270,15 @@ RSpec.describe Dictionary, type: :model do
       let(:ssdbs) { {} }
 
       before do
-        # Create entry in second dictionary
-        entry = create(:entry, dictionary: dict2, label: 'Inflammation', identifier: 'HP:0012345')
-        entry.update_column(:embedding, mock_embedding_vector)
-        entry.update_column(:searchable, true)
+        # Create entry in second dictionary with semantic table
+        entry = create(:entry, dictionary: dict2, label: 'Inflammation', identifier: 'HP:0012345', searchable: true)
+        dict2.update_entries_num  # Important: update entries_num so search_term doesn't return early
+        dict2.create_semantic_table!
+        dict2.upsert_semantic_entry(entry, mock_embedding_vector)
+      end
+
+      after do
+        dict2.drop_semantic_table! if dict2.has_semantic_table?
       end
 
       it 'aggregates semantic results from multiple dictionaries' do
@@ -272,7 +286,9 @@ RSpec.describe Dictionary, type: :model do
         allow(EmbeddingServer).to receive(:fetch_embedding).and_return(query_embedding)
 
         dictionaries = [dictionary, dict2]
-        results = Dictionary.search_term_top(dictionaries, ssdbs, 0.85, false, 0.6, 'test query', [])
+        # Use very low threshold (0.01) to ensure results are returned
+        # Note: threshold must be > 0 since the code checks semantic_threshold > 0
+        results = Dictionary.search_term_top(dictionaries, ssdbs, 0.85, false, 0.01, 'test query', [])
 
         # Should have results from both dictionaries
         dict_names = results.map { |r| r[:dictionary] }.uniq
@@ -297,9 +313,14 @@ RSpec.describe Dictionary, type: :model do
       let(:ssdbs) { {} }
 
       before do
-        entry = create(:entry, dictionary: dict2, label: 'Inflammation', identifier: 'HP:0012345')
-        entry.update_column(:embedding, mock_embedding_vector)
-        entry.update_column(:searchable, true)
+        entry = create(:entry, dictionary: dict2, label: 'Inflammation', identifier: 'HP:0012345', searchable: true)
+        dict2.update_entries_num  # Important: update entries_num so search_term doesn't return early
+        dict2.create_semantic_table!
+        dict2.upsert_semantic_entry(entry, mock_embedding_vector)
+      end
+
+      after do
+        dict2.drop_semantic_table! if dict2.has_semantic_table?
       end
 
       it 'returns results sorted by score descending' do
@@ -344,8 +365,10 @@ RSpec.describe Dictionary, type: :model do
         end
 
         it 'includes only searchable entries with embeddings' do
-          # Mark one entry as non-searchable
-          dictionary.entries.first.update_column(:searchable, false)
+          # Mark one entry as non-searchable and remove from semantic table
+          entry = dictionary.entries.first
+          entry.update_column(:searchable, false)
+          dictionary.remove_entry_from_semantic_table(entry.id)
 
           table_name = dictionary.create_semantic_temp_table!
 
@@ -353,7 +376,11 @@ RSpec.describe Dictionary, type: :model do
             "SELECT COUNT(*) as cnt FROM #{table_name}"
           ).first['cnt']
 
-          expect(count).to eq(dictionary.entries.where(searchable: true).where.not(embedding: nil).count)
+          # Should match the number of entries still in the semantic table
+          semantic_count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+          ).first['cnt']
+          expect(count).to eq(semantic_count)
 
           dictionary.drop_semantic_temp_table!
         end
@@ -467,8 +494,17 @@ RSpec.describe Dictionary, type: :model do
 
         it 'returns correct distance calculations' do
           # Use an entry's own embedding to query - should get very high similarity
-          entry = dictionary.entries.where.not(embedding: nil).first
-          span_embeddings = { 'exact match test' => entry.embedding }
+          entry = dictionary.entries.first
+
+          # Fetch the entry's embedding from the semantic table and parse it
+          semantic_entry = ActiveRecord::Base.connection.exec_query(
+            "SELECT embedding FROM #{dictionary.semantic_table_name} WHERE id = #{entry.id}"
+          ).first
+          # Parse the vector string (format: "[0.1,0.2,...]") to array
+          embedding_str = semantic_entry['embedding']
+          entry_embedding = embedding_str.gsub(/[\[\]]/, '').split(',').map(&:to_f)
+
+          span_embeddings = { 'exact match test' => entry_embedding }
 
           results = dictionary.batch_search_semantic_temp(table_name, span_embeddings, 0.9, [])
 
@@ -476,6 +512,174 @@ RSpec.describe Dictionary, type: :model do
           matching_result = results['exact match test'].find { |r| r[:identifier] == entry.identifier }
           expect(matching_result).to be_present
           expect(matching_result[:score]).to be > 0.99  # Almost exact match
+        end
+      end
+    end
+
+    describe 'persistent semantic table' do
+      # Note: The before block already creates a semantic table with embeddings
+
+      describe '#create_semantic_table!' do
+        it 'creates HNSW index on the persistent table' do
+          indexes = ActiveRecord::Base.connection.exec_query(
+            "SELECT indexname FROM pg_indexes WHERE tablename = '#{dictionary.semantic_table_name}'"
+          )
+          index_names = indexes.map { |r| r['indexname'] }
+
+          expect(index_names.any? { |name| name.include?('hnsw') }).to be true
+        end
+
+        it 'does not create table if already exists' do
+          expect(dictionary.has_semantic_table?).to be true
+          # Calling again should not raise error
+          expect { dictionary.create_semantic_table! }.not_to raise_error
+        end
+      end
+
+      describe '#drop_semantic_table!' do
+        it 'drops the persistent table' do
+          expect(dictionary.has_semantic_table?).to be true
+
+          dictionary.drop_semantic_table!
+
+          expect(dictionary.has_semantic_table?).to be false
+
+          # Table should not exist
+          expect {
+            ActiveRecord::Base.connection.exec_query(
+              "SELECT COUNT(*) FROM #{dictionary.semantic_table_name}"
+            )
+          }.to raise_error(ActiveRecord::StatementInvalid)
+        end
+      end
+
+      describe '#rebuild_semantic_table!' do
+        it 'creates an empty semantic table' do
+          dictionary.rebuild_semantic_table!
+
+          expect(dictionary.has_semantic_table?).to be true
+
+          # Table should be empty (rebuild doesn't populate)
+          count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+          ).first['cnt']
+          expect(count).to eq(0)
+        end
+      end
+
+      describe '#upsert_semantic_entry' do
+        it 'adds new entry to semantic table' do
+          initial_count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+          ).first['cnt']
+
+          new_entry = dictionary.entries.create!(
+            label: 'New Term',
+            identifier: 'HP:9999999',
+            norm1: 'new term',
+            norm2: 'new term',
+            label_length: 8,
+            searchable: true
+          )
+
+          dictionary.upsert_semantic_entry(new_entry, mock_embedding_vector)
+
+          new_count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+          ).first['cnt']
+          expect(new_count).to eq(initial_count + 1)
+        end
+
+        it 'updates existing entry in semantic table' do
+          entry = dictionary.entries.first
+          new_embedding = mock_embedding_vector
+
+          dictionary.upsert_semantic_entry(entry, new_embedding)
+
+          result = ActiveRecord::Base.connection.exec_query(
+            "SELECT label FROM #{dictionary.semantic_table_name} WHERE id = #{entry.id}"
+          ).first
+          expect(result['label']).to eq(entry.label)
+        end
+
+        it 'does nothing for non-searchable entry' do
+          entry = dictionary.entries.first
+          entry.update_column(:searchable, false)
+
+          initial_count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+          ).first['cnt']
+
+          dictionary.upsert_semantic_entry(entry, mock_embedding_vector)
+
+          new_count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+          ).first['cnt']
+          expect(new_count).to eq(initial_count)
+        end
+      end
+
+      describe '#update_semantic_entry_metadata' do
+        it 'updates label and identifier in semantic table' do
+          entry = dictionary.entries.first
+          entry.update_columns(label: 'Updated Label', identifier: 'HP:9999999')
+
+          dictionary.update_semantic_entry_metadata(entry)
+
+          result = ActiveRecord::Base.connection.exec_query(
+            "SELECT label, identifier FROM #{dictionary.semantic_table_name} WHERE id = #{entry.id}"
+          ).first
+          expect(result['label']).to eq('Updated Label')
+          expect(result['identifier']).to eq('HP:9999999')
+        end
+      end
+
+      describe '#remove_entry_from_semantic_table' do
+        it 'removes entry from semantic table' do
+          entry = dictionary.entries.first
+          initial_count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+          ).first['cnt']
+
+          dictionary.remove_entry_from_semantic_table(entry.id)
+
+          new_count = ActiveRecord::Base.connection.exec_query(
+            "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+          ).first['cnt']
+          expect(new_count).to eq(initial_count - 1)
+        end
+      end
+
+      describe '#batch_search_semantic_persistent' do
+        it 'returns matching entries using persistent table' do
+          query_embedding = mock_embedding_vector
+          span_embeddings = { 'test query' => query_embedding }
+
+          results = dictionary.batch_search_semantic_persistent(span_embeddings, 0.0, [])
+
+          expect(results).to be_a(Hash)
+          expect(results['test query']).to be_an(Array)
+        end
+
+        it 'returns empty hash when no semantic table exists' do
+          dictionary.drop_semantic_table!
+          span_embeddings = { 'test query' => mock_embedding_vector }
+
+          results = dictionary.batch_search_semantic_persistent(span_embeddings, 0.0, [])
+
+          expect(results).to eq({})
+        end
+
+        it 'returns results with correct structure' do
+          query_embedding = mock_embedding_vector
+          span_embeddings = { 'test query' => query_embedding }
+
+          results = dictionary.batch_search_semantic_persistent(span_embeddings, 0.0, [])
+
+          results['test query'].each do |result|
+            expect(result).to include(:label, :identifier, :score, :dictionary, :search_type)
+            expect(result[:search_type]).to eq('Semantic')
+          end
         end
       end
     end

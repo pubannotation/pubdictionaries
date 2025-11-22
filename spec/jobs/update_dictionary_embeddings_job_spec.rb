@@ -6,10 +6,12 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
   let(:job_record) { Job.create!(dictionary: dictionary, name: 'Update embeddings', num_items: 0, num_dones: 0) }
 
   # Helper method to perform the job with proper setup
-  def perform_job(dictionary)
+  # Note: clean_embeddings is disabled by default in tests since it requires
+  # mocking EmbeddingServer.fetch_embedding for origin terms
+  def perform_job(dictionary, clean_embeddings: false)
     job_instance = UpdateDictionaryEmbeddingsJob.new
     job_instance.instance_variable_set(:@job, job_record)
-    job_instance.perform(dictionary)
+    job_instance.perform(dictionary, clean_embeddings: clean_embeddings)
   end
 
   # Helper method to create entries
@@ -22,6 +24,19 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
   # Mock embedding response (768-dimensional vector for PubMedBERT)
   def mock_embedding_vector
     Array.new(768) { rand }
+  end
+
+  # Helper to count entries in semantic table
+  def semantic_table_count(dictionary)
+    return 0 unless dictionary.has_semantic_table?
+    ActiveRecord::Base.connection.exec_query(
+      "SELECT COUNT(*) as cnt FROM #{dictionary.semantic_table_name}"
+    ).first['cnt']
+  end
+
+  after do
+    # Clean up semantic table if it exists
+    dictionary.drop_semantic_table! if dictionary.has_semantic_table?
   end
 
   describe '#perform' do
@@ -38,8 +53,8 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
 
         perform_job(dictionary)
 
-        # All entries should now have embeddings
-        expect(dictionary.entries.where.not(embedding: nil).count).to eq(3)
+        # All entries should now have embeddings in semantic table
+        expect(semantic_table_count(dictionary)).to eq(3)
       end
 
       it 'handles empty dictionary' do
@@ -69,7 +84,7 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
 
         perform_job(dictionary)
 
-        expect(dictionary.entries.where.not(embedding: nil).count).to eq(150)
+        expect(semantic_table_count(dictionary)).to eq(150)
       end
 
       it 'verifies batch size constant' do
@@ -103,7 +118,7 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
         }.to raise_error(Exceptions::JobSuspendError)
 
         # Should have processed first batch (50 entries) but stopped before second
-        expect(dictionary.entries.where.not(embedding: nil).count).to eq(50)
+        expect(semantic_table_count(dictionary)).to eq(50)
 
         # Clean up suspend file
         FileUtils.rm_f(suspend_file)
@@ -185,9 +200,9 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
 
         perform_job(dictionary)
 
-        # No failed entries, metadata should be nil
+        # Job stores summary in metadata, but no failed_entries
         job_record.reload
-        expect(job_record.metadata).to be_nil
+        expect(job_record.metadata).to be_nil.or(satisfy { |m| m['failed_entries'].nil? })
       end
     end
 
@@ -296,7 +311,7 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
 
         # Should have made 3 calls (2 failures + 1 success)
         expect(call_count).to eq(3)
-        expect(dictionary.entries.where.not(embedding: nil).count).to eq(3)
+        expect(semantic_table_count(dictionary)).to eq(3)
       end
 
       it 'fails after max retries for transient errors' do
@@ -467,19 +482,19 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
     end
 
     context 'bulk update performance' do
-      it 'updates embeddings using bulk SQL update' do
+      it 'updates embeddings using bulk upsert to semantic table' do
         create_entries(dictionary, 50)
 
         allow(EmbeddingServer).to receive(:fetch_embeddings).and_return(
           Array.new(50) { mock_embedding_vector }
         )
 
-        # Should use single bulk UPDATE statement, not 50 individual updates
-        expect(ActiveRecord::Base.connection).to receive(:execute).once.and_call_original
+        # Should call bulk_upsert_semantic_embeddings
+        expect_any_instance_of(Dictionary).to receive(:bulk_upsert_semantic_embeddings).and_call_original
 
         perform_job(dictionary)
 
-        expect(dictionary.entries.where.not(embedding: nil).count).to eq(50)
+        expect(semantic_table_count(dictionary)).to eq(50)
       end
     end
 
@@ -491,8 +506,11 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
 
         perform_job(dictionary)
 
-        entry.reload
-        expect(entry.embedding).to be_present
+        # Entry should be in semantic table
+        result = ActiveRecord::Base.connection.exec_query(
+          "SELECT label FROM #{dictionary.semantic_table_name} WHERE id = #{entry.id}"
+        ).first
+        expect(result['label']).to eq('alpha-D-glucose (6-phosphate)')
       end
 
       it 'handles partial batch at end' do
@@ -509,7 +527,7 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
 
         # Should process batch of 50 and batch of 25
         expect(batch_sizes).to eq([50, 25])
-        expect(dictionary.entries.where.not(embedding: nil).count).to eq(75)
+        expect(semantic_table_count(dictionary)).to eq(75)
       end
     end
 
