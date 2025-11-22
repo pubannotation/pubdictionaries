@@ -1,7 +1,7 @@
 <span class="page_title">
 	<%= link_to_unless_current @dictionary.name, @dictionary %>
 	<%= '<i class="fa fa-eye-slash" aria-hidden="true" title="Private"></i>'.html_safe unless @dictionary.public %>
-	<%= '<i class="fa fa-cube" aria-hidden="true" title="Has Embeddings"></i>'.html_safe if @dictionary.embeddings_populated? %>
+	<%= '<i class="fa fa-cube" aria-hidden="true" title="Semantic search ready"></i>'.html_safe if @dictionary.embeddings_populated? %>
 	<%= render partial:"control" %>
 	<%= render partial:"toolbox" %>
 </span>
