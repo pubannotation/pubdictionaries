@@ -7,7 +7,13 @@
 		<th><%= label_tag :longest, "Longest", title: "Longest only annotation: the output will not include embedded annotations." %></th>
 	</tr>
 	<tr>
-		<td><%= check_box_tag :abbreviation, true, @permitted[:abbreviation] ? @permitted[:abbreviation] : TextAnnotator::OPTIONS_DEFAULT[:abbreviation] %></td>
-		<td><%= check_box_tag :longest, true, @permitted[:longest] ? @permitted[:longest] : TextAnnotator::OPTIONS_DEFAULT[:longest] %></td>
+		<td>
+			<%= hidden_field_tag :abbreviation, 'false' %>
+			<%= check_box_tag :abbreviation, 'true', @permitted[:abbreviation].nil? ? TextAnnotator::OPTIONS_DEFAULT[:abbreviation] : @permitted[:abbreviation] %>
+		</td>
+		<td>
+			<%= hidden_field_tag :longest, 'false' %>
+			<%= check_box_tag :longest, 'true', @permitted[:longest].nil? ? TextAnnotator::OPTIONS_DEFAULT[:longest] : @permitted[:longest] %>
+		</td>
 	</tr>
 </table>

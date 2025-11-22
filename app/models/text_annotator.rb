@@ -72,20 +72,28 @@ class TextAnnotator
 
     @soft_match = @threshold.nil? || (@threshold < 1)
 
-    # Create semantic temp tables for dictionaries with embeddings (for fast HNSW-based search)
-    # Only create temp tables if semantic search is enabled
-    @semantic_temp_tables = {}
+    # Set up semantic tables for dictionaries with embeddings (for fast HNSW-based search)
+    # Prefer persistent tables over temp tables for better performance
+    @semantic_tables = {}      # Maps dict_id -> table_name (persistent or temp)
+    @temp_semantic_tables = [] # Track temp tables for cleanup in dispose
     if @semantic_threshold.present? && @semantic_threshold > 0
       @dictionaries.each do |dic|
-        # Only create temp table for dictionaries with embeddings populated
-        if dic.entries_num > 0 && dic.embeddings_populated?
+        next unless dic.entries_num > 0 && dic.embeddings_populated?
+
+        # Prefer persistent table if available
+        if dic.has_semantic_table?
+          @semantic_tables[dic.id] = dic.semantic_table_name
+          Rails.logger.info "Using persistent semantic table for dictionary #{dic.name}"
+        else
+          # Fall back to temp table
           begin
             table_name = dic.create_semantic_temp_table!
-            @semantic_temp_tables[dic.id] = table_name
-            Rails.logger.info "Created semantic temp table for dictionary #{dic.name}"
+            @semantic_tables[dic.id] = table_name
+            @temp_semantic_tables << table_name
+            Rails.logger.info "Created temp semantic table for dictionary #{dic.name}"
           rescue => e
             Rails.logger.warn "Failed to create semantic temp table for #{dic.name}: #{e.message}"
-            # Fall back to regular batch_search_semantic
+            # Fall back to regular batch_search_semantic (no table in @semantic_tables)
           end
         end
       end
@@ -112,8 +120,8 @@ class TextAnnotator
   def dispose
     @sub_string_dbs.each{|name, db| db.close if db}
 
-    # Clean up semantic temp tables
-    @semantic_temp_tables.each do |dict_id, table_name|
+    # Clean up only temp semantic tables (not persistent ones)
+    @temp_semantic_tables.each do |table_name|
       begin
         ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS #{table_name}")
         Rails.logger.debug "Dropped semantic temp table #{table_name}"
@@ -160,6 +168,32 @@ class TextAnnotator
           c1
         end
       end
+
+      # First pass: Consolidate same-identifier overlapping spans (keep higher-scoring one)
+      # This must happen BEFORE boundary crossing elimination to prevent incorrect removals
+      consolidated_indices = []
+      denotations.each_with_index do |d, i|
+        # Check if this denotation overlaps with any already-consolidated denotation with the same identifier
+        dominated = false
+        consolidated_indices.each do |j|
+          other = denotations[j]
+          # Check if spans overlap
+          overlaps = d[:span][:begin] < other[:span][:end] && d[:span][:end] > other[:span][:begin]
+          if overlaps && d[:obj] == other[:obj]
+            # Same identifier, overlapping spans - keep the one with higher score
+            if d[:score] > other[:score]
+              # Current one is better, remove the other from consolidated
+              consolidated_indices.delete(j)
+            else
+              # Other one is better or equal, skip current
+              dominated = true
+              break
+            end
+          end
+        end
+        consolidated_indices << i unless dominated
+      end
+      denotations = consolidated_indices.map { |i| denotations[i] }
 
       # To eliminate boundary_crossings
       to_be_removed = []
@@ -750,14 +784,14 @@ class TextAnnotator
       end
 
       # Perform batch semantic search for each dictionary
-      # Use temp table if available (faster HNSW-based search), otherwise fall back to regular search
+      # Use semantic table (persistent or temp) if available for faster HNSW-based search
       dictionaries.each do |dictionary|
         next unless dictionary.entries_num > 0
 
-        temp_table_name = @semantic_temp_tables[dictionary.id]
-        dict_results = if temp_table_name
-          # Use temp table with dedicated HNSW index for fast semantic search
-          dictionary.batch_search_semantic_temp(temp_table_name, span_embeddings, @semantic_threshold, [])
+        semantic_table_name = @semantic_tables[dictionary.id]
+        dict_results = if semantic_table_name
+          # Use semantic table with dedicated HNSW index for fast search
+          dictionary.batch_search_semantic_temp(semantic_table_name, span_embeddings, @semantic_threshold, [])
         else
           # Fall back to regular batch semantic search
           dictionary.batch_search_semantic(span_embeddings, @semantic_threshold, [])
@@ -854,12 +888,7 @@ class TextAnnotator
                 span = span_info[:span]
                 info = span_info[:info]
 
-                # Early exit: if norm2 matches exactly, score is 1.0 (skip expensive str_sim calculation)
-                score = if info[:norm2] == entry_hash[:norm2]
-                  1.0
-                else
-                  str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
-                end
+                score = str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
                 if score >= threshold
                   results[span] << entry_hash.merge(score: score, dictionary: dictionary.name)
                 end
@@ -885,12 +914,7 @@ class TextAnnotator
                   span = span_info[:span]
                   info = span_info[:info]
 
-                  # Early exit: if norm2 matches exactly, score is 1.0 (skip expensive str_sim calculation)
-                  score = if info[:norm2] == entry_hash[:norm2]
-                    1.0
-                  else
-                    str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
-                  end
+                  score = str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
                   if score >= threshold
                     results[span] << entry_hash.merge(score: score, dictionary: dictionary.name)
                   end
