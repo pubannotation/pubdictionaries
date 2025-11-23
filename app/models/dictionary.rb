@@ -225,6 +225,28 @@ class Dictionary < ApplicationRecord
     false
   end
 
+  # Returns the last completed embedding update job for this dictionary
+  def last_embedding_job
+    jobs.where(name: 'Update Dictionary With Embeddings')
+        .finished
+        .order(ended_at: :desc)
+        .first
+  end
+
+  # Returns the embedding report stored in the dictionary
+  # Falls back to job metadata if dictionary report is not set (backward compatibility)
+  def last_embedding_summary
+    # First try dictionary's persistent report
+    if embedding_report.present?
+      return embedding_report.deep_symbolize_keys
+    end
+
+    # Fall back to job metadata for backward compatibility
+    job = last_embedding_job
+    return nil unless job&.metadata&.dig('summary')
+    job.metadata['summary'].deep_symbolize_keys
+  end
+
   # Session-scoped Temp Table for Semantic Search
   # Creates a temporary table with dictionary entries and HNSW index for fast semantic search.
   # The temp table exists only for the current database session, eliminating index contention.

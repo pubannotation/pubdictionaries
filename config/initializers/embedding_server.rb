@@ -1,7 +1,8 @@
 module PubDic
   module EmbeddingServer
     #URL = 'http://localhost:11434'
-    URL = 'http://localhost:11435/api/embed'
+    BASE_URL = 'http://localhost:11435'
+    URL = "#{BASE_URL}/api/embed"
     # EmbeddingModel = 'avr/sfr-embedding-mistral'
     # EmbeddingModel = 'nextfire/paraphrase-multilingual-minilm:l12-v2'
     # EmbeddingModel = 'jeffh/intfloat-multilingual-e5-small:f32'

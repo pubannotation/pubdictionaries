@@ -391,7 +391,9 @@ class TextAnnotator
 
     # Step 2: Batch get embeddings for all spans
     if @semantic_threshold.present? && @semantic_threshold > 0
-      batch_get_embeddings(span_index)
+      # Use the embedding model from dictionaries (assumes same model for all)
+      embedding_model = determine_embedding_model(dictionaries)
+      batch_get_embeddings(span_index, embedding_model)
     end
 
     # Step 3: Batch get identifiers for all spans from dictionaries
@@ -678,10 +680,25 @@ class TextAnnotator
     end
   end
 
+  # Determine which embedding model to use for semantic search
+  # Uses the model from the first dictionary with embeddings, or falls back to default
+  def determine_embedding_model(dictionaries)
+    dictionaries.each do |dic|
+      if dic.embedding_model.present?
+        Rails.logger.debug "Using embedding model '#{dic.embedding_model}' from dictionary '#{dic.name}'"
+        return dic.embedding_model
+      end
+    end
+    Rails.logger.debug "No dictionary embedding model found, using default '#{EmbeddingServer::DEFAULT_MODEL}'"
+    EmbeddingServer::DEFAULT_MODEL
+  end
+
   # Batch get embeddings for all spans in span_index
   # Configuration is read from PubDic::EmbeddingServer (config/initializers/embedding_server.rb)
-  def batch_get_embeddings(span_index)
+  def batch_get_embeddings(span_index, embedding_model = nil)
     return if span_index.empty?
+
+    embedding_model ||= EmbeddingServer::DEFAULT_MODEL
 
     # Pre-filter spans to reduce embedding requests
     all_spans = span_index.keys
@@ -691,7 +708,7 @@ class TextAnnotator
     batch_size = PubDic::EmbeddingServer::BatchSize
     parallel_threads = PubDic::EmbeddingServer::ParallelThreads
 
-    Rails.logger.debug "Batch generating embeddings: #{filtered_spans.size} spans (#{skipped_count} filtered out, batch_size=#{batch_size}, threads=#{parallel_threads})"
+    Rails.logger.debug "Batch generating embeddings: #{filtered_spans.size} spans (#{skipped_count} filtered out, batch_size=#{batch_size}, threads=#{parallel_threads}, model=#{embedding_model})"
 
     return if filtered_spans.empty?
 
@@ -699,17 +716,17 @@ class TextAnnotator
     batches = filtered_spans.each_slice(batch_size).to_a
 
     if batches.size > 1 && parallel_threads > 1
-      fetch_embeddings_parallel(span_index, batches, parallel_threads)
+      fetch_embeddings_parallel(span_index, batches, parallel_threads, embedding_model)
     else
-      fetch_embeddings_sequential(span_index, batches)
+      fetch_embeddings_sequential(span_index, batches, embedding_model)
     end
   end
 
-  def fetch_embeddings_sequential(span_index, batches)
+  def fetch_embeddings_sequential(span_index, batches, embedding_model)
     total_fetched = 0
     batches.each_with_index do |batch_spans, batch_idx|
       begin
-        embeddings = EmbeddingServer.fetch_embeddings(batch_spans)
+        embeddings = EmbeddingServer.fetch_embeddings(batch_spans, model: embedding_model)
         batch_spans.each_with_index do |span, idx|
           span_index[span][:embedding] = embeddings[idx]
         end
@@ -723,7 +740,7 @@ class TextAnnotator
     Rails.logger.debug "Successfully fetched #{total_fetched} embeddings total"
   end
 
-  def fetch_embeddings_parallel(span_index, batches, parallel_threads)
+  def fetch_embeddings_parallel(span_index, batches, parallel_threads, embedding_model)
     total_fetched = 0
     results_mutex = Mutex.new
 
@@ -737,7 +754,7 @@ class TextAnnotator
 
         batch_group.each_with_index do |batch_spans, local_idx|
           begin
-            embeddings = EmbeddingServer.fetch_embeddings(batch_spans)
+            embeddings = EmbeddingServer.fetch_embeddings(batch_spans, model: embedding_model)
             batch_spans.each_with_index do |span, idx|
               thread_results[span] = embeddings[idx]
             end

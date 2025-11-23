@@ -7,11 +7,23 @@ class EmbeddingClientError < StandardError; end
 
 class EmbeddingServer
 	EMBEDDING_API_URL = 'http://localhost:11435/api/embed'
+	MODELS_API_URL = 'http://localhost:11435/api/models'
 	DEFAULT_MODEL = 'pubmedbert'
 
 	# Connection pool configuration
 	POOL_SIZE = 5  # Max number of persistent connections
 	POOL_TIMEOUT = 5  # Timeout waiting for a connection from pool (seconds)
+
+	# Fetch available models from the embedding server
+	def self.available_models
+		uri = URI(MODELS_API_URL)
+		response = Net::HTTP.get(uri)
+		data = JSON.parse(response)
+		data['models'] || []
+	rescue => e
+		Rails.logger.error("Failed to fetch embedding models: #{e.message}")
+		[]
+	end
 
 	# Create a connection pool for HTTP connections
 	# This significantly reduces overhead of establishing new connections

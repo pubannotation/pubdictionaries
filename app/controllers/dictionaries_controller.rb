@@ -362,6 +362,9 @@ class DictionariesController < ApplicationController
       dictionary = Dictionary.editable(current_user).find_by_name(params[:id])
       raise ArgumentError, "Cannot find the dictionary" if dictionary.nil?
 
+      # Parse model parameter
+      embedding_model = params[:embedding_model].presence || EmbeddingServer::DEFAULT_MODEL
+
       # Parse cleaning parameters
       clean_embeddings = params[:clean_embeddings] == '1'
       clean_two_stage = params[:clean_two_stage] == '1'
@@ -377,6 +380,7 @@ class DictionariesController < ApplicationController
 
       active_job = UpdateDictionaryEmbeddingsJob.perform_later(
         dictionary,
+        embedding_model: embedding_model,
         clean_embeddings: clean_embeddings,
         clean_two_stage: clean_two_stage,
         global_distance_threshold: global_distance_threshold,

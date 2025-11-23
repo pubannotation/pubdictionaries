@@ -11,7 +11,8 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 	BATCH_SIZE = 50 # Optimal batch size for embedding API calls
 
-	def perform(dictionary, clean_embeddings: true, clean_two_stage: false,
+	def perform(dictionary, embedding_model: EmbeddingServer::DEFAULT_MODEL,
+	            clean_embeddings: true, clean_two_stage: false,
 	            global_distance_threshold: 0.75, local_z_threshold: 2.0,
 	            min_cluster_size: 3, origin_terms: ['DNA', 'protein'])
 		@dictionary = dictionary
@@ -20,6 +21,7 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 		@count_failed = 0
 		@failed_entries = []
 		@batch_count = 0
+		@embedding_model = embedding_model
 		@clean_embeddings = clean_embeddings
 		@clean_two_stage = clean_two_stage
 		@global_distance_threshold = global_distance_threshold
@@ -31,14 +33,18 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 		prepare_progress_record(@total_entries)
 
-		Rails.logger.info "Starting embedding update for dictionary #{dictionary.id} with #{@total_entries} entries using PubMedBERT"
+		Rails.logger.info "Starting embedding update for dictionary #{dictionary.id} with #{@total_entries} entries using #{@embedding_model}"
+
+		# Reset all entries to searchable so they get re-evaluated
+		# Outlier detection will mark problematic entries as non-searchable later
+		reset_count = dictionary.entries.where(searchable: false).update_all(searchable: true)
+		Rails.logger.info "Reset #{reset_count} entries to searchable" if reset_count > 0
 
 		# Ensure semantic table exists before processing
 		@dictionary.create_semantic_table! unless @dictionary.has_semantic_table?
 
-		# Process entries in batches to leverage batch embedding API
-		# Only process searchable entries
-		dictionary.entries.where(searchable: true).find_in_batches(batch_size: BATCH_SIZE) do |batch|
+		# Process all entries in batches
+		dictionary.entries.find_in_batches(batch_size: BATCH_SIZE) do |batch|
 			check_suspension
 			process_batch(batch)
 		end
@@ -100,15 +106,7 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 	def perform_embedding_cleanup
 		begin
-			# Reset all searchable flags for entries that have embeddings in semantic table
-			Rails.logger.info "Resetting searchable flags for entries with embeddings..."
-			if @dictionary.has_semantic_table?
-				entry_ids = ActiveRecord::Base.connection.exec_query(
-					"SELECT id FROM #{@dictionary.semantic_table_name}"
-				).map { |r| r['id'] }
-				@dictionary.entries.where(id: entry_ids).update_all(searchable: true)
-			end
-
+			# Note: searchable flags are already reset at the start of the job
 			# Initialize analyzer
 			analyzer = DictionaryEmbeddingAnalyzer.new(@dictionary.name)
 
@@ -153,20 +151,26 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 	def generate_summary_report
 		# Calculate final statistics from semantic table
-		total_with_embeddings = if @dictionary.has_semantic_table?
-			ActiveRecord::Base.connection.exec_query(
-				"SELECT COUNT(*) as cnt FROM #{@dictionary.semantic_table_name}"
+		if @dictionary.has_semantic_table?
+			table = @dictionary.semantic_table_name
+			total_with_embeddings = ActiveRecord::Base.connection.exec_query(
+				"SELECT COUNT(*) as cnt FROM #{table}"
 			).first['cnt']
+			total_searchable = ActiveRecord::Base.connection.exec_query(
+				"SELECT COUNT(*) as cnt FROM #{table} WHERE searchable = true"
+			).first['cnt']
+			total_non_searchable = total_with_embeddings - total_searchable
 		else
-			0
+			total_with_embeddings = 0
+			total_searchable = 0
+			total_non_searchable = 0
 		end
-		total_searchable = total_with_embeddings  # Semantic table only contains searchable entries
-		total_non_searchable = @dictionary.entries.where(searchable: false).count
 
 		# Build summary
 		summary = {
 			dictionary: @dictionary.name,
 			total_entries: @total_entries,
+			updated_at: Time.current.iso8601,
 			embedding_update: {
 				completed: @count_completed,
 				failed: @count_failed,
@@ -198,6 +202,8 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 						},
 						total_outliers: @cleanup_stats[:total_outliers],
 						marked_non_searchable: @cleanup_stats[:marked_unsearchable],
+						distance_stats: @cleanup_stats[:distance_stats],
+						validation: @cleanup_stats[:validation],
 						parameters: {
 							global_threshold: @global_distance_threshold,
 							local_z_threshold: @local_z_threshold,
@@ -212,6 +218,8 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 						outliers_found: @cleanup_stats[:outliers_found],
 						distribution: @cleanup_stats[:distribution],
 						marked_non_searchable: @cleanup_stats[:marked_unsearchable],
+						distance_stats: @cleanup_stats[:distance_stats],
+						validation: @cleanup_stats[:validation],
 						parameters: {
 							global_threshold: @global_distance_threshold,
 							origin_terms: @origin_terms
@@ -228,8 +236,14 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 			summary[:cleaning] = { enabled: false }
 		end
 
-		# Store summary in job metadata
+		# Store summary in job metadata (for backward compatibility)
 		@job&.update(metadata: (@job.metadata || {}).merge(summary: summary))
+
+		# Store summary persistently in dictionary (survives job cleanup)
+		@dictionary.update(
+			embedding_model: @embedding_model,
+			embedding_report: summary
+		)
 
 		# Log formatted summary
 		log_summary(summary)
@@ -307,7 +321,7 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 			# Extract labels for batch embedding generation
 			labels = batch.map(&:label)
 
-			# Get embeddings for all labels in the batch using PubMedBERT
+			# Get embeddings for all labels in the batch
 			embeddings = fetch_embeddings_with_retry(labels)
 
 			# Perform bulk database update using transaction for consistency
@@ -373,7 +387,7 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 	def fetch_embeddings_with_retry(labels, max_retries: 3)
 		retries = 0
 		begin
-			EmbeddingServer.fetch_embeddings(labels)
+			EmbeddingServer.fetch_embeddings(labels, model: @embedding_model)
 		rescue Net::ReadTimeout, Net::OpenTimeout, Timeout::Error, Errno::ECONNREFUSED => e
 			retries += 1
 			if retries <= max_retries

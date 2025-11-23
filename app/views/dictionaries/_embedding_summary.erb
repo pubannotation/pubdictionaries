@@ -1,0 +1,316 @@
+<% summary = @dictionary.last_embedding_summary %>
+<% if summary %>
+	<div style="margin: 10px 0; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background-color: #fafafa; font-size: 0.9em;">
+		<div style="display: flex; justify-content: space-between; align-items: center;">
+			<div>
+				<strong>Last Update Report</strong>
+				<% if summary[:updated_at] %>
+					<span style="color: #666; font-size: 0.85em;">
+						(<%= Time.parse(summary[:updated_at]).strftime('%Y-%m-%d %H:%M') rescue summary[:updated_at] %>)
+					</span>
+				<% end %>
+			</div>
+			<button type="button" onclick="copyEmbeddingReport()" style="padding: 4px 10px; font-size: 0.85em; cursor: pointer;">Copy</button>
+		</div>
+
+		<script>
+		function copyEmbeddingReport() {
+			var lines = [];
+			var summary = <%= summary.to_json.html_safe %>;
+
+			// Header
+			lines.push("Embedding Report\t<%= @dictionary.name %>");
+			lines.push("Updated\t<%= Time.parse(summary[:updated_at]).strftime('%Y-%m-%d %H:%M') rescue summary[:updated_at] %>");
+			lines.push("");
+
+			// Configuration
+			lines.push("Configuration\t");
+			lines.push("Embedding model\t<%= @dictionary.embedding_model || 'N/A' %>");
+			<% if summary.dig(:cleaning, :enabled) %>
+				lines.push("Cleaning mode\t<%= summary.dig(:cleaning, :mode)&.humanize || 'N/A' %>");
+				<% params = summary.dig(:cleaning, :parameters) %>
+				<% if params %>
+					lines.push("Global threshold\t<%= params[:global_threshold] || 'N/A' %>");
+					lines.push("Origin terms\t<%= params[:origin_terms]&.join(', ') || 'N/A' %>");
+					<% if summary.dig(:cleaning, :mode) == 'two-stage' %>
+						lines.push("Local Z-threshold\t<%= params[:local_z_threshold] || 'N/A' %>");
+						lines.push("Min cluster size\t<%= params[:min_cluster_size] || 'N/A' %>");
+					<% end %>
+				<% end %>
+			<% else %>
+				lines.push("Cleaning\tDisabled");
+			<% end %>
+
+			<% if summary.dig(:cleaning, :enabled) && !summary.dig(:cleaning, :error) %>
+				lines.push("");
+				lines.push("Results\t");
+				<% total = summary.dig(:embedding_status, :total_with_embeddings) || 0 %>
+				<% if summary.dig(:cleaning, :mode) == 'two-stage' %>
+					lines.push("Global outliers\t<%= summary.dig(:cleaning, :stage1_global, :outliers_found) || 0 %>");
+					lines.push("Local outliers\t<%= summary.dig(:cleaning, :stage2_local, :outliers_found) || 0 %>");
+					<% cleaned = summary.dig(:cleaning, :marked_non_searchable) || 0 %>
+					lines.push("Total outliers cleaned\t<%= cleaned %> / <%= total %><%= total > 0 ? " (#{(cleaned.to_f / total * 100).round(1)}%)" : '' %>");
+				<% else %>
+					<% cleaned = summary.dig(:cleaning, :marked_non_searchable) || 0 %>
+					lines.push("Outliers cleaned\t<%= cleaned %> / <%= total %><%= total > 0 ? " (#{(cleaned.to_f / total * 100).round(1)}%)" : '' %>");
+				<% end %>
+
+				<% if summary.dig(:cleaning, :distance_stats) %>
+					lines.push("");
+					lines.push("Distance Statistics\tBefore\tAfter");
+					<% dictionary_before = summary.dig(:cleaning, :distance_stats, :before, :centroid) || summary.dig(:cleaning, :distance_stats, :before, :global) %>
+					<% dictionary_after = summary.dig(:cleaning, :distance_stats, :after, :centroid) || summary.dig(:cleaning, :distance_stats, :after, :global) %>
+					<% if dictionary_before %>
+						lines.push("Dictionary (avg)\t<%= dictionary_before[:avg]&.round(3) || 'N/A' %>\t<%= dictionary_after&.dig(:avg)&.round(3) || 'N/A' %>");
+						lines.push("Dictionary (max)\t<%= dictionary_before[:max]&.round(3) || 'N/A' %>\t<%= dictionary_after&.dig(:max)&.round(3) || 'N/A' %>");
+					<% end %>
+					<% if summary.dig(:cleaning, :distance_stats, :before, :local) %>
+						lines.push("Concept (avg)\t<%= summary.dig(:cleaning, :distance_stats, :before, :local, :avg)&.round(3) || 'N/A' %>\t<%= summary.dig(:cleaning, :distance_stats, :after, :local, :avg)&.round(3) || 'N/A' %>");
+						lines.push("Concept (max)\t<%= summary.dig(:cleaning, :distance_stats, :before, :local, :max)&.round(3) || 'N/A' %>\t<%= summary.dig(:cleaning, :distance_stats, :after, :local, :max)&.round(3) || 'N/A' %>");
+					<% end %>
+				<% end %>
+
+				<% if summary.dig(:cleaning, :validation) %>
+					lines.push("");
+					lines.push("Leave-One-Out Validation\tBefore\tAfter");
+					lines.push("Rank-1 accuracy (%)\t<%= summary.dig(:cleaning, :validation, :before, :rank1_accuracy) || 'N/A' %>\t<%= summary.dig(:cleaning, :validation, :after, :rank1_accuracy) || 'N/A' %>");
+					lines.push("Top-5 accuracy (%)\t<%= summary.dig(:cleaning, :validation, :before, :top5_accuracy) || 'N/A' %>\t<%= summary.dig(:cleaning, :validation, :after, :top5_accuracy) || 'N/A' %>");
+					lines.push("MRR\t<%= summary.dig(:cleaning, :validation, :before, :mrr) || 'N/A' %>\t<%= summary.dig(:cleaning, :validation, :after, :mrr) || 'N/A' %>");
+				<% end %>
+			<% end %>
+
+			var text = lines.join("\n");
+			navigator.clipboard.writeText(text).then(function() {
+				alert("Report copied to clipboard!");
+			}, function() {
+				alert("Failed to copy. Please try again.");
+			});
+		}
+		</script>
+
+		<!-- Configuration Section -->
+		<table style="margin-top: 8px; border-collapse: collapse; width: 100%; margin-bottom: 12px;">
+			<tr style="background-color: #e9ecef;">
+				<td colspan="2" style="padding: 6px 8px; font-weight: bold;">Configuration</td>
+			</tr>
+			<tr>
+				<td style="padding: 4px 8px; border-bottom: 1px solid #eee; width: 40%;">Embedding model:</td>
+				<td style="padding: 4px 8px; border-bottom: 1px solid #eee;"><%= @dictionary.embedding_model || 'N/A' %></td>
+			</tr>
+			<% if summary.dig(:cleaning, :enabled) %>
+				<tr>
+					<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">Cleaning mode:</td>
+					<td style="padding: 4px 8px; border-bottom: 1px solid #eee;"><%= summary.dig(:cleaning, :mode)&.humanize || 'N/A' %></td>
+				</tr>
+				<% params = summary.dig(:cleaning, :parameters) %>
+				<% if params %>
+					<tr>
+						<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">Global threshold:</td>
+						<td style="padding: 4px 8px; border-bottom: 1px solid #eee;"><%= params[:global_threshold] || 'N/A' %></td>
+					</tr>
+					<tr>
+						<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">Origin terms:</td>
+						<td style="padding: 4px 8px; border-bottom: 1px solid #eee;"><%= params[:origin_terms]&.join(', ') || 'N/A' %></td>
+					</tr>
+					<% if summary.dig(:cleaning, :mode) == 'two-stage' %>
+						<tr>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">Local Z-threshold:</td>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;"><%= params[:local_z_threshold] || 'N/A' %></td>
+						</tr>
+						<tr>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">Min cluster size:</td>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;"><%= params[:min_cluster_size] || 'N/A' %></td>
+						</tr>
+					<% end %>
+				<% end %>
+			<% else %>
+				<tr>
+					<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">Cleaning:</td>
+					<td style="padding: 4px 8px; border-bottom: 1px solid #eee; color: #999;">Disabled</td>
+				</tr>
+			<% end %>
+		</table>
+
+		<!-- Results Section -->
+		<% if summary.dig(:cleaning, :enabled) %>
+			<table style="border-collapse: collapse; width: 100%;">
+				<tr style="background-color: #e9ecef;">
+					<td colspan="2" style="padding: 6px 8px; font-weight: bold;">Results</td>
+				</tr>
+				<% if summary.dig(:cleaning, :error) %>
+					<tr>
+						<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">Cleaning error:</td>
+						<td style="padding: 4px 8px; border-bottom: 1px solid #eee; color: #d9534f;">
+							<%= summary.dig(:cleaning, :error) %>
+						</td>
+					</tr>
+				<% else %>
+					<% total = summary.dig(:embedding_status, :total_with_embeddings) || 0 %>
+					<% if summary.dig(:cleaning, :mode) == 'two-stage' %>
+						<tr>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">Global outliers:</td>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">
+								<%= summary.dig(:cleaning, :stage1_global, :outliers_found) || 0 %>
+							</td>
+						</tr>
+						<tr>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">Local outliers:</td>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">
+								<%= summary.dig(:cleaning, :stage2_local, :outliers_found) || 0 %>
+							</td>
+						</tr>
+						<tr>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;"><strong>Total outliers cleaned:</strong></td>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">
+								<% cleaned = summary.dig(:cleaning, :marked_non_searchable) || 0 %>
+								<strong><%= cleaned %></strong> / <%= total %>
+								<% if total > 0 %>
+									(<%= (cleaned.to_f / total * 100).round(1) %>%)
+								<% end %>
+							</td>
+						</tr>
+						<% if summary.dig(:cleaning, :distance_stats) %>
+							<tr>
+								<td colspan="2" style="padding: 8px; border-bottom: 1px solid #eee;">
+									<strong>Distance Statistics</strong>
+									<table style="margin-top: 6px; width: 100%; font-size: 0.9em;">
+										<tr style="background-color: #f5f5f5;">
+											<td style="padding: 3px 6px;"></td>
+											<td style="padding: 3px 6px; text-align: center;"><em>Before</em></td>
+											<td style="padding: 3px 6px; text-align: center;"><em>After</em></td>
+										</tr>
+										<% dictionary_before = summary.dig(:cleaning, :distance_stats, :before, :centroid) || summary.dig(:cleaning, :distance_stats, :before, :global) %>
+										<% dictionary_after = summary.dig(:cleaning, :distance_stats, :after, :centroid) || summary.dig(:cleaning, :distance_stats, :after, :global) %>
+										<% if dictionary_before %>
+											<tr>
+												<td style="padding: 3px 6px;">Dictionary (avg):</td>
+												<td style="padding: 3px 6px; text-align: center;"><%= dictionary_before[:avg]&.round(3) || 'N/A' %></td>
+												<td style="padding: 3px 6px; text-align: center;"><%= dictionary_after&.dig(:avg)&.round(3) || 'N/A' %></td>
+											</tr>
+											<tr>
+												<td style="padding: 3px 6px;">Dictionary (max):</td>
+												<td style="padding: 3px 6px; text-align: center;"><%= dictionary_before[:max]&.round(3) || 'N/A' %></td>
+												<td style="padding: 3px 6px; text-align: center;"><%= dictionary_after&.dig(:max)&.round(3) || 'N/A' %></td>
+											</tr>
+										<% end %>
+										<% if summary.dig(:cleaning, :distance_stats, :before, :local) %>
+											<tr>
+												<td style="padding: 3px 6px;">Concept (avg):</td>
+												<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :distance_stats, :before, :local, :avg)&.round(3) || 'N/A' %></td>
+												<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :distance_stats, :after, :local, :avg)&.round(3) || 'N/A' %></td>
+											</tr>
+											<tr>
+												<td style="padding: 3px 6px;">Concept (max):</td>
+												<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :distance_stats, :before, :local, :max)&.round(3) || 'N/A' %></td>
+												<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :distance_stats, :after, :local, :max)&.round(3) || 'N/A' %></td>
+											</tr>
+										<% end %>
+									</table>
+								</td>
+							</tr>
+						<% end %>
+						<% if summary.dig(:cleaning, :validation) %>
+							<tr>
+								<td colspan="2" style="padding: 8px; border-bottom: 1px solid #eee;">
+									<strong>Leave-One-Out Validation</strong>
+									<span style="color: #666; font-size: 0.8em;">(sample: 1000)</span>
+									<table style="margin-top: 6px; width: 100%; font-size: 0.9em;">
+										<tr style="background-color: #f5f5f5;">
+											<td style="padding: 3px 6px;"></td>
+											<td style="padding: 3px 6px; text-align: center;"><em>Before</em></td>
+											<td style="padding: 3px 6px; text-align: center;"><em>After</em></td>
+										</tr>
+										<tr>
+											<td style="padding: 3px 6px;">Rank-1 accuracy:</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :before, :rank1_accuracy) || 'N/A' %>%</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :after, :rank1_accuracy) || 'N/A' %>%</td>
+										</tr>
+										<tr>
+											<td style="padding: 3px 6px;">Top-5 accuracy:</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :before, :top5_accuracy) || 'N/A' %>%</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :after, :top5_accuracy) || 'N/A' %>%</td>
+										</tr>
+										<tr>
+											<td style="padding: 3px 6px;">MRR:</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :before, :mrr) || 'N/A' %></td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :after, :mrr) || 'N/A' %></td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+						<% end %>
+					<% else %>
+						<tr>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;"><strong>Outliers cleaned:</strong></td>
+							<td style="padding: 4px 8px; border-bottom: 1px solid #eee;">
+								<% cleaned = summary.dig(:cleaning, :marked_non_searchable) || 0 %>
+								<strong><%= cleaned %></strong> / <%= total %>
+								<% if total > 0 %>
+									(<%= (cleaned.to_f / total * 100).round(1) %>%)
+								<% end %>
+							</td>
+						</tr>
+						<% if summary.dig(:cleaning, :distance_stats) %>
+							<tr>
+								<td colspan="2" style="padding: 8px; border-bottom: 1px solid #eee;">
+									<strong>Distance Statistics</strong>
+									<table style="margin-top: 6px; width: 100%; font-size: 0.9em;">
+										<tr style="background-color: #f5f5f5;">
+											<td style="padding: 3px 6px;"></td>
+											<td style="padding: 3px 6px; text-align: center;"><em>Before</em></td>
+											<td style="padding: 3px 6px; text-align: center;"><em>After</em></td>
+										</tr>
+										<% dictionary_before = summary.dig(:cleaning, :distance_stats, :before, :centroid) || summary.dig(:cleaning, :distance_stats, :before, :global) %>
+										<% dictionary_after = summary.dig(:cleaning, :distance_stats, :after, :centroid) || summary.dig(:cleaning, :distance_stats, :after, :global) %>
+										<% if dictionary_before %>
+											<tr>
+												<td style="padding: 3px 6px;">Dictionary (avg):</td>
+												<td style="padding: 3px 6px; text-align: center;"><%= dictionary_before[:avg]&.round(3) || 'N/A' %></td>
+												<td style="padding: 3px 6px; text-align: center;"><%= dictionary_after&.dig(:avg)&.round(3) || 'N/A' %></td>
+											</tr>
+											<tr>
+												<td style="padding: 3px 6px;">Dictionary (max):</td>
+												<td style="padding: 3px 6px; text-align: center;"><%= dictionary_before[:max]&.round(3) || 'N/A' %></td>
+												<td style="padding: 3px 6px; text-align: center;"><%= dictionary_after&.dig(:max)&.round(3) || 'N/A' %></td>
+											</tr>
+										<% end %>
+									</table>
+								</td>
+							</tr>
+						<% end %>
+						<% if summary.dig(:cleaning, :validation) %>
+							<tr>
+								<td colspan="2" style="padding: 8px; border-bottom: 1px solid #eee;">
+									<strong>Leave-One-Out Validation</strong>
+									<span style="color: #666; font-size: 0.8em;">(sample: 1000)</span>
+									<table style="margin-top: 6px; width: 100%; font-size: 0.9em;">
+										<tr style="background-color: #f5f5f5;">
+											<td style="padding: 3px 6px;"></td>
+											<td style="padding: 3px 6px; text-align: center;"><em>Before</em></td>
+											<td style="padding: 3px 6px; text-align: center;"><em>After</em></td>
+										</tr>
+										<tr>
+											<td style="padding: 3px 6px;">Rank-1 accuracy:</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :before, :rank1_accuracy) || 'N/A' %>%</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :after, :rank1_accuracy) || 'N/A' %>%</td>
+										</tr>
+										<tr>
+											<td style="padding: 3px 6px;">Top-5 accuracy:</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :before, :top5_accuracy) || 'N/A' %>%</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :after, :top5_accuracy) || 'N/A' %>%</td>
+										</tr>
+										<tr>
+											<td style="padding: 3px 6px;">MRR:</td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :before, :mrr) || 'N/A' %></td>
+											<td style="padding: 3px 6px; text-align: center;"><%= summary.dig(:cleaning, :validation, :after, :mrr) || 'N/A' %></td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+						<% end %>
+					<% end %>
+				<% end %>
+			</table>
+		<% end %>
+	</div>
+<% end %>

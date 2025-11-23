@@ -113,11 +113,25 @@ class DictionaryEmbeddingAnalyzer
   )
     return { error: "No semantic table" } unless @dictionary.has_semantic_table?
 
+    # Calculate distance stats and validation BEFORE cleaning
+    centroid_stats_before = dictionary_centroid_stats
+    local_stats_before = local_distance_stats(min_cluster_size: min_cluster_size)
+    validation_before = leave_one_out_validation(sample_size: 1000, min_cluster_size: min_cluster_size)
+
     results = {
       stage1_global: {},
       stage2_local: {},
       total_outliers: 0,
-      dry_run: dry_run
+      dry_run: dry_run,
+      distance_stats: {
+        before: {
+          centroid: centroid_stats_before,
+          local: local_stats_before
+        }
+      },
+      validation: {
+        before: validation_before
+      }
     }
 
     table = @dictionary.semantic_table_name
@@ -269,6 +283,16 @@ class DictionaryEmbeddingAnalyzer
       results[:remaining_searchable] = ActiveRecord::Base.connection.exec_query(
         "SELECT COUNT(*) as cnt FROM #{table} WHERE searchable = true"
       ).first['cnt']
+
+      # Calculate distance stats and validation AFTER cleaning
+      centroid_stats_after = dictionary_centroid_stats
+      local_stats_after = local_distance_stats(min_cluster_size: min_cluster_size)
+      validation_after = leave_one_out_validation(sample_size: 1000, min_cluster_size: min_cluster_size)
+      results[:distance_stats][:after] = {
+        centroid: centroid_stats_after,
+        local: local_stats_after
+      }
+      results[:validation][:after] = validation_after
     end
 
     results
@@ -284,6 +308,10 @@ class DictionaryEmbeddingAnalyzer
   # Returns hash with statistics about cleaning operation
   def clean_by_origin_proximity(origin_terms: ['DNA', 'protein'], distance_threshold: 0.75, dry_run: true)
     return { error: "No semantic table" } unless @dictionary.has_semantic_table?
+
+    # Calculate distance stats and validation BEFORE cleaning
+    centroid_stats_before = dictionary_centroid_stats
+    validation_before = leave_one_out_validation(sample_size: 1000)
 
     # First detect outliers
     outliers = detect_origin_proximity_outliers(
@@ -301,7 +329,13 @@ class DictionaryEmbeddingAnalyzer
       total_entries: @dictionary.entries_num,
       outliers_found: outlier_ids.length,
       distribution: outliers[:distribution],
-      dry_run: dry_run
+      dry_run: dry_run,
+      distance_stats: {
+        before: { centroid: centroid_stats_before }
+      },
+      validation: {
+        before: validation_before
+      }
     }
 
     if dry_run
@@ -343,9 +377,143 @@ class DictionaryEmbeddingAnalyzer
       stats[:remaining_searchable] = ActiveRecord::Base.connection.exec_query(
         "SELECT COUNT(*) as cnt FROM #{table} WHERE searchable = true"
       ).first['cnt']
+
+      # Calculate distance stats and validation AFTER cleaning
+      centroid_stats_after = dictionary_centroid_stats
+      validation_after = leave_one_out_validation(sample_size: 1000)
+      stats[:distance_stats][:after] = { centroid: centroid_stats_after }
+      stats[:validation][:after] = validation_after
     end
 
     stats
+  end
+
+  # Calculate dictionary centroid distance statistics
+  # Returns avg/max distance from the overall dictionary centroid for all searchable entries
+  # This shows how "tight" or "spread out" the dictionary is as a whole
+  def dictionary_centroid_stats
+    return nil unless @dictionary.has_semantic_table?
+
+    table = @dictionary.semantic_table_name
+
+    sql = <<~SQL
+      WITH centroid AS (
+        SELECT AVG(embedding) AS centroid_embedding
+        FROM #{table}
+        WHERE searchable = true
+      ),
+      distances AS (
+        SELECT s.embedding <=> c.centroid_embedding AS distance
+        FROM #{table} s, centroid c
+        WHERE s.searchable = true
+      )
+      SELECT
+        AVG(distance) AS avg_distance,
+        MAX(distance) AS max_distance
+      FROM distances
+    SQL
+
+    result = ActiveRecord::Base.connection.exec_query(sql, "dictionary_centroid_stats").first
+
+    {
+      avg: result['avg_distance']&.to_f&.round(4),
+      max: result['max_distance']&.to_f&.round(4)
+    }
+  rescue => e
+    Rails.logger.error "Error calculating dictionary centroid stats: #{e.message}"
+    nil
+  end
+
+  # Calculate origin proximity statistics (distance to origin terms like DNA, protein)
+  # Returns avg/max distance to the closest origin term for all searchable entries
+  # Used to detect entries too close to PubMedBERT's semantic origin
+  def origin_proximity_stats(origin_terms: ['DNA', 'protein'])
+    return nil unless @dictionary.has_semantic_table?
+
+    table = @dictionary.semantic_table_name
+
+    # Fetch embeddings for origin terms
+    origin_embeddings = origin_terms.map do |term|
+      embedding = EmbeddingServer.fetch_embedding(term)
+      next unless embedding
+      { term: term, vector: "[#{embedding.map(&:to_f).join(',')}]" }
+    end.compact
+
+    return nil if origin_embeddings.empty?
+
+    vector_conditions = origin_embeddings.map.with_index do |emb, idx|
+      "s.embedding <=> $#{idx + 1}"
+    end.join(', ')
+
+    sql = <<~SQL
+      SELECT
+        AVG(LEAST(#{vector_conditions})) AS avg_distance,
+        MAX(LEAST(#{vector_conditions})) AS max_distance
+      FROM #{table} s
+      WHERE s.searchable = true
+    SQL
+
+    params = origin_embeddings.map { |emb| emb[:vector] }
+    result = ActiveRecord::Base.connection.exec_query(sql, "global_distance_stats", params).first
+
+    {
+      avg: result['avg_distance']&.to_f&.round(4),
+      max: result['max_distance']&.to_f&.round(4)
+    }
+  rescue => e
+    Rails.logger.error "Error calculating global distance stats: #{e.message}"
+    nil
+  end
+
+  # Calculate local distance statistics (distance from cluster centroid)
+  # Returns avg/max distance from centroid across all clusters
+  def local_distance_stats(min_cluster_size: 3)
+    return nil unless @dictionary.has_semantic_table?
+
+    table = @dictionary.semantic_table_name
+
+    sql = <<~SQL
+      WITH cluster_entries AS (
+        SELECT s.id, s.identifier, s.embedding
+        FROM #{table} s
+        WHERE s.searchable = true
+      ),
+      cluster_sizes AS (
+        SELECT identifier, COUNT(*) as size
+        FROM cluster_entries
+        GROUP BY identifier
+        HAVING COUNT(*) >= $1
+      ),
+      cluster_centroids AS (
+        SELECT
+          ce.identifier,
+          AVG(ce.embedding) AS centroid_embedding
+        FROM cluster_entries ce
+        INNER JOIN cluster_sizes cs ON ce.identifier = cs.identifier
+        GROUP BY ce.identifier
+      ),
+      distances AS (
+        SELECT
+          ce.id,
+          ce.embedding <=> cc.centroid_embedding AS distance
+        FROM cluster_entries ce
+        INNER JOIN cluster_centroids cc ON ce.identifier = cc.identifier
+      )
+      SELECT
+        AVG(distance) AS avg_distance,
+        MAX(distance) AS max_distance
+      FROM distances
+    SQL
+
+    result = ActiveRecord::Base.connection.exec_query(sql, "local_distance_stats", [min_cluster_size]).first
+
+    {
+      avg: result['avg_distance']&.to_f&.round(4),
+      max: result['max_distance']&.to_f&.round(4)
+    }
+  rescue => e
+    Rails.logger.error "Error calculating local distance stats: #{e.message}"
+    nil
   end
 
   # Detect global outliers based on proximity to PubMedBERT semantic origin
@@ -442,5 +610,96 @@ class DictionaryEmbeddingAnalyzer
       outliers: outliers,
       distribution: outliers.group_by { |o| o[:closest_origin] }.transform_values(&:count)
     }
+  end
+
+  # Perform leave-one-out cross-validation on searchable entries
+  # For each entry, finds nearest neighbors excluding itself and checks if correct identifier is found
+  #
+  # @param sample_size [Integer] Number of entries to sample (default: 1000, nil for all)
+  # @param min_cluster_size [Integer] Only test entries from clusters with at least this many entries (default: 2)
+  #
+  # Returns hash with validation metrics
+  def leave_one_out_validation(sample_size: 1000, min_cluster_size: 2)
+    return nil unless @dictionary.has_semantic_table?
+
+    table = @dictionary.semantic_table_name
+
+    # Get entries from clusters with multiple entries (need at least 2 to do leave-one-out)
+    sql_entries = <<~SQL
+      WITH cluster_sizes AS (
+        SELECT identifier, COUNT(*) as size
+        FROM #{table}
+        WHERE searchable = true
+        GROUP BY identifier
+        HAVING COUNT(*) >= $1
+      )
+      SELECT s.id, s.identifier, s.embedding
+      FROM #{table} s
+      INNER JOIN cluster_sizes cs ON s.identifier = cs.identifier
+      WHERE s.searchable = true
+    SQL
+
+    entries = ActiveRecord::Base.connection.exec_query(sql_entries, "loo_entries", [min_cluster_size])
+
+    return { error: "No entries with cluster size >= #{min_cluster_size}" } if entries.empty?
+
+    # Sample if needed
+    test_entries = entries.to_a
+    if sample_size && test_entries.length > sample_size
+      test_entries = test_entries.sample(sample_size)
+    end
+
+    total_tests = 0
+    correct_rank1 = 0
+    correct_top5 = 0
+    rank_reciprocal_sum = 0.0
+
+    test_entries.each do |entry|
+      total_tests += 1
+      entry_id = entry['id']
+      entry_identifier = entry['identifier']
+      entry_embedding = entry['embedding']
+
+      # Find nearest neighbors excluding this entry
+      sql_neighbors = <<~SQL
+        SELECT identifier
+        FROM #{table}
+        WHERE searchable = true AND id != $1
+        ORDER BY embedding <=> $2
+        LIMIT 5
+      SQL
+
+      neighbors = ActiveRecord::Base.connection.exec_query(
+        sql_neighbors,
+        "loo_neighbors",
+        [entry_id, entry_embedding]
+      )
+
+      # Find rank of correct identifier
+      correct_rank = nil
+      neighbors.each_with_index do |neighbor, idx|
+        if neighbor['identifier'] == entry_identifier
+          correct_rank = idx + 1
+          break
+        end
+      end
+
+      if correct_rank
+        rank_reciprocal_sum += 1.0 / correct_rank
+        correct_rank1 += 1 if correct_rank == 1
+        correct_top5 += 1 if correct_rank <= 5
+      end
+    end
+
+    {
+      total_tested: total_tests,
+      total_searchable: entries.length,
+      rank1_accuracy: total_tests > 0 ? (correct_rank1.to_f / total_tests * 100).round(2) : 0,
+      top5_accuracy: total_tests > 0 ? (correct_top5.to_f / total_tests * 100).round(2) : 0,
+      mrr: total_tests > 0 ? (rank_reciprocal_sum / total_tests).round(4) : 0
+    }
+  rescue => e
+    Rails.logger.error "Error in leave-one-out validation: #{e.message}"
+    nil
   end
 end

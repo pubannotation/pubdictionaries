@@ -1,20 +1,54 @@
 <fieldset class="dialog">
-	<legend>Update Embedding</legend>
+	<legend>Embedding Status</legend>
 
 	<% if @dictionary.embeddings_populated? %>
-		<p class="note">Semantic search ready.</p>
+		<p class="note" style="color: green; font-weight: bold;">✓ Semantic search ready.</p>
 	<% else %>
-		<p class="note">Semantic search not ready.</p>
+		<p class="note" style="color: #999;">Semantic search not ready.</p>
 	<% end %>
 
+	<%= render 'embedding_summary' %>
+</fieldset>
+
+<fieldset class="dialog" style="margin-top: 15px;">
+	<legend>Update Embedding</legend>
+
 	<p class="note">
-		Update the embedding of the entries using PubMedBERT.
+		Update the embedding of the entries.
 		Optionally clean outliers after updating.
 	</p>
 
 	<% if current_user&.admin? %>
+		<% available_models = EmbeddingServer.available_models %>
 		<%= form_tag update_embeddings_dictionary_path(@dictionary.name), method: :post, id: "update_embeddings_form" do %>
 			<div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">
+				<!-- Model Selection -->
+				<div style="margin-bottom: 12px;">
+					<label style="display: inline-block; width: 180px; font-weight: bold;">Embedding model:</label>
+					<% if available_models.any? %>
+						<%= select_tag 'embedding_model',
+							options_for_select(
+								available_models.map { |m| [m['name'], m['name']] },
+								@dictionary.embedding_model || EmbeddingServer::DEFAULT_MODEL
+							),
+							style: "width: 200px;",
+							onchange: "updateModelDescription(this.value)" %>
+						<span id="model_description" class="note" style="font-size: 0.85em; color: #666; margin-left: 8px;">
+							<% selected_model = available_models.find { |m| m['name'] == (@dictionary.embedding_model || EmbeddingServer::DEFAULT_MODEL) } %>
+							<%= selected_model&.dig('description') || '' %>
+						</span>
+						<script>
+							var embeddingModels = <%= available_models.to_json.html_safe %>;
+							function updateModelDescription(modelName) {
+								var model = embeddingModels.find(function(m) { return m.name === modelName; });
+								document.getElementById('model_description').textContent = model ? model.description : '';
+							}
+						</script>
+					<% else %>
+						<span style="color: #999;">Embedding server unavailable</span>
+					<% end %>
+				</div>
+
 				<div style="margin-bottom: 12px;">
 					<label style="display: inline-block; font-weight: bold;">
 						<%= check_box_tag 'clean_embeddings', '1', true, onchange: "document.getElementById('clean_options').style.display = this.checked ? 'block' : 'none';" %>
@@ -49,15 +83,15 @@
 					<div style="margin-bottom: 10px; padding: 10px; border: 1px solid #28a745; border-radius: 4px; background-color: #f0fff0;">
 						<div style="margin-bottom: 10px;">
 							<label style="font-weight: bold; color: #28a745;">
-								<%= check_box_tag 'clean_two_stage', '1', false, onchange: "document.getElementById('local_options').style.display = this.checked ? 'block' : 'none';" %>
-								2. Local Outlier Cleaning (optional)
+								<%= check_box_tag 'clean_two_stage', '1', true, onchange: "document.getElementById('local_options').style.display = this.checked ? 'block' : 'none';" %>
+								2. Local Outlier Cleaning
 							</label>
 							<p class="note" style="margin: 5px 0; font-size: 0.9em;">
 								Additionally removes entries distant from their identifier cluster (synonym assignment errors, typos)
 							</p>
 						</div>
 
-						<div id="local_options" style="display: none; margin-left: 10px;">
+						<div id="local_options" style="margin-left: 10px;">
 							<div style="margin-bottom: 8px;">
 								<label style="display: inline-block; width: 180px;">Z-score threshold:</label>
 								<%= text_field_tag 'local_z_threshold', '2.0', size: 8, style: "width: 80px;" %>
