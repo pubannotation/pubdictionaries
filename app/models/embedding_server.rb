@@ -6,8 +6,6 @@ class EmbeddingServerError < StandardError; end
 class EmbeddingClientError < StandardError; end
 
 class EmbeddingServer
-	EMBEDDING_API_URL = 'http://localhost:11435/api/embed'
-	MODELS_API_URL = 'http://localhost:11435/api/models'
 	DEFAULT_MODEL = 'pubmedbert'
 
 	# Connection pool configuration
@@ -16,7 +14,8 @@ class EmbeddingServer
 
 	# Fetch available models from the embedding server
 	def self.available_models
-		uri = URI(MODELS_API_URL)
+		models_url = "#{PubDic::EmbeddingServer::BASE_URL}/api/models"
+		uri = URI(models_url)
 		response = Net::HTTP.get(uri)
 		data = JSON.parse(response)
 		data['models'] || []
