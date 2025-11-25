@@ -74,13 +74,17 @@ RSpec.describe TextAnnotator, type: :model do
       expect(span_index.keys).to include('cytokine', 'release', 'syndrome')
       expect(span_index.keys.size).to be >= 3
 
-      # Each span should have metadata
-      span_index.each do |span, info|
-        expect(info).to have_key(:span_begin)
-        expect(info).to have_key(:span_end)
-        expect(info).to have_key(:norm1)
-        expect(info).to have_key(:norm2)
-        expect(info).to have_key(:entries)
+      # Each span should have array of occurrences with metadata
+      span_index.each do |span, occurrences|
+        expect(occurrences).to be_an(Array)
+        expect(occurrences).not_to be_empty
+        occurrences.each do |info|
+          expect(info).to have_key(:span_begin)
+          expect(info).to have_key(:span_end)
+          expect(info).to have_key(:norm1)
+          expect(info).to have_key(:norm2)
+          expect(info).to have_key(:entries)
+        end
       end
     end
 
@@ -131,8 +135,10 @@ RSpec.describe TextAnnotator, type: :model do
       }.not_to raise_error
 
       # Embeddings should not be set
-      span_index.each do |span, info|
-        expect(info[:embedding]).to be_nil
+      span_index.each do |span, occurrences|
+        occurrences.each do |info|
+          expect(info[:embedding]).to be_nil
+        end
       end
     end
 
@@ -444,7 +450,7 @@ RSpec.describe TextAnnotator, type: :model do
     it 'assigns score 1.0 when norm2 matches exactly' do
       # Create a span_index with a span whose norm2 matches an entry exactly
       span_index = {
-        'Fever' => {
+        'Fever' => [{
           span_begin: 0,
           span_end: 5,
           idx_token_begin: 0,
@@ -452,7 +458,7 @@ RSpec.describe TextAnnotator, type: :model do
           norm1: 'fever',
           norm2: 'fever',  # Matches entry's norm2 exactly
           entries: []
-        }
+        }]
       }
 
       # Get filtered sub_string_dbs (matching the annotator's internal structure)
@@ -480,7 +486,7 @@ RSpec.describe TextAnnotator, type: :model do
       )
 
       span_index = {
-        'high fever' => {
+        'high fever' => [{
           span_begin: 0,
           span_end: 10,
           idx_token_begin: 0,
@@ -488,7 +494,7 @@ RSpec.describe TextAnnotator, type: :model do
           norm1: 'highfever',
           norm2: 'high fever',  # Different from entry's norm2 'highfever'
           entries: []
-        }
+        }]
       }
 
       filtered_sub_string_dbs = annotator.instance_variable_get(:@sub_string_dbs)
@@ -504,18 +510,18 @@ RSpec.describe TextAnnotator, type: :model do
     it 'returns score 1.0 for all exact norm2 matches in batch' do
       # Test that multiple spans with exact norm2 matches all get score 1.0
       span_index = {
-        'Fever' => {
+        'Fever' => [{
           span_begin: 0, span_end: 5,
           idx_token_begin: 0, idx_token_final: 0,
           norm1: 'fever', norm2: 'fever',
           entries: []
-        },
-        'Headache' => {
+        }],
+        'Headache' => [{
           span_begin: 10, span_end: 18,
           idx_token_begin: 2, idx_token_final: 2,
           norm1: 'headache', norm2: 'headache',
           entries: []
-        }
+        }]
       }
 
       filtered_sub_string_dbs = annotator.instance_variable_get(:@sub_string_dbs)
@@ -557,7 +563,7 @@ RSpec.describe TextAnnotator, type: :model do
         annotator.send(:batch_get_embeddings, span_index)
 
         # Should have processed spans
-        expect(span_index.values.any? { |info| info[:embedding].present? }).to be true
+        expect(span_index.values.any? { |occurrences| occurrences.any? { |info| info[:embedding].present? } }).to be true
       end
     end
 

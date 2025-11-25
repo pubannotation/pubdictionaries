@@ -590,14 +590,15 @@ class TextAnnotator
   end
 
   # Pre-generate all valid spans with their boundary information
-  # Returns a hash where keys are span strings and values contain:
+  # Returns a hash where keys are span strings and values are arrays of span occurrences
+  # Each occurrence contains:
   #   - span_begin, span_end: character offsets
   #   - idx_token_begin, idx_token_final: token indices
   #   - norm1, norm2: normalized forms
   #   - entries: (to be filled by batch_get_identifiers)
   #   - embedding: (to be filled by batch_get_embeddings)
   def pre_generate_spans(text, tokens, norm1s, norm2s, sbreaks, idx_span_positions)
-    span_index = {}
+    span_index = Hash.new { |h, k| h[k] = [] }
 
     (0 ... tokens.length - @tokens_len_min + 1).each do |idx_token_begin|
       token_begin = tokens[idx_token_begin]
@@ -646,8 +647,9 @@ class TextAnnotator
         norm2 = norm2s[idx_token_begin, tlen].join
         next unless norm2.present?
 
-        # Store span with all its boundary information
-        span_index[span] = {
+        # Store span occurrence with all its boundary information
+        # Multiple occurrences of the same span text are stored separately
+        span_index[span] << {
           span_begin: span_begin,
           span_end: span_end,
           idx_token_begin: idx_token_begin,
@@ -728,7 +730,10 @@ class TextAnnotator
       begin
         embeddings = EmbeddingServer.fetch_embeddings(batch_spans, model: embedding_model)
         batch_spans.each_with_index do |span, idx|
-          span_index[span][:embedding] = embeddings[idx]
+          # Apply same embedding to all occurrences of this span
+          span_index[span].each do |occurrence|
+            occurrence[:embedding] = embeddings[idx]
+          end
         end
         total_fetched += embeddings.size
         Rails.logger.debug "Embedding batch #{batch_idx + 1}/#{batches.size}: fetched #{embeddings.size} embeddings"
@@ -756,7 +761,7 @@ class TextAnnotator
           begin
             embeddings = EmbeddingServer.fetch_embeddings(batch_spans, model: embedding_model)
             batch_spans.each_with_index do |span, idx|
-              thread_results[span] = embeddings[idx]
+              thread_results[span] = embeddings[idx]  # Store embedding for this span text
             end
             thread_fetched += embeddings.size
           rescue => e
@@ -773,7 +778,10 @@ class TextAnnotator
       thread_data = thread.value
       results_mutex.synchronize do
         thread_data[:results].each do |span, embedding|
-          span_index[span][:embedding] = embedding
+          # Apply same embedding to all occurrences of this span
+          span_index[span].each do |occurrence|
+            occurrence[:embedding] = embedding
+          end
         end
         total_fetched += thread_data[:fetched]
       end
@@ -794,10 +802,11 @@ class TextAnnotator
     # Uses temp tables with HNSW indexes for fast approximate nearest neighbor search
     semantic_results = {}
     if @semantic_threshold.present? && @semantic_threshold > 0
-      # Build span_embeddings hash from span_index
+      # Build span_embeddings hash from span_index (one embedding per unique span text)
       span_embeddings = {}
-      span_index.each do |span, info|
-        span_embeddings[span] = info[:embedding] if info[:embedding]
+      span_index.each do |span, occurrences|
+        # Use embedding from first occurrence (all occurrences have same embedding)
+        span_embeddings[span] = occurrences.first[:embedding] if occurrences.first[:embedding]
       end
 
       # Perform batch semantic search for each dictionary
@@ -824,8 +833,8 @@ class TextAnnotator
     # Step 2: Batch surface matching
     surface_results = batch_surface_match(span_index, dictionaries, filtered_sub_string_dbs)
 
-    # Step 3: Combine results for each span
-    span_index.each do |span, info|
+    # Step 3: Combine results for each span and apply to all occurrences
+    span_index.each do |span, occurrences|
       all_entries = surface_results[span] || []
 
       # Add semantic results
@@ -845,7 +854,10 @@ class TextAnnotator
         end
       end
 
-      info[:entries] = all_entries
+      # Apply same entries to all occurrences of this span
+      occurrences.each do |occurrence|
+        occurrence[:entries] = all_entries
+      end
     end
   end
 
@@ -867,8 +879,9 @@ class TextAnnotator
         # Build a mapping: norm2 -> [spans that need this norm2]
         norm2_to_spans = Hash.new { |h, k| h[k] = [] }
 
-        span_index.each do |span, info|
-          norm2 = info[:norm2]
+        span_index.each do |span, occurrences|
+          # Use norm2 from first occurrence (all occurrences have same norm2)
+          norm2 = occurrences.first[:norm2]
           if @use_ngram_similarity && ssdb.present?
             expanded_norm2s = ssdb.retrieve(norm2)
             expanded_norm2s = [norm2] unless expanded_norm2s.present?
@@ -877,7 +890,7 @@ class TextAnnotator
           end
 
           expanded_norm2s.each do |n2|
-            norm2_to_spans[n2] << { span: span, info: info }
+            norm2_to_spans[n2] << { span: span, occurrences: occurrences }
           end
         end
 
@@ -903,9 +916,10 @@ class TextAnnotator
 
               span_infos.each do |span_info|
                 span = span_info[:span]
-                info = span_info[:info]
+                # Use first occurrence for norm1/norm2 (all occurrences have same values)
+                first_occurrence = span_info[:occurrences].first
 
-                score = str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
+                score = str_sim_method.call(span, entry_hash[:label], first_occurrence[:norm1], entry_hash[:norm1], first_occurrence[:norm2], entry_hash[:norm2])
                 if score >= threshold
                   results[span] << entry_hash.merge(score: score, dictionary: dictionary.name)
                 end
@@ -929,9 +943,10 @@ class TextAnnotator
 
                 span_infos.each do |span_info|
                   span = span_info[:span]
-                  info = span_info[:info]
+                  # Use first occurrence for norm1/norm2 (all occurrences have same values)
+                  first_occurrence = span_info[:occurrences].first
 
-                  score = str_sim_method.call(span, entry_hash[:label], info[:norm1], entry_hash[:norm1], info[:norm2], entry_hash[:norm2])
+                  score = str_sim_method.call(span, entry_hash[:label], first_occurrence[:norm1], entry_hash[:norm1], first_occurrence[:norm2], entry_hash[:norm2])
                   if score >= threshold
                     results[span] << entry_hash.merge(score: score, dictionary: dictionary.name)
                   end
@@ -964,27 +979,29 @@ class TextAnnotator
   end
 
   # Generate denotations from pre-indexed spans with found identifiers
-  # Single pass through span_index to create denotations
+  # Creates a denotation for each occurrence of each span
   def generate_denotations_from_spans(span_index, denotations)
-    span_index.each do |span, info|
-      next if info[:entries].empty?
+    span_index.each do |span, occurrences|
+      occurrences.each do |occurrence|
+        next if occurrence[:entries].empty?
 
-      info[:entries].each do |entry|
-        d = {
-          span: {begin: info[:span_begin], end: info[:span_end]},
-          obj: entry[:identifier],
-          score: entry[:score],
-          string: span,
-          idx_token_final: info[:idx_token_final]
-        }
+        occurrence[:entries].each do |entry|
+          d = {
+            span: {begin: occurrence[:span_begin], end: occurrence[:span_end]},
+            obj: entry[:identifier],
+            score: entry[:score],
+            string: span,
+            idx_token_final: occurrence[:idx_token_final]
+          }
 
-        if @verbose
-          d[:label] = entry[:label]
-          d[:norm1] = entry[:norm1]
-          d[:norm2] = entry[:norm2]
+          if @verbose
+            d[:label] = entry[:label]
+            d[:norm1] = entry[:norm1]
+            d[:norm2] = entry[:norm2]
+          end
+
+          denotations << d
         end
-
-        denotations << d
       end
     end
   end
