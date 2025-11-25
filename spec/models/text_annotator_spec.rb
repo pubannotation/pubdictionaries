@@ -737,7 +737,7 @@ RSpec.describe TextAnnotator, type: :model do
       annotator.dispose
     end
 
-    it 'restores searchability when canceling black' do
+    it 'restores searchability when canceling black to gray' do
       # Turn "Fever" entry to black, then back to gray
       fever_entry = dictionary.entries.find_by(identifier: 'HP:0001945')
       dictionary.turn_to_black(fever_entry)
@@ -749,6 +749,41 @@ RSpec.describe TextAnnotator, type: :model do
       fever_entry.reload
       expect(fever_entry.searchable).to be true
       expect(fever_entry.mode).to eq(EntryMode::GRAY)
+
+      # Verify searchable is true in semantic table
+      if dictionary.has_semantic_table?
+        result = ActiveRecord::Base.connection.exec_query(
+          "SELECT searchable FROM #{dictionary.semantic_table_name} WHERE id = #{fever_entry.id}"
+        ).first
+        expect(result['searchable']).to be true
+      end
+
+      # Annotate text with semantic search
+      text = 'fever'
+      new_annotator = TextAnnotator.new([dictionary], { semantic_threshold: 0.0 })
+      result = new_annotator.annotate_batch([{ text: text }]).first
+
+      # Should find the entry again
+      fever_annotations = result[:denotations].select { |d| d[:obj] == 'HP:0001945' }
+      expect(fever_annotations).not_to be_empty
+
+      new_annotator.dispose
+    end
+
+    it 'restores searchability when changing black to white' do
+      # Turn "Fever" entry to black, then to white
+      fever_entry = dictionary.entries.find_by(identifier: 'HP:0001945')
+      dictionary.turn_to_black(fever_entry)
+
+      # Turn black entry back to gray first (required), then to white
+      dictionary.cancel_black(fever_entry)
+      fever_entry.reload
+      dictionary.turn_to_white(fever_entry)
+
+      # Verify searchable is restored
+      fever_entry.reload
+      expect(fever_entry.searchable).to be true
+      expect(fever_entry.mode).to eq(EntryMode::WHITE)
 
       # Verify searchable is true in semantic table
       if dictionary.has_semantic_table?

@@ -641,4 +641,62 @@ RSpec.describe UpdateDictionaryEmbeddingsJob, type: :job do
       expect(failed_entries.first[:error]).to eq('Test error')
     end
   end
+
+  describe 'black entry handling during embedding update' do
+    it 'preserves black entry searchable=false after embedding update' do
+      # Create entries with different modes
+      gray_entry = create(:entry, dictionary: dictionary, label: 'Gray Entry', identifier: 'GRAY:001', mode: EntryMode::GRAY, searchable: true)
+      black_entry = create(:entry, dictionary: dictionary, label: 'Black Entry', identifier: 'BLACK:001', mode: EntryMode::GRAY, searchable: true)
+      outlier_entry = create(:entry, dictionary: dictionary, label: 'Outlier Entry', identifier: 'OUTLIER:001', mode: EntryMode::GRAY, searchable: false)
+
+      # Turn one entry black
+      dictionary.turn_to_black(black_entry)
+      black_entry.reload
+      expect(black_entry.mode).to eq(EntryMode::BLACK)
+      expect(black_entry.searchable).to be false
+
+      # Mock embedding server
+      allow(EmbeddingServer).to receive(:fetch_embeddings) do |labels|
+        labels.map { mock_embedding_vector }
+      end
+
+      # Perform embedding update (which resets searchable flags)
+      perform_job(dictionary, clean_embeddings: false)
+
+      # Reload entries
+      gray_entry.reload
+      black_entry.reload
+      outlier_entry.reload
+
+      # Gray entry should be searchable after reset
+      expect(gray_entry.searchable).to be true
+
+      # Black entry should remain non-searchable despite reset
+      expect(black_entry.searchable).to be false
+      expect(black_entry.mode).to eq(EntryMode::BLACK)
+
+      # Outlier entry should be searchable after reset (outlier flags cleared)
+      expect(outlier_entry.searchable).to be true
+
+      # Verify semantic table also has correct searchable flags
+      if dictionary.has_semantic_table?
+        table = dictionary.semantic_table_name
+
+        gray_result = ActiveRecord::Base.connection.exec_query(
+          "SELECT searchable FROM #{table} WHERE id = #{gray_entry.id}"
+        ).first
+        expect(gray_result['searchable']).to be true
+
+        black_result = ActiveRecord::Base.connection.exec_query(
+          "SELECT searchable FROM #{table} WHERE id = #{black_entry.id}"
+        ).first
+        expect(black_result['searchable']).to be false
+
+        outlier_result = ActiveRecord::Base.connection.exec_query(
+          "SELECT searchable FROM #{table} WHERE id = #{outlier_entry.id}"
+        ).first
+        expect(outlier_result['searchable']).to be true
+      end
+    end
+  end
 end

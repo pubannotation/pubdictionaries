@@ -223,7 +223,7 @@ class Entry < ApplicationRecord
   end
 
   def be_white!
-    update_attribute(:mode, EntryMode::WHITE)
+    update(mode: EntryMode::WHITE, searchable: true)
   end
 
   def be_black!

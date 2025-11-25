@@ -35,10 +35,14 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 
 		Rails.logger.info "Starting embedding update for dictionary #{dictionary.id} with #{@total_entries} entries using #{@embedding_model}"
 
-		# Reset all entries to searchable so they get re-evaluated
-		# Outlier detection will mark problematic entries as non-searchable later
+		# Reset all entries to searchable to clear outlier detection results
+		# Then set black entries back to non-searchable (black status should persist)
 		reset_count = dictionary.entries.where(searchable: false).update_all(searchable: true)
 		Rails.logger.info "Reset #{reset_count} entries to searchable" if reset_count > 0
+
+		# Re-apply black entry searchable=false
+		black_count = dictionary.entries.where(mode: EntryMode::BLACK).update_all(searchable: false)
+		Rails.logger.info "Set #{black_count} black entries to non-searchable" if black_count > 0
 
 		# Ensure semantic table exists before processing
 		@dictionary.create_semantic_table! unless @dictionary.has_semantic_table?
@@ -412,11 +416,13 @@ class UpdateDictionaryEmbeddingsJob < ApplicationJob
 		return if batch.empty? || embeddings.empty?
 
 		# Prepare bulk upsert to semantic table
+		# Preserve searchable flag from each entry (black entries should remain non-searchable)
 		entries_data = batch.zip(embeddings).map do |entry, embedding|
 			{
 				id: entry.id,
 				label: entry.label,
 				identifier: entry.identifier,
+				searchable: entry.searchable,
 				embedding: embedding
 			}
 		end
