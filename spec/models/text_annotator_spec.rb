@@ -142,9 +142,8 @@ RSpec.describe TextAnnotator, type: :model do
       end
     end
 
-    it 'generates spans efficiently without duplication' do
-      # With pre-indexing, duplicate text spans are naturally avoided
-      # because we use a hash with span as key
+    it 'stores multiple occurrences of the same span text' do
+      # When the same text appears multiple times, all occurrences should be stored
       tokens = annotator.send(:norm1_tokenize, 'fever fever')
       norm1s = tokens.map{|t| t[:token]}
       norm2s = annotator.send(:norm2_tokenize, 'fever fever').inject(Array.new(tokens.length, "")){|s, t| s[t[:position]] = t[:token]; s}
@@ -153,8 +152,13 @@ RSpec.describe TextAnnotator, type: :model do
 
       span_index = annotator.send(:pre_generate_spans, 'fever fever', tokens, norm1s, norm2s, sbreaks, {})
 
-      # Even though "fever" appears twice, it should only be in index once
-      expect(span_index.keys.count('fever')).to eq(1)
+      # "fever" appears twice, so it should have 2 occurrences in the array
+      expect(span_index.keys.count('fever')).to eq(1)  # Only one key
+      expect(span_index['fever']).to be_an(Array)
+      expect(span_index['fever'].size).to eq(2)  # But two occurrences
+
+      # Each occurrence should have different positions
+      expect(span_index['fever'][0][:span_begin]).not_to eq(span_index['fever'][1][:span_begin])
     end
   end
 
@@ -691,6 +695,82 @@ RSpec.describe TextAnnotator, type: :model do
     end
   end
 
+  describe 'black entry exclusion from semantic search' do
+    let(:annotator) { TextAnnotator.new([dictionary], { semantic_threshold: 0.6 }) }
+
+    before do
+      # Stub embedding server
+      allow(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
+        Array.new(spans.size) { mock_embedding_vector }
+      end
+    end
+
+    it 'excludes black entries from semantic search' do
+      # Turn "Fever" entry to black
+      fever_entry = dictionary.entries.find_by(identifier: 'HP:0001945')
+      expect(fever_entry).not_to be_nil
+      expect(fever_entry.searchable).to be true  # Initially searchable
+
+      dictionary.turn_to_black(fever_entry)
+
+      # Verify searchable is now false in entries table
+      fever_entry.reload
+      expect(fever_entry.searchable).to be false
+      expect(fever_entry.mode).to eq(EntryMode::BLACK)
+
+      # Verify searchable is false in semantic table
+      if dictionary.has_semantic_table?
+        result = ActiveRecord::Base.connection.exec_query(
+          "SELECT searchable FROM #{dictionary.semantic_table_name} WHERE id = #{fever_entry.id}"
+        ).first
+        expect(result['searchable']).to be false
+      end
+
+      # Annotate text with semantic search
+      text = 'fever'
+      result = annotator.annotate_batch([{ text: text }]).first
+
+      # Should NOT find the black entry
+      fever_annotations = result[:denotations].select { |d| d[:obj] == 'HP:0001945' }
+      expect(fever_annotations).to be_empty
+
+      annotator.dispose
+    end
+
+    it 'restores searchability when canceling black' do
+      # Turn "Fever" entry to black, then back to gray
+      fever_entry = dictionary.entries.find_by(identifier: 'HP:0001945')
+      dictionary.turn_to_black(fever_entry)
+
+      # Cancel black
+      dictionary.cancel_black(fever_entry)
+
+      # Verify searchable is restored
+      fever_entry.reload
+      expect(fever_entry.searchable).to be true
+      expect(fever_entry.mode).to eq(EntryMode::GRAY)
+
+      # Verify searchable is true in semantic table
+      if dictionary.has_semantic_table?
+        result = ActiveRecord::Base.connection.exec_query(
+          "SELECT searchable FROM #{dictionary.semantic_table_name} WHERE id = #{fever_entry.id}"
+        ).first
+        expect(result['searchable']).to be true
+      end
+
+      # Annotate text with semantic search
+      text = 'fever'
+      new_annotator = TextAnnotator.new([dictionary], { semantic_threshold: 0.0 })
+      result = new_annotator.annotate_batch([{ text: text }]).first
+
+      # Should find the entry again
+      fever_annotations = result[:denotations].select { |d| d[:obj] == 'HP:0001945' }
+      expect(fever_annotations).not_to be_empty
+
+      new_annotator.dispose
+    end
+  end
+
   describe 'same-identifier consolidation before boundary crossing' do
     # This tests the fix for the issue where overlapping spans with the same identifier
     # were incorrectly removed by boundary crossing elimination.
@@ -705,6 +785,22 @@ RSpec.describe TextAnnotator, type: :model do
       allow(EmbeddingServer).to receive(:fetch_embeddings) do |spans|
         Array.new(spans.size) { mock_embedding_vector }
       end
+
+      # Add E. coli entry for the duplicate span test
+      # This must be in before block so SimString index includes it
+      # norm2 is lowercase without punctuation: "e coli"
+      ecoli_entry = Entry.create!(
+        dictionary: dictionary,
+        label: 'E. coli',
+        identifier: 'NCBITaxon:562',
+        norm1: 'ecoli',
+        norm2: 'ecoli',  # norm2 removes spaces
+        label_length: 7,
+        mode: EntryMode::GRAY,
+        searchable: true
+      )
+      dictionary.upsert_semantic_entry(ecoli_entry, mock_embedding_vector)
+      dictionary.update_entries_num
     end
 
     describe 'non-overlapping spans with same identifier' do
@@ -723,6 +819,46 @@ RSpec.describe TextAnnotator, type: :model do
         expect(positions.uniq.length).to eq(2)
 
         annotator.dispose
+      end
+
+      it 'correctly annotates duplicate span text with consolidation (E. coli bug)' do
+        # This tests the fix for the bug where "E. coli" appearing twice in text
+        # would only show "with E. coli" (score 0.8858) at first occurrence instead of
+        # "E. coli" (score 1.0), because the second occurrence was overwriting the first
+        # in span_index hash.
+        #
+        # E. coli entry is created in before block above
+
+        # Create a new annotator without threshold, so exact matches work reliably
+        test_annotator = TextAnnotator.new([dictionary], { threshold: 0.0, longest: false })
+
+        # Simpler test: "E. coli" appears twice at positions 0-7 and 17-24
+        text = 'E. coli and then E. coli again'
+
+        result = test_annotator.annotate_batch([{ text: text }]).first
+
+        ecoli_annotations = result[:denotations].select { |d| d[:obj] == 'NCBITaxon:562' }
+
+        # Should find E. coli twice (once at each position)
+        # This is the core test: before the fix, only one occurrence would be stored
+        expect(ecoli_annotations.length).to eq(2)
+
+        # Both annotations should be for "E. coli" (7 characters each)
+        ecoli_annotations.each do |annotation|
+          span_length = annotation[:span][:end] - annotation[:span][:begin]
+          expect(span_length).to eq(7)
+
+          # Should have score 1.0 for exact match
+          expect(annotation[:score]).to eq(1.0)
+        end
+
+        # Verify they are at different positions
+        positions = ecoli_annotations.map { |d| d[:span][:begin] }
+        expect(positions.uniq.length).to eq(2)
+        expect(positions.sort).to eq([0, 17])
+
+        # Clean up
+        test_annotator.dispose
       end
     end
 
