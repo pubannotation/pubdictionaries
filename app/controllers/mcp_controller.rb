@@ -355,7 +355,7 @@ class McpController < ApplicationController
 		encoded_ids = ERB::Util.url_encode(ids)
 		encoded_dictionary = ERB::Util.url_encode(dictionary)
 		
-		response = make_internal_request("/find_terms.json?ids=#{encoded_ids}&dictionary=#{encoded_dictionary}")
+		response = make_internal_request("/find_terms.json?identifiers=#{encoded_ids}&dictionary=#{encoded_dictionary}")
 		results = JSON.parse(response.body)
 		
 		formatted_results = results.map do |id, data|
