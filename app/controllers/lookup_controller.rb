@@ -7,8 +7,12 @@ class LookupController < ApplicationController
   def find_ids_api
     permitted = parse_params_for_find_ids_api
 
-    dictionaries = Dictionary.find_dictionaries(permitted[:dictionaries])
-    raise ArgumentError, "no valid dictionary was specified." unless dictionaries.present?
+    dictionaries = if permitted[:dictionaries].present?
+      Dictionary.find_dictionaries(permitted[:dictionaries])
+    else
+      # When no dictionary is specified, use all public dictionaries
+      Dictionary.where(public: true).to_a
+    end
 
     labels = permitted[:labels]
     raise ArgumentError, "no label was supplied." unless labels.present?
@@ -33,11 +37,14 @@ class LookupController < ApplicationController
     permitted = parse_params_for_find_ids
 
     labels = permitted[:labels]
-    @dictionaries_selected = Dictionary.find_dictionaries(permitted[:dictionaries])
+    # For the view, only show explicitly selected dictionaries
+    @dictionaries_selected = if permitted[:dictionaries].present?
+      Dictionary.find_dictionaries(permitted[:dictionaries])
+    else
+      []
+    end
 
     @result = if labels.present?
-      raise ArgumentError, "At least one dictionary has to be specified for lookup." unless @dictionaries_selected.present?
-
       search_options = permitted.slice(
         :threshold,
         :superfluous,
@@ -47,7 +54,9 @@ class LookupController < ApplicationController
         :tags
       )
 
-      Dictionary.find_ids_by_labels(labels, @dictionaries_selected, search_options)
+      # When performing a search, default to all public dictionaries if none selected
+      dictionaries_to_search = @dictionaries_selected.present? ? @dictionaries_selected : Dictionary.where(public: true).to_a
+      Dictionary.find_ids_by_labels(labels, dictionaries_to_search, search_options)
     else
       {}
     end
