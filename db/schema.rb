@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_23_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -55,6 +55,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
     t.text "context"
     t.vector "context_embedding", limit: 768
     t.boolean "has_semantic_table", default: false, null: false
+    t.string "embedding_model"
+    t.jsonb "embedding_report"
     t.index ["context_embedding"], name: "index_dictionaries_on_context_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["user_id"], name: "index_dictionaries_on_user_id"
   end
@@ -124,6 +126,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["dictionary_id"], name: "index_patterns_on_dictionary_id"
+  end
+
+  create_table "semantic_dict_11", id: :bigint, default: nil, force: :cascade do |t|
+    t.string "label", limit: 255, null: false
+    t.string "identifier", limit: 255, null: false
+    t.vector "embedding", limit: 768, null: false
+    t.index ["embedding"], name: "idx_semantic_dict_11_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+  end
+
+  create_table "semantic_dict_16", id: :bigint, default: nil, force: :cascade do |t|
+    t.string "label", limit: 255, null: false
+    t.string "identifier", limit: 255, null: false
+    t.boolean "searchable", default: true, null: false
+    t.vector "embedding", limit: 768, null: false
+    t.index ["embedding"], name: "idx_semantic_dict_16_hnsw", opclass: :vector_cosine_ops, using: :hnsw
   end
 
   create_table "tags", force: :cascade do |t|

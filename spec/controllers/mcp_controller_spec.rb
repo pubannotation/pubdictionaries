@@ -287,13 +287,23 @@ RSpec.describe McpController, type: :controller do
           }
         end
 
-        it 'returns an error' do
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(
+              status: 200,
+              body: { 'cancer' => ['0004992'] }
+            )
+          end
+        end
+
+        it 'searches all public dictionaries' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
           json_response = JSON.parse(response.body)
-          expect(json_response['result']['isError']).to be true
-          expect(json_response['result']['content'].first['text']).to include('Dictionary name is required')
+          expect(json_response['result']['isError']).to be_falsey
+          result_text = json_response['result']['content'].first['text']
+          expect(result_text).to include('all public dictionaries')
         end
       end
 
@@ -393,13 +403,23 @@ RSpec.describe McpController, type: :controller do
           }
         end
 
-        it 'returns an error' do
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(
+              status: 200,
+              body: { 'cancer' => ['0004992'] }
+            )
+          end
+        end
+
+        it 'searches all public dictionaries' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
           json_response = JSON.parse(response.body)
-          expect(json_response['result']['isError']).to be true
-          expect(json_response['result']['content'].first['text']).to include('Dictionary name is required')
+          expect(json_response['result']['isError']).to be_falsey
+          result_text = json_response['result']['content'].first['text']
+          expect(result_text).to include('all public dictionaries')
         end
       end
     end

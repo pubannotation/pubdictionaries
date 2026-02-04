@@ -184,7 +184,7 @@ class McpController < ApplicationController
 				},
 				{
 					name: 'find_ids',
-					description: 'Find identifiers of terms by referencing a specified dictionary.',
+					description: 'Find identifiers of terms by referencing a specified dictionary. If no dictionary is specified, searches all public dictionaries.',
 					inputSchema: {
 						type: 'object',
 						properties: {
@@ -194,15 +194,15 @@ class McpController < ApplicationController
 							},
 							dictionary: {
 								type: 'string',
-								description: 'The name of the dictionary to lookup'
+								description: 'The name of the dictionary to lookup (optional - if not specified, searches all public dictionaries)'
 							}
 						},
-						required: ['labels', 'dictionary']
+						required: ['labels']
 					}
 				},
 				{
 					name: 'search',
-					description: 'Search for identifiers of terms by referencing a specified dictionary.',
+					description: 'Search for identifiers of terms by referencing a specified dictionary. If no dictionary is specified, searches all public dictionaries.',
 					inputSchema: {
 						type: 'object',
 						properties: {
@@ -212,10 +212,10 @@ class McpController < ApplicationController
 							},
 							dictionary: {
 								type: 'string',
-								description: 'The name of the dictionary to lookup'
+								description: 'The name of the dictionary to lookup (optional - if not specified, searches all public dictionaries)'
 							}
 						},
-						required: ['labels', 'dictionary']
+						required: ['labels']
 					}
 				},
 				{
@@ -326,23 +326,30 @@ class McpController < ApplicationController
 	
 	def handle_find_ids(labels, dictionary)
 		raise StandardError, "Labels are required" if labels.blank?
-		raise StandardError, "Dictionary name is required" if dictionary.blank?
-		
+
 		encoded_labels = ERB::Util.url_encode(labels)
-		encoded_dictionary = ERB::Util.url_encode(dictionary)
-		
-		response = make_internal_request("/find_ids.json?labels=#{encoded_labels}&dictionary=#{encoded_dictionary}")
+
+		url = if dictionary.present?
+			encoded_dictionary = ERB::Util.url_encode(dictionary)
+			"/find_ids.json?labels=#{encoded_labels}&dictionary=#{encoded_dictionary}"
+		else
+			"/find_ids.json?labels=#{encoded_labels}"
+		end
+
+		response = make_internal_request(url)
 		results = JSON.parse(response.body)
-		
+
 		formatted_results = results.map do |term, ids|
 			"**#{term}**: #{ids.join(', ')}"
 		end.join("\n")
-		
+
+		scope_text = dictionary.present? ? "dictionary \"#{dictionary}\"" : "all public dictionaries"
+
 		{
 			content: [
 				{
 					type: 'text',
-					text: "Found identifiers for terms in dictionary \"#{dictionary}\":\n\n#{formatted_results}"
+					text: "Found identifiers for terms in #{scope_text}:\n\n#{formatted_results}"
 				}
 			]
 		}
