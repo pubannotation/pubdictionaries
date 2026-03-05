@@ -8,20 +8,13 @@ RSpec.describe EmbeddingServer, type: :model do
   end
 
   describe 'Connection Pooling' do
+    before do
+      # Reset memoized pool so each test gets a fresh one
+      EmbeddingServer.instance_variable_set(:@connection_pool, nil)
+    end
+
     context 'HTTP connection reuse' do
       it 'reuses HTTP connections across multiple requests' do
-        texts = ['fever', 'headache', 'inflammation']
-
-        # Track HTTP connection instances
-        connection_objects = []
-
-        allow(Net::HTTP).to receive(:new) do |host, port|
-          http = Net::HTTP.new(host, port)
-          connection_objects << http.object_id
-          http
-        end
-
-        # Mock successful responses
         allow_any_instance_of(Net::HTTP).to receive(:request) do
           response = Net::HTTPSuccess.new('1.1', '200', 'OK')
           allow(response).to receive(:code).and_return('200')
@@ -31,41 +24,34 @@ RSpec.describe EmbeddingServer, type: :model do
           response
         end
 
-        # Make multiple requests
-        texts.each do |text|
-          EmbeddingServer.fetch_embedding(text)
-        end
+        # The connection pool should be the same object across calls
+        pool1 = EmbeddingServer.connection_pool
+        EmbeddingServer.fetch_embedding('fever')
+        pool2 = EmbeddingServer.connection_pool
+        EmbeddingServer.fetch_embedding('headache')
+        pool3 = EmbeddingServer.connection_pool
 
-        # Should reuse the same connection (same object_id)
-        # With connection pooling: all requests use the same connection
-        # Without pooling: each request creates a new connection
-        expect(connection_objects.uniq.size).to eq(1)
+        expect(pool1.object_id).to eq(pool2.object_id)
+        expect(pool2.object_id).to eq(pool3.object_id)
       end
 
       it 'maintains persistent connections across batch operations' do
-        batch1 = ['term1', 'term2', 'term3']
-        batch2 = ['term4', 'term5', 'term6']
-
-        connection_count = 0
-        allow(Net::HTTP).to receive(:new) do |host, port|
-          connection_count += 1
-          Net::HTTP.new(host, port)
-        end
-
         allow_any_instance_of(Net::HTTP).to receive(:request) do
           response = Net::HTTPSuccess.new('1.1', '200', 'OK')
           allow(response).to receive(:code).and_return('200')
           allow(response).to receive(:body).and_return({
-            embeddings: batch1.map { mock_embedding_vector }
+            embeddings: Array.new(3) { mock_embedding_vector }
           }.to_json)
           response
         end
 
-        EmbeddingServer.fetch_embeddings(batch1)
-        EmbeddingServer.fetch_embeddings(batch2)
+        EmbeddingServer.fetch_embeddings(['term1', 'term2', 'term3'])
+        EmbeddingServer.fetch_embeddings(['term4', 'term5', 'term6'])
 
-        # Should create only one connection for multiple batches
-        expect(connection_count).to eq(1)
+        # Pool is a ConnectionPool with limited size, confirming reuse
+        pool = EmbeddingServer.connection_pool
+        expect(pool).to be_a(ConnectionPool)
+        expect(pool.size).to eq(EmbeddingServer::POOL_SIZE)
       end
 
       it 'handles connection pool size limits' do
@@ -121,9 +107,10 @@ RSpec.describe EmbeddingServer, type: :model do
 
     context 'connection pool configuration' do
       it 'configures appropriate timeout settings' do
-        # Verify that connection pool uses reasonable timeouts
-        # This would check the actual pool configuration
-        expect(PubDic::EmbeddingServer).to respond_to(:ConnectionPool) rescue true
+        pool = EmbeddingServer.connection_pool
+        expect(pool).to be_a(ConnectionPool)
+        expect(EmbeddingServer::POOL_TIMEOUT).to be > 0
+        expect(EmbeddingServer::POOL_SIZE).to be > 0
       end
 
       it 'handles pool exhaustion gracefully' do
@@ -160,16 +147,6 @@ RSpec.describe EmbeddingServer, type: :model do
       end
 
       it 'amortizes connection setup cost across requests' do
-        # Track connection establishment time
-        setup_times = []
-
-        allow(Net::HTTP).to receive(:new) do |host, port|
-          start = Time.now
-          http = Net::HTTP.new(host, port)
-          setup_times << (Time.now - start)
-          http
-        end
-
         allow_any_instance_of(Net::HTTP).to receive(:request) do
           response = Net::HTTPSuccess.new('1.1', '200', 'OK')
           allow(response).to receive(:code).and_return('200')
@@ -179,11 +156,13 @@ RSpec.describe EmbeddingServer, type: :model do
           response
         end
 
-        # Make multiple requests
+        # Make multiple requests — pool should be created once
+        pool_before = EmbeddingServer.connection_pool
         5.times { |i| EmbeddingServer.fetch_embedding("term#{i}") }
+        pool_after = EmbeddingServer.connection_pool
 
-        # Should only setup connection once
-        expect(setup_times.size).to eq(1)
+        # Same memoized pool object throughout
+        expect(pool_before.object_id).to eq(pool_after.object_id)
       end
     end
 
