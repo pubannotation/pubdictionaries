@@ -3,7 +3,7 @@ class JobsController < ApplicationController
   before_action :authenticate_user!, except: [:show]
 
   def index
-    raise 'Not authorized.' unless current_user.admin
+    raise 'Not authorized.' unless current_user.admin?
     @jobs_grid = initialize_grid(Job)
   end
 

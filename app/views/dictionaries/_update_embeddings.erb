@@ -18,7 +18,7 @@
 		Optionally clean outliers after updating.
 	</p>
 
-	<% if current_user&.admin? %>
+	<% if current_user&.expert? %>
 		<% available_models = EmbeddingServer.available_models %>
 		<%= form_tag update_embeddings_dictionary_path(@dictionary.name), method: :post, id: "update_embeddings_form" do %>
 			<div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">

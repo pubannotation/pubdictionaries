@@ -10,7 +10,7 @@ class DictionariesController < ApplicationController
     :downloadable, :create_downloadable,
     :openapi, :description
   ]
-  before_action :require_admin, only: [:update_embeddings]
+  before_action :require_expert, only: [:update_embeddings]
 
   # Disable CSRF check for REST-API action.
   skip_before_action :verify_authenticity_token, only: :create, :if => Proc.new { |c| c.request.format == 'application/json' }
@@ -462,7 +462,7 @@ class DictionariesController < ApplicationController
     )
   end
 
-  def require_admin
-    redirect_to root_path, alert: "Access denied" unless current_user&.admin?
+  def require_expert
+    redirect_to root_path, alert: "Access denied" unless current_user&.expert?
   end
 end

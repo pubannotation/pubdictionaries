@@ -7,7 +7,11 @@ FactoryBot.define do
     confirmed_at { Time.current }
 
     trait :admin do
-      admin { true }
+      user_level { User::LEVEL_ADMIN }
+    end
+
+    trait :expert do
+      user_level { User::LEVEL_EXPERT }
     end
 
     trait :unconfirmed do

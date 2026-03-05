@@ -1,4 +1,8 @@
 class User < ApplicationRecord
+  LEVEL_REGULAR = 0
+  LEVEL_EXPERT  = 1
+  LEVEL_ADMIN   = 9
+
   # Include default devise modules. Others available are:
   # :token_authenticatable, :confirmable,
   # :lockable, :timeoutable and :omniauthable
@@ -26,6 +30,10 @@ class User < ApplicationRecord
       "username(#{auth.info.name}) is invalid."
     end
   end
+
+  def admin?  = user_level >= LEVEL_ADMIN
+  def expert? = user_level >= LEVEL_EXPERT
+  def regular? = user_level == LEVEL_REGULAR
 
   def editable?(user)
     user && (user.admin? || id == user.id)

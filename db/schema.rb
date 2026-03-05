@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_23_010000) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_06_015026) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -143,6 +143,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_23_010000) do
     t.index ["embedding"], name: "idx_semantic_dict_16_hnsw", opclass: :vector_cosine_ops, using: :hnsw
   end
 
+  create_table "semantic_dict_18", id: :bigint, default: nil, force: :cascade do |t|
+    t.string "label", limit: 255, null: false
+    t.string "identifier", limit: 255, null: false
+    t.boolean "searchable", default: true, null: false
+    t.vector "embedding", limit: 768, null: false
+    t.index ["embedding"], name: "idx_semantic_dict_18_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+  end
+
+  create_table "semantic_dict_19", id: :bigint, default: nil, force: :cascade do |t|
+    t.string "label", limit: 255, null: false
+    t.string "identifier", limit: 255, null: false
+    t.boolean "searchable", default: true, null: false
+    t.vector "embedding", limit: 768, null: false
+    t.index ["embedding"], name: "idx_semantic_dict_19_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+  end
+
   create_table "tags", force: :cascade do |t|
     t.string "value"
     t.datetime "created_at", null: false
@@ -165,11 +181,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_23_010000) do
     t.string "last_sign_in_ip"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
-    t.boolean "admin", default: false
     t.string "confirmation_token"
     t.datetime "confirmed_at", precision: nil
     t.datetime "confirmation_sent_at", precision: nil
     t.string "unconfirmed_email"
+    t.integer "user_level", default: 0, null: false
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
