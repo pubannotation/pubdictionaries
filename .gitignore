@@ -24,6 +24,7 @@ db/downloadables/
 log/
 tmp/
 *.swp
+spec/examples.txt
 public/tempfiles/
 public/assets/
 vendor/cache/
