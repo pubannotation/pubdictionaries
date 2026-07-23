@@ -235,6 +235,24 @@ class McpController < ApplicationController
 						},
 						required: ['ids', 'dictionary']
 					}
+				},
+				{
+					name: 'text_annotation',
+					description: 'Annotate free text against one or more dictionaries. Returns matched spans with their positions and identifiers.',
+					inputSchema: {
+						type: 'object',
+						properties: {
+							text: {
+								type: 'string',
+								description: 'The free text to annotate'
+							},
+							dictionaries: {
+								type: 'string',
+								description: 'A comma-separated list of dictionary names to annotate against'
+							}
+						},
+						required: ['text', 'dictionaries']
+					}
 				}
 			]
 		}
@@ -250,6 +268,8 @@ class McpController < ApplicationController
 			handle_find_ids(arguments['labels'], arguments['dictionary'])
 		when 'find_terms'
 			handle_find_terms(arguments['ids'], arguments['dictionary'])
+		when 'text_annotation'
+			handle_text_annotation(arguments['text'], arguments['dictionaries'])
 		else
 			raise StandardError, "Unknown tool: #{tool_name}"
 		end
@@ -379,26 +399,69 @@ class McpController < ApplicationController
 		}
 	end
 	
-	def make_internal_request(path)
+	def handle_text_annotation(text, dictionaries)
+		raise StandardError, "Text is required" if text.blank?
+		raise StandardError, "At least one dictionary must be specified" if dictionaries.blank?
+
+		body = { text: text, dictionaries: dictionaries }.to_json
+		response = make_internal_request('/text_annotation.json', method: :post, body: body)
+		result = JSON.parse(response.body)
+
+		annotated_text = result['text'] || text
+		denotations    = result['denotations'] || []
+
+		formatted = if denotations.empty?
+			"No annotations found in the text against \"#{dictionaries}\"."
+		else
+			lines = denotations.map do |d|
+				span    = d['span'] || {}
+				b, e    = span['begin'].to_i, span['end'].to_i
+				snippet = annotated_text[b...e]
+				"- \"#{snippet}\" [#{b}-#{e}] → #{d['obj']}"
+			end
+			"Found #{denotations.length} annotation(s) in the text against \"#{dictionaries}\":\n\n" + lines.join("\n")
+		end
+
+		{
+			content: [
+				{
+					type: 'text',
+					text: formatted
+				}
+			]
+		}
+	end
+
+	def make_internal_request(path, method: :get, body: nil)
 		require 'net/http'
-		
+
 		# Build the full URL for the internal request
 		base_url = determine_base_url
 		uri = URI("#{base_url}#{path}")
-		
+
 		# Create HTTP client
 		http = Net::HTTP.new(uri.host, uri.port)
 		http.use_ssl = uri.scheme == 'https'
-		
+
 		# Set reasonable timeout
 		http.open_timeout = 5
-		http.read_timeout = 30
-		
-		# Make the request
-		request = Net::HTTP::Get.new(uri)
+		# Annotation can be slow on large text — the sync endpoint runs the
+		# full pipeline (tokenize → surface + semantic matching). 60s is a
+		# reasonable ceiling for MCP tool use.
+		http.read_timeout = method == :post ? 60 : 30
+
+		# Make the request (GET by default; POST when a body needs to be sent)
+		request = if method == :post
+			r = Net::HTTP::Post.new(uri)
+			r['Content-Type'] = 'application/json'
+			r.body = body if body
+			r
+		else
+			Net::HTTP::Get.new(uri)
+		end
 		request['Accept'] = 'application/json'
 		request['User-Agent'] = 'PubDictionaries-MCP/1.0'
-		
+
 		response = http.request(request)
 		
 		# Handle response

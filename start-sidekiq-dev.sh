@@ -1,0 +1,1 @@
+~/.rvm/gems/ruby-3.4.4/wrappers/sidekiq -e development -C config/sidekiq.yml

@@ -602,5 +602,237 @@ RSpec.describe McpController, type: :controller do
         end
       end
     end
+
+    describe 'tools/call text_annotation' do
+      let(:method_name) { 'tools/call' }
+
+      context 'with valid text and dictionary — annotations found' do
+        let(:params) do
+          {
+            'name' => 'text_annotation',
+            'arguments' => {
+              'text' => 'The patient has cancer and diabetes.',
+              'dictionaries' => dictionary.name
+            }
+          }
+        end
+
+        it 'POSTs JSON to /text_annotation.json and formats matched spans' do
+          captured_request = nil
+          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
+            captured_request = req
+            mock_http_response(status: 200, body: {
+              'text' => 'The patient has cancer and diabetes.',
+              'denotations' => [
+                { 'span' => { 'begin' => 16, 'end' => 22 }, 'obj' => '0004992' },
+                { 'span' => { 'begin' => 27, 'end' => 35 }, 'obj' => '0005015' }
+              ]
+            })
+          end
+
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          # Wire-level assertions — POST + JSON body carries text + dictionaries
+          expect(captured_request).to be_a(Net::HTTP::Post)
+          expect(captured_request.path).to eq('/text_annotation.json')
+          expect(captured_request['Content-Type']).to eq('application/json')
+          body = JSON.parse(captured_request.body)
+          expect(body['text']).to eq('The patient has cancer and diabetes.')
+          expect(body['dictionaries']).to eq(dictionary.name)
+
+          # Response formatting — snippet + span + id per denotation
+          expect(response).to have_http_status(:success)
+          json_response = JSON.parse(response.body)
+          result_text = json_response['result']['content'].first['text']
+          expect(result_text).to include('Found 2 annotation(s)')
+          expect(result_text).to include('"cancer" [16-22] → 0004992')
+          expect(result_text).to include('"diabetes" [27-35] → 0005015')
+        end
+      end
+
+      context 'with valid input but no matches found' do
+        let(:params) do
+          {
+            'name' => 'text_annotation',
+            'arguments' => {
+              'text' => 'Nothing matches in this text.',
+              'dictionaries' => dictionary.name
+            }
+          }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 200, body: {
+              'text' => 'Nothing matches in this text.',
+              'denotations' => []
+            })
+          end
+        end
+
+        it 'returns a clear "no annotations" message rather than a bare empty list' do
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          expect(response).to have_http_status(:success)
+          json_response = JSON.parse(response.body)
+          expect(json_response['result']['isError']).to be_falsey
+          result_text = json_response['result']['content'].first['text']
+          expect(result_text).to include('No annotations found')
+        end
+      end
+
+      context 'with missing text' do
+        let(:params) do
+          {
+            'name' => 'text_annotation',
+            'arguments' => { 'dictionaries' => dictionary.name }
+          }
+        end
+
+        it 'returns isError with a clear message and does NOT hit the annotation endpoint' do
+          expect_any_instance_of(Net::HTTP).not_to receive(:request)
+
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          expect(response).to have_http_status(:success)
+          json_response = JSON.parse(response.body)
+          expect(json_response['result']['isError']).to be true
+          expect(json_response['result']['content'].first['text']).to include('Text is required')
+        end
+      end
+
+      context 'with missing dictionaries' do
+        let(:params) do
+          {
+            'name' => 'text_annotation',
+            'arguments' => { 'text' => 'some text' }
+          }
+        end
+
+        it 'returns isError before making the HTTP call' do
+          expect_any_instance_of(Net::HTTP).not_to receive(:request)
+
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          expect(response).to have_http_status(:success)
+          json_response = JSON.parse(response.body)
+          expect(json_response['result']['isError']).to be true
+          expect(json_response['result']['content'].first['text']).to include('At least one dictionary')
+        end
+      end
+
+      context 'when the annotation endpoint returns an upstream error' do
+        let(:params) do
+          {
+            'name' => 'text_annotation',
+            'arguments' => {
+              'text' => 'text',
+              'dictionaries' => 'nonexistent_dict'
+            }
+          }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 400, body: { 'message' => 'Dictionary not found: nonexistent_dict' })
+          end
+        end
+
+        it 'surfaces the upstream error message via isError so the LLM can self-correct' do
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          expect(response).to have_http_status(:success)
+          json_response = JSON.parse(response.body)
+          expect(json_response['result']['isError']).to be true
+          expect(json_response['result']['content'].first['text']).to include('Dictionary not found')
+        end
+      end
+
+      context 'with a comma-separated list of dictionaries' do
+        # Real users will annotate against multiple dictionaries at once.
+        # Guards that we forward the CSV verbatim to the annotation endpoint
+        # rather than accidentally splitting it into an array (which would
+        # change the JSON body's shape and confuse the controller).
+        let(:params) do
+          {
+            'name' => 'text_annotation',
+            'arguments' => {
+              'text' => 'brain and heart',
+              'dictionaries' => 'uberon,mondo,hpo'
+            }
+          }
+        end
+
+        it 'passes the raw CSV string in the JSON body without splitting' do
+          captured_request = nil
+          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
+            captured_request = req
+            mock_http_response(status: 200, body: { 'text' => 'brain and heart', 'denotations' => [] })
+          end
+
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          body = JSON.parse(captured_request.body)
+          expect(body['dictionaries']).to eq('uberon,mondo,hpo')
+          expect(body['dictionaries']).to be_a(String)  # NOT an Array
+        end
+      end
+
+      context 'with a denotation missing its span field (malformed upstream response)' do
+        # Defensive: if the annotator ever returns a denotation without a span
+        # (bug, protocol drift, or partial result), we should not crash — the
+        # formatter falls back to empty snippet + [0-0] rather than raising.
+        let(:params) do
+          {
+            'name' => 'text_annotation',
+            'arguments' => {
+              'text' => 'some biomedical text',
+              'dictionaries' => dictionary.name
+            }
+          }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 200, body: {
+              'text' => 'some biomedical text',
+              'denotations' => [ { 'obj' => 'ID_WITHOUT_SPAN' } ]
+            })
+          end
+        end
+
+        it 'renders a fallback line rather than raising' do
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          expect(response).to have_http_status(:success)
+          json_response = JSON.parse(response.body)
+          expect(json_response['result']['isError']).to be_falsey
+          result_text = json_response['result']['content'].first['text']
+          expect(result_text).to include('Found 1 annotation(s)')
+          expect(result_text).to include('ID_WITHOUT_SPAN')
+        end
+      end
+    end
+
+    describe 'tools/list' do
+      # Guards discoverability: if text_annotation is dropped from the schema
+      # (or its required fields change), the LLM can't find/call it correctly
+      # even though execution would still work in isolation.
+      let(:method_name) { 'tools/list' }
+      let(:params)      { {} }
+
+      it 'includes text_annotation with the correct required fields' do
+        post :streamable_http, body: jsonrpc_request.to_json
+
+        expect(response).to have_http_status(:success)
+        json_response = JSON.parse(response.body)
+        tools = json_response['result']['tools']
+
+        tool = tools.find { |t| t['name'] == 'text_annotation' }
+        expect(tool).not_to be_nil, "text_annotation missing from tools/list"
+        expect(tool['inputSchema']['required']).to match_array(%w[text dictionaries])
+        expect(tool['inputSchema']['properties']).to include('text', 'dictionaries')
+      end
+    end
   end
 end
