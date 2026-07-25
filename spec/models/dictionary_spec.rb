@@ -404,4 +404,41 @@ RSpec.describe Dictionary, type: :model do
       end
     end
   end
+
+  describe '.by_query scope' do
+    # Case-insensitive substring against name OR description; blank returns
+    # everything. Chainable with other scopes (that's the point of a scope).
+    let(:user) { create(:user) }
+    let!(:uberon) { create(:dictionary, user: user, name: 'uberon', description: 'anatomical terms from uberon', public: true) }
+    let!(:mondo)  { create(:dictionary, user: user, name: 'mondo',  description: 'disease ontology',              public: true) }
+    let!(:hpo)    { create(:dictionary, user: user, name: 'HPO',    description: 'human phenotype ontology',      public: true) }
+
+    it 'matches on name (case-insensitive)' do
+      expect(Dictionary.by_query('MONDO')).to match_array([ mondo ])
+      expect(Dictionary.by_query('uber')).to match_array([ uberon ])
+    end
+
+    it 'matches on description' do
+      expect(Dictionary.by_query('anatomical')).to match_array([ uberon ])
+    end
+
+    it 'returns all rows when the query is blank / whitespace / nil' do
+      # Contract: blank input is a no-op, so callers can chain unconditionally.
+      expect(Dictionary.by_query(nil).count).to  eq(3)
+      expect(Dictionary.by_query('').count).to   eq(3)
+      expect(Dictionary.by_query('   ').count).to eq(3)
+    end
+
+    it 'composes with other scopes (e.g. .index_dictionaries)' do
+      private_ana = create(:dictionary, user: user, name: 'priv_anat', description: 'anatomy but private', public: false)
+      expect(Dictionary.index_dictionaries.by_query('anatom')).to include(uberon)
+      expect(Dictionary.index_dictionaries.by_query('anatom')).not_to include(private_ana)
+    end
+
+    it 'escapes SQL LIKE wildcards in user input' do
+      # A raw '%' would match everything without escaping — we should get 0 rows
+      # since no name/description contains a literal percent sign.
+      expect(Dictionary.by_query('%')).to be_empty
+    end
+  end
 end

@@ -156,17 +156,42 @@ class McpController < ApplicationController
 		}
 	end
 	
+	# MCP 2025-03-26 tool-annotation hints. All PubDictionaries tools currently
+	# query the local DB without side effects, so they share the same base
+	# hints — `title` varies per tool (added inline). See:
+	# https://modelcontextprotocol.io/specification/2025-03-26/server/tools#tool-annotations
+	#
+	# Why NOT idempotentHint: per the spec, idempotentHint "is only meaningful
+	# when destructiveHint is true" — for read-only tools, clients may already
+	# assume idempotence, and asserting it here reads as "this IS destructive
+	# but safe to retry", which is worse than silence.
+	#
+	# Why openWorldHint: false — this describes RUNTIME behavior (does the
+	# tool reach outside its context at call time?). Ontologies inside the DB
+	# have external origins, but querying them stays local.
+	QUERY_TOOL_ANNOTATIONS = {
+		readOnlyHint: true,
+		destructiveHint: false,
+		openWorldHint: false
+	}.freeze
+
 	def list_tools
 		{
 			tools: [
 				{
 					name: 'list_dictionaries',
-					description: 'Get the list of available dictionaries from PubDictionaries',
+					description: 'Get the list of available dictionaries from PubDictionaries. Optionally filter by a case-insensitive substring match against name or description.',
 					inputSchema: {
 						type: 'object',
-						properties: {},
+						properties: {
+							query: {
+								type: 'string',
+								description: 'Optional filter — case-insensitive substring matched against dictionary name or description (e.g. "anatomy").'
+							}
+						},
 						required: []
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'List Dictionaries')
 				},
 				{
 					name: 'get_dictionary_description',
@@ -180,7 +205,8 @@ class McpController < ApplicationController
 							}
 						},
 						required: ['name']
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Get Dictionary Description')
 				},
 				{
 					name: 'find_ids',
@@ -198,7 +224,8 @@ class McpController < ApplicationController
 							}
 						},
 						required: ['labels']
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Find IDs')
 				},
 				{
 					name: 'search',
@@ -216,7 +243,8 @@ class McpController < ApplicationController
 							}
 						},
 						required: ['labels']
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Search')
 				},
 				{
 					name: 'find_terms',
@@ -234,7 +262,8 @@ class McpController < ApplicationController
 							}
 						},
 						required: ['ids', 'dictionary']
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Find Terms')
 				},
 				{
 					name: 'text_annotation',
@@ -252,7 +281,8 @@ class McpController < ApplicationController
 							}
 						},
 						required: ['text', 'dictionaries']
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Text Annotation')
 				}
 			]
 		}
@@ -261,7 +291,7 @@ class McpController < ApplicationController
 	def call_tool(tool_name, arguments)
 		case tool_name
 		when 'list_dictionaries'
-			handle_list_dictionaries
+			handle_list_dictionaries(arguments['query'])
 		when 'get_dictionary_description'
 			handle_get_dictionary_description(arguments['name'])
 		when 'find_ids', 'search'
@@ -307,22 +337,35 @@ class McpController < ApplicationController
 
 	# Tool implementations using HTTP requests to existing endpoints
 
-	def handle_list_dictionaries
-		response = make_internal_request('/dictionaries.json')
+	def handle_list_dictionaries(query = nil)
+		query = query.to_s.strip
+		path = query.present? ? "/dictionaries.json?query=#{ERB::Util.url_encode(query)}" : '/dictionaries.json'
+		response = make_internal_request(path)
 		dictionaries = JSON.parse(response.body)
-		
-		formatted_text = "Found #{dictionaries.length} dictionaries:\n\n" +
-										dictionaries.map do |dict|
-											"**#{dict['name']}**\n" +
-											"Description: #{dict['description']}\n" +
-											"Maintainer: #{dict['maintainer']}\n"
-										end.join("\n")
-		
+
+		header = if query.present?
+			"Found #{dictionaries.length} dictionaries matching \"#{query}\":"
+		else
+			"Found #{dictionaries.length} dictionaries:"
+		end
+
+		body_lines = dictionaries.map do |dict|
+			"**#{dict['name']}**\n" +
+			"Description: #{dict['description']}\n" +
+			"Maintainer: #{dict['maintainer']}\n"
+		end.join("\n")
+
+		# Browsable URL so the user can click through to the filtered index
+		# view in PubDictionaries — the LLM can quote results AND offer the link.
+		browse_url = "#{determine_base_url}/dictionaries"
+		browse_url += "?query=#{ERB::Util.url_encode(query)}" if query.present?
+		footer = "\n\nView in PubDictionaries: #{browse_url}"
+
 		{
 			content: [
 				{
 					type: 'text',
-					text: formatted_text
+					text: "#{header}\n\n#{body_lines}#{footer}"
 				}
 			]
 		}

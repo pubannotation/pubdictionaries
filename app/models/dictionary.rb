@@ -89,6 +89,16 @@ class Dictionary < ApplicationRecord
 
   scope :index_dictionaries, -> { where(public: true).order(created_at: :desc) }
 
+  # Case-insensitive substring match against name OR description. Blank query
+  # is a no-op (returns the whole current scope), so callers can chain
+  # unconditionally: `Dictionary.index_dictionaries.by_query(params[:query])`.
+  scope :by_query, ->(q) {
+    q = q.to_s.strip
+    next all if q.blank?
+    pattern = "%#{sanitize_sql_like(q)}%"
+    where("name ILIKE :q OR description ILIKE :q", q: pattern)
+  }
+
   class << self
     def find_dictionaries_from_params(params)
       dic_names = if params.has_key?(:dictionaries)

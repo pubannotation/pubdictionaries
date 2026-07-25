@@ -99,6 +99,83 @@ RSpec.describe McpController, type: :controller do
           expect(result_text).to include('Found 0 dictionaries')
         end
       end
+
+      context 'with a query argument' do
+        # Guards the whole query→URL→response chain: the argument must land in
+        # the outgoing request's query string, and the response must include a
+        # click-through URL so the user can browse the filtered view.
+        let(:params) do
+          {
+            'name' => 'list_dictionaries',
+            'arguments' => { 'query' => 'anatomy' }
+          }
+        end
+
+        it 'forwards the query as ?query= and surfaces a browsable URL' do
+          captured_path = nil
+          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
+            captured_path = req.path
+            mock_http_response(status: 200, body: [
+              { 'name' => 'uberon',  'description' => 'anatomical terms from uberon', 'maintainer' => 'jdkim' },
+              { 'name' => 'BTO',     'description' => 'brenda tissue ontology',       'maintainer' => 'admin' }
+            ])
+          end
+
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          # Wire-level: forwarded via ?query= (URL-encoded)
+          expect(captured_path).to eq('/dictionaries.json?query=anatomy')
+
+          # Response-level: header mentions the query, both dictionaries are listed,
+          # and a click-through URL is included.
+          expect(response).to have_http_status(:success)
+          result_text = JSON.parse(response.body)['result']['content'].first['text']
+          expect(result_text).to include('Found 2 dictionaries matching "anatomy"')
+          expect(result_text).to include('uberon')
+          expect(result_text).to include('BTO')
+          expect(result_text).to match(%r{View in PubDictionaries: \S+/dictionaries\?query=anatomy})
+        end
+
+        it 'URL-encodes multi-word / special-character queries' do
+          captured_path = nil
+          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
+            captured_path = req.path
+            mock_http_response(status: 200, body: [])
+          end
+
+          request_with_special_query = {
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { 'name' => 'list_dictionaries', 'arguments' => { 'query' => 'mouse anatomy' } }
+          }
+          post :streamable_http, body: request_with_special_query.to_json
+
+          # Space → %20 (ERB::Util.url_encode), NOT `+`. Same encoding on
+          # the browse URL in the response body.
+          expect(captured_path).to eq('/dictionaries.json?query=mouse%20anatomy')
+          result_text = JSON.parse(response.body)['result']['content'].first['text']
+          expect(result_text).to include('/dictionaries?query=mouse%20anatomy')
+        end
+      end
+
+      context 'without a query argument (backward compatibility)' do
+        # If no query is passed, must hit the unfiltered path (existing
+        # consumers must keep working).
+        let(:params) do
+          { 'name' => 'list_dictionaries', 'arguments' => {} }
+        end
+
+        it 'hits /dictionaries.json without a query string' do
+          captured_path = nil
+          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
+            captured_path = req.path
+            mock_http_response(status: 200, body: [])
+          end
+
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          expect(captured_path).to eq('/dictionaries.json')
+        end
+      end
     end
 
     describe 'tools/call get_dictionary_description' do
@@ -832,6 +909,33 @@ RSpec.describe McpController, type: :controller do
         expect(tool).not_to be_nil, "text_annotation missing from tools/list"
         expect(tool['inputSchema']['required']).to match_array(%w[text dictionaries])
         expect(tool['inputSchema']['properties']).to include('text', 'dictionaries')
+      end
+
+      it 'annotates every tool with the MCP hint booleans and a human-readable title' do
+        # Guards the annotation contract end-to-end. llm_meta_server reads
+        # these into mcp_tools.annotations and renders Read-only / Destructive
+        # / Open-world badges from them.
+        #
+        # idempotentHint is intentionally OMITTED (not asserted false either)
+        # because per the MCP spec it's only meaningful when destructiveHint
+        # is true — for these read-only tools, clients may assume idempotence
+        # and asserting it here would mislead badge-rendering UIs.
+        post :streamable_http, body: jsonrpc_request.to_json
+
+        tools = JSON.parse(response.body)['result']['tools']
+        # All 6 current tools are read-only queries against the local DB.
+        # If a future tool has different hints (e.g. a write endpoint), this
+        # test should be relaxed to check per-tool rather than blanket.
+        tools.each do |tool|
+          ann = tool['annotations']
+          expect(ann).to be_a(Hash), "#{tool['name']} is missing annotations"
+          expect(ann['readOnlyHint']).to eq(true),      "#{tool['name']}: readOnlyHint should be true"
+          expect(ann['destructiveHint']).to eq(false),  "#{tool['name']}: destructiveHint should be false"
+          expect(ann['openWorldHint']).to eq(false),    "#{tool['name']}: openWorldHint should be false"
+          expect(ann).not_to have_key('idempotentHint'), "#{tool['name']}: idempotentHint should not be set on read-only tools (see MCP spec)"
+          expect(ann['title']).to be_a(String), "#{tool['name']}: title should be a String"
+          expect(ann['title']).to be_present,   "#{tool['name']}: title should be non-empty"
+        end
       end
     end
   end
