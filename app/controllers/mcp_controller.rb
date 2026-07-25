@@ -343,48 +343,24 @@ class McpController < ApplicationController
 		response = make_internal_request(path)
 		dictionaries = JSON.parse(response.body)
 
-		header = if query.present?
-			"Found #{dictionaries.length} dictionaries matching \"#{query}\":"
-		else
-			"Found #{dictionaries.length} dictionaries:"
-		end
-
-		body_lines = dictionaries.map do |dict|
-			"**#{dict['name']}**\n" +
-			"Description: #{dict['description']}\n" +
-			"Maintainer: #{dict['maintainer']}\n"
-		end.join("\n")
-
-		# Browsable URL so the user can click through to the filtered index
-		# view in PubDictionaries — the LLM can quote results AND offer the link.
-		browse_url = "#{determine_base_url}/dictionaries"
-		browse_url += "?query=#{ERB::Util.url_encode(query)}" if query.present?
-		footer = "\n\nView in PubDictionaries: #{browse_url}"
-
-		{
-			content: [
-				{
-					type: 'text',
-					text: "#{header}\n\n#{body_lines}#{footer}"
-				}
-			]
+		payload = {
+			dictionaries: dictionaries.map { |d| d.slice("name", "description", "maintainer", "entries_num") },
+			link: view_url_for(:list_dictionaries, query: query)
 		}
+
+		json_content(payload)
 	end
 	
 	def handle_get_dictionary_description(name)
 		raise StandardError, "Dictionary name is required" if name.blank?
-		
+
 		encoded_name = ERB::Util.url_encode(name)
 		response = make_internal_request("/dictionaries/#{encoded_name}/description")
-		
-		{
-			content: [
-				{
-					type: 'text',
-					text: "Description for dictionary \"#{name}\":\n\n#{response.body}"
-				}
-			]
-		}
+
+		json_content(
+			description: response.body.to_s,
+			link: view_url_for(:dictionary_description, name: name)
+		)
 	end
 	
 	def handle_find_ids(labels, dictionary)
@@ -402,22 +378,12 @@ class McpController < ApplicationController
 		response = make_internal_request(url)
 		results = JSON.parse(response.body)
 
-		formatted_results = results.map do |term, ids|
-			"**#{term}**: #{ids.join(', ')}"
-		end.join("\n")
-
-		scope_text = dictionary.present? ? "dictionary \"#{dictionary}\"" : "all public dictionaries"
-
-		{
-			content: [
-				{
-					type: 'text',
-					text: "Found identifiers for terms in #{scope_text}:\n\n#{formatted_results}"
-				}
-			]
-		}
+		json_content(
+			identifiers: results,
+			link: view_url_for(:find_ids, labels: labels, dictionary: dictionary)
+		)
 	end
-	
+
 	def handle_find_terms(ids, dictionary)
 		raise StandardError, "IDs are required" if ids.blank?
 		raise StandardError, "Dictionary name is required" if dictionary.blank?
@@ -427,19 +393,11 @@ class McpController < ApplicationController
 		
 		response = make_internal_request("/find_terms.json?identifiers=#{encoded_ids}&dictionary=#{encoded_dictionary}")
 		results = JSON.parse(response.body)
-		
-		formatted_results = results.map do |id, data|
-			"**#{id}**: #{data['label']} (from #{data['dictionary']})"
-		end.join("\n")
-		
-		{
-			content: [
-				{
-					type: 'text',
-					text: "Found terms for identifiers in dictionary \"#{dictionary}\":\n\n#{formatted_results}"
-				}
-			]
-		}
+
+		json_content(
+			terms: results,
+			link: view_url_for(:find_terms, ids: ids, dictionary: dictionary)
+		)
 	end
 	
 	def handle_text_annotation(text, dictionaries)
@@ -453,26 +411,70 @@ class McpController < ApplicationController
 		annotated_text = result['text'] || text
 		denotations    = result['denotations'] || []
 
-		formatted = if denotations.empty?
-			"No annotations found in the text against \"#{dictionaries}\"."
-		else
-			lines = denotations.map do |d|
-				span    = d['span'] || {}
-				b, e    = span['begin'].to_i, span['end'].to_i
-				snippet = annotated_text[b...e]
-				"- \"#{snippet}\" [#{b}-#{e}] → #{d['obj']}"
+		# Return a structured JSON object as the tool's text content so the LLM
+		# can consume the annotation and the browsable link independently
+		# (e.g. render the SIAF in chat AND emit the link separately). When
+		# no denotations matched, `annotation` is the original text unchanged.
+		json_content(
+			annotation: denotations.empty? ? annotated_text : ::SimpleInlineTextAnnotation.generate(SiafSource.build(annotated_text, denotations)),
+			link: view_url_for(:text_annotation, text: text, dictionaries: dictionaries)
+		)
+	end
+
+
+	# Wrap a Ruby hash as an MCP `content: [{type:text, text:<JSON>}]` result.
+	# Every tool response is pretty-printed JSON so the LLM (and humans
+	# scanning the tool-call debug panel) can parse it consistently.
+	def json_content(hash)
+		{ content: [ { type: "text", text: JSON.pretty_generate(hash) } ] }
+	end
+
+	# Practical browser URL length. Beyond this, some browsers / proxies /
+	# CDN edges reject or truncate — the click-through would 4xx instead of
+	# usefully pre-filling the form.
+	MAX_URL_QUERY_LEN = 1500
+
+	def view_url_for(tool, **args)
+		base = determine_base_url
+
+		path = case tool
+		when :list_dictionaries
+			q = args[:query].to_s.strip
+			q.empty? ? "/dictionaries" : "/dictionaries?query=#{ERB::Util.url_encode(q)}"
+
+		when :dictionary_description
+			"/dictionaries/#{ERB::Util.url_encode(args[:name].to_s)}"
+
+		when :find_ids
+			# Form param name is `label` (singular) — see app/views/lookup/find_ids.html.erb
+			labels_enc = ERB::Util.url_encode(args[:labels].to_s)
+			dict = args[:dictionary].to_s.strip
+			if dict.present?
+				"/dictionaries/#{ERB::Util.url_encode(dict)}/find_ids?label=#{labels_enc}"
+			else
+				"/find_ids?label=#{labels_enc}"
 			end
-			"Found #{denotations.length} annotation(s) in the text against \"#{dictionaries}\":\n\n" + lines.join("\n")
+
+		when :find_terms
+			# Form param name is `identifiers` (plural) — see app/views/lookup/find_terms.html.erb.
+			# dictionary is required at the MCP layer so it's always present here.
+			"/dictionaries/#{ERB::Util.url_encode(args[:dictionary].to_s)}/find_terms?identifiers=#{ERB::Util.url_encode(args[:ids].to_s)}"
+
+		when :text_annotation
+			# Skip pre-filling `text` when it's too long for a URL query string —
+			# `dictionaries` still rides along so the user's selection is preserved
+			# and they can paste text into the form.
+			text     = args[:text].to_s
+			dict_enc = ERB::Util.url_encode(args[:dictionaries].to_s)
+			text_enc = ERB::Util.url_encode(text)
+			if text_enc.length <= MAX_URL_QUERY_LEN
+				"/text_annotation?text=#{text_enc}&dictionaries=#{dict_enc}"
+			else
+				"/text_annotation?dictionaries=#{dict_enc}"
+			end
 		end
 
-		{
-			content: [
-				{
-					type: 'text',
-					text: formatted
-				}
-			]
-		}
+		"#{base}#{path}"
 	end
 
 	def make_internal_request(path, method: :get, body: nil)

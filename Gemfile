@@ -46,6 +46,10 @@ group :development do
   gem 'web-console'
 end
 
+# Simple Inline Annotation Format renderer (used by the MCP text_annotation
+# tool to return LLM-friendly SIAF output).
+gem 'simple_inline_text_annotation', '~> 2.2'
+
 group :development, :test do
   gem 'rspec-rails'
   gem 'factory_bot_rails'

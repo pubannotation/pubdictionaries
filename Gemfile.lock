@@ -368,6 +368,7 @@ GEM
       logger (>= 1.6.2)
       rack (>= 3.1.0)
       redis-client (>= 0.23.2)
+    simple_inline_text_annotation (2.2.0)
     simple_po_parser (1.1.6)
     snaky_hash (2.0.3)
       hashie (>= 0.1.0, < 6)
@@ -456,6 +457,7 @@ DEPENDENCIES
   rubyzip
   select2-rails
   sidekiq (~> 8.0)
+  simple_inline_text_annotation (~> 2.2)
   sprockets-rails
   string-similarity (~> 2.1)
   uglifier

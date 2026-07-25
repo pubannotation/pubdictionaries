@@ -68,7 +68,7 @@ RSpec.describe McpController, type: :controller do
           end
         end
 
-        it 'returns list of dictionaries' do
+        it 'returns list of dictionaries as structured JSON with a link' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
@@ -76,10 +76,14 @@ RSpec.describe McpController, type: :controller do
           expect(json_response['result']).to be_present
           expect(json_response['result']['content']).to be_an(Array)
 
-          result_text = json_response['result']['content'].first['text']
-          expect(result_text).to include('Found 2 dictionaries')
-          expect(result_text).to include('MONDO')
-          expect(result_text).to include('HPO')
+          payload = JSON.parse(json_response['result']['content'].first['text'])
+          expect(payload.keys).to match_array(%w[dictionaries link])
+          expect(payload['dictionaries']).to be_an(Array).and have_attributes(length: 2)
+          expect(payload['dictionaries'].map { |d| d['name'] }).to match_array(%w[MONDO HPO])
+          # Handler slices these fields when present. Fixture omits entries_num, so
+          # only the three that WERE supplied round-trip.
+          expect(payload['dictionaries'].first.keys).to match_array(%w[name description maintainer])
+          expect(payload['link']).to match(%r{/dictionaries\z})
         end
       end
 
@@ -90,13 +94,12 @@ RSpec.describe McpController, type: :controller do
           end
         end
 
-        it 'returns empty list message' do
+        it 'returns an empty array (no results ≠ error)' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
-          json_response = JSON.parse(response.body)
-          result_text = json_response['result']['content'].first['text']
-          expect(result_text).to include('Found 0 dictionaries')
+          payload = JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+          expect(payload['dictionaries']).to eq([])
         end
       end
 
@@ -126,14 +129,12 @@ RSpec.describe McpController, type: :controller do
           # Wire-level: forwarded via ?query= (URL-encoded)
           expect(captured_path).to eq('/dictionaries.json?query=anatomy')
 
-          # Response-level: header mentions the query, both dictionaries are listed,
-          # and a click-through URL is included.
+          # Response-level: JSON payload with both dictionaries listed + the
+          # click-through link carrying the same query.
           expect(response).to have_http_status(:success)
-          result_text = JSON.parse(response.body)['result']['content'].first['text']
-          expect(result_text).to include('Found 2 dictionaries matching "anatomy"')
-          expect(result_text).to include('uberon')
-          expect(result_text).to include('BTO')
-          expect(result_text).to match(%r{View in PubDictionaries: \S+/dictionaries\?query=anatomy})
+          payload = JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+          expect(payload['dictionaries'].map { |d| d['name'] }).to match_array(%w[uberon BTO])
+          expect(payload['link']).to end_with('/dictionaries?query=anatomy')
         end
 
         it 'URL-encodes multi-word / special-character queries' do
@@ -150,10 +151,10 @@ RSpec.describe McpController, type: :controller do
           post :streamable_http, body: request_with_special_query.to_json
 
           # Space → %20 (ERB::Util.url_encode), NOT `+`. Same encoding on
-          # the browse URL in the response body.
+          # the browse URL in the response payload.
           expect(captured_path).to eq('/dictionaries.json?query=mouse%20anatomy')
-          result_text = JSON.parse(response.body)['result']['content'].first['text']
-          expect(result_text).to include('/dictionaries?query=mouse%20anatomy')
+          payload = JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+          expect(payload['link']).to end_with('/dictionaries?query=mouse%20anatomy')
         end
       end
 
@@ -200,16 +201,14 @@ RSpec.describe McpController, type: :controller do
           end
         end
 
-        it 'returns dictionary description' do
+        it 'returns the description + link as JSON' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
-          json_response = JSON.parse(response.body)
-          expect(json_response['result']).to be_present
-
-          result_text = json_response['result']['content'].first['text']
-          expect(result_text).to include('Description for dictionary "MONDO"')
-          expect(result_text).to include('semi-automatically constructed ontology')
+          payload = JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+          expect(payload.keys).to match_array(%w[description link])
+          expect(payload['description']).to include('semi-automatically constructed ontology')
+          expect(payload['link']).to end_with('/dictionaries/MONDO')
         end
       end
 
@@ -373,14 +372,17 @@ RSpec.describe McpController, type: :controller do
           end
         end
 
-        it 'searches all public dictionaries' do
+        it 'searches all public dictionaries (link is the un-scoped /find_ids)' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
           json_response = JSON.parse(response.body)
           expect(json_response['result']['isError']).to be_falsey
-          result_text = json_response['result']['content'].first['text']
-          expect(result_text).to include('all public dictionaries')
+          payload = JSON.parse(json_response['result']['content'].first['text'])
+          # No dictionary → link points at the global /find_ids form, not
+          # /dictionaries/{dict}/find_ids.
+          expect(payload['link']).to match(%r{/find_ids\?label=cancer\z})
+          expect(payload['link']).not_to include('/dictionaries/')
         end
       end
 
@@ -489,14 +491,17 @@ RSpec.describe McpController, type: :controller do
           end
         end
 
-        it 'searches all public dictionaries' do
+        it 'searches all public dictionaries (link is the un-scoped /find_ids)' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
           json_response = JSON.parse(response.body)
           expect(json_response['result']['isError']).to be_falsey
-          result_text = json_response['result']['content'].first['text']
-          expect(result_text).to include('all public dictionaries')
+          payload = JSON.parse(json_response['result']['content'].first['text'])
+          # No dictionary → link points at the global /find_ids form, not
+          # /dictionaries/{dict}/find_ids.
+          expect(payload['link']).to match(%r{/find_ids\?label=cancer\z})
+          expect(payload['link']).not_to include('/dictionaries/')
         end
       end
     end
@@ -717,13 +722,60 @@ RSpec.describe McpController, type: :controller do
           expect(body['text']).to eq('The patient has cancer and diabetes.')
           expect(body['dictionaries']).to eq(dictionary.name)
 
-          # Response formatting — snippet + span + id per denotation
+          # Response formatting — JSON object with `annotation` (SIAF) and `link`.
           expect(response).to have_http_status(:success)
           json_response = JSON.parse(response.body)
           result_text = json_response['result']['content'].first['text']
-          expect(result_text).to include('Found 2 annotation(s)')
-          expect(result_text).to include('"cancer" [16-22] → 0004992')
-          expect(result_text).to include('"diabetes" [27-35] → 0005015')
+          payload = JSON.parse(result_text)
+
+          expect(payload.keys).to match_array(%w[annotation link])
+          expect(payload['annotation']).to include('The patient has [cancer][0004992] and [diabetes][0005015].')
+          # URL reference block at the tail (extended SIAF)
+          expect(payload['annotation']).to include("[0004992]: 0004992")
+          expect(payload['annotation']).to include("[0005015]: 0005015")
+          expect(payload['link']).to match(%r{/text_annotation\?text=.*&dictionaries=#{dictionary.name}})
+        end
+      end
+
+      context 'with real UBERON-style URLs — SIAF short-ID extraction + URL ref block' do
+        let(:params) do
+          {
+            'name' => 'text_annotation',
+            'arguments' => {
+              'text' => 'The eye and the brain are connected via the optic nerve.',
+              'dictionaries' => dictionary.name
+            }
+          }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 200, body: {
+              'text' => 'The eye and the brain are connected via the optic nerve.',
+              'denotations' => [
+                { 'span' => { 'begin' => 4,  'end' => 7 },  'obj' => 'http://purl.obolibrary.org/obo/UBERON_0000019' },
+                { 'span' => { 'begin' => 12, 'end' => 21 }, 'obj' => 'http://purl.obolibrary.org/obo/UBERON_0000955' },
+                # Same span → pipe-merged into one label per extended spec
+                { 'span' => { 'begin' => 44, 'end' => 55 }, 'obj' => 'http://purl.obolibrary.org/obo/UBERON_0000941' },
+                { 'span' => { 'begin' => 44, 'end' => 55 }, 'obj' => 'http://purl.obolibrary.org/obo/UBERON_0004904' }
+              ]
+            })
+          end
+        end
+
+        it 'inlines short IDs and appends the URL reference block' do
+          post :streamable_http, body: jsonrpc_request.to_json
+          text = JSON.parse(response.body)['result']['content'].first['text']
+
+          # Inline body
+          expected_inline = 'The [eye][UBERON_0000019] and [the brain][UBERON_0000955] are connected via the [optic nerve][UBERON_0000941|UBERON_0004904].'
+          expect(text).to include(expected_inline)
+
+          # URL reference block resolves each short ID back to the full URL
+          expect(text).to include('[UBERON_0000019]: http://purl.obolibrary.org/obo/UBERON_0000019')
+          expect(text).to include('[UBERON_0000955]: http://purl.obolibrary.org/obo/UBERON_0000955')
+          expect(text).to include('[UBERON_0000941]: http://purl.obolibrary.org/obo/UBERON_0000941')
+          expect(text).to include('[UBERON_0004904]: http://purl.obolibrary.org/obo/UBERON_0004904')
         end
       end
 
@@ -747,14 +799,18 @@ RSpec.describe McpController, type: :controller do
           end
         end
 
-        it 'returns a clear "no annotations" message rather than a bare empty list' do
+        it 'returns the original text as the annotation value (unchanged, since nothing matched)' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
           json_response = JSON.parse(response.body)
           expect(json_response['result']['isError']).to be_falsey
-          result_text = json_response['result']['content'].first['text']
-          expect(result_text).to include('No annotations found')
+          payload = JSON.parse(json_response['result']['content'].first['text'])
+          # No matches → SIAF has nothing to inline, so `annotation` is the
+          # input text verbatim. LLM can infer "zero matches" from the absence
+          # of any [...][...] structure in the value.
+          expect(payload['annotation']).to eq('Nothing matches in this text.')
+          expect(payload['link']).to be_present
         end
       end
 
@@ -878,15 +934,142 @@ RSpec.describe McpController, type: :controller do
           end
         end
 
-        it 'renders a fallback line rather than raising' do
+        it 'silently skips the malformed denotation instead of raising' do
+          # Under SIAF, a denotation without a span can't be inlined anywhere,
+          # so `build_siaf_source` filters it out. The `annotation` field ends
+          # up as the plain input text — no ghost tag, no reference-block
+          # entry, no crash.
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
           json_response = JSON.parse(response.body)
           expect(json_response['result']['isError']).to be_falsey
-          result_text = json_response['result']['content'].first['text']
-          expect(result_text).to include('Found 1 annotation(s)')
-          expect(result_text).to include('ID_WITHOUT_SPAN')
+          payload = JSON.parse(json_response['result']['content'].first['text'])
+          # Malformed obj must NOT leak into the SIAF output.
+          expect(payload['annotation']).not_to include('ID_WITHOUT_SPAN')
+          expect(payload['annotation']).to include('some biomedical text')
+        end
+      end
+    end
+
+    describe 'link field on tool responses' do
+      # Every tool response includes a `link` key pointing at the matching
+      # PubDictionaries HTML view. Route + query-string param names must
+      # mirror the real forms under app/views/, otherwise the click-through
+      # would 404 or not pre-fill correctly.
+      let(:method_name) { 'tools/call' }
+
+      def payload
+        JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+      end
+
+      context 'get_dictionary_description' do
+        let(:params) do
+          { 'name' => 'get_dictionary_description', 'arguments' => { 'name' => 'uberon' } }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 200, body: 'anatomy ontology')
+          end
+        end
+
+        it 'links to /dictionaries/{name}' do
+          post :streamable_http, body: jsonrpc_request.to_json
+          expect(payload['link']).to end_with('/dictionaries/uberon')
+        end
+      end
+
+      context 'find_ids without dictionary → global /find_ids' do
+        let(:params) do
+          { 'name' => 'find_ids', 'arguments' => { 'labels' => 'cancer,diabetes' } }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 200, body: { 'cancer' => [ '1' ], 'diabetes' => [ '2' ] })
+          end
+        end
+
+        it 'links to the global find_ids page with label= (singular, matches the form)' do
+          post :streamable_http, body: jsonrpc_request.to_json
+          expect(payload['link']).to end_with('/find_ids?label=cancer%2Cdiabetes')
+        end
+      end
+
+      context 'find_ids with dictionary → scoped find_ids page' do
+        let(:params) do
+          { 'name' => 'find_ids', 'arguments' => { 'labels' => 'cancer', 'dictionary' => dictionary.name } }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 200, body: { 'cancer' => [ '1' ] })
+          end
+        end
+
+        it 'links to /dictionaries/{dict}/find_ids' do
+          post :streamable_http, body: jsonrpc_request.to_json
+          expect(payload['link']).to end_with("/dictionaries/#{dictionary.name}/find_ids?label=cancer")
+        end
+      end
+
+      context 'find_terms → per-dictionary find_terms page' do
+        let(:params) do
+          { 'name' => 'find_terms', 'arguments' => { 'ids' => '1,2', 'dictionary' => dictionary.name } }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 200, body: { '1' => { 'label' => 'a', 'dictionary' => dictionary.name },
+                                                     '2' => { 'label' => 'b', 'dictionary' => dictionary.name } })
+          end
+        end
+
+        it 'links to /dictionaries/{dict}/find_terms with identifiers= (plural, matches the form)' do
+          post :streamable_http, body: jsonrpc_request.to_json
+          expect(payload['link']).to end_with("/dictionaries/#{dictionary.name}/find_terms?identifiers=1%2C2")
+        end
+      end
+
+      context 'text_annotation with short text → text pre-filled in URL' do
+        let(:params) do
+          { 'name' => 'text_annotation',
+            'arguments' => { 'text' => 'cancer', 'dictionaries' => dictionary.name } }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 200, body: { 'text' => 'cancer', 'denotations' => [] })
+          end
+        end
+
+        it 'includes both text= and dictionaries= in the URL' do
+          post :streamable_http, body: jsonrpc_request.to_json
+          expect(payload['link']).to end_with("/text_annotation?text=cancer&dictionaries=#{dictionary.name}")
+        end
+      end
+
+      context 'text_annotation with long text → text omitted (URL too long)' do
+        # Practical browser URL length is ~2K chars. Beyond that, click-through
+        # would 4xx. We omit text but keep the dictionaries hint so the form
+        # is pre-filtered when the user pastes their own text.
+        let(:long_text) { 'A' * 2000 }
+        let(:params) do
+          { 'name' => 'text_annotation',
+            'arguments' => { 'text' => long_text, 'dictionaries' => dictionary.name } }
+        end
+
+        before do
+          allow_any_instance_of(Net::HTTP).to receive(:request) do
+            mock_http_response(status: 200, body: { 'text' => long_text, 'denotations' => [] })
+          end
+        end
+
+        it 'links to /text_annotation with dictionaries= only (no text= param)' do
+          post :streamable_http, body: jsonrpc_request.to_json
+          expect(payload['link']).to end_with("/text_annotation?dictionaries=#{dictionary.name}")
+          expect(payload['link']).not_to include('text=')
         end
       end
     end
