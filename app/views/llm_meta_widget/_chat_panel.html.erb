@@ -8,22 +8,29 @@
 	  model             — model name for the meta-server, e.g. "qwen3-6-35b-fast"
 
 	Optional locals (defaults set by the helper):
-	  api_key_uuid      — "ollama-local" for anonymous, or a real llm_api_key uuid
-	  orchestrator_path — absolute URL path where llm_meta_orchestrator.js is
-	                      served on this host (default "/js/llm_meta_orchestrator.js")
-	  actions_schema_id — DOM id of the JSON schema <script> tag defining the
-	                      local action set (default "ai-actions"). The host page
-	                      must render that script tag.
-	  state_global      — window.<name> object exposing state readers used to
-	                      build the system prompt each turn (default "aiState").
-	  actions_global    — window.<name> object exposing the action implementations
-	                      the widget dispatches after each LLM turn (default "aiActions").
+	  api_key_uuid           — "ollama-local" for anonymous, or a real llm_api_key uuid
+	  orchestrator_path      — absolute URL path where llm_meta_orchestrator.js is
+	                           served on this host (default "/js/llm_meta_orchestrator.js")
+	  actions_schema_id      — DOM id of the JSON schema <script> tag defining the
+	                           local action set (default "ai-actions").
+	  state_global           — window.<name> object exposing state readers used to
+	                           build the system prompt each turn (default "aiState").
+	  actions_global         — window.<name> object exposing the action implementations
+	                           the widget dispatches after each LLM turn (default "aiActions").
+	  remote_tools_schema_id — DOM id of a JSON <script> block listing remote MCP tools
+	                           the meta-server can call on the client's behalf, shape:
+	                           [{id: 42, name: "text_annotation"}, ...]. Optional —
+	                           if absent, the widget skips the remote round-trip loop
+	                           and behaves like local-actions-only.
+	  max_rounds             — cap on the client-side tool-loop iterations (default 10).
 
 	Host responsibilities (NOT provided by this partial):
 	  1. <script type="application/json" id="<%= actions_schema_id %>"> — the
 	     action schema list, JSON array of {name, description, input_schema}.
 	  2. window.<%= state_global %> — plain object of state-reader functions.
 	  3. window.<%= actions_global %> — plain object of action implementations.
+	  4. (optional) <script type="application/json" id="<%= remote_tools_schema_id %>"> —
+	     the remote MCP tool list, JSON array of {id, name} entries.
 %>
 
 <style>
@@ -62,18 +69,22 @@
 </div>
 
 <script type="module">
-	import { runTurn } from "<%= orchestrator_path %>";
+	import { runChatLoop } from "<%= orchestrator_path %>";
 
-	var META_BASE         = <%= base_url.to_json.html_safe %>;
-	var API_KEY_UUID      = <%= api_key_uuid.to_json.html_safe %>;
-	var MODEL             = <%= model.to_json.html_safe %>;
-	var ACTIONS_SCHEMA_ID = <%= actions_schema_id.to_json.html_safe %>;
-	var STATE_GLOBAL      = <%= state_global.to_json.html_safe %>;
-	var ACTIONS_GLOBAL    = <%= actions_global.to_json.html_safe %>;
+	var META_BASE              = <%= base_url.to_json.html_safe %>;
+	var API_KEY_UUID           = <%= api_key_uuid.to_json.html_safe %>;
+	var MODEL                  = <%= model.to_json.html_safe %>;
+	var ACTIONS_SCHEMA_ID      = <%= actions_schema_id.to_json.html_safe %>;
+	var STATE_GLOBAL           = <%= state_global.to_json.html_safe %>;
+	var ACTIONS_GLOBAL         = <%= actions_global.to_json.html_safe %>;
+	var REMOTE_TOOLS_SCHEMA_ID = <%= remote_tools_schema_id.to_json.html_safe %>;
+	var MAX_ROUNDS             = <%= max_rounds.to_json.html_safe %>;
 
 	var conversation = [];  // [{role, content}, ...] — grows across turns
 	var actionsSchemaEl = document.getElementById(ACTIONS_SCHEMA_ID);
 	var localTools = actionsSchemaEl ? JSON.parse(actionsSchemaEl.textContent) : [];
+	var remoteToolsEl = document.getElementById(REMOTE_TOOLS_SCHEMA_ID);
+	var remoteTools = remoteToolsEl ? JSON.parse(remoteToolsEl.textContent) : [];
 
 	var historyEl = document.getElementById("ai-chat-history");
 	var formEl    = document.getElementById("ai-chat-form");
@@ -137,13 +148,25 @@
 		var assistantBody = appendTurn("assistant", "");
 
 		try {
-			var result = await runTurn({
+			var currentRound = 0;
+			var result = await runChatLoop({
 				baseUrl:     META_BASE,
 				apiKeyUuid:  API_KEY_UUID,
 				modelName:   MODEL,
 				messages:    messages,
 				localTools:  localTools,
+				remoteTools: remoteTools,
 				aiActions:   window[ACTIONS_GLOBAL] || {},
+				maxRounds:   MAX_ROUNDS,
+				onRoundStart: function(roundIdx) {
+					// After round 0, the assistant is producing follow-up text after
+					// tool results — start a fresh bubble so users can tell rounds apart.
+					if (roundIdx > 0) {
+						appendTurn("system", "🔄 round " + (roundIdx + 1) + " — LLM synthesizing with tool results");
+						assistantBody = appendTurn("assistant", "");
+					}
+					currentRound = roundIdx;
+				},
 				onTextDelta: function(delta) {
 					assistantBody.textContent += delta;
 					historyEl.scrollTop = historyEl.scrollHeight;
@@ -158,8 +181,11 @@
 				appendTurn("system", "Actions: " + summary);
 			}
 			if (result.skipped.length > 0) {
-				appendTurn("system", "Skipped (no local handler): " +
+				appendTurn("system", "Skipped (no handler): " +
 					result.skipped.map(function(t) { return t.name; }).join(", "));
+			}
+			if (result.stopped_reason) {
+				appendTurn("system", "⚠ " + result.stopped_reason);
 			}
 		} catch (err) {
 			appendTurn("error", err.message);

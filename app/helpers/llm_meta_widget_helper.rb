@@ -15,11 +15,16 @@
 # overridable via keyword args for pages that already use those names.
 module LlmMetaWidgetHelper
   DEFAULTS = {
-    api_key_uuid:      "ollama-local",
-    orchestrator_path: "/js/llm_meta_orchestrator.js",
-    actions_schema_id: "ai-actions",
-    state_global:      "aiState",
-    actions_global:    "aiActions"
+    api_key_uuid:            "ollama-local",
+    orchestrator_path:       "/js/llm_meta_orchestrator.js",
+    actions_schema_id:       "ai-actions",
+    state_global:            "aiState",
+    actions_global:          "aiActions",
+    # Remote (MCP) tools live in a separate JSON block. Optional — if the
+    # host doesn't render #remote-mcp-tools, the widget just skips the
+    # round-trip loop and behaves like local-actions-only.
+    remote_tools_schema_id:  "remote-mcp-tools",
+    max_rounds:              10
   }.freeze
 
   def llm_meta_widget(base_url:, model:, **overrides)
