@@ -8,6 +8,24 @@ class McpController < ApplicationController
 		head :ok
 	end
 
+	# GET /.well-known/mcp.json — Class-2 manifest for browser widgets.
+	# Publishes the same tool list as `tools/list` on the JSON-RPC endpoint,
+	# wrapped in a manifest envelope so a widget can discover this host's
+	# MCP tools with a single fetch and then POST tool_calls directly to
+	# /mcp (bypassing any hub proxy). See llm_meta_client's
+	# `fetchMcpManifest` / project_mcp_tool_classes memory.
+	def well_known
+		set_cors_headers
+		manifest = {
+			servers: [ {
+				name: "pubdictionaries",
+				url:  "#{request.base_url}/mcp",
+				tools: list_tools[:tools]
+			} ]
+		}
+		render json: manifest
+	end
+
 	def streamable_http
 		if request.get?
 			# GET request: Start streaming connection

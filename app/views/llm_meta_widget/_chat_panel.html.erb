@@ -1,37 +1,24 @@
-<%#
-	Chat-panel widget for the client-orchestrated flow. Render via the
-	llm_meta_widget helper — that's the intended entry point; direct
-	`render` also works.
-
-	Required locals:
-	  base_url          — meta-server root, e.g. "https://llmbranch.dbcls.jp"
-	  model             — model name for the meta-server, e.g. "qwen3-6-35b-fast"
-
-	Optional locals (defaults set by the helper):
-	  api_key_uuid           — "ollama-local" for anonymous, or a real llm_api_key uuid
-	  orchestrator_path      — absolute URL path where llm_meta_orchestrator.js is
-	                           served on this host (default "/js/llm_meta_orchestrator.js")
-	  actions_schema_id      — DOM id of the JSON schema <script> tag defining the
-	                           local action set (default "ai-actions").
-	  state_global           — window.<name> object exposing state readers used to
-	                           build the system prompt each turn (default "aiState").
-	  actions_global         — window.<name> object exposing the action implementations
-	                           the widget dispatches after each LLM turn (default "aiActions").
-	  remote_tools_schema_id — DOM id of a JSON <script> block listing remote MCP tools
-	                           the meta-server can call on the client's behalf, shape:
-	                           [{id: 42, name: "text_annotation"}, ...]. Optional —
-	                           if absent, the widget skips the remote round-trip loop
-	                           and behaves like local-actions-only.
-	  max_rounds             — cap on the client-side tool-loop iterations (default 10).
-
-	Host responsibilities (NOT provided by this partial):
-	  1. <script type="application/json" id="<%= actions_schema_id %>"> — the
-	     action schema list, JSON array of {name, description, input_schema}.
-	  2. window.<%= state_global %> — plain object of state-reader functions.
-	  3. window.<%= actions_global %> — plain object of action implementations.
-	  4. (optional) <script type="application/json" id="<%= remote_tools_schema_id %>"> —
-	     the remote MCP tool list, JSON array of {id, name} entries.
-%>
+<%# Chat-panel widget for the client-orchestrated flow. Render via the %>
+<%# llm_meta_widget helper — see llm_meta_widget_helper.rb for options. %>
+<%# %>
+<%# Required locals: base_url, model. %>
+<%# Optional locals (defaults in the helper's DEFAULTS constant): %>
+<%#   api_key_uuid, orchestrator_path, actions_schema_id, state_global, %>
+<%#   actions_global, remote_tools_schema_id, well_known_urls, max_rounds. %>
+<%# %>
+<%# The host page must ALSO provide, on the same page: %>
+<%#   (a) a JSON schema block with id = actions_schema_id, listing the %>
+<%#       local action set (name/description/input_schema each). %>
+<%#   (b) window.aiState — reader functions called each turn. %>
+<%#   (c) window.aiActions — action implementations invoked after the LLM %>
+<%#       turn completes. %>
+<%# %>
+<%# NOTE on ERB comments: DO NOT try to consolidate these lines into one %>
+<%# <%_# ... %_> block. Rails-ERB comment blocks terminate at the FIRST %>
+<%# closing `%_>`, so any nested <%_= ... %_> inside cuts them short and %>
+<%# the trailing lines leak into rendered HTML — including any literal %>
+<%# `<script>` text, which then swallows the widget div. One line per %>
+<%# comment keeps them self-terminating. %>
 
 <style>
 	#ai-chat { position: fixed; bottom: 1em; right: 1em; width: 26em; max-height: 60vh;
@@ -69,7 +56,7 @@
 </div>
 
 <script type="module">
-	import { runChatLoop } from "<%= orchestrator_path %>";
+	import { runChatLoop, fetchMcpManifest } from "<%= orchestrator_path %>";
 
 	var META_BASE              = <%= base_url.to_json.html_safe %>;
 	var API_KEY_UUID           = <%= api_key_uuid.to_json.html_safe %>;
@@ -79,12 +66,27 @@
 	var ACTIONS_GLOBAL         = <%= actions_global.to_json.html_safe %>;
 	var REMOTE_TOOLS_SCHEMA_ID = <%= remote_tools_schema_id.to_json.html_safe %>;
 	var MAX_ROUNDS             = <%= max_rounds.to_json.html_safe %>;
+	// nil → auto-discover same-origin /.well-known/mcp.json; explicit array → use those.
+	var WELL_KNOWN_URLS        = <%= raw(well_known_urls.nil? ? "null" : well_known_urls.to_json) %>;
 
 	var conversation = [];  // [{role, content}, ...] — grows across turns
 	var actionsSchemaEl = document.getElementById(ACTIONS_SCHEMA_ID);
 	var localTools = actionsSchemaEl ? JSON.parse(actionsSchemaEl.textContent) : [];
 	var remoteToolsEl = document.getElementById(REMOTE_TOOLS_SCHEMA_ID);
 	var remoteTools = remoteToolsEl ? JSON.parse(remoteToolsEl.textContent) : [];
+
+	// Class 2: fetch well-known MCP manifests at boot. Auto-discovers same
+	// origin if WELL_KNOWN_URLS is null; empty array disables entirely.
+	var hostWideTools = [];
+	var wellKnownReady = (async function() {
+		var urls = WELL_KNOWN_URLS === null
+			? [ window.location.origin + "/.well-known/mcp.json" ]
+			: WELL_KNOWN_URLS;
+		for (var i = 0; i < urls.length; i++) {
+			var tools = await fetchMcpManifest(urls[i]);
+			hostWideTools = hostWideTools.concat(tools);
+		}
+	})();
 
 	var historyEl = document.getElementById("ai-chat-history");
 	var formEl    = document.getElementById("ai-chat-form");
@@ -106,6 +108,47 @@
 		return body;
 	}
 
+	// Thinking-token accumulator: for models like qwen3-6-35b that emit lots
+	// of thinking_delta events before any text_delta, we render a collapsible
+	// "🤔 thinking" block above the assistant bubble so the user sees progress
+	// rather than an empty bubble. Cleared/hidden once text_delta starts.
+	function ensureThinkingBlock() {
+		if (currentThinkingBody) return currentThinkingBody;
+		var details = document.createElement("details");
+		details.className = "ai-chat-thinking";
+		details.open = true;
+		var summary = document.createElement("summary");
+		summary.textContent = "🤔 thinking…";
+		summary.style.cursor = "pointer";
+		summary.style.color = "#666";
+		var body = document.createElement("div");
+		body.style.fontSize = "11px";
+		body.style.color = "#888";
+		body.style.maxHeight = "8em";
+		body.style.overflowY = "auto";
+		body.style.padding = "4px 6px";
+		details.appendChild(summary);
+		details.appendChild(body);
+		historyEl.appendChild(details);
+		historyEl.scrollTop = historyEl.scrollHeight;
+		currentThinkingBlock = details;
+		currentThinkingBody  = body;
+		return body;
+	}
+
+	function collapseThinkingBlock() {
+		if (currentThinkingBlock) {
+			currentThinkingBlock.open = false;
+			var summary = currentThinkingBlock.querySelector("summary");
+			if (summary) summary.textContent = "🤔 thinking (finished)";
+		}
+		currentThinkingBlock = null;
+		currentThinkingBody  = null;
+	}
+
+	var currentThinkingBlock = null;
+	var currentThinkingBody  = null;
+
 	function currentPageState() {
 		var reader = window[STATE_GLOBAL] || {};
 		var out = {};
@@ -117,18 +160,26 @@
 
 	function currentSystemPrompt() {
 		return [
-			"You are integrated into a web page as an AI assistant. You have tools available to change the page state.",
+			"You are integrated into a web page as an AI assistant. You have tools available to change page state or fetch information.",
 			"",
-			"For any request that requires a state change, you MUST invoke the matching tool via a function call.",
-			"You may briefly explain your reasoning in text, but the text alone is not sufficient — the tool must actually be called.",
-			"A textual promise (\"I will add X\") without an accompanying tool call is a failure.",
+			"RULES for tool use:",
+			"1. When a state change or data fetch is needed, invoke the matching tool via a function call. Do not describe the intent in text without invoking (a textual promise like \"I will add X\" is a failure).",
+			"2. After ANY tool has returned a result (visible in the conversation history as a role:tool message), YOUR NEXT MESSAGE MUST BE A PLAIN-TEXT ANSWER using that result. DO NOT emit another tool call.",
+			"3. Especially: NEVER call the SAME tool twice in a row with the same or similar arguments — its earlier result is already in the conversation history. If you need to reference it, read it from there.",
+			"4. Only call an additional tool if the user's request TRULY requires more work that isn't covered by prior results (rare — most requests need one tool call and a synthesis).",
 			"",
 			"Current page state:",
 			JSON.stringify(currentPageState(), null, 2)
 		].join("\n");
 	}
 
+	// Per-turn AbortController — lets the Clear button (or a new submit)
+	// terminate an in-flight runChatLoop, including any pending fetch to
+	// the LLM broker or an MCP endpoint.
+	var currentAbort = null;
+
 	clearBtn.addEventListener("click", function() {
+		if (currentAbort) { try { currentAbort.abort(); } catch (e) { /* noop */ } }
 		conversation = [];
 		historyEl.innerHTML = "";
 	});
@@ -147,17 +198,30 @@
 
 		var assistantBody = appendTurn("assistant", "");
 
+		// If a previous turn is still running (user hit Send without waiting
+		// for done), abort it before starting a new one — otherwise both
+		// loops race and stream into the same bubble.
+		if (currentAbort) { try { currentAbort.abort(); } catch (e) { /* noop */ } }
+		currentAbort = new AbortController();
+
 		try {
+			// Wait for any in-flight well-known fetches to finish before the
+			// first turn so hostWideTools is complete when the LLM sees the
+			// tool menu. On second and later submits this resolves instantly.
+			await wellKnownReady;
+
 			var currentRound = 0;
 			var result = await runChatLoop({
-				baseUrl:     META_BASE,
-				apiKeyUuid:  API_KEY_UUID,
-				modelName:   MODEL,
-				messages:    messages,
-				localTools:  localTools,
-				remoteTools: remoteTools,
-				aiActions:   window[ACTIONS_GLOBAL] || {},
-				maxRounds:   MAX_ROUNDS,
+				baseUrl:       META_BASE,
+				apiKeyUuid:    API_KEY_UUID,
+				modelName:     MODEL,
+				messages:      messages,
+				localTools:    localTools,
+				remoteTools:   remoteTools,
+				hostWideTools: hostWideTools,
+				aiActions:     window[ACTIONS_GLOBAL] || {},
+				maxRounds:     MAX_ROUNDS,
+				signal:        currentAbort.signal,
 				onRoundStart: function(roundIdx) {
 					// After round 0, the assistant is producing follow-up text after
 					// tool results — start a fresh bubble so users can tell rounds apart.
@@ -166,8 +230,20 @@
 						assistantBody = appendTurn("assistant", "");
 					}
 					currentRound = roundIdx;
+					collapseThinkingBlock();
+				},
+				onThinkingDelta: function(delta) {
+					// Thinking models (qwen3-6-35b, etc.) emit hundreds of these
+					// before any text — show them so the widget doesn't look hung.
+					var body = ensureThinkingBlock();
+					body.appendChild(document.createTextNode(delta));
+					body.scrollTop = body.scrollHeight;
+					historyEl.scrollTop = historyEl.scrollHeight;
 				},
 				onTextDelta: function(delta) {
+					// First text_delta of a turn: collapse the thinking block so the
+					// actual response takes the visual focus.
+					collapseThinkingBlock();
 					assistantBody.textContent += delta;
 					historyEl.scrollTop = historyEl.scrollHeight;
 				}
@@ -188,7 +264,14 @@
 				appendTurn("system", "⚠ " + result.stopped_reason);
 			}
 		} catch (err) {
-			appendTurn("error", err.message);
+			// User-initiated abort is a normal termination, not an error.
+			if (err.name === "AbortError" || /aborted/i.test(err.message || "")) {
+				appendTurn("system", "⏹ stopped");
+			} else {
+				appendTurn("error", err.message);
+			}
+		} finally {
+			currentAbort = null;
 		}
 	});
 </script>
