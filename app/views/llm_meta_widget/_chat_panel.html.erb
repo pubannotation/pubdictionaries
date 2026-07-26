@@ -1,0 +1,168 @@
+<%#
+	Chat-panel widget for the client-orchestrated flow. Render via the
+	llm_meta_widget helper — that's the intended entry point; direct
+	`render` also works.
+
+	Required locals:
+	  base_url          — meta-server root, e.g. "https://llmbranch.dbcls.jp"
+	  model             — model name for the meta-server, e.g. "qwen3-6-35b-fast"
+
+	Optional locals (defaults set by the helper):
+	  api_key_uuid      — "ollama-local" for anonymous, or a real llm_api_key uuid
+	  orchestrator_path — absolute URL path where llm_meta_orchestrator.js is
+	                      served on this host (default "/js/llm_meta_orchestrator.js")
+	  actions_schema_id — DOM id of the JSON schema <script> tag defining the
+	                      local action set (default "ai-actions"). The host page
+	                      must render that script tag.
+	  state_global      — window.<name> object exposing state readers used to
+	                      build the system prompt each turn (default "aiState").
+	  actions_global    — window.<name> object exposing the action implementations
+	                      the widget dispatches after each LLM turn (default "aiActions").
+
+	Host responsibilities (NOT provided by this partial):
+	  1. <script type="application/json" id="<%= actions_schema_id %>"> — the
+	     action schema list, JSON array of {name, description, input_schema}.
+	  2. window.<%= state_global %> — plain object of state-reader functions.
+	  3. window.<%= actions_global %> — plain object of action implementations.
+%>
+
+<style>
+	#ai-chat { position: fixed; bottom: 1em; right: 1em; width: 26em; max-height: 60vh;
+	           background: #fff; border: 1px solid #999; border-radius: 6px;
+	           box-shadow: 0 2px 8px rgba(0,0,0,.15); padding: 8px; z-index: 9999;
+	           font: 12px/1.35 -apple-system,BlinkMacSystemFont,sans-serif;
+	           display: flex; flex-direction: column; }
+	#ai-chat header { display: flex; justify-content: space-between; align-items: center;
+	                  border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 4px; }
+	#ai-chat header strong { color: #444; }
+	#ai-chat-history { flex: 1; overflow-y: auto; padding-right: 4px; max-height: 40vh;
+	                   min-height: 4em; margin-bottom: 6px; }
+	.ai-chat-turn { margin-bottom: 6px; padding: 4px 6px; border-radius: 4px; }
+	.ai-chat-turn.user      { background: #eaf3ff; }
+	.ai-chat-turn.assistant { background: #f5f5f5; }
+	.ai-chat-turn.system    { background: #fff8dc; font-style: italic; }
+	.ai-chat-turn.error     { background: #ffd6d6; color: #900; }
+	.ai-chat-turn strong { color: #555; margin-right: 4px; }
+	#ai-chat-form { display: flex; gap: 4px; }
+	#ai-chat-input { flex: 1; font: inherit; padding: 4px 6px;
+	                 border: 1px solid #ccc; border-radius: 3px; }
+	#ai-chat-form button { font: inherit; padding: 4px 10px; cursor: pointer; }
+</style>
+
+<div id="ai-chat">
+	<header>
+		<strong>AI assistant</strong>
+		<button type="button" id="ai-chat-clear" style="font: inherit; border: none; background: transparent; color: #666; cursor: pointer" title="Clear conversation">clear</button>
+	</header>
+	<div id="ai-chat-history"></div>
+	<form id="ai-chat-form">
+		<input id="ai-chat-input" placeholder="e.g. add uberon" autocomplete="off" />
+		<button type="submit">Send</button>
+	</form>
+</div>
+
+<script type="module">
+	import { runTurn } from "<%= orchestrator_path %>";
+
+	var META_BASE         = <%= base_url.to_json.html_safe %>;
+	var API_KEY_UUID      = <%= api_key_uuid.to_json.html_safe %>;
+	var MODEL             = <%= model.to_json.html_safe %>;
+	var ACTIONS_SCHEMA_ID = <%= actions_schema_id.to_json.html_safe %>;
+	var STATE_GLOBAL      = <%= state_global.to_json.html_safe %>;
+	var ACTIONS_GLOBAL    = <%= actions_global.to_json.html_safe %>;
+
+	var conversation = [];  // [{role, content}, ...] — grows across turns
+	var actionsSchemaEl = document.getElementById(ACTIONS_SCHEMA_ID);
+	var localTools = actionsSchemaEl ? JSON.parse(actionsSchemaEl.textContent) : [];
+
+	var historyEl = document.getElementById("ai-chat-history");
+	var formEl    = document.getElementById("ai-chat-form");
+	var inputEl   = document.getElementById("ai-chat-input");
+	var clearBtn  = document.getElementById("ai-chat-clear");
+
+	function appendTurn(role, text) {
+		var div = document.createElement("div");
+		div.className = "ai-chat-turn " + role;
+		var label = document.createElement("strong");
+		label.textContent = role + ":";
+		var body = document.createElement("span");
+		body.textContent = text;
+		div.appendChild(label);
+		div.appendChild(document.createTextNode(" "));
+		div.appendChild(body);
+		historyEl.appendChild(div);
+		historyEl.scrollTop = historyEl.scrollHeight;
+		return body;
+	}
+
+	function currentPageState() {
+		var reader = window[STATE_GLOBAL] || {};
+		var out = {};
+		Object.keys(reader).forEach(function(k) {
+			try { out[k] = reader[k](); } catch (e) { out[k] = "<error: " + e.message + ">"; }
+		});
+		return out;
+	}
+
+	function currentSystemPrompt() {
+		return [
+			"You are integrated into a web page as an AI assistant. You have tools available to change the page state.",
+			"",
+			"For any request that requires a state change, you MUST invoke the matching tool via a function call.",
+			"You may briefly explain your reasoning in text, but the text alone is not sufficient — the tool must actually be called.",
+			"A textual promise (\"I will add X\") without an accompanying tool call is a failure.",
+			"",
+			"Current page state:",
+			JSON.stringify(currentPageState(), null, 2)
+		].join("\n");
+	}
+
+	clearBtn.addEventListener("click", function() {
+		conversation = [];
+		historyEl.innerHTML = "";
+	});
+
+	formEl.addEventListener("submit", async function(e) {
+		e.preventDefault();
+		var userText = inputEl.value.trim();
+		if (!userText) return;
+		inputEl.value = "";
+		appendTurn("user", userText);
+
+		// Rebuild the system message every turn — page state is live, not a snapshot.
+		var messages = [{ role: "system", content: currentSystemPrompt() }]
+			.concat(conversation)
+			.concat([{ role: "user", content: userText }]);
+
+		var assistantBody = appendTurn("assistant", "");
+
+		try {
+			var result = await runTurn({
+				baseUrl:     META_BASE,
+				apiKeyUuid:  API_KEY_UUID,
+				modelName:   MODEL,
+				messages:    messages,
+				localTools:  localTools,
+				aiActions:   window[ACTIONS_GLOBAL] || {},
+				onTextDelta: function(delta) {
+					assistantBody.textContent += delta;
+					historyEl.scrollTop = historyEl.scrollHeight;
+				}
+			});
+			conversation.push({ role: "user",      content: userText });
+			conversation.push({ role: "assistant", content: result.content });
+			if (result.dispatched.length > 0) {
+				var summary = result.dispatched.map(function(d) {
+					return d.error ? "❌ " + d.toolCall.name + ": " + d.error.message : "✔ " + d.toolCall.name;
+				}).join(", ");
+				appendTurn("system", "Actions: " + summary);
+			}
+			if (result.skipped.length > 0) {
+				appendTurn("system", "Skipped (no local handler): " +
+					result.skipped.map(function(t) { return t.name; }).join(", "));
+			}
+		} catch (err) {
+			appendTurn("error", err.message);
+		}
+	});
+</script>
