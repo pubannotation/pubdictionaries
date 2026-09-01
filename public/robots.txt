@@ -1,1 +1,28 @@
 # See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+
+# Allow major search engines to crawl freely
+User-agent: Googlebot
+User-agent: Bingbot
+Allow: /
+
+# Restrict all other crawlers from paginated and search result pages
+User-agent: Claude-SearchBot
+User-agent: ClaudeBot
+User-agent: Amazonbot
+User-agent: PetalBot
+User-agent: Bytespider
+User-agent: AhrefsBot
+User-agent: FriendlyCrawler
+User-agent: BLEXBot
+User-agent: DotBot
+User-agent: SemrushBot
+User-agent: Barkrowler
+User-agent: YandexBot
+User-agent: MJ12bot
+User-agent: facebookexternalhit
+User-agent: thesis-research-bot
+User-agent: fidget-spinner-bot
+User-agent: Sogou web spider
+Disallow: /dictionaries/*?*page=
+Disallow: /dictionaries/*?*id_search=
+Crawl-delay: 10

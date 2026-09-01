@@ -27,14 +27,12 @@
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
-# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
-port ENV.fetch("PORT", 3000)
-
 # Specifies the `environment` that Puma will run in.
 environment ENV.fetch("RAILS_ENV", "development")
 
-# In production, use unix socket instead of port
 if ENV.fetch("RAILS_ENV", "development") == "production"
+  # In production, only listen on unix socket (nginx/CloudFlare handles external traffic).
+  # Do NOT bind to a TCP port to prevent bypassing CloudFlare.
   bind "unix://#{ENV.fetch("APP_ROOT", File.expand_path("../..", __dir__))}/tmp/sockets/puma.sock"
 
   # Puma workers for production (preload app for better performance)
@@ -45,6 +43,9 @@ if ENV.fetch("RAILS_ENV", "development") == "production"
   stdout_redirect "#{ENV.fetch("APP_ROOT", File.expand_path("../..", __dir__))}/log/puma.stdout.log",
                   "#{ENV.fetch("APP_ROOT", File.expand_path("../..", __dir__))}/log/puma.stderr.log",
                   true
+else
+  # In development, listen on a TCP port for direct access.
+  port ENV.fetch("PORT", 3000)
 end
 
 # Allow puma to be restarted by `bin/rails restart` command.
