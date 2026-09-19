@@ -327,13 +327,13 @@
 
 <%# =========================================================================
      AI chat (Tier-1 pilot, dev-only). See project_page_embedded_actions memo.
-     Widget markup + CSS + orchestrator wiring live in llm_meta_client and
-     are copy-vendored via `bin/install-widget`. Everything host-specific
-     stays here: (1) the local action schemas the LLM will see, (2) the
+     Widget markup + CSS + orchestrator wiring come from the
+     llm_meta_widget gem (the `llm_meta_widget` helper below). Everything
+     host-specific stays here: (1) the local action schemas the LLM will see, (2) the
      window.aiState readers, (3) the window.aiActions implementations.
    ========================================================================= %>
 
-<%= llm_meta_widget(base_url: "https://llmbranch.dbcls.jp", model: "qwen3-6-35b-no-think") %>
+<%= llm_meta_widget(base_url: "https://llmbranch.dbcls.jp", model: "qwen3-8-27b-fast") %>
 
 <%# (1) Local action schemas — the LLM sees these as tool declarations. %>
 <script type="application/json" id="ai-actions">
