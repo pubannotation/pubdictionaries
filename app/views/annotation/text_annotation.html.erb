@@ -333,7 +333,9 @@
      window.aiState readers, (3) the window.aiActions implementations.
    ========================================================================= %>
 
-<%= llm_meta_widget(base_url: "https://llmbranch.dbcls.jp", model: "qwen3-8-27b-fast") %>
+<% if Rails.configuration.x.llm_hub_url.present? %>
+  <%= llm_meta_widget(base_url: Rails.configuration.x.llm_hub_url, model: "qwen3-8-27b-fast") %>
+<% end %>
 
 <%# (1) Local action schemas — the LLM sees these as tool declarations. %>
 <script type="application/json" id="ai-actions">

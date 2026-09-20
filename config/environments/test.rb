@@ -50,4 +50,9 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+  # Base URL of the llm_meta hub the embedded chat widget talks to —
+  # never contacted in tests. Override per deployment with LLM_HUB_URL; the widget calls
+  # this from the visitor's browser, so it must be publicly reachable.
+  config.x.llm_hub_url = ENV.fetch("LLM_HUB_URL", "https://hub.invalid")
+
 end
