@@ -1096,4 +1096,21 @@ RSpec.describe TextAnnotator, type: :model do
       end
     end
   end
+
+  describe 'when Elasticsearch is unreachable' do
+    # The raised message names no cause — connection refused, a missing index
+    # and a timeout all produce the same "Bad gateway (ES)". Diagnosing a
+    # production outage then depends entirely on this log line.
+    it 'logs the underlying exception before raising the generic message' do
+      annotator = TextAnnotator.new([ dictionary ], {})
+      connection = instance_double(Net::HTTP::Persistent)
+      allow(connection).to receive(:request).and_raise(Errno::ECONNREFUSED, 'Connection refused - connect(2) for "es.invalid" port 9200')
+      annotator.instance_variable_set(:@es_connection, connection)
+
+      expect(Rails.logger).to receive(:error).with(/Errno::ECONNREFUSED.*Connection refused/)
+
+      expect { annotator.send(:tokenize, 'standard', 'some text') }
+        .to raise_error(/Bad gateway \(ES\)/)
+    end
+  end
 end

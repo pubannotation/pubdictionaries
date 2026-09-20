@@ -560,6 +560,9 @@ class TextAnnotator
       begin
         res = @es_connection.request @tokenizer_url, @tokenizer_post
       rescue => e
+        # The message below is all the caller sees, and it names no cause:
+        # connection refused, a missing index and a timeout all read alike.
+        Rails.logger.error "Elasticsearch tokenizer request failed (#{@tokenizer_url}): #{e.class}: #{e.message}"
         raise "Bad gateway (ES). Please notify the administrator for a quick resolution."
       end
 
