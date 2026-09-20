@@ -1214,10 +1214,24 @@ RSpec.describe McpController, type: :controller do
       it 'declares the static-primitives extension fields' do
         stub_catalog
         meta = rpc('resources/list')['result']['resources'].first['_meta']
+        fields = meta['io.modelcontextprotocol/static-primitives']
 
         expect(meta.keys).to eq([ 'io.modelcontextprotocol/static-primitives' ])
-        expect(meta['io.modelcontextprotocol/static-primitives']['attachmentHint']).to eq('once')
-        expect(meta['io.modelcontextprotocol/static-primitives']['sizeBytes']).to be > 0
+        expect(fields['sizeBytes']).to be > 0
+        expect(fields['volatility']).to eq('stable')
+        expect(fields['autoAttach']).to be(true)
+      end
+
+      # volatility and autoAttach replaced the single attachmentHint enum.
+      # The old key must not survive anywhere: a client seeing both shapes
+      # would have to guess which one the server means.
+      it 'no longer emits the superseded attachmentHint key' do
+        stub_catalog
+        fields = rpc('resources/list')['result']['resources'].first
+                   .dig('_meta', 'io.modelcontextprotocol/static-primitives')
+
+        expect(fields).not_to have_key('attachmentHint')
+        expect(fields.keys).to match_array(%w[sizeBytes volatility autoAttach])
       end
 
       # sizeBytes exists so a client can decide whether to attach the

@@ -449,8 +449,12 @@ class McpController < ApplicationController
 	#
 	# `sizeBytes` counts the resource PAYLOAD — contents[0].text — not the
 	# JSON-RPC envelope around it, because the payload is what a client pays
-	# for in model context. `attachmentHint` says how often it is worth
-	# attaching: the catalog is static reference data, hence 'once'.
+	# for in model context.
+	#
+	# `volatility` and `autoAttach` are independent axes, deliberately not one
+	# enum: whether the content changes between turns says nothing about
+	# whether a client should attach it unasked. The catalog is a fixed list
+	# that costs little, hence stable and auto-attached.
 	STATIC_PRIMITIVES_META = 'io.modelcontextprotocol/static-primitives'.freeze
 
 	def list_resources
@@ -464,7 +468,8 @@ class McpController < ApplicationController
 				_meta: {
 					STATIC_PRIMITIVES_META => {
 						sizeBytes: catalog_json.bytesize,
-						attachmentHint: 'once'
+						volatility: 'stable',
+						autoAttach: true
 					}
 				}
 			} ]
