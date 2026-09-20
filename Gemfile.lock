@@ -7,12 +7,6 @@ GIT
       kaminari
       rails (>= 7.0)
 
-PATH
-  remote: ../llm_meta/llm_meta_widget
-  specs:
-    llm_meta_widget (0.1.0)
-      rails (>= 8.0)
-
 GEM
   remote: https://rubygems.org/
   specs:
@@ -197,6 +191,8 @@ GEM
       kaminari-core (= 1.2.2)
     kaminari-core (1.2.2)
     language_list (1.2.1)
+    llm_meta_widget (0.1.0)
+      rails (>= 8.0)
     logger (1.7.0)
     loofah (2.24.1)
       crass (~> 1.0.2)
@@ -446,7 +442,7 @@ DEPENDENCIES
   jquery-ui-rails
   kaminari
   language_list (~> 1.2, >= 1.2.1)
-  llm_meta_widget!
+  llm_meta_widget (~> 0.1)
   neighbor
   net-http-persistent
   ollama-ai

@@ -50,9 +50,8 @@ end
 # tool to return LLM-friendly SIAF output).
 gem 'simple_inline_text_annotation', '~> 2.2'
 
-# Embeddable chat widget for the llm_meta ecosystem. Local path dep for the
-# pilot; will move to a rubygems release once the SoftwareX review lifts.
-gem 'llm_meta_widget', path: '../llm_meta/llm_meta_widget'
+# Embeddable chat widget for the llm_meta ecosystem.
+gem 'llm_meta_widget', '~> 0.1'
 
 group :development, :test do
   gem 'rspec-rails'
