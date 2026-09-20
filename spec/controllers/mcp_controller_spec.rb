@@ -1201,10 +1201,35 @@ RSpec.describe McpController, type: :controller do
 
     describe 'resources/list' do
       it 'exposes the catalog resource' do
+        stub_catalog
         resource = rpc('resources/list')['result']['resources'].first
 
         expect(resource['uri']).to eq('pubdictionaries://dictionaries')
         expect(resource['mimeType']).to eq('application/json')
+      end
+
+      # Prototype of the io.modelcontextprotocol/static-primitives extension.
+      # The prefix is reserved for official extensions, which is what this is
+      # a prototype of; a third-party field would need its own vendor prefix.
+      it 'declares the static-primitives extension fields' do
+        stub_catalog
+        meta = rpc('resources/list')['result']['resources'].first['_meta']
+
+        expect(meta.keys).to eq([ 'io.modelcontextprotocol/static-primitives' ])
+        expect(meta['io.modelcontextprotocol/static-primitives']['attachmentHint']).to eq('once')
+        expect(meta['io.modelcontextprotocol/static-primitives']['sizeBytes']).to be > 0
+      end
+
+      # sizeBytes exists so a client can decide whether to attach the
+      # resource BEFORE fetching it. A count that disagrees with the real
+      # payload would make that decision on a fiction, so compare bytes.
+      it 'advertises the exact byte length of what resources/read returns' do
+        stub_catalog
+        advertised = rpc('resources/list')['result']['resources'].first
+                       .dig('_meta', 'io.modelcontextprotocol/static-primitives', 'sizeBytes')
+        payload = rpc('resources/read', 'uri' => 'pubdictionaries://dictionaries')['result']['contents'].first['text']
+
+        expect(advertised).to eq(payload.bytesize)
       end
     end
 

@@ -442,6 +442,17 @@ class McpController < ApplicationController
 	# Only the catalog. Individual dictionary contents run to megabytes and are
 	# deliberately out of scope — they stay behind the lookup tools.
 
+	# Prototype of the `io.modelcontextprotocol/static-primitives` extension
+	# (the SEP-2127 follow-on). The fields will eventually live in the Server
+	# Card's `_meta`; declaring them on the runtime resources/list response
+	# first lets a client honour them before the card surface exists.
+	#
+	# `sizeBytes` counts the resource PAYLOAD — contents[0].text — not the
+	# JSON-RPC envelope around it, because the payload is what a client pays
+	# for in model context. `attachmentHint` says how often it is worth
+	# attaching: the catalog is static reference data, hence 'once'.
+	STATIC_PRIMITIVES_META = 'io.modelcontextprotocol/static-primitives'.freeze
+
 	def list_resources
 		{
 			resources: [ {
@@ -449,7 +460,13 @@ class McpController < ApplicationController
 				name: 'PubDictionaries catalog',
 				title: 'PubDictionaries catalog',
 				description: 'The list of available dictionaries, with descriptions, maintainers and entry counts.',
-				mimeType: 'application/json'
+				mimeType: 'application/json',
+				_meta: {
+					STATIC_PRIMITIVES_META => {
+						sizeBytes: catalog_json.bytesize,
+						attachmentHint: 'once'
+					}
+				}
 			} ]
 		}
 	end
@@ -461,9 +478,18 @@ class McpController < ApplicationController
 			contents: [ {
 				uri: CATALOG_URI,
 				mimeType: 'application/json',
-				text: dictionary_catalog.to_json
+				text: catalog_json
 			} ]
 		}
+	end
+
+	# Serialized once per request and shared by both handlers, so the
+	# advertised sizeBytes is the byte length of what resources/read returns
+	# by construction rather than by discipline. Deliberately NOT cached
+	# across requests: a stale byte count would be a budget decision made on
+	# a catalog the client is not about to receive.
+	def catalog_json
+		@catalog_json ||= dictionary_catalog.to_json
 	end
 
 	# Tool implementations using HTTP requests to existing endpoints
