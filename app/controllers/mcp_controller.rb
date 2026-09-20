@@ -126,12 +126,28 @@ class McpController < ApplicationController
 										 isError: true
 									 }
 								 end
+							 when 'prompts/list'
+								 list_prompts
+							 when 'prompts/get'
+								 get_prompt(params['name'], params['arguments'] || {})
+							 when 'resources/list'
+								 list_resources
+							 when 'resources/read'
+								 read_resource(params['uri'])
 							 else
-								 raise StandardError, "Method not found: #{method_name}"
+								 raise JsonRpcError.new(-32601, "Method not found: #{method_name}")
 							 end
 
 			render json: success_response(request_id, result)
 
+		rescue JsonRpcError => e
+			# Codes the protocol defines — -32601 for an unknown method, -32602
+			# for bad params. Previously every one of these fell through to the
+			# StandardError rescue below and went out as -32603 (internal
+			# error), so a client probing whether prompts/resources exist could
+			# not tell "unsupported" from "broken".
+			Rails.logger.info "MCP: #{e.message} (#{e.code})"
+			render json: error_response(request_data&.dig('id'), e.code, e.message)
 		rescue JSON::ParserError
 			render json: error_response(nil, -32700, "Parse error")
 		rescue StandardError => e
@@ -155,6 +171,17 @@ class McpController < ApplicationController
 		data['method'].is_a?(String)
 	end
 	
+	# A JSON-RPC error that carries its own code, so protocol-level failures
+	# reach the client as themselves rather than as -32603.
+	class JsonRpcError < StandardError
+		attr_reader :code
+
+		def initialize(code, message)
+			@code = code
+			super(message)
+		end
+	end
+
 	def success_response(id, result)
 		{
 			jsonrpc: "2.0",
@@ -340,7 +367,9 @@ class McpController < ApplicationController
 		response = {
 			protocolVersion: "2025-06-18",  # The protocol version we support
 			capabilities: {
-				tools: {}  # We support tools
+				tools: {},      # tools/list, tools/call
+				prompts: {},    # prompts/list, prompts/get
+				resources: {}   # resources/list, resources/read
 			},
 			serverInfo: {
 				name: "PubDictionaries",
@@ -353,20 +382,107 @@ class McpController < ApplicationController
 		response
 	end
 
+	# ---- Prompts -------------------------------------------------------
+	#
+	# One prompt, `annotate`. Its `dictionaries` argument takes the same
+	# comma-separated string the text_annotation TOOL takes, rather than a
+	# single name: the annotation page selects a LIST of dictionaries, so a
+	# single-name argument could not be filled from page state.
+
+	CATALOG_URI = 'pubdictionaries://dictionaries'.freeze
+
+	def list_prompts
+		{
+			prompts: [ {
+				name: 'annotate',
+				title: 'Annotate text',
+				description: 'Ask for a passage of text to be annotated against one or more PubDictionaries dictionaries.',
+				arguments: [
+					{
+						name: 'text',
+						description: 'The text to annotate.',
+						required: true
+					},
+					{
+						name: 'dictionaries',
+						description: 'Comma-separated dictionary names (e.g. "uberon,mondo_disease"), as taken by the text_annotation tool.',
+						required: true
+					}
+				]
+			} ]
+		}
+	end
+
+	def get_prompt(name, arguments)
+		raise JsonRpcError.new(-32602, "Unknown prompt: #{name}") unless name == 'annotate'
+
+		text = arguments['text'].to_s
+		dictionaries = arguments['dictionaries'].to_s
+		missing = { 'text' => text, 'dictionaries' => dictionaries }.select { |_, v| v.strip.empty? }.keys
+		raise JsonRpcError.new(-32602, "Missing required argument(s): #{missing.join(', ')}") if missing.any?
+
+		{
+			description: "Annotate text against #{dictionaries}",
+			messages: [ {
+				role: 'user',
+				content: {
+					type: 'text',
+					text: "Annotate the following text against the #{dictionaries} dictionary/dictionaries, " \
+					      "and list the terms found with their identifiers.\n\n#{text}"
+				}
+			} ]
+		}
+	end
+
+	# ---- Resources -----------------------------------------------------
+	#
+	# Only the catalog. Individual dictionary contents run to megabytes and are
+	# deliberately out of scope — they stay behind the lookup tools.
+
+	def list_resources
+		{
+			resources: [ {
+				uri: CATALOG_URI,
+				name: 'PubDictionaries catalog',
+				title: 'PubDictionaries catalog',
+				description: 'The list of available dictionaries, with descriptions, maintainers and entry counts.',
+				mimeType: 'application/json'
+			} ]
+		}
+	end
+
+	def read_resource(uri)
+		raise JsonRpcError.new(-32602, "Unknown resource: #{uri}") unless uri == CATALOG_URI
+
+		{
+			contents: [ {
+				uri: CATALOG_URI,
+				mimeType: 'application/json',
+				text: dictionary_catalog.to_json
+			} ]
+		}
+	end
+
 	# Tool implementations using HTTP requests to existing endpoints
 
 	def handle_list_dictionaries(query = nil)
+		json_content(dictionary_catalog(query))
+	end
+
+	# The catalog payload, shared by the list_dictionaries TOOL and the
+	# dictionaries RESOURCE. Deliberately one method: the two primitives expose
+	# the same data in different envelopes, and letting them drift would make
+	# the answer depend on which one the client happened to use.
+	def dictionary_catalog(query = nil)
 		query = query.to_s.strip
 		path = query.present? ? "/dictionaries.json?query=#{ERB::Util.url_encode(query)}" : '/dictionaries.json'
 		response = make_internal_request(path)
 		dictionaries = JSON.parse(response.body)
 
-		payload = {
+		{
 			dictionaries: dictionaries.map { |d| d.slice("name", "description", "maintainer", "entries_num") },
 			link: view_url_for(:list_dictionaries, query: query)
 		}
-
-		json_content(payload)
 	end
 	
 	def handle_get_dictionary_description(name)

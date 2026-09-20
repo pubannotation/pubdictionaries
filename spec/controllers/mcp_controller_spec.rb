@@ -1122,4 +1122,120 @@ RSpec.describe McpController, type: :controller do
       end
     end
   end
+
+  # ---- prompt and resource primitives ---------------------------------
+  #
+  # Added alongside tools to test whether one MCP server can usefully expose
+  # all three primitive types (spike, 2026-09-20).
+  describe 'prompt and resource primitives' do
+    before { request.content_type = 'application/json' }
+
+    def rpc(method, params = {})
+      post :streamable_http, body: { jsonrpc: '2.0', id: 1, method: method, params: params }.to_json
+      JSON.parse(response.body)
+    end
+
+    def stub_catalog
+      allow_any_instance_of(Net::HTTP).to receive(:request) do
+        mock_http_response(status: 200, body: [
+          { 'name' => 'uberon', 'description' => 'Anatomy', 'maintainer' => 'admin', 'entries_num' => 3 }
+        ])
+      end
+    end
+
+    describe 'initialize' do
+      it 'advertises all three primitive types' do
+        caps = rpc('initialize', 'protocolVersion' => '2025-06-18',
+                                 'clientInfo' => { 'name' => 'spec', 'version' => '1' })['result']['capabilities']
+
+        expect(caps.keys).to include('tools', 'prompts', 'resources')
+      end
+    end
+
+    describe 'prompts/list' do
+      it 'exposes annotate with its argument schema' do
+        prompts = rpc('prompts/list')['result']['prompts']
+
+        expect(prompts.map { _1['name'] }).to eq([ 'annotate' ])
+        args = prompts.first['arguments']
+        # `dictionaries` (CSV), not `dictionary_name`: the annotation page
+        # selects a list, so a single-name argument could not be auto-filled.
+        expect(args.map { _1['name'] }).to eq([ 'text', 'dictionaries' ])
+        expect(args.map { _1['required'] }).to eq([ true, true ])
+      end
+    end
+
+    describe 'prompts/get' do
+      it 'materialises a user message with both arguments substituted' do
+        result = rpc('prompts/get', 'name' => 'annotate',
+                                    'arguments' => { 'text' => 'Gastric mucosa.', 'dictionaries' => 'uberon,mondo' })['result']
+
+        message = result['messages'].first
+        expect(result['messages'].size).to eq(1)
+        expect(message['role']).to eq('user')
+        # Structured content, per spec — NOT a bare string.
+        expect(message['content']['type']).to eq('text')
+        expect(message['content']['text']).to include('Gastric mucosa.').and include('uberon,mondo')
+      end
+
+      it 'rejects an unknown prompt with invalid params' do
+        error = rpc('prompts/get', 'name' => 'nope')['error']
+
+        expect(error['code']).to eq(-32602)
+      end
+
+      it 'rejects a missing required argument, naming it' do
+        error = rpc('prompts/get', 'name' => 'annotate', 'arguments' => { 'text' => 'x' })['error']
+
+        expect(error['code']).to eq(-32602)
+        expect(error['message']).to include('dictionaries')
+      end
+    end
+
+    describe 'resources/list' do
+      it 'exposes the catalog resource' do
+        resource = rpc('resources/list')['result']['resources'].first
+
+        expect(resource['uri']).to eq('pubdictionaries://dictionaries')
+        expect(resource['mimeType']).to eq('application/json')
+      end
+    end
+
+    describe 'resources/read' do
+      it 'returns the catalog as JSON text' do
+        stub_catalog
+        contents = rpc('resources/read', 'uri' => 'pubdictionaries://dictionaries')['result']['contents'].first
+
+        expect(contents['mimeType']).to eq('application/json')
+        expect(JSON.parse(contents['text'])['dictionaries'].first['name']).to eq('uberon')
+      end
+
+      # The resource and the list_dictionaries tool must not drift: they are
+      # two envelopes over one payload, and a client should not get a
+      # different answer depending on which primitive it used.
+      it 'carries the same payload as the list_dictionaries tool' do
+        stub_catalog
+        from_resource = JSON.parse(rpc('resources/read', 'uri' => 'pubdictionaries://dictionaries')['result']['contents'].first['text'])
+        from_tool = JSON.parse(rpc('tools/call', 'name' => 'list_dictionaries', 'arguments' => {})['result']['content'].first['text'])
+
+        expect(from_resource).to eq(from_tool)
+      end
+
+      it 'rejects an unknown uri with invalid params' do
+        expect(rpc('resources/read', 'uri' => 'pubdictionaries://nope')['error']['code']).to eq(-32602)
+      end
+    end
+
+    # Previously every protocol-level failure surfaced as -32603 (internal
+    # error), so a client probing for optional primitives could not tell
+    # "unsupported" from "broken".
+    describe 'an unsupported method' do
+      it 'is reported as method-not-found, not internal error' do
+        error = rpc('completions/complete')['error']
+
+        expect(error['code']).to eq(-32601)
+        expect(error['message']).to include('completions/complete')
+      end
+    end
+  end
 end
