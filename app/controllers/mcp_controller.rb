@@ -377,6 +377,9 @@ class McpController < ApplicationController
 			}
 		}
 
+		# clientInfo is optional in practice — some clients send bare params.
+		# Reading it unconditionally turned the handshake into a -32603.
+		client_info ||= {}
 		Rails.logger.info "MCP Initialize: Client #{client_info['name']} v#{client_info['version']}, Protocol: #{protocol_version}\n#{response}"
 
 		response

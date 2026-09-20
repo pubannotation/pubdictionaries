@@ -1150,6 +1150,13 @@ RSpec.describe McpController, type: :controller do
 
         expect(caps.keys).to include('tools', 'prompts', 'resources')
       end
+
+      it 'still completes the handshake when the client sends no clientInfo' do
+        response = rpc('initialize', 'protocolVersion' => '2025-06-18')
+
+        expect(response['error']).to be_nil
+        expect(response['result']['serverInfo']['name']).to eq('PubDictionaries')
+      end
     end
 
     describe 'prompts/list' do
