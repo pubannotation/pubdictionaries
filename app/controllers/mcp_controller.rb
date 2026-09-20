@@ -8,6 +8,24 @@ class McpController < ApplicationController
 		head :ok
 	end
 
+	# GET /.well-known/mcp.json — Class-2 manifest for browser widgets.
+	# Publishes the same tool list as `tools/list` on the JSON-RPC endpoint,
+	# wrapped in a manifest envelope so a widget can discover this host's
+	# MCP tools with a single fetch and then POST tool_calls directly to
+	# /mcp (bypassing any hub proxy). See llm_meta_client's
+	# `fetchMcpManifest` / project_mcp_tool_classes memory.
+	def well_known
+		set_cors_headers
+		manifest = {
+			servers: [ {
+				name: "pubdictionaries",
+				url:  "#{request.base_url}/mcp",
+				tools: list_tools[:tools]
+			} ]
+		}
+		render json: manifest
+	end
+
 	def streamable_http
 		if request.get?
 			# GET request: Start streaming connection
@@ -108,12 +126,28 @@ class McpController < ApplicationController
 										 isError: true
 									 }
 								 end
+							 when 'prompts/list'
+								 list_prompts
+							 when 'prompts/get'
+								 get_prompt(params['name'], params['arguments'] || {})
+							 when 'resources/list'
+								 list_resources
+							 when 'resources/read'
+								 read_resource(params['uri'])
 							 else
-								 raise StandardError, "Method not found: #{method_name}"
+								 raise JsonRpcError.new(-32601, "Method not found: #{method_name}")
 							 end
 
 			render json: success_response(request_id, result)
 
+		rescue JsonRpcError => e
+			# Codes the protocol defines — -32601 for an unknown method, -32602
+			# for bad params. Previously every one of these fell through to the
+			# StandardError rescue below and went out as -32603 (internal
+			# error), so a client probing whether prompts/resources exist could
+			# not tell "unsupported" from "broken".
+			Rails.logger.info "MCP: #{e.message} (#{e.code})"
+			render json: error_response(request_data&.dig('id'), e.code, e.message)
 		rescue JSON::ParserError
 			render json: error_response(nil, -32700, "Parse error")
 		rescue StandardError => e
@@ -137,6 +171,17 @@ class McpController < ApplicationController
 		data['method'].is_a?(String)
 	end
 	
+	# A JSON-RPC error that carries its own code, so protocol-level failures
+	# reach the client as themselves rather than as -32603.
+	class JsonRpcError < StandardError
+		attr_reader :code
+
+		def initialize(code, message)
+			@code = code
+			super(message)
+		end
+	end
+
 	def success_response(id, result)
 		{
 			jsonrpc: "2.0",
@@ -156,17 +201,42 @@ class McpController < ApplicationController
 		}
 	end
 	
+	# MCP 2025-03-26 tool-annotation hints. All PubDictionaries tools currently
+	# query the local DB without side effects, so they share the same base
+	# hints — `title` varies per tool (added inline). See:
+	# https://modelcontextprotocol.io/specification/2025-03-26/server/tools#tool-annotations
+	#
+	# Why NOT idempotentHint: per the spec, idempotentHint "is only meaningful
+	# when destructiveHint is true" — for read-only tools, clients may already
+	# assume idempotence, and asserting it here reads as "this IS destructive
+	# but safe to retry", which is worse than silence.
+	#
+	# Why openWorldHint: false — this describes RUNTIME behavior (does the
+	# tool reach outside its context at call time?). Ontologies inside the DB
+	# have external origins, but querying them stays local.
+	QUERY_TOOL_ANNOTATIONS = {
+		readOnlyHint: true,
+		destructiveHint: false,
+		openWorldHint: false
+	}.freeze
+
 	def list_tools
 		{
 			tools: [
 				{
 					name: 'list_dictionaries',
-					description: 'Get the list of available dictionaries from PubDictionaries',
+					description: 'Get the list of available dictionaries from PubDictionaries. Optionally filter by a case-insensitive substring match against name or description.',
 					inputSchema: {
 						type: 'object',
-						properties: {},
+						properties: {
+							query: {
+								type: 'string',
+								description: 'Optional filter — case-insensitive substring matched against dictionary name or description (e.g. "anatomy").'
+							}
+						},
 						required: []
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'List Dictionaries')
 				},
 				{
 					name: 'get_dictionary_description',
@@ -180,7 +250,8 @@ class McpController < ApplicationController
 							}
 						},
 						required: ['name']
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Get Dictionary Description')
 				},
 				{
 					name: 'find_ids',
@@ -198,7 +269,8 @@ class McpController < ApplicationController
 							}
 						},
 						required: ['labels']
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Find IDs')
 				},
 				{
 					name: 'search',
@@ -216,7 +288,8 @@ class McpController < ApplicationController
 							}
 						},
 						required: ['labels']
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Search')
 				},
 				{
 					name: 'find_terms',
@@ -234,7 +307,27 @@ class McpController < ApplicationController
 							}
 						},
 						required: ['ids', 'dictionary']
-					}
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Find Terms')
+				},
+				{
+					name: 'text_annotation',
+					description: 'Annotate free text against one or more dictionaries. Returns matched spans with their positions and identifiers.',
+					inputSchema: {
+						type: 'object',
+						properties: {
+							text: {
+								type: 'string',
+								description: 'The free text to annotate'
+							},
+							dictionaries: {
+								type: 'string',
+								description: 'A comma-separated list of dictionary names to annotate against'
+							}
+						},
+						required: ['text', 'dictionaries']
+					},
+					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Text Annotation')
 				}
 			]
 		}
@@ -243,13 +336,15 @@ class McpController < ApplicationController
 	def call_tool(tool_name, arguments)
 		case tool_name
 		when 'list_dictionaries'
-			handle_list_dictionaries
+			handle_list_dictionaries(arguments['query'])
 		when 'get_dictionary_description'
 			handle_get_dictionary_description(arguments['name'])
 		when 'find_ids', 'search'
 			handle_find_ids(arguments['labels'], arguments['dictionary'])
 		when 'find_terms'
 			handle_find_terms(arguments['ids'], arguments['dictionary'])
+		when 'text_annotation'
+			handle_text_annotation(arguments['text'], arguments['dictionaries'])
 		else
 			raise StandardError, "Unknown tool: #{tool_name}"
 		end
@@ -272,7 +367,9 @@ class McpController < ApplicationController
 		response = {
 			protocolVersion: "2025-06-18",  # The protocol version we support
 			capabilities: {
-				tools: {}  # We support tools
+				tools: {},      # tools/list, tools/call
+				prompts: {},    # prompts/list, prompts/get
+				resources: {}   # resources/list, resources/read
 			},
 			serverInfo: {
 				name: "PubDictionaries",
@@ -280,48 +377,153 @@ class McpController < ApplicationController
 			}
 		}
 
+		# clientInfo is optional in practice — some clients send bare params.
+		# Reading it unconditionally turned the handshake into a -32603.
+		client_info ||= {}
 		Rails.logger.info "MCP Initialize: Client #{client_info['name']} v#{client_info['version']}, Protocol: #{protocol_version}\n#{response}"
 
 		response
 	end
 
+	# ---- Prompts -------------------------------------------------------
+	#
+	# One prompt, `annotate`. Its `dictionaries` argument takes the same
+	# comma-separated string the text_annotation TOOL takes, rather than a
+	# single name: the annotation page selects a LIST of dictionaries, so a
+	# single-name argument could not be filled from page state.
+
+	CATALOG_URI = 'pubdictionaries://dictionaries'.freeze
+
+	def list_prompts
+		{
+			prompts: [ {
+				name: 'annotate',
+				title: 'Annotate text',
+				description: 'Ask for a passage of text to be annotated against one or more PubDictionaries dictionaries.',
+				arguments: [
+					{
+						name: 'text',
+						description: 'The text to annotate.',
+						required: true
+					},
+					{
+						name: 'dictionaries',
+						description: 'Comma-separated dictionary names (e.g. "uberon,mondo_disease"), as taken by the text_annotation tool.',
+						required: true
+					}
+				]
+			} ]
+		}
+	end
+
+	def get_prompt(name, arguments)
+		raise JsonRpcError.new(-32602, "Unknown prompt: #{name}") unless name == 'annotate'
+
+		text = arguments['text'].to_s
+		dictionaries = arguments['dictionaries'].to_s
+		missing = { 'text' => text, 'dictionaries' => dictionaries }.select { |_, v| v.strip.empty? }.keys
+		raise JsonRpcError.new(-32602, "Missing required argument(s): #{missing.join(', ')}") if missing.any?
+
+		{
+			description: "Annotate text against #{dictionaries}",
+			messages: [ {
+				role: 'user',
+				content: {
+					type: 'text',
+					text: "Annotate the following text against the #{dictionaries} dictionary/dictionaries, " \
+					      "and list the terms found with their identifiers.\n\n#{text}"
+				}
+			} ]
+		}
+	end
+
+	# ---- Resources -----------------------------------------------------
+	#
+	# Only the catalog. Individual dictionary contents run to megabytes and are
+	# deliberately out of scope — they stay behind the lookup tools.
+
+	# Prototype of the `io.modelcontextprotocol/static-primitives` extension
+	# (the SEP-2127 follow-on). The fields will eventually live in the Server
+	# Card's `_meta`; declaring them on the runtime resources/list response
+	# first lets a client honour them before the card surface exists.
+	#
+	# `sizeBytes` counts the resource PAYLOAD — contents[0].text — not the
+	# JSON-RPC envelope around it, because the payload is what a client pays
+	# for in model context. `attachmentHint` says how often it is worth
+	# attaching: the catalog is static reference data, hence 'once'.
+	STATIC_PRIMITIVES_META = 'io.modelcontextprotocol/static-primitives'.freeze
+
+	def list_resources
+		{
+			resources: [ {
+				uri: CATALOG_URI,
+				name: 'PubDictionaries catalog',
+				title: 'PubDictionaries catalog',
+				description: 'The list of available dictionaries, with descriptions, maintainers and entry counts.',
+				mimeType: 'application/json',
+				_meta: {
+					STATIC_PRIMITIVES_META => {
+						sizeBytes: catalog_json.bytesize,
+						attachmentHint: 'once'
+					}
+				}
+			} ]
+		}
+	end
+
+	def read_resource(uri)
+		raise JsonRpcError.new(-32602, "Unknown resource: #{uri}") unless uri == CATALOG_URI
+
+		{
+			contents: [ {
+				uri: CATALOG_URI,
+				mimeType: 'application/json',
+				text: catalog_json
+			} ]
+		}
+	end
+
+	# Serialized once per request and shared by both handlers, so the
+	# advertised sizeBytes is the byte length of what resources/read returns
+	# by construction rather than by discipline. Deliberately NOT cached
+	# across requests: a stale byte count would be a budget decision made on
+	# a catalog the client is not about to receive.
+	def catalog_json
+		@catalog_json ||= dictionary_catalog.to_json
+	end
+
 	# Tool implementations using HTTP requests to existing endpoints
 
-	def handle_list_dictionaries
-		response = make_internal_request('/dictionaries.json')
+	def handle_list_dictionaries(query = nil)
+		json_content(dictionary_catalog(query))
+	end
+
+	# The catalog payload, shared by the list_dictionaries TOOL and the
+	# dictionaries RESOURCE. Deliberately one method: the two primitives expose
+	# the same data in different envelopes, and letting them drift would make
+	# the answer depend on which one the client happened to use.
+	def dictionary_catalog(query = nil)
+		query = query.to_s.strip
+		path = query.present? ? "/dictionaries.json?query=#{ERB::Util.url_encode(query)}" : '/dictionaries.json'
+		response = make_internal_request(path)
 		dictionaries = JSON.parse(response.body)
-		
-		formatted_text = "Found #{dictionaries.length} dictionaries:\n\n" +
-										dictionaries.map do |dict|
-											"**#{dict['name']}**\n" +
-											"Description: #{dict['description']}\n" +
-											"Maintainer: #{dict['maintainer']}\n"
-										end.join("\n")
-		
+
 		{
-			content: [
-				{
-					type: 'text',
-					text: formatted_text
-				}
-			]
+			dictionaries: dictionaries.map { |d| d.slice("name", "description", "maintainer", "entries_num") },
+			link: view_url_for(:list_dictionaries, query: query)
 		}
 	end
 	
 	def handle_get_dictionary_description(name)
 		raise StandardError, "Dictionary name is required" if name.blank?
-		
+
 		encoded_name = ERB::Util.url_encode(name)
 		response = make_internal_request("/dictionaries/#{encoded_name}/description")
-		
-		{
-			content: [
-				{
-					type: 'text',
-					text: "Description for dictionary \"#{name}\":\n\n#{response.body}"
-				}
-			]
-		}
+
+		json_content(
+			description: response.body.to_s,
+			link: view_url_for(:dictionary_description, name: name)
+		)
 	end
 	
 	def handle_find_ids(labels, dictionary)
@@ -339,22 +541,12 @@ class McpController < ApplicationController
 		response = make_internal_request(url)
 		results = JSON.parse(response.body)
 
-		formatted_results = results.map do |term, ids|
-			"**#{term}**: #{ids.join(', ')}"
-		end.join("\n")
-
-		scope_text = dictionary.present? ? "dictionary \"#{dictionary}\"" : "all public dictionaries"
-
-		{
-			content: [
-				{
-					type: 'text',
-					text: "Found identifiers for terms in #{scope_text}:\n\n#{formatted_results}"
-				}
-			]
-		}
+		json_content(
+			identifiers: results,
+			link: view_url_for(:find_ids, labels: labels, dictionary: dictionary)
+		)
 	end
-	
+
 	def handle_find_terms(ids, dictionary)
 		raise StandardError, "IDs are required" if ids.blank?
 		raise StandardError, "Dictionary name is required" if dictionary.blank?
@@ -364,41 +556,120 @@ class McpController < ApplicationController
 		
 		response = make_internal_request("/find_terms.json?identifiers=#{encoded_ids}&dictionary=#{encoded_dictionary}")
 		results = JSON.parse(response.body)
-		
-		formatted_results = results.map do |id, data|
-			"**#{id}**: #{data['label']} (from #{data['dictionary']})"
-		end.join("\n")
-		
-		{
-			content: [
-				{
-					type: 'text',
-					text: "Found terms for identifiers in dictionary \"#{dictionary}\":\n\n#{formatted_results}"
-				}
-			]
-		}
+
+		json_content(
+			terms: results,
+			link: view_url_for(:find_terms, ids: ids, dictionary: dictionary)
+		)
 	end
 	
-	def make_internal_request(path)
+	def handle_text_annotation(text, dictionaries)
+		raise StandardError, "Text is required" if text.blank?
+		raise StandardError, "At least one dictionary must be specified" if dictionaries.blank?
+
+		body = { text: text, dictionaries: dictionaries }.to_json
+		response = make_internal_request('/text_annotation.json', method: :post, body: body)
+		result = JSON.parse(response.body)
+
+		annotated_text = result['text'] || text
+		denotations    = result['denotations'] || []
+
+		# Return a structured JSON object as the tool's text content so the LLM
+		# can consume the annotation and the browsable link independently
+		# (e.g. render the SIAF in chat AND emit the link separately). When
+		# no denotations matched, `annotation` is the original text unchanged.
+		json_content(
+			annotation: denotations.empty? ? annotated_text : ::SimpleInlineTextAnnotation.generate(SiafSource.build(annotated_text, denotations)),
+			link: view_url_for(:text_annotation, text: text, dictionaries: dictionaries)
+		)
+	end
+
+
+	# Wrap a Ruby hash as an MCP `content: [{type:text, text:<JSON>}]` result.
+	# Every tool response is pretty-printed JSON so the LLM (and humans
+	# scanning the tool-call debug panel) can parse it consistently.
+	def json_content(hash)
+		{ content: [ { type: "text", text: JSON.pretty_generate(hash) } ] }
+	end
+
+	# Practical browser URL length. Beyond this, some browsers / proxies /
+	# CDN edges reject or truncate — the click-through would 4xx instead of
+	# usefully pre-filling the form.
+	MAX_URL_QUERY_LEN = 1500
+
+	def view_url_for(tool, **args)
+		base = determine_base_url
+
+		path = case tool
+		when :list_dictionaries
+			q = args[:query].to_s.strip
+			q.empty? ? "/dictionaries" : "/dictionaries?query=#{ERB::Util.url_encode(q)}"
+
+		when :dictionary_description
+			"/dictionaries/#{ERB::Util.url_encode(args[:name].to_s)}"
+
+		when :find_ids
+			# Form param name is `label` (singular) — see app/views/lookup/find_ids.html.erb
+			labels_enc = ERB::Util.url_encode(args[:labels].to_s)
+			dict = args[:dictionary].to_s.strip
+			if dict.present?
+				"/dictionaries/#{ERB::Util.url_encode(dict)}/find_ids?label=#{labels_enc}"
+			else
+				"/find_ids?label=#{labels_enc}"
+			end
+
+		when :find_terms
+			# Form param name is `identifiers` (plural) — see app/views/lookup/find_terms.html.erb.
+			# dictionary is required at the MCP layer so it's always present here.
+			"/dictionaries/#{ERB::Util.url_encode(args[:dictionary].to_s)}/find_terms?identifiers=#{ERB::Util.url_encode(args[:ids].to_s)}"
+
+		when :text_annotation
+			# Skip pre-filling `text` when it's too long for a URL query string —
+			# `dictionaries` still rides along so the user's selection is preserved
+			# and they can paste text into the form.
+			text     = args[:text].to_s
+			dict_enc = ERB::Util.url_encode(args[:dictionaries].to_s)
+			text_enc = ERB::Util.url_encode(text)
+			if text_enc.length <= MAX_URL_QUERY_LEN
+				"/text_annotation?text=#{text_enc}&dictionaries=#{dict_enc}"
+			else
+				"/text_annotation?dictionaries=#{dict_enc}"
+			end
+		end
+
+		"#{base}#{path}"
+	end
+
+	def make_internal_request(path, method: :get, body: nil)
 		require 'net/http'
-		
+
 		# Build the full URL for the internal request
 		base_url = determine_base_url
 		uri = URI("#{base_url}#{path}")
-		
+
 		# Create HTTP client
 		http = Net::HTTP.new(uri.host, uri.port)
 		http.use_ssl = uri.scheme == 'https'
-		
+
 		# Set reasonable timeout
 		http.open_timeout = 5
-		http.read_timeout = 30
-		
-		# Make the request
-		request = Net::HTTP::Get.new(uri)
+		# Annotation can be slow on large text — the sync endpoint runs the
+		# full pipeline (tokenize → surface + semantic matching). 60s is a
+		# reasonable ceiling for MCP tool use.
+		http.read_timeout = method == :post ? 60 : 30
+
+		# Make the request (GET by default; POST when a body needs to be sent)
+		request = if method == :post
+			r = Net::HTTP::Post.new(uri)
+			r['Content-Type'] = 'application/json'
+			r.body = body if body
+			r
+		else
+			Net::HTTP::Get.new(uri)
+		end
 		request['Accept'] = 'application/json'
 		request['User-Agent'] = 'PubDictionaries-MCP/1.0'
-		
+
 		response = http.request(request)
 		
 		# Handle response

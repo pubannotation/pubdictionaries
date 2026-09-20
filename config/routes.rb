@@ -11,6 +11,10 @@ Rails.application.routes.draw do
   get '/mcp', to: 'mcp#streamable_http'
   post '/mcp', to: 'mcp#streamable_http'
   options '/mcp', to: 'mcp#options'  # For CORS preflight
+  # Class-2 manifest: browser widgets discover this host's MCP tools here,
+  # then POST tool_calls directly to /mcp above. See llm_meta_client's
+  # fetchMcpManifest + project_mcp_tool_classes memory.
+  get '/.well-known/mcp.json', to: 'mcp#well_known'
 
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
   get "home/about", as: "about"

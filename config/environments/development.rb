@@ -69,4 +69,9 @@ Rails.application.configure do
 
   # option for url_helpers in models
   Rails.application.routes.default_url_options = { host: 'localhost', port: 3000 }
+  # Base URL of the llm_meta hub the embedded chat widget talks to —
+  # the dev hub. Override per deployment with LLM_HUB_URL; the widget calls
+  # this from the visitor's browser, so it must be publicly reachable.
+  config.x.llm_hub_url = ENV.fetch("LLM_HUB_URL", "https://llmbranch.dbcls.jp")
+
 end

@@ -67,6 +67,9 @@
 			<%= render :partial => 'textae_css_js'-%>
 			<div class="textae-editor"><%= @result.to_json %></div>
 
+			<h2>Result in <%= link_to 'SIAF', 'https://github.com/pubannotation/simple_inline_annotation_format' %></h2>
+			<pre style="white-space:pre-wrap; border:1px solid black"><%= SimpleInlineTextAnnotation.generate(SiafSource.build(@result[:text], @result[:denotations] || [])) %></pre>
+
 			<h2>Result in <%= link_to 'JSON', 'https://www.pubannotation.org/docs/annotation-format/' %></h2>
 			<pre style="white-space:pre-wrap; border:1px solid black"><%= JSON.pretty_generate @result %></pre>
 		<% end %>
@@ -321,3 +324,219 @@
 		$('#batch_curl_command').text(batch_command);
 	}
 </script>
+
+<%# =========================================================================
+     AI chat (Tier-1 pilot, dev-only). See project_page_embedded_actions memo.
+     Widget markup + CSS + orchestrator wiring come from the
+     llm_meta_widget gem (the `llm_meta_widget` helper below). Everything
+     host-specific stays here: (1) the local action schemas the LLM will see, (2) the
+     window.aiState readers, (3) the window.aiActions implementations.
+   ========================================================================= %>
+
+<% if Rails.configuration.x.llm_hub_url.present? %>
+  <%= llm_meta_widget(base_url: Rails.configuration.x.llm_hub_url, model: "qwen3-8-27b-fast") %>
+<% end %>
+
+<%# (1) Local action schemas — the LLM sees these as tool declarations. %>
+<script type="application/json" id="ai-actions">
+[
+	{
+		"name": "add_dictionaries",
+		"description": "Add one or more dictionaries to the current selection.",
+		"input_schema": {
+			"type": "object",
+			"properties": {
+				"names": { "type": "array", "items": { "type": "string" }, "description": "Dictionary names to add." }
+			},
+			"required": ["names"]
+		}
+	},
+	{
+		"name": "remove_dictionaries",
+		"description": "Remove one or more dictionaries from the current selection.",
+		"input_schema": {
+			"type": "object",
+			"properties": {
+				"names": { "type": "array", "items": { "type": "string" } }
+			},
+			"required": ["names"]
+		}
+	},
+	{
+		"name": "set_dictionaries",
+		"description": "Replace the current dictionary selection with the given list (clears then adds).",
+		"input_schema": {
+			"type": "object",
+			"properties": {
+				"names": { "type": "array", "items": { "type": "string" } }
+			},
+			"required": ["names"]
+		}
+	},
+	{
+		"name": "set_semantic_threshold",
+		"description": "Set the semantic similarity threshold (0.0-1.0). Enables semantic similarity if not already on.",
+		"input_schema": {
+			"type": "object",
+			"properties": { "value": { "type": "number", "minimum": 0, "maximum": 1 } },
+			"required": ["value"]
+		}
+	},
+	{
+		"name": "set_surface_threshold",
+		"description": "Set the surface similarity threshold (0.0-1.0).",
+		"input_schema": {
+			"type": "object",
+			"properties": { "value": { "type": "number", "minimum": 0, "maximum": 1 } },
+			"required": ["value"]
+		}
+	},
+	{
+		"name": "set_option",
+		"description": "Toggle a boolean annotation option. Valid names: longest, superfluous, verbose, abbreviation, use_ngram_similarity, use_semantic_similarity.",
+		"input_schema": {
+			"type": "object",
+			"properties": {
+				"name":  { "type": "string" },
+				"value": { "type": "boolean" }
+			},
+			"required": ["name", "value"]
+		}
+	},
+	{
+		"name": "set_text",
+		"description": "Replace the text-to-annotate with the given string.",
+		"input_schema": {
+			"type": "object",
+			"properties": { "text": { "type": "string" } },
+			"required": ["text"]
+		}
+	},
+	{
+		"name": "submit_annotation",
+		"description": "Submit the annotation form with the current text + settings.",
+		"input_schema": { "type": "object", "properties": {} }
+	}
+]
+</script>
+
+<%# (2) aiState readers — called locally each turn to feed the LLM current page state. %>
+<%# (3) aiActions — invoked by the widget AFTER the LLM emits a tool_call (fire-and-forget). %>
+<script type="text/javascript">
+	(function() {
+		var OPTION_ID_BY_NAME = {
+			longest:                 "longest",
+			superfluous:             "superfluous",
+			verbose:                 "verbose",
+			abbreviation:            "abbreviation",
+			use_ngram_similarity:    "ngram",
+			use_semantic_similarity: "use_semantic_similarity"
+		};
+
+		function readSelectedDictionaries() {
+			var raw = ($("#dictionaries").val() || $("#dictionaries").text() || "").trim();
+			if (!raw) return [];
+			return raw.split(",").map(function(s) { return s.trim(); }).filter(Boolean);
+		}
+
+		function readAvailableDictionaries() {
+			// Every .dictionary tile carries the true name in its `name` attribute
+			// (see _selected_dictionary / _unselected_dictionary partials). Union
+			// across both panes; dedupe because the same name is rendered on each
+			// side and visibility just toggles.
+			var names = [];
+			var seen = {};
+			$("#selected_dictionaries > .dictionary, #unselected_dictionaries > .dictionary").each(function() {
+				var n = $(this).attr("name");
+				if (n && !seen[n]) { seen[n] = true; names.push(n); }
+			});
+			return names;
+		}
+
+		window.aiState = {
+			text:                   function() { return $("#text").val() || ""; },
+			selected_dictionaries:  readSelectedDictionaries,
+			// The LLM needs the full choice set to avoid hallucinating dictionary
+			// names — otherwise add_dictionaries silently no-ops (the DOM tile
+			// for the guessed name doesn't exist, jQuery selector matches nothing).
+			available_dictionaries: readAvailableDictionaries,
+			semantic_threshold:     function() { return parseFloat($("#semantic_threshold").val()) || null; },
+			surface_threshold:      function() { return parseFloat($("#threshold").val()) || null; },
+			options: function() {
+				var out = {};
+				Object.keys(OPTION_ID_BY_NAME).forEach(function(name) {
+					var el = document.getElementById(OPTION_ID_BY_NAME[name]);
+					if (el && el.type === "checkbox") out[name] = el.checked;
+				});
+				return out;
+			}
+		};
+
+		// Throw if the requested dictionary name has no matching tile in the
+		// DOM. Silent no-ops would leave the widget UI showing "✔" while the
+		// page state didn't actually change — misleading. Loud errors surface
+		// as "❌ add_dictionaries: unknown dictionary: foo" in the chat panel.
+		function requireDictionaryExists(n) {
+			if ($("#unselected_dictionaries > .dictionary[name='" + n + "'], #selected_dictionaries > .dictionary[name='" + n + "']").length === 0) {
+				throw new Error("unknown dictionary: " + n);
+			}
+		}
+
+		window.aiActions = {
+			add_dictionaries: function(args) {
+				(args.names || []).forEach(function(n) {
+					requireDictionaryExists(n);
+					if (typeof selectDictionary === "function") selectDictionary(n);
+				});
+				if (typeof setParamDics === "function") setParamDics();
+			},
+			remove_dictionaries: function(args) {
+				(args.names || []).forEach(function(n) {
+					requireDictionaryExists(n);
+					if (typeof unselectDictionary === "function") unselectDictionary(n);
+				});
+				if (typeof setParamDics === "function") setParamDics();
+			},
+			set_dictionaries: function(args) {
+				(args.names || []).forEach(requireDictionaryExists);
+				// Unselect ALL currently visible in #selected_dictionaries, then add the new set.
+				$("#selected_dictionaries > .dictionary:visible").each(function() {
+					var name = $(this).find(".name").text().trim();
+					if (name && typeof unselectDictionary === "function") unselectDictionary(name);
+				});
+				(args.names || []).forEach(function(n) {
+					if (typeof selectDictionary === "function") selectDictionary(n);
+				});
+				if (typeof setParamDics === "function") setParamDics();
+			},
+			set_semantic_threshold: function(args) {
+				var v = parseFloat(args.value);
+				if (isNaN(v)) return;
+				// Auto-enable the semantic similarity checkbox so the value actually applies.
+				var checkbox = document.getElementById("use_semantic_similarity");
+				if (checkbox && !checkbox.checked) { checkbox.checked = true; $(checkbox).trigger("change"); }
+				$("#semantic_threshold").val(v).trigger("change");
+			},
+			set_surface_threshold: function(args) {
+				var v = parseFloat(args.value);
+				if (isNaN(v)) return;
+				$("#threshold").val(v).trigger("change");
+			},
+			set_option: function(args) {
+				var elId = OPTION_ID_BY_NAME[args.name];
+				if (!elId) throw new Error("unknown option: " + args.name);
+				var el = document.getElementById(elId);
+				if (!el || el.type !== "checkbox") throw new Error("no checkbox for option: " + args.name);
+				el.checked = !!args.value;
+				$(el).trigger("change");
+			},
+			set_text: function(args) {
+				$("#text").val(String(args.text || ""));
+			},
+			submit_annotation: function() {
+				$("#text_annotation").submit();
+			}
+		};
+	})();
+</script>
+

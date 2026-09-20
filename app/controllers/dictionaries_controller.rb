@@ -18,14 +18,25 @@ class DictionariesController < ApplicationController
   autocomplete :user, :username
 
   def index
+    # Accept either ?query= or ?q= — humans reach for the short form; docs +
+    # MCP schema use `query`. First-non-blank wins.
+    @query = (params[:query].presence || params[:q].presence).to_s.strip
+
+    grid_conditions = if @query.present?
+      pattern = "%#{Dictionary.sanitize_sql_like(@query)}%"
+      [ "public = ? AND (name ILIKE ? OR description ILIKE ?)", true, pattern, pattern ]
+    else
+      [ "public = ?", true ]
+    end
+
     @dictionaries_grid = initialize_grid(Dictionary,
-      :conditions => ["public = ?", true],
+      :conditions => grid_conditions,
       :order => 'updated_at',
       :order_direction => 'desc',
       :per_page => 20
     )
 
-    dics = Dictionary.index_dictionaries
+    dics = Dictionary.index_dictionaries.by_query(@query)
     respond_to do |format|
       format.html # index.html.erb
       format.json do

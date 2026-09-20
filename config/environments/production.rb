@@ -90,4 +90,11 @@ Rails.application.configure do
 
   # option for url_helpers in models
   Rails.application.routes.default_url_options[:host] = 'pubdictionaries.org'
+  # Base URL of the llm_meta hub the embedded chat widget talks to. Production
+  # runs on a different host from the hub, so this must be the hub's public
+  # name — it is called from the visitor's browser, and the hub must list this
+  # site as a CORS origin. Override per deployment with LLM_HUB_URL; set it
+  # empty to switch the widget off without a code change.
+  config.x.llm_hub_url = ENV.fetch("LLM_HUB_URL", "https://hub.aibranch.org").presence
+
 end

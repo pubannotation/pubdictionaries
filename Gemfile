@@ -46,6 +46,13 @@ group :development do
   gem 'web-console'
 end
 
+# Simple Inline Annotation Format renderer (used by the MCP text_annotation
+# tool to return LLM-friendly SIAF output).
+gem 'simple_inline_text_annotation', '~> 2.2'
+
+# Embeddable chat widget for the llm_meta ecosystem.
+gem 'llm_meta_widget', '~> 0.1'
+
 group :development, :test do
   gem 'rspec-rails'
   gem 'factory_bot_rails'
