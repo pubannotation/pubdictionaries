@@ -334,7 +334,18 @@
    ========================================================================= %>
 
 <% if Rails.configuration.x.llm_hub_url.present? %>
-  <%= llm_meta_widget(base_url: Rails.configuration.x.llm_hub_url, model: "qwen3-8-27b-fast") %>
+  <%= llm_meta_widget(base_url: Rails.configuration.x.llm_hub_url,
+                      model:    "qwen3-8-27b-fast",
+                      # Page actions round-trip now, so each write costs a
+                      # round of its own: read the catalog, fill the form,
+                      # annotate, answer — with slack for a model that spends
+                      # a couple of rounds looking around first.
+                      max_rounds: 12,
+                      greeting: "Hi — I can annotate text against PubDictionaries for you. " \
+                                "Paste or describe what you want annotated and I'll pick suitable " \
+                                "dictionaries, fill in the form on this page, and run it. " \
+                                "You can also just ask me things like \"which dictionaries cover " \
+                                "anatomy?\" Or start here:") %>
 <% end %>
 
 <%# (1) Local action schemas — the LLM sees these as tool declarations. %>

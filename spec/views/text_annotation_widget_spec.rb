@@ -40,6 +40,26 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
     expect(defaults['production']).not_to eq(defaults['development'])
   end
 
+  # A visitor who does not know this page is the one the assistant is for, so
+  # the panel must not open empty, and the flow must not need more tool rounds
+  # than the widget allows. Both are passed from this view; losing either is
+  # silent — the widget simply falls back to a generic line and 3 rounds.
+  it 'gives the widget a greeting written for this page' do
+    source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
+    greeting = source[/greeting:\s*(.+?)\)\s*%>/m, 1].to_s
+
+    expect(greeting).to be_present
+    expect(greeting).to match(/annotate/i)
+  end
+
+  it 'allows enough tool rounds to choose dictionaries and then annotate' do
+    source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
+    rounds = source[/max_rounds:\s*(\d+)/, 1]
+
+    # look up, select, annotate, answer — the default of 3 ran out mid-flow.
+    expect(rounds.to_i).to be >= 5
+  end
+
   # Setting LLM_HUB_URL empty switches the widget off without a code change.
   it 'renders no widget when the hub is unconfigured' do
     source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
