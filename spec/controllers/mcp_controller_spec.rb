@@ -1159,43 +1159,136 @@ RSpec.describe McpController, type: :controller do
       end
     end
 
+    describe 'find_ids' do
+      # The annotate prompt tells the assistant to discover dictionaries with
+      # find_ids. That is only possible if a hit says which dictionary it came
+      # from; bare identifiers sent the model into a dead end.
+      # The stub answers like the real endpoint: bare identifiers unless
+      # verbose is asked for. A stub that returns verbose rows whatever the
+      # URL would let the request drop `verbose` and still pass — which is
+      # precisely the bug this guards, and it shipped once.
+      def stub_find_ids
+        allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, request|
+          body = if request.path.include?('verbose=true')
+            { 'stomach' => [ { 'label' => 'stomach', 'norm1' => 'stomach',
+                               'identifier' => 'UBERON_0000945', 'score' => 1.0,
+                               'dictionary' => 'uberon' } ] }
+          else
+            { 'stomach' => [ 'UBERON_0000945' ] }
+          end
+          mock_http_response(status: 200, body: body)
+        end
+      end
+
+      it 'reports the dictionary each hit came from' do
+        stub_find_ids
+
+        hits = JSON.parse(rpc('tools/call', 'name' => 'find_ids',
+                              'arguments' => { 'labels' => 'stomach' })['result']['content'].first['text'])
+
+        hit = hits['identifiers']['stomach'].first
+        expect(hit['dictionary']).to eq('uberon')
+        expect(hit['identifier']).to eq('UBERON_0000945')
+        expect(hit).not_to have_key('norm1')
+      end
+
+      it 'asks the lookup endpoint for verbose results' do
+        stub_find_ids
+        expect_any_instance_of(Net::HTTP).to receive(:request) do |_http, request|
+          expect(request.path).to include('verbose=true')
+          mock_http_response(status: 200, body: { 'stomach' => [] })
+        end
+
+        rpc('tools/call', 'name' => 'find_ids', 'arguments' => { 'labels' => 'stomach' })
+      end
+
+      it 'still reports the dictionary when one was named' do
+        stub_find_ids
+
+        hits = JSON.parse(rpc('tools/call', 'name' => 'find_ids',
+                              'arguments' => { 'labels' => 'stomach', 'dictionary' => 'uberon' })['result']['content'].first['text'])
+
+        expect(hits['identifiers']['stomach'].first['dictionary']).to eq('uberon')
+      end
+    end
+
     describe 'prompts/list' do
-      it 'exposes annotate with its argument schema' do
+      it 'exposes annotate with both arguments optional' do
         prompts = rpc('prompts/list')['result']['prompts']
 
         expect(prompts.map { _1['name'] }).to eq([ 'annotate' ])
         args = prompts.first['arguments']
-        # `dictionaries` (CSV), not `dictionary_name`: the annotation page
-        # selects a list, so a single-name argument could not be auto-filled.
         expect(args.map { _1['name'] }).to eq([ 'text', 'dictionaries' ])
-        expect(args.map { _1['required'] }).to eq([ true, true ])
+        # Required arguments sourced from page state would make the template
+        # usable only by someone who already knows the UI — which is who does
+        # not need it. They are hints.
+        expect(args.map { _1['required'] }).to eq([ false, false ])
       end
     end
 
     describe 'prompts/get' do
-      it 'materialises a user message with both arguments substituted' do
-        result = rpc('prompts/get', 'name' => 'annotate',
-                                    'arguments' => { 'text' => 'Gastric mucosa.', 'dictionaries' => 'uberon,mondo' })['result']
-
-        message = result['messages'].first
-        expect(result['messages'].size).to eq(1)
-        expect(message['role']).to eq('user')
-        # Structured content, per spec — NOT a bare string.
-        expect(message['content']['type']).to eq('text')
-        expect(message['content']['text']).to include('Gastric mucosa.').and include('uberon,mondo')
+      def prompt_text(arguments)
+        rpc('prompts/get', 'name' => 'annotate', 'arguments' => arguments)
+          .dig('result', 'messages', 0, 'content', 'text')
       end
 
-      it 'rejects an unknown prompt with invalid params' do
-        error = rpc('prompts/get', 'name' => 'nope')['error']
+      it 'annotates directly when the page already has text and a selection' do
+        text = prompt_text('text' => 'I have a stomach ache.', 'dictionaries' => 'UBERON-AE')
 
-        expect(error['code']).to eq(-32602)
+        expect(text).to include('UBERON-AE')
+        expect(text).to include('I have a stomach ache.')
+        expect(text).not_to include('find_ids')
       end
 
-      it 'rejects a missing required argument, naming it' do
-        error = rpc('prompts/get', 'name' => 'annotate', 'arguments' => { 'text' => 'x' })['error']
+      # The case the first implementation refused to handle: text but no
+      # dictionaries. Choosing them is the assistive act, not a precondition.
+      it 'tells the assistant to choose and apply dictionaries when none are selected' do
+        text = prompt_text('text' => 'I have a stomach ache.')
 
-        expect(error['code']).to eq(-32602)
-        expect(error['message']).to include('dictionaries')
+        # Catalog-first: choosing dictionaries for a passage is a topical
+        # judgement that names and descriptions answer. find_ids is the
+        # tie-breaker, not the method.
+        expect(text).to include('list_dictionaries')
+        expect(text).to include('set_dictionaries')
+        # Not by looking terms up: the catalog is in context, and a lookup
+        # per term burned rounds the flow needed for the annotation itself.
+        expect(text).to match(/do not look terms up/i)
+        expect(text).to include('I have a stomach ache.')
+      end
+
+      # Choosing dictionaries is not the job; annotating is. Left to "then
+      # annotate it", the model announced its picks and stopped — and the
+      # page's text field stayed empty, so the visitor could not even re-run
+      # it by hand.
+      it 'spells out filling the form and running the annotation' do
+        text = prompt_text('text' => 'I have a stomach ache.')
+
+        expect(text).to include('set_text')
+        expect(text).to include('text_annotation')
+        expect(text.index('set_text')).to be < text.index('text_annotation')
+      end
+
+      it 'spells out the same steps when the page already has a selection' do
+        text = prompt_text('text' => 'I have a stomach ache.', 'dictionaries' => 'UBERON-AE')
+
+        expect(text).to include('set_text')
+        expect(text).to include('text_annotation')
+      end
+
+      it 'asks for the text when the page has none' do
+        text = prompt_text({})
+
+        expect(text).to match(/ask me for the text/i)
+        expect(text).to include('list_dictionaries')
+      end
+
+      it 'is usable with no arguments at all' do
+        # The button must work from an empty page; that is its whole point.
+        expect(rpc('prompts/get', 'name' => 'annotate')['error']).to be_nil
+      end
+
+      it 'still rejects an unknown prompt name' do
+        expect(rpc('prompts/get', 'name' => 'nope')['error']['code']).to eq(-32602)
       end
     end
 

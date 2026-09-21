@@ -394,22 +394,30 @@ class McpController < ApplicationController
 
 	CATALOG_URI = 'pubdictionaries://dictionaries'.freeze
 
+	# Neither argument is required, deliberately.
+	#
+	# A template whose arguments must come from the host page can only restate
+	# what the user has already done — and a user who knows to fill those
+	# fields did not need the assistant. The arguments are HINTS: present them
+	# when the page has them, and the assistant takes the fast path; leave them
+	# out and it asks for the text and picks the dictionaries itself, which is
+	# the part a newcomer cannot do.
 	def list_prompts
 		{
 			prompts: [ {
 				name: 'annotate',
 				title: 'Annotate text',
-				description: 'Ask for a passage of text to be annotated against one or more PubDictionaries dictionaries.',
+				description: 'Annotate a passage of text. Finds suitable dictionaries for you if none are selected.',
 				arguments: [
 					{
 						name: 'text',
-						description: 'The text to annotate.',
-						required: true
+						description: 'The text to annotate, if the page already has some.',
+						required: false
 					},
 					{
 						name: 'dictionaries',
-						description: 'Comma-separated dictionary names (e.g. "uberon,mondo_disease"), as taken by the text_annotation tool.',
-						required: true
+						description: 'Comma-separated dictionary names already selected on the page, if any.',
+						required: false
 					}
 				]
 			} ]
@@ -419,22 +427,76 @@ class McpController < ApplicationController
 	def get_prompt(name, arguments)
 		raise JsonRpcError.new(-32602, "Unknown prompt: #{name}") unless name == 'annotate'
 
-		text = arguments['text'].to_s
-		dictionaries = arguments['dictionaries'].to_s
-		missing = { 'text' => text, 'dictionaries' => dictionaries }.select { |_, v| v.strip.empty? }.keys
-		raise JsonRpcError.new(-32602, "Missing required argument(s): #{missing.join(', ')}") if missing.any?
+		text = arguments['text'].to_s.strip
+		dictionaries = arguments['dictionaries'].to_s.strip
 
 		{
-			description: "Annotate text against #{dictionaries}",
+			description: dictionaries.present? ? "Annotate text against #{dictionaries}" : 'Annotate text',
 			messages: [ {
 				role: 'user',
-				content: {
-					type: 'text',
-					text: "Annotate the following text against the #{dictionaries} dictionary/dictionaries, " \
-					      "and list the terms found with their identifiers.\n\n#{text}"
-				}
+				content: { type: 'text', text: annotate_prompt_text(text, dictionaries) }
 			} ]
 		}
+	end
+
+	# Annotation needs at least one dictionary — the API answers 400 without
+	# one — so when the page has no selection, choosing it IS the task. find_ids
+	# searches every public dictionary, which makes it the way to discover which
+	# dictionaries actually cover the text before committing to a selection.
+	# Choosing dictionaries for a passage is a TOPICAL judgement — "this is
+	# clinical phenotype text, so HPO and MONDO" — and dictionary names and
+	# descriptions carry exactly that. find_ids answers a narrower question
+	# ("which dictionary contains this surface form?"), costs a round, and
+	# misses silently: a term absent from the index says nothing about topical
+	# fit. So: read the catalog, and look a term up only to break a tie.
+	#
+	# The catalog is not always in context. It is attached automatically when
+	# small (~1KB on a dev instance) but skipped when it is not (~33KB in
+	# production, over the client's budget), so the instruction has to cover
+	# both: use the list if you have it, otherwise ask for it.
+	SELECT_DICTIONARIES = <<~INSTRUCTION.freeze
+		No dictionaries are selected yet, and annotation needs at least one.
+		The dictionary list is probably already in your context, under
+		"Reference data — PubDictionaries catalog": if it is there, read it and
+		do NOT call list_dictionaries at all. Only if it is absent, make ONE
+		list_dictionaries call — one, not several — passing a keyword from the
+		text as the query when that narrows it usefully.
+		Pick the two or three whose name and description best match what the
+		text is about, and say in one line why. Do not look terms up to decide
+		this; the names and descriptions are what you are choosing on.
+	INSTRUCTION
+
+	# Name the tools and the order. "Then annotate it" left a 27B model free to
+	# treat choosing dictionaries as the finished job — it announced its picks
+	# and stopped. The page's own fields are filled too, with set_text as well
+	# as set_dictionaries: the point is that the visitor SEES the form they did
+	# not know how to fill, and can re-run it themselves afterwards.
+	ANNOTATE_STEPS = <<~INSTRUCTION.freeze
+		Then, using as few steps as you can:
+		1. In ONE step, call set_dictionaries with the dictionaries you chose
+		   and set_text with the text, so the form on the page shows both.
+		2. Call text_annotation with that same text and those dictionaries.
+		3. Tell me what it found — the matched terms with their identifiers —
+		   or say plainly that nothing matched. Mention that the form is now
+		   filled in, so I can press Submit to see it on the page myself.
+		Do not repeat a call you have already made.
+	INSTRUCTION
+
+	def annotate_prompt_text(text, dictionaries)
+		if text.blank?
+			steps = [ 'Ask me for the text I want to annotate. Once I give it:' ]
+			steps << SELECT_DICTIONARIES if dictionaries.blank?
+			steps << "Dictionaries already selected on the page: #{dictionaries}." if dictionaries.present?
+			steps << ANNOTATE_STEPS
+			return steps.join("\n")
+		end
+
+		steps = []
+		steps << SELECT_DICTIONARIES if dictionaries.blank?
+		steps << "Annotate the text below against the #{dictionaries} dictionary/dictionaries." if dictionaries.present?
+		steps << ANNOTATE_STEPS
+		steps << "\nText to annotate:\n#{text}"
+		steps.join("\n")
 	end
 
 	# ---- Resources -----------------------------------------------------
@@ -519,6 +581,19 @@ class McpController < ApplicationController
 		}
 	end
 	
+	# Verbose hits carry normalisation columns a caller never needs; keep the
+	# three fields that let it choose: what matched, where it lives, how well.
+	def compact_find_ids_hits(results)
+		results.transform_values do |hits|
+			Array(hits).map do |hit|
+				next hit unless hit.is_a?(Hash)
+
+				{ identifier: hit['identifier'], dictionary: hit['dictionary'], label: hit['label'] }
+					.merge(hit['score'] ? { score: hit['score'] } : {})
+			end
+		end
+	end
+
 	def handle_get_dictionary_description(name)
 		raise StandardError, "Dictionary name is required" if name.blank?
 
@@ -536,18 +611,22 @@ class McpController < ApplicationController
 
 		encoded_labels = ERB::Util.url_encode(labels)
 
+		# verbose, so every hit says WHICH dictionary it came from. A bare
+		# identifier is close to useless to a caller choosing among 218
+		# dictionaries — and an assistant asked to find suitable dictionaries
+		# for a text cannot answer from identifiers alone.
 		url = if dictionary.present?
 			encoded_dictionary = ERB::Util.url_encode(dictionary)
-			"/find_ids.json?labels=#{encoded_labels}&dictionary=#{encoded_dictionary}"
+			"/find_ids.json?labels=#{encoded_labels}&dictionary=#{encoded_dictionary}&verbose=true"
 		else
-			"/find_ids.json?labels=#{encoded_labels}"
+			"/find_ids.json?labels=#{encoded_labels}&verbose=true"
 		end
 
 		response = make_internal_request(url)
 		results = JSON.parse(response.body)
 
 		json_content(
-			identifiers: results,
+			identifiers: compact_find_ids_hits(results),
 			link: view_url_for(:find_ids, labels: labels, dictionary: dictionary)
 		)
 	end
