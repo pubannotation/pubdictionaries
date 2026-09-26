@@ -479,6 +479,10 @@ class McpController < ApplicationController
 		3. Tell me what it found — the matched terms with their identifiers —
 		   or say plainly that nothing matched. Mention that the form is now
 		   filled in, so I can press Submit to see it on the page myself.
+		Do not call submit_annotation. Submitting reloads the page, which
+		discards our conversation along with everything you just did; you have
+		already run the annotation yourself in step 2, and pressing Submit is
+		mine to do when I want the page's own view.
 		Do not repeat a call you have already made.
 	INSTRUCTION
 

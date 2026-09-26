@@ -1268,6 +1268,16 @@ RSpec.describe McpController, type: :controller do
         expect(text.index('set_text')).to be < text.index('text_annotation')
       end
 
+      # submit_annotation reloads the page, taking the transcript, the tool
+      # record and the scroll position with it. The assistant runs the
+      # annotation itself, so submitting adds nothing and costs the session.
+      it 'tells the assistant not to submit the form' do
+        text = prompt_text('text' => 'I have a stomach ache.')
+
+        expect(text).to match(/do not call submit_annotation/i)
+        expect(text).to match(/reloads the page/i)
+      end
+
       it 'spells out the same steps when the page already has a selection' do
         text = prompt_text('text' => 'I have a stomach ache.', 'dictionaries' => 'UBERON-AE')
 
