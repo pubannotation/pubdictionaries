@@ -60,6 +60,18 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
     expect(rounds.to_i).to be >= 5
   end
 
+  # Submitting navigates, which destroys the conversation, the record of what
+  # ran and the scroll position. Asking the assistant not to call it was not
+  # enough — the model did it anyway — so it is not declared at all. The
+  # implementation stays for the page's own use.
+  it 'does not offer the assistant an action that navigates away' do
+    source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
+    declared = JSON.parse(source[%r{<script type="application/json" id="ai-actions">(.*?)</script>}m, 1])
+
+    expect(declared.map { _1['name'] }).not_to include('submit_annotation')
+    expect(declared.map { _1['name'] }).to include('set_text', 'set_dictionaries')
+  end
+
   # Setting LLM_HUB_URL empty switches the widget off without a code change.
   it 'renders no widget when the hub is unconfigured' do
     source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read

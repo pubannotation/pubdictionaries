@@ -422,11 +422,6 @@
 			"properties": { "text": { "type": "string" } },
 			"required": ["text"]
 		}
-	},
-	{
-		"name": "submit_annotation",
-		"description": "Submit the annotation form with the current text + settings.",
-		"input_schema": { "type": "object", "properties": {} }
 	}
 ]
 </script>
@@ -544,6 +539,14 @@
 			set_text: function(args) {
 				$("#text").val(String(args.text || ""));
 			},
+			// Deliberately NOT declared in the ai-actions block above, so the
+			// assistant cannot call it. Submitting navigates, which destroys
+			// the conversation, the record of what ran and the scroll
+			// position — and the assistant already runs the annotation itself
+			// via the text_annotation tool and reports the result in chat.
+			// Asking it not to submit was not enough: the model called this
+			// anyway. Pressing Submit stays the visitor's own action.
+			// Restore the declaration once the widget survives navigation.
 			submit_annotation: function() {
 				$("#text_annotation").submit();
 			}
