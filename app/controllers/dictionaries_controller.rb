@@ -29,18 +29,25 @@ class DictionariesController < ApplicationController
       [ "public = ?", true ]
     end
 
-    @dictionaries_grid = initialize_grid(Dictionary,
-      :conditions => grid_conditions,
-      :order => 'updated_at',
-      :order_direction => 'desc',
-      :per_page => 20
-    )
-
     dics = Dictionary.index_dictionaries.by_query(@query)
     respond_to do |format|
-      format.html # index.html.erb
+      format.html do
+        # Only the HTML view needs the paginated grid; building it for a JSON
+        # request was work nobody read.
+        @dictionaries_grid = initialize_grid(Dictionary,
+          :conditions => grid_conditions,
+          :order => 'updated_at',
+          :order_direction => 'desc',
+          :per_page => 20
+        )
+      end
       format.json do
-        render json: dics.as_json(only: [:name, :description, :entries_num, :created_at, :updated_at], methods: [:maintainer])
+        # `maintainer` reads user.username, so without this every row fetched
+        # its own user: 179 dictionaries meant 180 queries and a response that
+        # took 22 seconds cold — long enough for the proxy in front to give up.
+        render json: dics.includes(:user)
+                         .as_json(only: [:name, :description, :entries_num, :created_at, :updated_at],
+                                  methods: [:maintainer])
       end
     end
   end
