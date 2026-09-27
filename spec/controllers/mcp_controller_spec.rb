@@ -1380,14 +1380,24 @@ RSpec.describe McpController, type: :controller do
         expect(text.index('set_text')).to be < text.index('text_annotation')
       end
 
-      # submit_annotation reloads the page, taking the transcript, the tool
-      # record and the scroll position with it. The assistant runs the
-      # annotation itself, so submitting adds nothing and costs the session.
-      it 'tells the assistant not to submit the form' do
+      # The assistant runs the annotation itself in step 2, so submitting the
+      # form repeats work the visitor can trigger whenever they want the page's
+      # own view. This used to be justified by submitting discarding the
+      # conversation, which stopped being true in llm_meta_widget 0.6.0 -- the
+      # transcript survives navigation now. Asserting the reason, not the old
+      # scare wording, so a stale claim cannot be held in place by this spec.
+      it 'tells the assistant not to submit the form as well' do
         text = prompt_text('text' => 'I have a stomach ache.')
 
-        expect(text).to match(/do not call submit_annotation/i)
-        expect(text).to match(/reloads the page/i)
+        expect(text).to match(/do not submit/i)
+        expect(text).to match(/already run the annotation/i)
+      end
+
+      it 'no longer claims submitting would discard the conversation' do
+        text = prompt_text('text' => 'I have a stomach ache.')
+
+        expect(text).not_to match(/reloads the page/i)
+        expect(text).not_to match(/discards (our|the) conversation/i)
       end
 
       it 'spells out the same steps when the page already has a selection' do

@@ -472,6 +472,14 @@ class McpController < ApplicationController
 	# and stopped. The page's own fields are filled too, with set_text as well
 	# as set_dictionaries: the point is that the visitor SEES the form they did
 	# not know how to fill, and can re-run it themselves afterwards.
+	#
+	# The submit guidance is about redundancy, not risk. It used to say
+	# submitting would discard the conversation, which stopped being true with
+	# llm_meta_widget 0.6.0: the transcript now survives navigation. It also
+	# avoids naming submit_annotation, which the page deliberately does not
+	# declare (see spec/views/text_annotation_widget_spec.rb) — telling a model
+	# not to call a tool it has not been given is noise, and the wording still
+	# holds if the action is ever declared again.
 	ANNOTATE_STEPS = <<~INSTRUCTION.freeze
 		Then, using as few steps as you can:
 		1. In ONE step, call set_dictionaries with the dictionaries you chose
@@ -480,10 +488,9 @@ class McpController < ApplicationController
 		3. Tell me what it found — the matched terms with their identifiers —
 		   or say plainly that nothing matched. Mention that the form is now
 		   filled in, so I can press Submit to see it on the page myself.
-		Do not call submit_annotation. Submitting reloads the page, which
-		discards our conversation along with everything you just did; you have
-		already run the annotation yourself in step 2, and pressing Submit is
-		mine to do when I want the page's own view.
+		You have already run the annotation yourself in step 2, so do not submit
+		the form as well — it would only repeat what you have done. Pressing
+		Submit is mine to do when I want the page's own view.
 		Do not repeat a call you have already made.
 	INSTRUCTION
 

@@ -68,6 +68,13 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
   # ran and the scroll position. Asking the assistant not to call it was not
   # enough — the model did it anyway — so it is not declared at all. The
   # implementation stays for the page's own use.
+  #
+  # The hazard it guarded against is gone: llm_meta_widget 0.6.0 persists the
+  # transcript across navigation. Re-declaring the action is therefore a live
+  # option, but it is a change of its own — it wants a test that submits for
+  # real and checks the conversation comes back, including when the submit
+  # lands on an error page, which renders no widget to restore into. Until
+  # then this spec keeps the current, deliberate state honest.
   it 'does not offer the assistant an action that navigates away' do
     source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
     declared = JSON.parse(source[%r{<script type="application/json" id="ai-actions">(.*?)</script>}m, 1])
