@@ -157,83 +157,166 @@ RSpec.describe McpController, type: :controller do
     end
 
     describe 'tools/call get_dictionary_description' do
+      # The assistant was calling this once per dictionary while sizing up
+      # candidates, so it now takes a list. Two things are guarded here: that
+      # one call answers for many names, and that answering costs neither a
+      # request per name nor a query per name.
       let(:method_name) { 'tools/call' }
 
-      context 'with valid dictionary name' do
+      def payload
+        JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+      end
+
+      before do
+        create(:dictionary, name: 'MONDO',  description: 'Mondo Disease Ontology', public: true)
+        create(:dictionary, name: 'HPO',    description: 'Human Phenotype Ontology', public: true)
+        create(:dictionary, name: 'UBERON', description: 'anatomy terms', public: true)
+      end
+
+      context 'with several names in one call' do
         let(:params) do
-          {
-            'name' => 'get_dictionary_description',
-            'arguments' => {
-              'name' => 'MONDO'
-            }
-          }
+          { 'name' => 'get_dictionary_description',
+            'arguments' => { 'names' => 'MONDO,HPO,UBERON' } }
         end
 
-        before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(
-              status: 200,
-              body: 'Mondo Disease Ontology is a semi-automatically constructed ontology.'
-            )
-          end
-        end
-
-        it 'returns the description + link as JSON' do
+        it 'answers for all of them, in the order asked' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
-          payload = JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
-          expect(payload.keys).to match_array(%w[description link])
-          expect(payload['description']).to include('semi-automatically constructed ontology')
-          expect(payload['link']).to end_with('/dictionaries/MONDO')
+          expect(payload['dictionaries'].map { |d| d['name'] }).to eq(%w[MONDO HPO UBERON])
+          expect(payload['dictionaries'].map { |d| d['description'] })
+            .to eq(['Mondo Disease Ontology', 'Human Phenotype Ontology', 'anatomy terms'])
+        end
+
+        it 'gives each one its own browsable link' do
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          links = payload['dictionaries'].map { |d| d['link'] }
+          expect(links[0]).to end_with('/dictionaries/MONDO')
+          expect(links[1]).to end_with('/dictionaries/HPO')
+          expect(links[2]).to end_with('/dictionaries/UBERON')
+        end
+
+        # The old handler proxied to /dictionaries/:name/description, which only
+        # ever rendered the description column -- per name, through the front
+        # proxy. That is what made the assistant's repeated calls expensive.
+        it 'makes no internal HTTP request at all' do
+          expect_any_instance_of(Net::HTTP).not_to receive(:request)
+          post :streamable_http, body: jsonrpc_request.to_json
+          expect(response).to have_http_status(:success)
         end
       end
 
-      context 'with missing dictionary name' do
-        let(:params) do
-          {
-            'name' => 'get_dictionary_description',
-            'arguments' => {}
-          }
+      context 'tolerating the shapes a model actually sends' do
+        it 'accepts a single name under the old singular key' do
+          post :streamable_http, body: {
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { 'name' => 'get_dictionary_description',
+                      'arguments' => { 'name' => 'MONDO' } }
+          }.to_json
+
+          expect(payload['dictionaries'].length).to eq(1)
+          expect(payload['dictionaries'].first['description']).to include('Mondo')
         end
 
-        it 'returns an error' do
+        it 'accepts a JSON array as well as a comma-separated string' do
+          post :streamable_http, body: {
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { 'name' => 'get_dictionary_description',
+                      'arguments' => { 'names' => %w[MONDO HPO] } }
+          }.to_json
+
+          expect(payload['dictionaries'].map { |d| d['name'] }).to eq(%w[MONDO HPO])
+        end
+
+        it 'ignores spacing, pipes and repeats' do
+          post :streamable_http, body: {
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { 'name' => 'get_dictionary_description',
+                      'arguments' => { 'names' => ' MONDO | HPO , MONDO ' } }
+          }.to_json
+
+          expect(payload['dictionaries'].map { |d| d['name'] }).to eq(%w[MONDO HPO])
+        end
+      end
+
+      context 'when some names are unknown' do
+        let(:params) do
+          { 'name' => 'get_dictionary_description',
+            'arguments' => { 'names' => 'MONDO,nonexistent,HPO' } }
+        end
+
+        # One bad name in a list of twelve must not lose the eleven good ones.
+        it 'still returns the ones it found and flags only the missing one' do
           post :streamable_http, body: jsonrpc_request.to_json
 
-          expect(response).to have_http_status(:success)
+          found = payload['dictionaries'].index_by { |d| d['name'] }
+          expect(found['MONDO']['description']).to include('Mondo')
+          expect(found['HPO']['description']).to include('Phenotype')
+          expect(found['nonexistent']['error']).to include('Dictionary not found: nonexistent')
+          expect(found['nonexistent']).not_to have_key('description')
+        end
+      end
+
+      context 'when no name is known' do
+        let(:params) do
+          { 'name' => 'get_dictionary_description',
+            'arguments' => { 'names' => 'nope,also_nope' } }
+        end
+
+        it 'is an error, as a single unknown name always was' do
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          json_response = JSON.parse(response.body)
+          expect(json_response['result']['isError']).to be true
+          expect(json_response['result']['content'].first['text']).to include('Dictionary not found')
+        end
+      end
+
+      context 'with no name given' do
+        it 'is an error when the key is absent' do
+          post :streamable_http, body: {
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { 'name' => 'get_dictionary_description', 'arguments' => {} }
+          }.to_json
+
+          json_response = JSON.parse(response.body)
+          expect(json_response['result']['isError']).to be true
+          expect(json_response['result']['content'].first['text']).to include('Dictionary name is required')
+        end
+
+        it 'is an error when the list is only separators' do
+          post :streamable_http, body: {
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { 'name' => 'get_dictionary_description', 'arguments' => { 'names' => ' , | ' } }
+          }.to_json
+
           json_response = JSON.parse(response.body)
           expect(json_response['result']['isError']).to be true
           expect(json_response['result']['content'].first['text']).to include('Dictionary name is required')
         end
       end
 
-      context 'with unknown dictionary' do
-        let(:params) do
-          {
-            'name' => 'get_dictionary_description',
-            'arguments' => {
-              'name' => 'nonexistent'
-            }
-          }
+      # Batching is pointless if the handler then loads each name separately,
+      # which is the shape the catalog N+1 took. Same counter as 'catalog cost'.
+      it 'costs a bounded number of queries however many names are asked for' do
+        12.times { |i| create(:dictionary, name: "desc_dic_#{i}", description: "d#{i}", public: true) }
+        names = 12.times.map { |i| "desc_dic_#{i}" }.join(',')
+
+        queries = 0
+        counter = ->(_name, _start, _finish, _id, sql) do
+          queries += 1 unless sql[:name].to_s =~ /SCHEMA|TRANSACTION/
         end
 
-        before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(
-              status: 400,
-              body: { 'message' => 'Dictionary not found: nonexistent' }
-            )
-          end
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+          post :streamable_http, body: {
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { 'name' => 'get_dictionary_description', 'arguments' => { 'names' => names } }
+          }.to_json
         end
 
-        it 'returns an error' do
-          post :streamable_http, body: jsonrpc_request.to_json
-
-          expect(response).to have_http_status(:success)
-          json_response = JSON.parse(response.body)
-          expect(json_response['result']['isError']).to be true
-          expect(json_response['result']['content'].first['text']).to include('Dictionary not found')
-        end
+        expect(payload['dictionaries'].length).to eq(12)
+        expect(queries).to be < 5, "#{queries} queries for 12 names -- it is loading them one at a time"
       end
     end
 
@@ -942,18 +1025,20 @@ RSpec.describe McpController, type: :controller do
 
       context 'get_dictionary_description' do
         let(:params) do
-          { 'name' => 'get_dictionary_description', 'arguments' => { 'name' => 'uberon' } }
+          { 'name' => 'get_dictionary_description', 'arguments' => { 'names' => 'uberon,CHEBI' } }
         end
 
         before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(status: 200, body: 'anatomy ontology')
-          end
+          create(:dictionary, name: 'uberon', description: 'anatomy ontology', public: true)
+          create(:dictionary, name: 'CHEBI',  description: 'chemical entities', public: true)
         end
 
-        it 'links to /dictionaries/{name}' do
+        # One link per dictionary, so a batched answer stays click-through-able.
+        it 'links each name to its own /dictionaries/{name}' do
           post :streamable_http, body: jsonrpc_request.to_json
-          expect(payload['link']).to end_with('/dictionaries/uberon')
+          links = payload['dictionaries'].map { |d| d['link'] }
+          expect(links[0]).to end_with('/dictionaries/uberon')
+          expect(links[1]).to end_with('/dictionaries/CHEBI')
         end
       end
 

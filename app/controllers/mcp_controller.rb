@@ -240,16 +240,16 @@ class McpController < ApplicationController
 				},
 				{
 					name: 'get_dictionary_description',
-					description: 'Retrieve the description for a specific dictionary identified by its name',
+					description: 'Retrieve the descriptions of one or more dictionaries. Ask about every dictionary you care about in a SINGLE call: pass them all in `names` rather than calling this tool once per dictionary.',
 					inputSchema: {
 						type: 'object',
 						properties: {
-							name: {
+							names: {
 								type: 'string',
-								description: 'The name of the dictionary'
+								description: 'A comma-separated list of dictionary names, e.g. "MONDO,UBERON,HPO". One name on its own is fine.'
 							}
 						},
-						required: ['name']
+						required: ['names']
 					},
 					annotations: QUERY_TOOL_ANNOTATIONS.merge(title: 'Get Dictionary Description')
 				},
@@ -338,7 +338,8 @@ class McpController < ApplicationController
 		when 'list_dictionaries'
 			handle_list_dictionaries(arguments['query'])
 		when 'get_dictionary_description'
-			handle_get_dictionary_description(arguments['name'])
+			# `name` still works: it is what the singular-era clients send.
+			handle_get_dictionary_description(arguments['names'] || arguments['name'])
 		when 'find_ids', 'search'
 			handle_find_ids(arguments['labels'], arguments['dictionary'])
 		when 'find_terms'
@@ -604,15 +605,33 @@ class McpController < ApplicationController
 		end
 	end
 
-	def handle_get_dictionary_description(name)
-		raise StandardError, "Dictionary name is required" if name.blank?
+	# Accepts a comma-separated list because the assistant was calling this
+	# once per dictionary — a dozen round trips to describe a dozen candidates.
+	# `/dictionaries/:name/description` only ever rendered the description
+	# column as plain text, so proxying to it bought nothing and cost a
+	# request through the front proxy per name; read the column directly,
+	# in one WHERE IN, the way dictionary_catalog does.
+	def handle_get_dictionary_description(names)
+		raise StandardError, "Dictionary name is required" if names.blank?
 
-		encoded_name = ERB::Util.url_encode(name)
-		response = make_internal_request("/dictionaries/#{encoded_name}/description")
+		requested = Array(names).flat_map { |n| n.to_s.split(/[,|]/) }.map(&:strip).reject(&:blank?).uniq
+		raise StandardError, "Dictionary name is required" if requested.empty?
+
+		# Mirrors Dictionary.find_dictionaries, but reports per name rather than
+		# failing the whole batch: one bad name should not lose eleven good ones.
+		found = Dictionary.where(name: requested).index_by(&:name)
+		raise StandardError, "Dictionary not found: #{requested.join(', ')}" if found.empty?
 
 		json_content(
-			description: response.body.to_s,
-			link: view_url_for(:dictionary_description, name: name)
+			dictionaries: requested.map { |n|
+				dictionary = found[n]
+				if dictionary
+					{ "name" => n, "description" => dictionary.description,
+					  "link" => view_url_for(:dictionary_description, name: n) }
+				else
+					{ "name" => n, "error" => "Dictionary not found: #{n}" }
+				end
+			}
 		)
 	end
 	
