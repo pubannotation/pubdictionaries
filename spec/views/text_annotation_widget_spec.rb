@@ -11,8 +11,12 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
   it 'is configured per environment, not hardcoded in the view' do
     source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
 
-    expect(source).to include('base_url: Rails.configuration.x.llm_hub_url')
-    expect(source).not_to match(/llm_meta_widget\([^)]*base_url:\s*["']http/)
+    # Two settings now, one per job: who answers the chat, and whose
+    # registered MCP tools to offer. The hub does both here.
+    expect(source).to match(/hub = Rails\.configuration\.x\.llm_hub_url/)
+    expect(source).to match(/llm_url:\s*hub/)
+    expect(source).to match(/tool_hub_url:\s*hub/)
+    expect(source).not_to match(/llm_meta_widget\([^)]*llm_url:\s*["']http/)
   end
 
   it 'has a value in this environment' do

@@ -334,8 +334,12 @@
    ========================================================================= %>
 
 <% if Rails.configuration.x.llm_hub_url.present? %>
-  <%= llm_meta_widget(base_url: Rails.configuration.x.llm_hub_url,
-                      model:    "qwen3-8-27b-fast",
+  <% hub = Rails.configuration.x.llm_hub_url %>
+  <%# The hub answers the chat AND registers the MCP tools on offer; those are
+      separate settings in the widget, so name it for both. %>
+  <%= llm_meta_widget(llm_url:      hub,
+                      tool_hub_url: hub,
+                      model:        "qwen3-8-27b-fast",
                       # Page actions round-trip now, so each write costs a
                       # round of its own: read the catalog, fill the form,
                       # annotate, answer — with slack for a model that spends
