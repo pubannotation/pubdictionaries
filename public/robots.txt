@@ -6,9 +6,12 @@ User-agent: Bingbot
 Allow: /
 
 # Restrict all other crawlers from paginated and search result pages
-User-agent: Claude-SearchBot
 User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: GPTBot
 User-agent: Amazonbot
+User-agent: Amzn-SearchBot
+User-agent: Applebot
 User-agent: PetalBot
 User-agent: Bytespider
 User-agent: AhrefsBot
@@ -19,7 +22,11 @@ User-agent: SemrushBot
 User-agent: Barkrowler
 User-agent: YandexBot
 User-agent: MJ12bot
+User-agent: meta-externalagent
 User-agent: facebookexternalhit
+User-agent: SBIntuitionsBot
+User-agent: SERankingBot
+User-agent: SERankingBacklinksBot
 User-agent: thesis-research-bot
 User-agent: fidget-spinner-bot
 User-agent: Sogou web spider
