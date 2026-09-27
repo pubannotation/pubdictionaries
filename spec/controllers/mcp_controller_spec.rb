@@ -57,15 +57,10 @@ RSpec.describe McpController, type: :controller do
 
       context 'with available dictionaries' do
         before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(
-              status: 200,
-              body: [
-                { 'name' => 'MONDO', 'description' => 'Mondo Disease Ontology', 'maintainer' => 'admin' },
-                { 'name' => 'HPO', 'description' => 'Human Phenotype Ontology', 'maintainer' => 'admin' }
-              ]
-            )
-          end
+          # The catalog is read from the database now, not re-fetched over
+          # HTTP from this app's own hostname.
+          create(:dictionary, name: 'MONDO', description: 'Mondo Disease Ontology', public: true)
+          create(:dictionary, name: 'HPO',   description: 'Human Phenotype Ontology', public: true)
         end
 
         it 'returns list of dictionaries as structured JSON with a link' do
@@ -80,9 +75,7 @@ RSpec.describe McpController, type: :controller do
           expect(payload.keys).to match_array(%w[dictionaries link])
           expect(payload['dictionaries']).to be_an(Array).and have_attributes(length: 2)
           expect(payload['dictionaries'].map { |d| d['name'] }).to match_array(%w[MONDO HPO])
-          # Handler slices these fields when present. Fixture omits entries_num, so
-          # only the three that WERE supplied round-trip.
-          expect(payload['dictionaries'].first.keys).to match_array(%w[name description maintainer])
+          expect(payload['dictionaries'].first.keys).to match_array(%w[name description maintainer entries_num])
           expect(payload['link']).to match(%r{/dictionaries\z})
         end
       end
@@ -114,45 +107,28 @@ RSpec.describe McpController, type: :controller do
           }
         end
 
-        it 'forwards the query as ?query= and surfaces a browsable URL' do
-          captured_path = nil
-          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
-            captured_path = req.path
-            mock_http_response(status: 200, body: [
-              { 'name' => 'uberon',  'description' => 'anatomical terms from uberon', 'maintainer' => 'jdkim' },
-              { 'name' => 'BTO',     'description' => 'brenda tissue ontology',       'maintainer' => 'admin' }
-            ])
-          end
+        it 'filters the catalog by the query and surfaces a browsable URL' do
+          create(:dictionary, name: 'uberon', description: 'anatomy terms from uberon', public: true)
+          create(:dictionary, name: 'BTO',    description: 'brenda tissue ontology, anatomy', public: true)
+          create(:dictionary, name: 'CHEBI',  description: 'chemical entities', public: true)
 
           post :streamable_http, body: jsonrpc_request.to_json
 
-          # Wire-level: forwarded via ?query= (URL-encoded)
-          expect(captured_path).to eq('/dictionaries.json?query=anatomy')
-
-          # Response-level: JSON payload with both dictionaries listed + the
-          # click-through link carrying the same query.
           expect(response).to have_http_status(:success)
           payload = JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+          # Matched on description, and the unrelated dictionary stays out.
           expect(payload['dictionaries'].map { |d| d['name'] }).to match_array(%w[uberon BTO])
           expect(payload['link']).to end_with('/dictionaries?query=anatomy')
         end
 
-        it 'URL-encodes multi-word / special-character queries' do
-          captured_path = nil
-          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
-            captured_path = req.path
-            mock_http_response(status: 200, body: [])
-          end
-
+        it 'URL-encodes multi-word / special-character queries in the link' do
           request_with_special_query = {
             jsonrpc: '2.0', id: 1, method: 'tools/call',
             params: { 'name' => 'list_dictionaries', 'arguments' => { 'query' => 'mouse anatomy' } }
           }
           post :streamable_http, body: request_with_special_query.to_json
 
-          # Space → %20 (ERB::Util.url_encode), NOT `+`. Same encoding on
-          # the browse URL in the response payload.
-          expect(captured_path).to eq('/dictionaries.json?query=mouse%20anatomy')
+          # Space → %20 (ERB::Util.url_encode), NOT `+`.
           payload = JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
           expect(payload['link']).to end_with('/dictionaries?query=mouse%20anatomy')
         end
@@ -165,16 +141,17 @@ RSpec.describe McpController, type: :controller do
           { 'name' => 'list_dictionaries', 'arguments' => {} }
         end
 
-        it 'hits /dictionaries.json without a query string' do
-          captured_path = nil
-          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
-            captured_path = req.path
-            mock_http_response(status: 200, body: [])
-          end
+        it 'returns every public dictionary when no query is given' do
+          create(:dictionary, name: 'uberon', public: true)
+          create(:dictionary, name: 'CHEBI',  public: true)
+          create(:dictionary, name: 'private_one', public: false)
 
           post :streamable_http, body: jsonrpc_request.to_json
 
-          expect(captured_path).to eq('/dictionaries.json')
+          payload = JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+          # Public only: a private dictionary is not the assistant's to offer.
+          expect(payload['dictionaries'].map { |d| d['name'] }).to match_array(%w[uberon CHEBI])
+          expect(payload['link']).to end_with('/dictionaries')
         end
       end
     end
@@ -1135,12 +1112,10 @@ RSpec.describe McpController, type: :controller do
       JSON.parse(response.body)
     end
 
+    # The catalog comes from the database now. Same name, same job: give the
+    # catalog something to contain.
     def stub_catalog
-      allow_any_instance_of(Net::HTTP).to receive(:request) do
-        mock_http_response(status: 200, body: [
-          { 'name' => 'uberon', 'description' => 'Anatomy', 'maintainer' => 'admin', 'entries_num' => 3 }
-        ])
-      end
+      create(:dictionary, name: 'uberon', description: 'Anatomy', public: true, entries_num: 3)
     end
 
     describe 'initialize' do
@@ -1156,6 +1131,35 @@ RSpec.describe McpController, type: :controller do
 
         expect(response['error']).to be_nil
         expect(response['result']['serverInfo']['name']).to eq('PubDictionaries')
+      end
+    end
+
+    describe 'catalog cost' do
+      # The catalog used to be fetched over HTTP from this app's own public
+      # hostname, and each row then loaded its own user for `maintainer`.
+      # At 179 dictionaries that was 180 queries behind a proxy round trip:
+      # 22 seconds cold, and resources/list died as a 522 in production while
+      # being instant on a dev instance with eleven dictionaries. Wall time
+      # cannot be asserted, but the query count can.
+      it 'reads the catalog in a bounded number of queries, whatever its size' do
+        25.times { |i| create(:dictionary, name: "cost_dic_#{i}", public: true) }
+
+        queries = 0
+        counter = ->(_name, _start, _finish, _id, payload) do
+          queries += 1 unless payload[:name].to_s =~ /SCHEMA|TRANSACTION/
+        end
+
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+          post :streamable_http, body: {
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { 'name' => 'list_dictionaries', 'arguments' => {} }
+          }.to_json
+        end
+
+        payload = JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+        expect(payload['dictionaries'].length).to be >= 25
+        # Dictionaries + their users, not one query per row.
+        expect(queries).to be < 10, "#{queries} queries for 25 dictionaries — the N+1 is back"
       end
     end
 

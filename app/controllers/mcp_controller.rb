@@ -573,14 +573,20 @@ class McpController < ApplicationController
 	# dictionaries RESOURCE. Deliberately one method: the two primitives expose
 	# the same data in different envelopes, and letting them drift would make
 	# the answer depend on which one the client happened to use.
+	# Reads the catalog from the database rather than re-issuing HTTP to this
+	# app's own public hostname, as the other tools do. That round trip goes
+	# out through the proxy and back, so a slow catalog made the OUTER request
+	# outlive the proxy's patience: resources/list returned 522 in production
+	# while working instantly on a dev instance with eleven dictionaries.
 	def dictionary_catalog(query = nil)
 		query = query.to_s.strip
-		path = query.present? ? "/dictionaries.json?query=#{ERB::Util.url_encode(query)}" : '/dictionaries.json'
-		response = make_internal_request(path)
-		dictionaries = JSON.parse(response.body)
+		dictionaries = Dictionary.index_dictionaries.by_query(query).includes(:user)
 
 		{
-			dictionaries: dictionaries.map { |d| d.slice("name", "description", "maintainer", "entries_num") },
+			dictionaries: dictionaries.map { |d|
+				{ "name" => d.name, "description" => d.description,
+				  "maintainer" => d.user&.username, "entries_num" => d.entries_num }
+			},
 			link: view_url_for(:list_dictionaries, query: query)
 		}
 	end
