@@ -748,6 +748,27 @@ RSpec.describe McpController, type: :controller do
     describe 'tools/call text_annotation' do
       let(:method_name) { 'tools/call' }
 
+      # The tool no longer POSTs to this app's own /text_annotation.json, so
+      # there is no wire to assert on: it builds a TextAnnotator and runs it in
+      # the same process. The real pipeline needs Elasticsearch and the
+      # substring DBs, so the annotator is stubbed -- but it returns SYMBOL
+      # keys, exactly as annotate_batch does. A stub with string keys would let
+      # the handler read result['text'], find nil, and still pass; that is
+      # precisely the mistake the in-process move invites, and it would have
+      # silently annotated nothing.
+      def stub_annotator(text:, denotations:)
+        annotator = instance_double(TextAnnotator)
+        allow(annotator).to receive(:annotate_batch)
+          .and_return([{ text: text, denotations: denotations }])
+        allow(annotator).to receive(:dispose)
+        allow(TextAnnotator).to receive(:new).and_return(annotator)
+        annotator
+      end
+
+      def payload
+        JSON.parse(JSON.parse(response.body)['result']['content'].first['text'])
+      end
+
       context 'with valid text and dictionary — annotations found' do
         let(:params) do
           {
@@ -759,40 +780,54 @@ RSpec.describe McpController, type: :controller do
           }
         end
 
-        it 'POSTs JSON to /text_annotation.json and formats matched spans' do
-          captured_request = nil
-          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
-            captured_request = req
-            mock_http_response(status: 200, body: {
-              'text' => 'The patient has cancer and diabetes.',
-              'denotations' => [
-                { 'span' => { 'begin' => 16, 'end' => 22 }, 'obj' => '0004992' },
-                { 'span' => { 'begin' => 27, 'end' => 35 }, 'obj' => '0005015' }
-              ]
-            })
-          end
+        let(:denotations) do
+          [
+            { span: { begin: 16, end: 22 }, obj: '0004992' },
+            { span: { begin: 27, end: 35 }, obj: '0005015' }
+          ]
+        end
+
+        it 'runs the pipeline in-process, touching no HTTP at all' do
+          expect_any_instance_of(Net::HTTP).not_to receive(:request)
+          annotator = stub_annotator(text: 'The patient has cancer and diabetes.', denotations: denotations)
 
           post :streamable_http, body: jsonrpc_request.to_json
 
-          # Wire-level assertions — POST + JSON body carries text + dictionaries
-          expect(captured_request).to be_a(Net::HTTP::Post)
-          expect(captured_request.path).to eq('/text_annotation.json')
-          expect(captured_request['Content-Type']).to eq('application/json')
-          body = JSON.parse(captured_request.body)
-          expect(body['text']).to eq('The patient has cancer and diabetes.')
-          expect(body['dictionaries']).to eq(dictionary.name)
-
-          # Response formatting — JSON object with `annotation` (SIAF) and `link`.
           expect(response).to have_http_status(:success)
-          json_response = JSON.parse(response.body)
-          result_text = json_response['result']['content'].first['text']
-          payload = JSON.parse(result_text)
+          expect(TextAnnotator).to have_received(:new).with([dictionary], {})
+          expect(annotator).to have_received(:annotate_batch)
+            .with([{ text: 'The patient has cancer and diabetes.' }])
+        end
+
+        # dispose drops temp semantic tables and closes the substring DBs. In a
+        # long-lived server, skipping it leaks both.
+        it 'disposes the annotator' do
+          annotator = stub_annotator(text: 'The patient has cancer and diabetes.', denotations: denotations)
+          post :streamable_http, body: jsonrpc_request.to_json
+          expect(annotator).to have_received(:dispose)
+        end
+
+        it 'disposes it even when annotation raises' do
+          annotator = instance_double(TextAnnotator)
+          allow(annotator).to receive(:annotate_batch).and_raise(RuntimeError, 'elasticsearch is down')
+          allow(annotator).to receive(:dispose)
+          allow(TextAnnotator).to receive(:new).and_return(annotator)
+
+          post :streamable_http, body: jsonrpc_request.to_json
+
+          expect(annotator).to have_received(:dispose)
+          expect(JSON.parse(response.body)['result']['isError']).to be true
+        end
+
+        it 'formats matched spans as SIAF with a URL reference block' do
+          stub_annotator(text: 'The patient has cancer and diabetes.', denotations: denotations)
+
+          post :streamable_http, body: jsonrpc_request.to_json
 
           expect(payload.keys).to match_array(%w[annotation link])
           expect(payload['annotation']).to include('The patient has [cancer][0004992] and [diabetes][0005015].')
-          # URL reference block at the tail (extended SIAF)
-          expect(payload['annotation']).to include("[0004992]: 0004992")
-          expect(payload['annotation']).to include("[0005015]: 0005015")
+          expect(payload['annotation']).to include('[0004992]: 0004992')
+          expect(payload['annotation']).to include('[0005015]: 0005015')
           expect(payload['link']).to match(%r{/text_annotation\?text=.*&dictionaries=#{dictionary.name}})
         end
       end
@@ -809,29 +844,25 @@ RSpec.describe McpController, type: :controller do
         end
 
         before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(status: 200, body: {
-              'text' => 'The eye and the brain are connected via the optic nerve.',
-              'denotations' => [
-                { 'span' => { 'begin' => 4,  'end' => 7 },  'obj' => 'http://purl.obolibrary.org/obo/UBERON_0000019' },
-                { 'span' => { 'begin' => 12, 'end' => 21 }, 'obj' => 'http://purl.obolibrary.org/obo/UBERON_0000955' },
-                # Same span → pipe-merged into one label per extended spec
-                { 'span' => { 'begin' => 44, 'end' => 55 }, 'obj' => 'http://purl.obolibrary.org/obo/UBERON_0000941' },
-                { 'span' => { 'begin' => 44, 'end' => 55 }, 'obj' => 'http://purl.obolibrary.org/obo/UBERON_0004904' }
-              ]
-            })
-          end
+          stub_annotator(
+            text: 'The eye and the brain are connected via the optic nerve.',
+            denotations: [
+              { span: { begin: 4,  end: 7 },  obj: 'http://purl.obolibrary.org/obo/UBERON_0000019' },
+              { span: { begin: 12, end: 21 }, obj: 'http://purl.obolibrary.org/obo/UBERON_0000955' },
+              # Same span → pipe-merged into one label per extended spec
+              { span: { begin: 44, end: 55 }, obj: 'http://purl.obolibrary.org/obo/UBERON_0000941' },
+              { span: { begin: 44, end: 55 }, obj: 'http://purl.obolibrary.org/obo/UBERON_0004904' }
+            ]
+          )
         end
 
         it 'inlines short IDs and appends the URL reference block' do
           post :streamable_http, body: jsonrpc_request.to_json
           text = JSON.parse(response.body)['result']['content'].first['text']
 
-          # Inline body
           expected_inline = 'The [eye][UBERON_0000019] and [the brain][UBERON_0000955] are connected via the [optic nerve][UBERON_0000941|UBERON_0004904].'
           expect(text).to include(expected_inline)
 
-          # URL reference block resolves each short ID back to the full URL
           expect(text).to include('[UBERON_0000019]: http://purl.obolibrary.org/obo/UBERON_0000019')
           expect(text).to include('[UBERON_0000955]: http://purl.obolibrary.org/obo/UBERON_0000955')
           expect(text).to include('[UBERON_0000941]: http://purl.obolibrary.org/obo/UBERON_0000941')
@@ -850,25 +881,16 @@ RSpec.describe McpController, type: :controller do
           }
         end
 
-        before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(status: 200, body: {
-              'text' => 'Nothing matches in this text.',
-              'denotations' => []
-            })
-          end
-        end
+        before { stub_annotator(text: 'Nothing matches in this text.', denotations: []) }
 
         it 'returns the original text as the annotation value (unchanged, since nothing matched)' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
-          json_response = JSON.parse(response.body)
-          expect(json_response['result']['isError']).to be_falsey
-          payload = JSON.parse(json_response['result']['content'].first['text'])
+          expect(JSON.parse(response.body)['result']['isError']).to be_falsey
           # No matches → SIAF has nothing to inline, so `annotation` is the
-          # input text verbatim. LLM can infer "zero matches" from the absence
-          # of any [...][...] structure in the value.
+          # input text verbatim. The LLM can infer "zero matches" from the
+          # absence of any [...][...] structure in the value.
           expect(payload['annotation']).to eq('Nothing matches in this text.')
           expect(payload['link']).to be_present
         end
@@ -882,8 +904,8 @@ RSpec.describe McpController, type: :controller do
           }
         end
 
-        it 'returns isError with a clear message and does NOT hit the annotation endpoint' do
-          expect_any_instance_of(Net::HTTP).not_to receive(:request)
+        it 'returns isError without ever building an annotator' do
+          expect(TextAnnotator).not_to receive(:new)
 
           post :streamable_http, body: jsonrpc_request.to_json
 
@@ -902,8 +924,8 @@ RSpec.describe McpController, type: :controller do
           }
         end
 
-        it 'returns isError before making the HTTP call' do
-          expect_any_instance_of(Net::HTTP).not_to receive(:request)
+        it 'returns isError without ever building an annotator' do
+          expect(TextAnnotator).not_to receive(:new)
 
           post :streamable_http, body: jsonrpc_request.to_json
 
@@ -914,7 +936,7 @@ RSpec.describe McpController, type: :controller do
         end
       end
 
-      context 'when the annotation endpoint returns an upstream error' do
+      context 'when a named dictionary does not exist' do
         let(:params) do
           {
             'name' => 'text_annotation',
@@ -925,27 +947,30 @@ RSpec.describe McpController, type: :controller do
           }
         end
 
-        before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(status: 400, body: { 'message' => 'Dictionary not found: nonexistent_dict' })
-          end
-        end
+        # The proxied endpoint turned this into a 400 whose body was unwrapped
+        # into the error text. Resolving names locally, Dictionary
+        # .find_dictionaries raises and names the offender itself.
+        it 'surfaces the name via isError so the LLM can self-correct' do
+          expect(TextAnnotator).not_to receive(:new)
 
-        it 'surfaces the upstream error message via isError so the LLM can self-correct' do
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
           json_response = JSON.parse(response.body)
           expect(json_response['result']['isError']).to be true
-          expect(json_response['result']['content'].first['text']).to include('Dictionary not found')
+          expect(json_response['result']['content'].first['text']).to include('nonexistent_dict')
         end
       end
 
       context 'with a comma-separated list of dictionaries' do
-        # Real users will annotate against multiple dictionaries at once.
-        # Guards that we forward the CSV verbatim to the annotation endpoint
-        # rather than accidentally splitting it into an array (which would
-        # change the JSON body's shape and confuse the controller).
+        # Real users annotate against several dictionaries at once. The CSV used
+        # to be forwarded verbatim for the other endpoint to split; now it is
+        # resolved here, so what matters is that every name becomes a record
+        # and the order is kept.
+        let!(:uberon) { create(:dictionary, name: 'uberon', public: true) }
+        let!(:mondo)  { create(:dictionary, name: 'mondo',  public: true) }
+        let!(:hpo)    { create(:dictionary, name: 'hpo',    public: true) }
+
         let(:params) do
           {
             'name' => 'text_annotation',
@@ -956,25 +981,33 @@ RSpec.describe McpController, type: :controller do
           }
         end
 
-        it 'passes the raw CSV string in the JSON body without splitting' do
-          captured_request = nil
-          allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, req|
-            captured_request = req
-            mock_http_response(status: 200, body: { 'text' => 'brain and heart', 'denotations' => [] })
-          end
+        it 'resolves every name and annotates against all of them at once' do
+          stub_annotator(text: 'brain and heart', denotations: [])
 
           post :streamable_http, body: jsonrpc_request.to_json
 
-          body = JSON.parse(captured_request.body)
-          expect(body['dictionaries']).to eq('uberon,mondo,hpo')
-          expect(body['dictionaries']).to be_a(String)  # NOT an Array
+          expect(response).to have_http_status(:success)
+          expect(TextAnnotator).to have_received(:new).with([uberon, mondo, hpo], {})
+        end
+
+        it 'tolerates spacing and pipes between names' do
+          stub_annotator(text: 'brain and heart', denotations: [])
+
+          post :streamable_http, body: {
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { 'name' => 'text_annotation',
+                      'arguments' => { 'text' => 'brain and heart',
+                                       'dictionaries' => ' uberon | mondo , hpo ' } }
+          }.to_json
+
+          expect(TextAnnotator).to have_received(:new).with([uberon, mondo, hpo], {})
         end
       end
 
-      context 'with a denotation missing its span field (malformed upstream response)' do
-        # Defensive: if the annotator ever returns a denotation without a span
-        # (bug, protocol drift, or partial result), we should not crash — the
-        # formatter falls back to empty snippet + [0-0] rather than raising.
+      context 'with a denotation missing its span field' do
+        # Defensive: if the pipeline ever yields a denotation without a span
+        # (bug, drift, partial result), the formatter should skip it rather
+        # than raise.
         let(:params) do
           {
             'name' => 'text_annotation',
@@ -986,26 +1019,14 @@ RSpec.describe McpController, type: :controller do
         end
 
         before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(status: 200, body: {
-              'text' => 'some biomedical text',
-              'denotations' => [ { 'obj' => 'ID_WITHOUT_SPAN' } ]
-            })
-          end
+          stub_annotator(text: 'some biomedical text', denotations: [{ obj: 'ID_WITHOUT_SPAN' }])
         end
 
         it 'silently skips the malformed denotation instead of raising' do
-          # Under SIAF, a denotation without a span can't be inlined anywhere,
-          # so `build_siaf_source` filters it out. The `annotation` field ends
-          # up as the plain input text — no ghost tag, no reference-block
-          # entry, no crash.
           post :streamable_http, body: jsonrpc_request.to_json
 
           expect(response).to have_http_status(:success)
-          json_response = JSON.parse(response.body)
-          expect(json_response['result']['isError']).to be_falsey
-          payload = JSON.parse(json_response['result']['content'].first['text'])
-          # Malformed obj must NOT leak into the SIAF output.
+          expect(JSON.parse(response.body)['result']['isError']).to be_falsey
           expect(payload['annotation']).not_to include('ID_WITHOUT_SPAN')
           expect(payload['annotation']).to include('some biomedical text')
         end
@@ -1101,9 +1122,10 @@ RSpec.describe McpController, type: :controller do
         end
 
         before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(status: 200, body: { 'text' => 'cancer', 'denotations' => [] })
-          end
+          annotator = instance_double(TextAnnotator, dispose: nil)
+          allow(annotator).to receive(:annotate_batch)
+            .and_return([{ text: 'cancer', denotations: [] }])
+          allow(TextAnnotator).to receive(:new).and_return(annotator)
         end
 
         it 'includes both text= and dictionaries= in the URL' do
@@ -1123,9 +1145,10 @@ RSpec.describe McpController, type: :controller do
         end
 
         before do
-          allow_any_instance_of(Net::HTTP).to receive(:request) do
-            mock_http_response(status: 200, body: { 'text' => long_text, 'denotations' => [] })
-          end
+          annotator = instance_double(TextAnnotator, dispose: nil)
+          allow(annotator).to receive(:annotate_batch)
+            .and_return([{ text: long_text, denotations: [] }])
+          allow(TextAnnotator).to receive(:new).and_return(annotator)
         end
 
         it 'links to /text_annotation with dictionaries= only (no text= param)' do
@@ -1476,4 +1499,58 @@ RSpec.describe McpController, type: :controller do
       end
     end
   end
+
+    # Characterisation, not endorsement. A tool that fetches from this app's own
+    # URL holds a second request slot while it waits: at 3 threads x 2 workers
+    # that halves capacity, and a handful of concurrent calls starve the server
+    # of slots -- which is how requests doing no work at all timed out as 522s.
+    # list_dictionaries, get_dictionary_description and text_annotation have
+    # been moved in-process; find_ids and find_terms have not. When one of them
+    # is moved, this spec fails: shift its name to the other list.
+    describe 'which tools still fetch over HTTP from this app' do
+      in_process = %w[list_dictionaries get_dictionary_description text_annotation].freeze
+      over_http  = %w[find_ids find_terms].freeze
+
+      arguments_for = {
+        'list_dictionaries'          => {},
+        'get_dictionary_description' => { 'names' => 'test_mcp_dict' },
+        'text_annotation'            => { 'text' => 'x', 'dictionaries' => 'test_mcp_dict' },
+        'find_ids'                   => { 'labels' => 'cancer' },
+        'find_terms'                 => { 'ids' => '0004992', 'dictionary' => 'test_mcp_dict' }
+      }.freeze
+
+      def http_calls_for(tool, arguments)
+        calls = 0
+        allow_any_instance_of(Net::HTTP).to receive(:request) do
+          calls += 1
+          mock_http_response(status: 200, body: {})
+        end
+
+        # Stubbed so text_annotation needs neither Elasticsearch nor a
+        # Simstring index; it does not affect whether HTTP is used.
+        annotator = instance_double(TextAnnotator, dispose: nil)
+        allow(annotator).to receive(:annotate_batch).and_return([{ text: 'x', denotations: [] }])
+        allow(TextAnnotator).to receive(:new).and_return(annotator)
+
+        post :streamable_http, body: {
+          jsonrpc: '2.0', id: 1, method: 'tools/call',
+          params: { 'name' => tool, 'arguments' => arguments }
+        }.to_json
+        calls
+      end
+
+      before { dictionary }  # force the let so the names above resolve
+
+      in_process.each do |tool|
+        it "#{tool} runs in-process, costing no second slot" do
+          expect(http_calls_for(tool, arguments_for[tool])).to eq(0)
+        end
+      end
+
+      over_http.each do |tool|
+        it "#{tool} still costs a second request slot" do
+          expect(http_calls_for(tool, arguments_for[tool])).to be >= 1
+        end
+      end
+    end
 end

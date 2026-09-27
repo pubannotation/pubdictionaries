@@ -676,16 +676,40 @@ class McpController < ApplicationController
 		)
 	end
 	
+	# Annotates in-process. This used to POST to this app's own
+	# /text_annotation.json, so one tool call occupied two of the six request
+	# slots (3 threads x 2 workers): one thread blocked in make_internal_request
+	# for up to its 60s read timeout, plus one serving the inner request. A few
+	# concurrent annotations starved the server of slots, which is how requests
+	# doing no work at all -- tools/list among them -- timed out as 522s.
 	def handle_text_annotation(text, dictionaries)
 		raise StandardError, "Text is required" if text.blank?
 		raise StandardError, "At least one dictionary must be specified" if dictionaries.blank?
 
-		body = { text: text, dictionaries: dictionaries }.to_json
-		response = make_internal_request('/text_annotation.json', method: :post, body: body)
-		result = JSON.parse(response.body)
+		names = Array(dictionaries).flat_map { |d| d.to_s.split(/[,|]/) }.map(&:strip).reject(&:blank?)
+		raise StandardError, "At least one dictionary must be specified" if names.empty?
 
-		annotated_text = result['text'] || text
-		denotations    = result['denotations'] || []
+		# Raises ArgumentError naming the unknown ones, which is what the proxied
+		# endpoint used to return as a 400.
+		selected = Dictionary.find_dictionaries(names)
+
+		# Empty options on purpose: TextAnnotator fills each one from
+		# OPTIONS_DEFAULT itself (see its has_key? checks) and never reads :tags,
+		# so this matches what the HTML/JSON endpoint computes for a request
+		# carrying only text and dictionaries. The tool exposes no tuning knobs.
+		annotator = TextAnnotator.new(selected, {})
+		result = begin
+			annotator.annotate_batch([{ text: text }]).first
+		ensure
+			# dispose drops temp semantic tables and closes the substring DBs;
+			# the HTML path leaks them when annotation raises, this one does not.
+			annotator.dispose
+		end
+
+		# In-process the pipeline returns symbol keys; the JSON round trip used to
+		# stringify them. Reading 'text' here would silently annotate nothing.
+		annotated_text = result[:text] || text
+		denotations    = result[:denotations] || []
 
 		# Return a structured JSON object as the tool's text content so the LLM
 		# can consume the annotation and the browsable link independently
