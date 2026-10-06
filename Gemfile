@@ -51,7 +51,7 @@ end
 gem 'simple_inline_text_annotation', '~> 2.2'
 
 # Embeddable chat widget for the llm_meta ecosystem.
-gem 'llm_meta_widget', '~> 0.1'
+gem 'llm_meta_widget', '~> 0.8'
 
 group :development, :test do
   gem 'rspec-rails'
