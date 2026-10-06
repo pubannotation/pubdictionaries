@@ -90,3 +90,91 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
     expect(source).to match(/if Rails\.configuration\.x\.llm_hub_url\.present\?/)
   end
 end
+
+# The widget's state-reader contract changed in llm_meta_widget 0.8.0: each entry
+# must be { description: "...", read: function }. A reader left on the old bare
+# function form is not an error the page can see — the widget logs to the console
+# and skips that key, so the value silently stops reaching the model and the
+# assistant quietly gets worse at this page. This is the only deployment of that
+# contract, so the check belongs here.
+#
+# Written generically on purpose: a seventh reader added later is covered without
+# anyone remembering to extend this test.
+RSpec.describe 'the page’s aiState readers' do
+  # Brace-matched rather than regexed: the `options` reader nests a function, so
+  # a lazy /\{(.*?)\}/ would stop at the wrong closing brace.
+  def ai_state_body(source)
+    # The ASSIGNMENT, not the first mention: the view talks about window.aiState
+    # in comments above it, and anchoring on those lands in the ai-actions JSON
+    # block instead — which parses happily and silently checks the wrong thing.
+    match = source.match(/window\.aiState\s*=\s*\{/)
+    raise 'no window.aiState assignment in the view' if match.nil?
+
+    open_i = match.end(0) - 1
+    depth  = 0
+    i      = open_i
+    while i < source.length
+      depth += 1 if source[i] == '{'
+      depth -= 1 if source[i] == '}'
+      return source[(open_i + 1)...i] if depth.zero?
+
+      i += 1
+    end
+    raise 'window.aiState is never closed'
+  end
+
+  # Top-level `key:` pairs, each with the raw text of its value.
+  def entries(body)
+    out   = {}
+    depth = 0
+    key   = nil
+    from  = 0
+    body.each_char.with_index do |ch, i|
+      case ch
+      when '{', '[' then depth += 1
+      when '}', ']' then depth -= 1
+      when ','
+        if depth.zero? && key
+          out[key] = body[from...i]
+          key = nil
+        end
+      end
+      next unless depth.zero? && ch == ':' && key.nil?
+
+      name = body[0...i][/([A-Za-z_][A-Za-z0-9_]*)\s*\z/, 1]
+      next if name.nil?
+
+      key  = name
+      from = i + 1
+    end
+    out[key] = body[from..] if key
+    out
+  end
+
+  let(:source)  { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
+  let(:readers) { entries(ai_state_body(source)) }
+
+  it 'declares the readers this page is expected to expose' do
+    expect(readers.keys).to include('text', 'selected_dictionaries', 'available_dictionaries')
+    expect(readers.size).to be >= 5
+  end
+
+  it 'gives every reader a non-empty description and a read function' do
+    readers.each do |name, value|
+      described = value[/description:\s*(["'])(.*?)\1/m, 2]
+      expect(described).not_to be_nil,
+                              "#{name} has no description — the model would see its value with no idea what it means"
+      expect(described.to_s.strip).not_to be_empty, "#{name}'s description is blank"
+      expect(value).to match(/read:\s*(function|[A-Za-z_])/),
+                       "#{name} has no read function"
+    end
+  end
+
+  it 'leaves no reader on the removed bare-function form' do
+    readers.each do |name, value|
+      expect(value.strip).to start_with('{'),
+                             "#{name} is still a bare function; llm_meta_widget 0.8.0 skips it instead of calling it"
+    end
+  end
+end
+

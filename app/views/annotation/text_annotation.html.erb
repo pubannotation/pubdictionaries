@@ -463,22 +463,46 @@
 			return names;
 		}
 
+		// Each reader declares what it returns (llm_meta_widget 0.8.0+; the bare
+		// function form it replaces is no longer accepted). The descriptions are
+		// read by the model every turn, so they are the place to put what it must
+		// know about a value — not just what the value is.
 		window.aiState = {
-			text:                   function() { return $("#text").val() || ""; },
-			selected_dictionaries:  readSelectedDictionaries,
-			// The LLM needs the full choice set to avoid hallucinating dictionary
-			// names — otherwise add_dictionaries silently no-ops (the DOM tile
-			// for the guessed name doesn't exist, jQuery selector matches nothing).
-			available_dictionaries: readAvailableDictionaries,
-			semantic_threshold:     function() { return parseFloat($("#semantic_threshold").val()) || null; },
-			surface_threshold:      function() { return parseFloat($("#threshold").val()) || null; },
-			options: function() {
-				var out = {};
-				Object.keys(OPTION_ID_BY_NAME).forEach(function(name) {
-					var el = document.getElementById(OPTION_ID_BY_NAME[name]);
-					if (el && el.type === "checkbox") out[name] = el.checked;
-				});
-				return out;
+			text: {
+				description: "the text the user wants to annotate",
+				read: function() { return $("#text").val() || ""; }
+			},
+			selected_dictionaries: {
+				description: "the dictionaries currently chosen for annotation",
+				read: readSelectedDictionaries
+			},
+			available_dictionaries: {
+				// The LLM needs the full choice set to avoid hallucinating dictionary
+				// names — otherwise add_dictionaries silently no-ops (the DOM tile
+				// for the guessed name doesn't exist, jQuery selector matches nothing).
+				// Saying so in the description puts that warning where the model
+				// actually reads it, instead of only in this comment.
+				description: "every dictionary that can be chosen — only names from this list exist, do not invent others",
+				read: readAvailableDictionaries
+			},
+			semantic_threshold: {
+				description: "the semantic-similarity cut-off, or null when unset",
+				read: function() { return parseFloat($("#semantic_threshold").val()) || null; }
+			},
+			surface_threshold: {
+				description: "the surface-string-similarity cut-off, or null when unset",
+				read: function() { return parseFloat($("#threshold").val()) || null; }
+			},
+			options: {
+				description: "the annotation option toggles, each true when the user has enabled it",
+				read: function() {
+					var out = {};
+					Object.keys(OPTION_ID_BY_NAME).forEach(function(name) {
+						var el = document.getElementById(OPTION_ID_BY_NAME[name]);
+						if (el && el.type === "checkbox") out[name] = el.checked;
+					});
+					return out;
+				}
 			}
 		};
 
