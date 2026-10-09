@@ -178,3 +178,22 @@ RSpec.describe 'the page’s aiState readers' do
   end
 end
 
+
+# The widget names its model explicitly, so the hub's own system-wide default
+# never reaches this page. Two constraints on whatever is named here: the hub
+# must serve it free to a keyless caller (these visitors have no API key), and
+# it must support tool calling, since the page is driven by MCP tools and
+# window.aiActions over several rounds.
+RSpec.describe 'the embedded chat widget’s model' do
+  let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
+
+  it 'is named explicitly rather than left to the hub default' do
+    expect(source).to match(/model:\s*["'][^"']+["']/)
+  end
+
+  # Changed from the local qwen on 2026-10-10: that model serves one request
+  # at a time, so a demo audience queued behind each other.
+  it 'is the hosted gpt-oss, not a local single-slot model' do
+    expect(source[/model:\s*["']([^"']+)["']/, 1]).to eq('gpt-oss-120b')
+  end
+end

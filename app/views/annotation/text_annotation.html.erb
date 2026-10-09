@@ -339,7 +339,11 @@
       separate settings in the widget, so name it for both. %>
   <%= llm_meta_widget(llm_url:      hub,
                       tool_hub_url: hub,
-                      model:        "qwen3-8-27b-fast",
+                      # Hosted since 2026-10-10. The local qwen it replaced
+                      # serves one request at a time, so a demo audience queued
+                      # behind each other. Tool calling was verified on this
+                      # path before the switch — this page depends on it.
+                      model:        "gpt-oss-120b",
                       # Page actions round-trip now, so each write costs a
                       # round of its own: read the catalog, fill the form,
                       # annotate, answer — with slack for a model that spends
