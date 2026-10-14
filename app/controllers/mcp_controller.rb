@@ -473,6 +473,13 @@ class McpController < ApplicationController
 	# as set_dictionaries: the point is that the visitor SEES the form they did
 	# not know how to fill, and can re-run it themselves afterwards.
 	#
+	# Step 1 used to say "In ONE step, call set_dictionaries ... and set_text".
+	# Each page write costs a round of its own, so that was unsatisfiable, and
+	# gpt-oss reasoned itself into a loop over it: "There's no combined tool.
+	# Could do two calls sequentially, but they said one step" — then re-sent
+	# set_dictionaries instead of moving on, until the round budget ran out.
+	# The 27B model it was written for had tolerated the contradiction.
+	#
 	# The submit guidance is about redundancy, not risk. It used to say
 	# submitting would discard the conversation, which stopped being true with
 	# llm_meta_widget 0.6.0: the transcript now survives navigation. It also
@@ -482,8 +489,9 @@ class McpController < ApplicationController
 	# holds if the action is ever declared again.
 	ANNOTATE_STEPS = <<~INSTRUCTION.freeze
 		Then, using as few steps as you can:
-		1. In ONE step, call set_dictionaries with the dictionaries you chose
-		   and set_text with the text, so the form on the page shows both.
+		1. Call set_dictionaries with the dictionaries you chose. When it comes
+		   back, call set_text with the text. These are two separate calls, so
+		   the form on the page ends up showing both.
 		2. Call text_annotation with that same text and those dictionaries.
 		3. Tell me what it found — the matched terms with their identifiers —
 		   or say plainly that nothing matched. Mention that the form is now
@@ -521,9 +529,11 @@ class McpController < ApplicationController
 	# Card's `_meta`; declaring them on the runtime resources/list response
 	# first lets a client honour them before the card surface exists.
 	#
-	# `sizeBytes` counts the resource PAYLOAD — contents[0].text — not the
-	# JSON-RPC envelope around it, because the payload is what a client pays
-	# for in model context.
+	# `size` is the BASE `Resource` field, not an extension field: SEP-0000
+	# reuses it rather than introducing a parallel `sizeBytes`, and only
+	# strengthens it to "MUST be exact when present". It counts the resource
+	# PAYLOAD — contents[0].text — not the JSON-RPC envelope around it, because
+	# the payload is what a client pays for in model context.
 	#
 	# `volatility` and `autoAttach` are independent axes, deliberately not one
 	# enum: whether the content changes between turns says nothing about
@@ -539,9 +549,9 @@ class McpController < ApplicationController
 				title: 'PubDictionaries catalog',
 				description: 'The list of available dictionaries, with descriptions, maintainers and entry counts.',
 				mimeType: 'application/json',
+				size: catalog_json.bytesize,
 				_meta: {
 					STATIC_PRIMITIVES_META => {
-						sizeBytes: catalog_json.bytesize,
 						volatility: 'stable',
 						autoAttach: true
 					}
@@ -563,7 +573,7 @@ class McpController < ApplicationController
 	end
 
 	# Serialized once per request and shared by both handlers, so the
-	# advertised sizeBytes is the byte length of what resources/read returns
+	# advertised size is the byte length of what resources/read returns
 	# by construction rather than by discipline. Deliberately NOT cached
 	# across requests: a stale byte count would be a budget decision made on
 	# a catalog the client is not about to receive.

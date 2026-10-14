@@ -1442,7 +1442,6 @@ RSpec.describe McpController, type: :controller do
         fields = meta['io.modelcontextprotocol/static-primitives']
 
         expect(meta.keys).to eq([ 'io.modelcontextprotocol/static-primitives' ])
-        expect(fields['sizeBytes']).to be > 0
         expect(fields['volatility']).to eq('stable')
         expect(fields['autoAttach']).to be(true)
       end
@@ -1456,19 +1455,48 @@ RSpec.describe McpController, type: :controller do
                    .dig('_meta', 'io.modelcontextprotocol/static-primitives')
 
         expect(fields).not_to have_key('attachmentHint')
-        expect(fields.keys).to match_array(%w[sizeBytes volatility autoAttach])
+        expect(fields).not_to have_key('sizeBytes')
+        expect(fields.keys).to match_array(%w[volatility autoAttach])
       end
 
       # sizeBytes exists so a client can decide whether to attach the
       # resource BEFORE fetching it. A count that disagrees with the real
       # payload would make that decision on a fiction, so compare bytes.
+      # `size` is a BYTE count, and an ASCII-only fixture cannot tell bytesize
+      # from length — the two are equal there, so a character count would pass
+      # every other test in this file. PubDictionaries is biocuration for a
+      # Japanese institute: non-ASCII in names and descriptions is routine, and
+      # undercounting would slip an oversized payload past a client's budget.
+      it 'counts bytes, not characters' do
+        create(:dictionary, name: 'jaonto', description: '解剖学の辞書',
+               public: true, entries_num: 1)
+        resource = rpc('resources/list')['result']['resources'].first
+        payload = rpc('resources/read', 'uri' => 'pubdictionaries://dictionaries')['result']['contents'].first['text']
+
+        # Guards the guard: if the payload ever stops being multibyte, this
+        # test silently stops distinguishing bytes from characters.
+        expect(payload.bytesize).to be > payload.length
+        expect(resource['size']).to eq(payload.bytesize)
+      end
+
       it 'advertises the exact byte length of what resources/read returns' do
         stub_catalog
-        advertised = rpc('resources/list')['result']['resources'].first
-                       .dig('_meta', 'io.modelcontextprotocol/static-primitives', 'sizeBytes')
+        advertised = rpc('resources/list')['result']['resources'].first['size']
         payload = rpc('resources/read', 'uri' => 'pubdictionaries://dictionaries')['result']['contents'].first['text']
 
         expect(advertised).to eq(payload.bytesize)
+      end
+
+      # The field moved out of the extension block to the entry's top level
+      # when SEP-0000 aligned with the base Resource interface. A client that
+      # reads only the base Resource field must find it there.
+      it 'declares size as a top-level Resource field, not inside _meta' do
+        stub_catalog
+        resource = rpc('resources/list')['result']['resources'].first
+
+        expect(resource['size']).to be > 0
+        expect(resource.dig('_meta', 'io.modelcontextprotocol/static-primitives'))
+          .not_to have_key('sizeBytes')
       end
     end
 
