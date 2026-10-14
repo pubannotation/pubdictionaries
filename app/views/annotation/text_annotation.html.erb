@@ -329,8 +329,9 @@
      AI chat (Tier-1 pilot, dev-only). See project_page_embedded_actions memo.
      Widget markup + CSS + orchestrator wiring come from the
      llm_meta_widget gem (the `llm_meta_widget` helper below). Everything
-     host-specific stays here: (1) the local action schemas the LLM will see, (2) the
-     window.aiState readers, (3) the window.aiActions implementations.
+     host-specific stays here: (1) the page card declaring this page's tools and
+     resources, (2) the
+     window.aiResources readers, (3) the window.aiActions implementations.
    ========================================================================= %>
 
 <% if Rails.configuration.x.llm_hub_url.present? %>
@@ -339,6 +340,14 @@
       separate settings in the widget, so name it for both. %>
   <%= llm_meta_widget(llm_url:      hub,
                       tool_hub_url: hub,
+                      # The widget defaults to "ollama-local", which only
+                      # resolves local models: the hub looks a meta_id up
+                      # WITHIN the key's family, so a hosted model under that
+                      # key is simply not found and the turn fails inside the
+                      # stream. "free-models" is the hub's pseudo-key for
+                      # everything flagged free — local or hosted — paid for
+                      # by the server's own credential.
+                      api_key_uuid: "free-models",
                       # Hosted since 2026-10-10. The local qwen it replaced
                       # serves one request at a time, so a demo audience queued
                       # behind each other. Tool calling was verified on this
@@ -356,82 +365,188 @@
                                 "anatomy?\" Or start here:") %>
 <% end %>
 
-<%# (1) Local action schemas — the LLM sees these as tool declarations. %>
-<script type="application/json" id="ai-actions">
-[
-	{
-		"name": "add_dictionaries",
-		"description": "Add one or more dictionaries to the current selection.",
-		"input_schema": {
-			"type": "object",
-			"properties": {
-				"names": { "type": "array", "items": { "type": "string" }, "description": "Dictionary names to add." }
-			},
-			"required": ["names"]
-		}
-	},
-	{
-		"name": "remove_dictionaries",
-		"description": "Remove one or more dictionaries from the current selection.",
-		"input_schema": {
-			"type": "object",
-			"properties": {
-				"names": { "type": "array", "items": { "type": "string" } }
-			},
-			"required": ["names"]
-		}
-	},
-	{
-		"name": "set_dictionaries",
-		"description": "Replace the current dictionary selection with the given list (clears then adds).",
-		"input_schema": {
-			"type": "object",
-			"properties": {
-				"names": { "type": "array", "items": { "type": "string" } }
-			},
-			"required": ["names"]
-		}
-	},
-	{
-		"name": "set_semantic_threshold",
-		"description": "Set the semantic similarity threshold (0.0-1.0). Enables semantic similarity if not already on.",
-		"input_schema": {
-			"type": "object",
-			"properties": { "value": { "type": "number", "minimum": 0, "maximum": 1 } },
-			"required": ["value"]
-		}
-	},
-	{
-		"name": "set_surface_threshold",
-		"description": "Set the surface similarity threshold (0.0-1.0).",
-		"input_schema": {
-			"type": "object",
-			"properties": { "value": { "type": "number", "minimum": 0, "maximum": 1 } },
-			"required": ["value"]
-		}
-	},
-	{
-		"name": "set_option",
-		"description": "Toggle a boolean annotation option. Valid names: longest, superfluous, verbose, abbreviation, use_ngram_similarity, use_semantic_similarity.",
-		"input_schema": {
-			"type": "object",
-			"properties": {
-				"name":  { "type": "string" },
-				"value": { "type": "boolean" }
-			},
-			"required": ["name", "value"]
-		}
-	},
-	{
-		"name": "set_text",
-		"description": "Replace the text-to-annotate with the given string.",
-		"input_schema": {
-			"type": "object",
-			"properties": { "text": { "type": "string" } },
-			"required": ["text"]
-		}
-	}
-]
+<%# (1) The page card — the same `io.modelcontextprotocol/static-primitives`
+     envelope a server puts in its Server Card, delivered in this document.
+     It declares what this page offers; the handlers below implement it,
+     each keyed by the identifier its own protocol operation takes:
+     tools by name (tools/call), resources by uri (resources/read).
+     It replaces the older #ai-actions schema tag outright. %>
+<script type="application/json" id="ai-page">
+{
+  "_meta": {
+    "io.modelcontextprotocol/static-primitives": {
+      "tools": [
+        {
+          "name": "add_dictionaries",
+          "description": "Add one or more dictionaries to the current selection.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "names": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Dictionary names to add."
+              }
+            },
+            "required": [
+              "names"
+            ]
+          }
+        },
+        {
+          "name": "remove_dictionaries",
+          "description": "Remove one or more dictionaries from the current selection.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "names": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "names"
+            ]
+          }
+        },
+        {
+          "name": "set_dictionaries",
+          "description": "Replace the current dictionary selection with the given list (clears then adds).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "names": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "names"
+            ]
+          }
+        },
+        {
+          "name": "set_semantic_threshold",
+          "description": "Set the semantic similarity threshold (0.0-1.0). Enables semantic similarity if not already on.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        },
+        {
+          "name": "set_surface_threshold",
+          "description": "Set the surface similarity threshold (0.0-1.0).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        },
+        {
+          "name": "set_option",
+          "description": "Toggle a boolean annotation option. Valid names: longest, superfluous, verbose, abbreviation, use_ngram_similarity, use_semantic_similarity.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ]
+          }
+        },
+        {
+          "name": "set_text",
+          "description": "Replace the text-to-annotate with the given string.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ]
+          }
+        }
+      ],
+      "resources": [
+        {
+          "uri": "page:/annotation/text",
+          "name": "Text to annotate",
+          "description": "the text the user wants to annotate",
+          "mimeType": "application/json",
+          "volatility": "volatile"
+        },
+        {
+          "uri": "page:/annotation/selected_dictionaries",
+          "name": "Selected dictionaries",
+          "description": "the dictionaries currently chosen for annotation",
+          "mimeType": "application/json",
+          "volatility": "volatile"
+        },
+        {
+          "uri": "page:/annotation/available_dictionaries",
+          "name": "Available dictionaries",
+          "description": "every dictionary that can be chosen — only names from this list exist, do not invent others",
+          "mimeType": "application/json",
+          "volatility": "stable"
+        },
+        {
+          "uri": "page:/annotation/semantic_threshold",
+          "name": "Semantic threshold",
+          "description": "the semantic-similarity cut-off, or null when unset",
+          "mimeType": "application/json",
+          "volatility": "volatile"
+        },
+        {
+          "uri": "page:/annotation/surface_threshold",
+          "name": "Surface threshold",
+          "description": "the surface-string-similarity cut-off, or null when unset",
+          "mimeType": "application/json",
+          "volatility": "volatile"
+        },
+        {
+          "uri": "page:/annotation/options",
+          "name": "Annotation options",
+          "description": "the annotation option toggles, each true when the user has enabled it",
+          "mimeType": "application/json",
+          "volatility": "volatile"
+        }
+      ]
+    }
+  }
+}
 </script>
 
 <%# (2) aiState readers — called locally each turn to feed the LLM current page state. %>
@@ -471,42 +586,23 @@
 		// function form it replaces is no longer accepted). The descriptions are
 		// read by the model every turn, so they are the place to put what it must
 		// know about a value — not just what the value is.
-		window.aiState = {
-			text: {
-				description: "the text the user wants to annotate",
-				read: function() { return $("#text").val() || ""; }
-			},
-			selected_dictionaries: {
-				description: "the dictionaries currently chosen for annotation",
-				read: readSelectedDictionaries
-			},
-			available_dictionaries: {
-				// The LLM needs the full choice set to avoid hallucinating dictionary
-				// names — otherwise add_dictionaries silently no-ops (the DOM tile
-				// for the guessed name doesn't exist, jQuery selector matches nothing).
-				// Saying so in the description puts that warning where the model
-				// actually reads it, instead of only in this comment.
-				description: "every dictionary that can be chosen — only names from this list exist, do not invent others",
-				read: readAvailableDictionaries
-			},
-			semantic_threshold: {
-				description: "the semantic-similarity cut-off, or null when unset",
-				read: function() { return parseFloat($("#semantic_threshold").val()) || null; }
-			},
-			surface_threshold: {
-				description: "the surface-string-similarity cut-off, or null when unset",
-				read: function() { return parseFloat($("#threshold").val()) || null; }
-			},
-			options: {
-				description: "the annotation option toggles, each true when the user has enabled it",
-				read: function() {
-					var out = {};
-					Object.keys(OPTION_ID_BY_NAME).forEach(function(name) {
-						var el = document.getElementById(OPTION_ID_BY_NAME[name]);
-						if (el && el.type === "checkbox") out[name] = el.checked;
-					});
-					return out;
-				}
+		// The page card above declares these; this map implements them, keyed by
+		// URI because that is what resources/read takes. The descriptions live in
+		// the card now — they are read by the model every turn, so that is where
+		// what it must know about a value belongs.
+		window.aiResources = {
+			"page:/annotation/text": function() { return $("#text").val() || ""; },
+			"page:/annotation/selected_dictionaries": readSelectedDictionaries,
+			"page:/annotation/available_dictionaries": readAvailableDictionaries,
+			"page:/annotation/semantic_threshold": function() { return parseFloat($("#semantic_threshold").val()) || null; },
+			"page:/annotation/surface_threshold": function() { return parseFloat($("#threshold").val()) || null; },
+			"page:/annotation/options": function() {
+				var out = {};
+				Object.keys(OPTION_ID_BY_NAME).forEach(function(name) {
+					var el = document.getElementById(OPTION_ID_BY_NAME[name]);
+					if (el && el.type === "checkbox") out[name] = el.checked;
+				});
+				return out;
 			}
 		};
 

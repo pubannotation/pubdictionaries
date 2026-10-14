@@ -77,7 +77,8 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
   # then this spec keeps the current, deliberate state honest.
   it 'does not offer the assistant an action that navigates away' do
     source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
-    declared = JSON.parse(source[%r{<script type="application/json" id="ai-actions">(.*?)</script>}m, 1])
+    declared = JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+                 .dig('_meta', 'io.modelcontextprotocol/static-primitives', 'tools')
 
     expect(declared.map { _1['name'] }).not_to include('submit_annotation')
     expect(declared.map { _1['name'] }).to include('set_text', 'set_dictionaries')
@@ -91,90 +92,89 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
   end
 end
 
-# The widget's state-reader contract changed in llm_meta_widget 0.8.0: each entry
-# must be { description: "...", read: function }. A reader left on the old bare
-# function form is not an error the page can see — the widget logs to the console
-# and skips that key, so the value silently stops reaching the model and the
-# assistant quietly gets worse at this page. This is the only deployment of that
-# contract, so the check belongs here.
+# The page declares its primitives in a static-primitives card and implements
+# them in handler maps beside it — tools by name, resources by URI, each keyed
+# by what its own protocol operation takes.
 #
-# Written generically on purpose: a seventh reader added later is covered without
-# anyone remembering to extend this test.
-RSpec.describe 'the page’s aiState readers' do
-  # Brace-matched rather than regexed: the `options` reader nests a function, so
-  # a lazy /\{(.*?)\}/ would stop at the wrong closing brace.
-  def ai_state_body(source)
-    # The ASSIGNMENT, not the first mention: the view talks about window.aiState
-    # in comments above it, and anchoring on those lands in the ai-actions JSON
-    # block instead — which parses happily and silently checks the wrong thing.
-    match = source.match(/window\.aiState\s*=\s*\{/)
-    raise 'no window.aiState assignment in the view' if match.nil?
+# The card and the maps are edited separately, so the failure this guards is a
+# pair that drifts: a resource declared with no reader is silently absent from
+# every turn, and a reader with no declaration is never read at all. Neither is
+# an error the page can see — the widget warns to the console and carries on.
+RSpec.describe 'the page card and its handlers' do
+  let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
 
-    open_i = match.end(0) - 1
-    depth  = 0
-    i      = open_i
-    while i < source.length
-      depth += 1 if source[i] == '{'
-      depth -= 1 if source[i] == '}'
-      return source[(open_i + 1)...i] if depth.zero?
-
-      i += 1
-    end
-    raise 'window.aiState is never closed'
+  def card
+    JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+        .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
   end
 
-  # Top-level `key:` pairs, each with the raw text of its value.
-  def entries(body)
-    out   = {}
+  # Keys of a handler map, read as source: `"page:/x": fn` or `name: fn`.
+  def handler_keys(global)
+    opening = source[/window\.#{global}\s*=\s*\{/]
+    raise "no window.#{global} assignment in the view" if opening.nil?
+
+    from  = source.index(opening) + opening.length - 1
     depth = 0
-    key   = nil
-    from  = 0
-    body.each_char.with_index do |ch, i|
-      case ch
-      when '{', '[' then depth += 1
-      when '}', ']' then depth -= 1
-      when ','
-        if depth.zero? && key
-          out[key] = body[from...i]
-          key = nil
-        end
+    source[from..].each_char.with_index do |ch, i|
+      depth += 1 if ch == '{'
+      depth -= 1 if ch == '}'
+      if depth.zero?
+        body = source[(from + 1)...(from + i)]
+        return body.scan(/^\s*"?([A-Za-z_][\w:\/.-]*)"?\s*:/).flatten
       end
-      next unless depth.zero? && ch == ':' && key.nil?
-
-      name = body[0...i][/([A-Za-z_][A-Za-z0-9_]*)\s*\z/, 1]
-      next if name.nil?
-
-      key  = name
-      from = i + 1
     end
-    out[key] = body[from..] if key
-    out
+    raise "window.#{global} is never closed"
   end
 
-  let(:source)  { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
-  let(:readers) { entries(ai_state_body(source)) }
+  it 'declares the resources this page is expected to expose' do
+    uris = card.fetch('resources').map { _1['uri'] }
 
-  it 'declares the readers this page is expected to expose' do
-    expect(readers.keys).to include('text', 'selected_dictionaries', 'available_dictionaries')
-    expect(readers.size).to be >= 5
+    expect(uris).to include('page:/annotation/text',
+                            'page:/annotation/selected_dictionaries',
+                            'page:/annotation/available_dictionaries')
+    expect(uris.size).to be >= 5
   end
 
-  it 'gives every reader a non-empty description and a read function' do
-    readers.each do |name, value|
-      described = value[/description:\s*(["'])(.*?)\1/m, 2]
-      expect(described).not_to be_nil,
-                              "#{name} has no description — the model would see its value with no idea what it means"
-      expect(described.to_s.strip).not_to be_empty, "#{name}'s description is blank"
-      expect(value).to match(/read:\s*(function|[A-Za-z_])/),
-                       "#{name} has no read function"
+  it 'gives every resource a uri, a name and a non-empty description' do
+    card.fetch('resources').each do |r|
+      expect(r['uri'].to_s).not_to be_empty
+      expect(r['name'].to_s).not_to be_empty, "#{r['uri']} has no name"
+      expect(r['description'].to_s.strip).not_to be_empty,
+                                                 "#{r['uri']} has no description — the model would see a value with no idea what it means"
     end
   end
 
-  it 'leaves no reader on the removed bare-function form' do
-    readers.each do |name, value|
-      expect(value.strip).to start_with('{'),
-                             "#{name} is still a bare function; llm_meta_widget 0.8.0 skips it instead of calling it"
-    end
+  # `page:` is experimental and unregistered, and the README says so. An https:
+  # uri here would claim to be fetchable, which it is not.
+  it 'addresses page resources with the page scheme' do
+    expect(card.fetch('resources').map { _1['uri'] }).to all(start_with('page:/'))
+  end
+
+  it 'has a reader for every declared resource, and declares every reader' do
+    expect(handler_keys('aiResources').sort).to eq(card.fetch('resources').map { _1['uri'] }.sort)
+  end
+
+  # Declared implies implemented, but NOT the reverse: submit_annotation is
+  # implemented for the page's own use and deliberately withheld from the
+  # assistant (see the spec above). Equality in both directions would read as
+  # tidier and would quietly forbid that.
+  it 'has an action for every declared tool' do
+    expect(handler_keys('aiActions')).to include(*card.fetch('tools').map { _1['name'] })
+  end
+
+  it 'keeps submit_annotation implemented but undeclared' do
+    expect(handler_keys('aiActions')).to include('submit_annotation')
+    expect(card.fetch('tools').map { _1['name'] }).not_to include('submit_annotation')
+  end
+
+  # The catalog is the one resource that does not change between turns; the rest
+  # are form fields the visitor edits, and a copy read at boot would be stale by
+  # the time anyone sends a message.
+  it 'marks the form fields volatile and the catalog stable' do
+    by_uri = card.fetch('resources').to_h { [ _1['uri'], _1['volatility'] ] }
+
+    expect(by_uri['page:/annotation/text']).to eq('volatile')
+    expect(by_uri['page:/annotation/available_dictionaries']).to eq('stable')
   end
 end
 
@@ -195,5 +195,18 @@ RSpec.describe 'the embedded chat widget’s model' do
   # at a time, so a demo audience queued behind each other.
   it 'is the hosted gpt-oss, not a local single-slot model' do
     expect(source[/model:\s*["']([^"']+)["']/, 1]).to eq('gpt-oss-120b')
+  end
+end
+
+# The key the widget invokes through has to be able to serve the model it
+# names. The widget's default, "ollama-local", resolves local models only:
+# the hub looks a meta_id up within that key's family, so pointing `model:`
+# at a hosted model while the key stayed "ollama-local" produced a turn that
+# failed inside the stream — HTTP 200, an error event, no answer.
+RSpec.describe 'the embedded chat widget’s api key' do
+  let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
+
+  it 'invokes through the free-models key, which serves hosted models too' do
+    expect(source[/api_key_uuid:\s*["']([^"']+)["']/, 1]).to eq('free-models')
   end
 end
