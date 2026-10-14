@@ -346,3 +346,35 @@ RSpec.describe 'the page’s annotate prompt' do
     end
   end
 end
+
+# The widget fills a prompt's declared arguments from the page's resources,
+# matching the argument NAME against the name inside the resource URI. That
+# coupling is invisible in both files: rename `page:text` and the annotate
+# button quietly stops knowing what is in the textarea, with nothing failing.
+#
+# The alias is the widget's, not ours (llm_meta_widget's PROMPT_ARG_ALIASES).
+# It is restated here because this page depends on it; if the widget drops it,
+# this spec is where that shows up.
+RSpec.describe 'the page’s prompt arguments and its resources' do
+  WIDGET_ARG_ALIASES = { 'dictionaries' => 'selected_dictionaries' }.freeze
+
+  let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
+
+  def card
+    JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+        .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
+  end
+
+  it 'can fill every declared prompt argument from a declared resource' do
+    names = card.fetch('resources').map { _1['uri'].delete_prefix('page:') }
+
+    card.fetch('prompts').each do |prompt|
+      prompt.fetch('arguments').each do |arg|
+        wanted = WIDGET_ARG_ALIASES.fetch(arg['name'], arg['name'])
+        expect(names).to include(wanted),
+                         "prompt argument #{arg['name']} looks for resource page:#{wanted}, " \
+                         "which this page does not declare — the widget would leave it empty"
+      end
+    end
+  end
+end
