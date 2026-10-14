@@ -108,7 +108,7 @@ RSpec.describe 'the page card and its handlers' do
         .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
   end
 
-  # Keys of a handler map, read as source: `"page:/x": fn` or `name: fn`.
+  # Keys of a handler map, read as source: `"page:x": fn` or `name: fn`.
   def handler_keys(global)
     opening = source[/window\.#{global}\s*=\s*\{/]
     raise "no window.#{global} assignment in the view" if opening.nil?
@@ -129,9 +129,9 @@ RSpec.describe 'the page card and its handlers' do
   it 'declares the resources this page is expected to expose' do
     uris = card.fetch('resources').map { _1['uri'] }
 
-    expect(uris).to include('page:/annotation/text',
-                            'page:/annotation/selected_dictionaries',
-                            'page:/annotation/available_dictionaries')
+    expect(uris).to include('page:text',
+                            'page:selected_dictionaries',
+                            'page:available_dictionaries')
     expect(uris.size).to be >= 5
   end
 
@@ -147,7 +147,7 @@ RSpec.describe 'the page card and its handlers' do
   # `page:` is experimental and unregistered, and the README says so. An https:
   # uri here would claim to be fetchable, which it is not.
   it 'addresses page resources with the page scheme' do
-    expect(card.fetch('resources').map { _1['uri'] }).to all(start_with('page:/'))
+    expect(card.fetch('resources').map { _1['uri'] }).to all(start_with('page:'))
   end
 
   it 'has a reader for every declared resource, and declares every reader' do
@@ -173,8 +173,8 @@ RSpec.describe 'the page card and its handlers' do
   it 'marks the form fields volatile and the catalog stable' do
     by_uri = card.fetch('resources').to_h { [ _1['uri'], _1['volatility'] ] }
 
-    expect(by_uri['page:/annotation/text']).to eq('volatile')
-    expect(by_uri['page:/annotation/available_dictionaries']).to eq('stable')
+    expect(by_uri['page:text']).to eq('volatile')
+    expect(by_uri['page:available_dictionaries']).to eq('stable')
   end
 end
 
