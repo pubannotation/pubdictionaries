@@ -1227,11 +1227,16 @@ RSpec.describe McpController, type: :controller do
     end
 
     describe 'initialize' do
-      it 'advertises all three primitive types' do
+      # The `annotate` prompt moved into the annotation page's card on
+      # 2026-10-14, so this server serves tools and resources only. Declaring
+      # a prompts capability it cannot answer would send a client to
+      # prompts/list for a -32601 after being told prompts exist.
+      it 'advertises the primitive types it actually serves' do
         caps = rpc('initialize', 'protocolVersion' => '2025-06-18',
                                  'clientInfo' => { 'name' => 'spec', 'version' => '1' })['result']['capabilities']
 
-        expect(caps.keys).to include('tools', 'prompts', 'resources')
+        expect(caps.keys).to include('tools', 'resources')
+        expect(caps.keys).not_to include('prompts')
       end
 
       it 'still completes the handshake when the client sends no clientInfo' do
@@ -1324,103 +1329,17 @@ RSpec.describe McpController, type: :controller do
       end
     end
 
-    describe 'prompts/list' do
-      it 'exposes annotate with both arguments optional' do
-        prompts = rpc('prompts/list')['result']['prompts']
-
-        expect(prompts.map { _1['name'] }).to eq([ 'annotate' ])
-        args = prompts.first['arguments']
-        expect(args.map { _1['name'] }).to eq([ 'text', 'dictionaries' ])
-        # Required arguments sourced from page state would make the template
-        # usable only by someone who already knows the UI — which is who does
-        # not need it. They are hints.
-        expect(args.map { _1['required'] }).to eq([ false, false ])
-      end
-    end
-
-    describe 'prompts/get' do
-      def prompt_text(arguments)
-        rpc('prompts/get', 'name' => 'annotate', 'arguments' => arguments)
-          .dig('result', 'messages', 0, 'content', 'text')
+    # Prompts are served by the annotation page itself since 2026-10-14; the
+    # text they produce is covered in spec/views/text_annotation_widget_spec.rb.
+    # What matters here is that this server says so plainly rather than
+    # answering an empty list, which a client cannot tell from "none today".
+    describe 'prompts' do
+      it 'reports prompts/list as an unknown method' do
+        expect(rpc('prompts/list')['error']['code']).to eq(-32601)
       end
 
-      it 'annotates directly when the page already has text and a selection' do
-        text = prompt_text('text' => 'I have a stomach ache.', 'dictionaries' => 'UBERON-AE')
-
-        expect(text).to include('UBERON-AE')
-        expect(text).to include('I have a stomach ache.')
-        expect(text).not_to include('find_ids')
-      end
-
-      # The case the first implementation refused to handle: text but no
-      # dictionaries. Choosing them is the assistive act, not a precondition.
-      it 'tells the assistant to choose and apply dictionaries when none are selected' do
-        text = prompt_text('text' => 'I have a stomach ache.')
-
-        # Catalog-first: choosing dictionaries for a passage is a topical
-        # judgement that names and descriptions answer. find_ids is the
-        # tie-breaker, not the method.
-        expect(text).to include('list_dictionaries')
-        expect(text).to include('set_dictionaries')
-        # Not by looking terms up: the catalog is in context, and a lookup
-        # per term burned rounds the flow needed for the annotation itself.
-        expect(text).to match(/do not look terms up/i)
-        expect(text).to include('I have a stomach ache.')
-      end
-
-      # Choosing dictionaries is not the job; annotating is. Left to "then
-      # annotate it", the model announced its picks and stopped — and the
-      # page's text field stayed empty, so the visitor could not even re-run
-      # it by hand.
-      it 'spells out filling the form and running the annotation' do
-        text = prompt_text('text' => 'I have a stomach ache.')
-
-        expect(text).to include('set_text')
-        expect(text).to include('text_annotation')
-        expect(text.index('set_text')).to be < text.index('text_annotation')
-      end
-
-      # The assistant runs the annotation itself in step 2, so submitting the
-      # form repeats work the visitor can trigger whenever they want the page's
-      # own view. This used to be justified by submitting discarding the
-      # conversation, which stopped being true in llm_meta_widget 0.6.0 -- the
-      # transcript survives navigation now. Asserting the reason, not the old
-      # scare wording, so a stale claim cannot be held in place by this spec.
-      it 'tells the assistant not to submit the form as well' do
-        text = prompt_text('text' => 'I have a stomach ache.')
-
-        expect(text).to match(/do not submit/i)
-        expect(text).to match(/already run the annotation/i)
-      end
-
-      it 'no longer claims submitting would discard the conversation' do
-        text = prompt_text('text' => 'I have a stomach ache.')
-
-        expect(text).not_to match(/reloads the page/i)
-        expect(text).not_to match(/discards (our|the) conversation/i)
-      end
-
-      it 'spells out the same steps when the page already has a selection' do
-        text = prompt_text('text' => 'I have a stomach ache.', 'dictionaries' => 'UBERON-AE')
-
-        expect(text).to include('set_text')
-        expect(text).to include('text_annotation')
-      end
-
-      it 'asks for the text when the page has none' do
-        text = prompt_text({})
-
-        expect(text).to match(/ask me for the text/i)
-        expect(text).to include('list_dictionaries')
-      end
-
-      it 'is usable with no arguments at all' do
-        # The button must work from an empty page; that is its whole point.
-        expect(rpc('prompts/get', 'name' => 'annotate')['error']).to be_nil
-      end
-
-      it 'still rejects an unknown prompt name' do
-        expect(rpc('prompts/get', 'name' => 'nope')['error']['code']).to eq(-32602)
+      it 'reports prompts/get as an unknown method' do
+        expect(rpc('prompts/get', 'name' => 'annotate')['error']['code']).to eq(-32601)
       end
     end
 

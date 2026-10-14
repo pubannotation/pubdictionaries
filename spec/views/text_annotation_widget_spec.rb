@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'tmpdir'
 
 # The chat widget runs in the visitor's browser and calls the llm_meta hub
 # directly, so its base URL has to differ per deployment: the dev site talks
@@ -208,5 +209,140 @@ RSpec.describe 'the embedded chat widget’s api key' do
 
   it 'invokes through the free-models key, which serves hosted models too' do
     expect(source[/api_key_uuid:\s*["']([^"']+)["']/, 1]).to eq('free-models')
+  end
+end
+
+# The `annotate` prompt moved out of this app's MCP server and into the page's
+# own card on 2026-10-14 (llm_meta_widget 0.9.0). Every step it describes is a
+# call against THIS page, and a handler living in the page can read the live
+# form rather than work from arguments a caller remembered to pass.
+#
+# These examples ran against the Ruby implementation until the move. They are
+# kept because each one records a decision that cost something to learn, not
+# because the text is pretty — so they run the page's real handler under node
+# rather than matching strings in the source, which would pass on a handler
+# that never composes those strings together.
+RSpec.describe 'the page’s annotate prompt' do
+  let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
+
+  # Everything from the first constant to the close of window.aiPrompts.
+  def handler_js
+    lines = source.lines
+    first = lines.index { |l| l.include?('var SELECT_DICTIONARIES = [') }
+    raise 'the page declares no SELECT_DICTIONARIES' if first.nil?
+
+    open_i = lines.index { |l| l.include?('window.aiPrompts = {') }
+    raise 'the page assigns no window.aiPrompts' if open_i.nil?
+
+    close = (open_i...lines.length).find { |i| lines[i].strip == '};' }
+    raise 'window.aiPrompts is never closed' if close.nil?
+
+    lines[first..close].join
+  end
+
+  def prompt_text(arguments)
+    raise 'node is required to run the page’s prompt handler' if `which node`.strip.empty?
+
+    Dir.mktmpdir do |dir|
+      script = File.join(dir, 'run.js')
+      File.write(script, "var window = {};\n#{handler_js}\n" \
+                         "process.stdout.write(JSON.stringify(" \
+                         "window.aiPrompts.annotate(#{arguments.to_json})));")
+      out = `node #{script} 2>&1`
+      raise "the page’s prompt handler failed: #{out}" unless $?.success?
+
+      JSON.parse(out)
+    end
+  end
+
+  it 'annotates directly when the page already has text and a selection' do
+    text = prompt_text('text' => 'I have a stomach ache.', 'dictionaries' => 'UBERON-AE')
+
+    expect(text).to include('UBERON-AE')
+    expect(text).to include('I have a stomach ache.')
+    expect(text).not_to include('find_ids')
+  end
+
+  # The case the first implementation refused to handle: text but no
+  # dictionaries. Choosing them is the assistive act, not a precondition.
+  it 'tells the assistant to choose and apply dictionaries when none are selected' do
+    text = prompt_text('text' => 'I have a stomach ache.')
+
+    # Catalog-first: choosing dictionaries for a passage is a topical judgement
+    # that names and descriptions answer. find_ids is the tie-breaker, not the
+    # method.
+    expect(text).to include('list_dictionaries')
+    expect(text).to include('set_dictionaries')
+    expect(text).to match(/do not look terms up/i)
+    expect(text).to include('I have a stomach ache.')
+  end
+
+  # Choosing dictionaries is not the job; annotating is. Left to "then annotate
+  # it", the model announced its picks and stopped — and the page's text field
+  # stayed empty, so the visitor could not even re-run it by hand.
+  it 'spells out filling the form and running the annotation' do
+    text = prompt_text('text' => 'I have a stomach ache.')
+
+    expect(text).to include('set_text')
+    expect(text).to include('text_annotation')
+    expect(text.index('set_text')).to be < text.index('text_annotation')
+  end
+
+  # The assistant runs the annotation itself in step 2, so submitting the form
+  # repeats work the visitor can trigger whenever they want the page's own view.
+  # Asserting the reason, not the old scare wording about losing the
+  # conversation, so a stale claim cannot be held in place by this spec.
+  it 'tells the assistant not to submit the form as well' do
+    text = prompt_text('text' => 'I have a stomach ache.')
+
+    expect(text).to match(/do not submit/i)
+    expect(text).to match(/already run the annotation/i)
+  end
+
+  it 'no longer claims submitting would discard the conversation' do
+    text = prompt_text('text' => 'I have a stomach ache.')
+
+    expect(text).not_to match(/reloads the page/i)
+    expect(text).not_to match(/discards (our|the) conversation/i)
+  end
+
+  it 'asks for the text when the page has none' do
+    text = prompt_text({})
+
+    expect(text).to match(/ask me for the text/i)
+    expect(text).to include('list_dictionaries')
+  end
+
+  it 'names an existing selection instead of choosing again' do
+    text = prompt_text('dictionaries' => 'UBERON-AE')
+
+    expect(text).to include('UBERON-AE')
+    expect(text).not_to include('list_dictionaries')
+  end
+
+  # The button must work from an empty page; that is its whole point.
+  it 'is usable with no arguments at all' do
+    expect { prompt_text({}) }.not_to raise_error
+  end
+
+  it 'declares the prompt it implements, with both arguments optional' do
+    card = JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+               .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
+    prompt = card.fetch('prompts').first
+
+    expect(prompt['name']).to eq('annotate')
+    expect(prompt['arguments'].map { _1['name'] }).to eq([ 'text', 'dictionaries' ])
+    # Required arguments sourced from page state would make the template usable
+    # only by someone who already knows the UI — which is who does not need it.
+    expect(prompt['arguments'].map { _1['required'] }).to eq([ false, false ])
+  end
+
+  it 'has a handler for every declared prompt' do
+    card = JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+               .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
+
+    card.fetch('prompts').each do |p|
+      expect(handler_js).to include("#{p['name']}: function")
+    end
   end
 end

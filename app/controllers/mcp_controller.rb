@@ -126,10 +126,6 @@ class McpController < ApplicationController
 										 isError: true
 									 }
 								 end
-							 when 'prompts/list'
-								 list_prompts
-							 when 'prompts/get'
-								 get_prompt(params['name'], params['arguments'] || {})
 							 when 'resources/list'
 								 list_resources
 							 when 'resources/read'
@@ -369,7 +365,6 @@ class McpController < ApplicationController
 			protocolVersion: "2025-06-18",  # The protocol version we support
 			capabilities: {
 				tools: {},      # tools/list, tools/call
-				prompts: {},    # prompts/list, prompts/get
 				resources: {}   # resources/list, resources/read
 			},
 			serverInfo: {
@@ -386,138 +381,14 @@ class McpController < ApplicationController
 		response
 	end
 
-	# ---- Prompts -------------------------------------------------------
-	#
-	# One prompt, `annotate`. Its `dictionaries` argument takes the same
-	# comma-separated string the text_annotation TOOL takes, rather than a
-	# single name: the annotation page selects a LIST of dictionaries, so a
-	# single-name argument could not be filled from page state.
+	# The `annotate` prompt moved into the annotation page's own card on
+	# 2026-10-14 (llm_meta_widget 0.9.0). Every step it described was a call
+	# against that page, and a handler living in the page can read the live form
+	# instead of relying on arguments a caller remembered to pass. This server
+	# therefore declares no prompts capability: a client asking for prompts/list
+	# gets -32601, which is the honest answer.
 
 	CATALOG_URI = 'pubdictionaries://dictionaries'.freeze
-
-	# Neither argument is required, deliberately.
-	#
-	# A template whose arguments must come from the host page can only restate
-	# what the user has already done — and a user who knows to fill those
-	# fields did not need the assistant. The arguments are HINTS: present them
-	# when the page has them, and the assistant takes the fast path; leave them
-	# out and it asks for the text and picks the dictionaries itself, which is
-	# the part a newcomer cannot do.
-	def list_prompts
-		{
-			prompts: [ {
-				name: 'annotate',
-				title: 'Annotate text',
-				description: 'Annotate a passage of text. Finds suitable dictionaries for you if none are selected.',
-				arguments: [
-					{
-						name: 'text',
-						description: 'The text to annotate, if the page already has some.',
-						required: false
-					},
-					{
-						name: 'dictionaries',
-						description: 'Comma-separated dictionary names already selected on the page, if any.',
-						required: false
-					}
-				]
-			} ]
-		}
-	end
-
-	def get_prompt(name, arguments)
-		raise JsonRpcError.new(-32602, "Unknown prompt: #{name}") unless name == 'annotate'
-
-		text = arguments['text'].to_s.strip
-		dictionaries = arguments['dictionaries'].to_s.strip
-
-		{
-			description: dictionaries.present? ? "Annotate text against #{dictionaries}" : 'Annotate text',
-			messages: [ {
-				role: 'user',
-				content: { type: 'text', text: annotate_prompt_text(text, dictionaries) }
-			} ]
-		}
-	end
-
-	# Annotation needs at least one dictionary — the API answers 400 without
-	# one — so when the page has no selection, choosing it IS the task. find_ids
-	# searches every public dictionary, which makes it the way to discover which
-	# dictionaries actually cover the text before committing to a selection.
-	# Choosing dictionaries for a passage is a TOPICAL judgement — "this is
-	# clinical phenotype text, so HPO and MONDO" — and dictionary names and
-	# descriptions carry exactly that. find_ids answers a narrower question
-	# ("which dictionary contains this surface form?"), costs a round, and
-	# misses silently: a term absent from the index says nothing about topical
-	# fit. So: read the catalog, and look a term up only to break a tie.
-	#
-	# The catalog is not always in context. It is attached automatically when
-	# small (~1KB on a dev instance) but skipped when it is not (~33KB in
-	# production, over the client's budget), so the instruction has to cover
-	# both: use the list if you have it, otherwise ask for it.
-	SELECT_DICTIONARIES = <<~INSTRUCTION.freeze
-		No dictionaries are selected yet, and annotation needs at least one.
-		The dictionary list is probably already in your context, under
-		"Reference data — PubDictionaries catalog": if it is there, read it and
-		do NOT call list_dictionaries at all. Only if it is absent, make ONE
-		list_dictionaries call — one, not several — passing a keyword from the
-		text as the query when that narrows it usefully.
-		Pick the two or three whose name and description best match what the
-		text is about, and say in one line why. Do not look terms up to decide
-		this; the names and descriptions are what you are choosing on.
-	INSTRUCTION
-
-	# Name the tools and the order. "Then annotate it" left a 27B model free to
-	# treat choosing dictionaries as the finished job — it announced its picks
-	# and stopped. The page's own fields are filled too, with set_text as well
-	# as set_dictionaries: the point is that the visitor SEES the form they did
-	# not know how to fill, and can re-run it themselves afterwards.
-	#
-	# Step 1 used to say "In ONE step, call set_dictionaries ... and set_text".
-	# Each page write costs a round of its own, so that was unsatisfiable, and
-	# gpt-oss reasoned itself into a loop over it: "There's no combined tool.
-	# Could do two calls sequentially, but they said one step" — then re-sent
-	# set_dictionaries instead of moving on, until the round budget ran out.
-	# The 27B model it was written for had tolerated the contradiction.
-	#
-	# The submit guidance is about redundancy, not risk. It used to say
-	# submitting would discard the conversation, which stopped being true with
-	# llm_meta_widget 0.6.0: the transcript now survives navigation. It also
-	# avoids naming submit_annotation, which the page deliberately does not
-	# declare (see spec/views/text_annotation_widget_spec.rb) — telling a model
-	# not to call a tool it has not been given is noise, and the wording still
-	# holds if the action is ever declared again.
-	ANNOTATE_STEPS = <<~INSTRUCTION.freeze
-		Then, using as few steps as you can:
-		1. Call set_dictionaries with the dictionaries you chose. When it comes
-		   back, call set_text with the text. These are two separate calls, so
-		   the form on the page ends up showing both.
-		2. Call text_annotation with that same text and those dictionaries.
-		3. Tell me what it found — the matched terms with their identifiers —
-		   or say plainly that nothing matched. Mention that the form is now
-		   filled in, so I can press Submit to see it on the page myself.
-		You have already run the annotation yourself in step 2, so do not submit
-		the form as well — it would only repeat what you have done. Pressing
-		Submit is mine to do when I want the page's own view.
-		Do not repeat a call you have already made.
-	INSTRUCTION
-
-	def annotate_prompt_text(text, dictionaries)
-		if text.blank?
-			steps = [ 'Ask me for the text I want to annotate. Once I give it:' ]
-			steps << SELECT_DICTIONARIES if dictionaries.blank?
-			steps << "Dictionaries already selected on the page: #{dictionaries}." if dictionaries.present?
-			steps << ANNOTATE_STEPS
-			return steps.join("\n")
-		end
-
-		steps = []
-		steps << SELECT_DICTIONARIES if dictionaries.blank?
-		steps << "Annotate the text below against the #{dictionaries} dictionary/dictionaries." if dictionaries.present?
-		steps << ANNOTATE_STEPS
-		steps << "\nText to annotate:\n#{text}"
-		steps.join("\n")
-	end
 
 	# ---- Resources -----------------------------------------------------
 	#

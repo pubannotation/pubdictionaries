@@ -500,6 +500,25 @@
           }
         }
       ],
+      "prompts": [
+        {
+          "name": "annotate",
+          "title": "Annotate text",
+          "description": "Annotate a passage of text. Finds suitable dictionaries for you if none are selected.",
+          "arguments": [
+            {
+              "name": "text",
+              "description": "The text to annotate, if the page already has some.",
+              "required": false
+            },
+            {
+              "name": "dictionaries",
+              "description": "Comma-separated dictionary names already selected on the page, if any.",
+              "required": false
+            }
+          ]
+        }
+      ],
       "resources": [
         {
           "uri": "page:text",
@@ -581,6 +600,63 @@
 			});
 			return names;
 		}
+
+		// The page card declares this prompt; this is its handler. It was served by
+		// this app's MCP server until 2026-10-14. It belongs here because every step
+		// it describes is a call against THIS page, and because a page handler can
+		// read the live form rather than work from whatever arguments a caller
+		// happened to pass. It stays a prompt primitive, user-selected: the widget
+		// puts the text in the box and the visitor sends it.
+		var SELECT_DICTIONARIES = [
+			"No dictionaries are selected yet, and annotation needs at least one.",
+			"The dictionary list is probably already in your context, under",
+			"\"Reference data — PubDictionaries catalog\": if it is there, read it and",
+			"do NOT call list_dictionaries at all. Only if it is absent, make ONE",
+			"list_dictionaries call — one, not several — passing a keyword from the",
+			"text as the query when that narrows it usefully.",
+			"Pick the two or three whose name and description best match what the",
+			"text is about, and say in one line why. Do not look terms up to decide",
+			"this; the names and descriptions are what you are choosing on.",
+			""
+		].join("\n");
+
+		var ANNOTATE_STEPS = [
+			"Then, using as few steps as you can:",
+			"1. Call set_dictionaries with the dictionaries you chose. When it comes",
+			"   back, call set_text with the text. These are two separate calls, so",
+			"   the form on the page ends up showing both.",
+			"2. Call text_annotation with that same text and those dictionaries.",
+			"3. Tell me what it found — the matched terms with their identifiers —",
+			"   or say plainly that nothing matched. Mention that the form is now",
+			"   filled in, so I can press Submit to see it on the page myself.",
+			"You have already run the annotation yourself in step 2, so do not submit",
+			"the form as well — it would only repeat what you have done. Pressing",
+			"Submit is mine to do when I want the page's own view.",
+			"Do not repeat a call you have already made.",
+			""
+		].join("\n");
+
+		window.aiPrompts = {
+			annotate: function(args) {
+				var text = (args && args.text ? String(args.text) : "").trim();
+				var dicts = (args && args.dictionaries ? String(args.dictionaries) : "").trim();
+				var steps = [];
+			
+				if (!text) {
+					steps.push("Ask me for the text I want to annotate. Once I give it:");
+					if (!dicts) steps.push(SELECT_DICTIONARIES);
+					else steps.push("Dictionaries already selected on the page: " + dicts + ".");
+					steps.push(ANNOTATE_STEPS);
+					return steps.join("\n");
+				}
+			
+				if (!dicts) steps.push(SELECT_DICTIONARIES);
+				else steps.push("Annotate the text below against the " + dicts + " dictionary/dictionaries.");
+				steps.push(ANNOTATE_STEPS);
+				steps.push("\nText to annotate:\n" + text);
+				return steps.join("\n");
+			}
+		};
 
 		// Each reader declares what it returns (llm_meta_widget 0.8.0+; the bare
 		// function form it replaces is no longer accepted). The descriptions are
