@@ -192,7 +192,7 @@ GEM
       kaminari-core (= 1.2.2)
     kaminari-core (1.2.2)
     language_list (1.2.1)
-    llm_meta_widget (0.10.1)
+    llm_meta_widget (0.11.0)
       rails (>= 8.0)
     logger (1.7.0)
     loofah (2.25.2)
@@ -449,7 +449,7 @@ DEPENDENCIES
   jquery-ui-rails
   kaminari
   language_list (~> 1.2, >= 1.2.1)
-  llm_meta_widget (~> 0.10)
+  llm_meta_widget (~> 0.11)
   neighbor
   net-http-persistent
   ollama-ai

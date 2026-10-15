@@ -351,3 +351,41 @@ RSpec.describe AnnotationController, type: :controller do
     end
   end
 end
+
+# Asking to annotate without choosing a dictionary is an ordinary mistake. It
+# used to be raised as an ArgumentError, which the action's rescue turned into a
+# flash notice — but only after `raise e if Rails.env.development?`. So the same
+# submit answered 200 on production and 500 on the dev site, and the dev 500
+# renders a Rails exception page, which carries no widget to restore a
+# conversation into. That stopped being a curiosity when the assistant gained
+# the ability to press Submit itself.
+RSpec.describe AnnotationController, 'annotating with no dictionary chosen', type: :controller do
+  # The test environment is not development, so the old code was rescued here
+  # too and a plain request spec passed either way. Pretending to be
+  # development is what makes this able to fail.
+  def as_development
+    allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new('development'))
+  end
+
+  it 'renders the page with a notice instead of raising' do
+    as_development
+
+    expect { get :text_annotation, params: { text: 'I have a stomach ache.' } }.not_to raise_error
+    expect(response).to have_http_status(:ok)
+    expect(flash[:notice]).to match(/at least one dictionary/i)
+  end
+
+  # The JSON callers' contract is unchanged: this is still a bad request to them.
+  it 'still answers 400 on the JSON path' do
+    get :text_annotation, params: { text: 'I have a stomach ache.' }, format: :json
+
+    expect(response).to have_http_status(:bad_request)
+    expect(JSON.parse(response.body)['message']).to match(/at least one dictionary/i)
+  end
+
+  it 'still answers 400 when no text was supplied at all' do
+    get :text_annotation, params: {}, format: :json
+
+    expect(response).to have_http_status(:bad_request)
+  end
+end

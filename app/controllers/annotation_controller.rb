@@ -1,6 +1,8 @@
 class AnnotationController < ApplicationController
   include ParameterParsing
 
+  MISSING_DICTIONARY_MESSAGE = "At least one dictionary has to be specified for annotation."
+
   skip_before_action :verify_authenticity_token, only: [:annotation_request, :annotation_task]
 
   # GET / POST
@@ -10,9 +12,15 @@ class AnnotationController < ApplicationController
     @dictionaries_selected = Dictionary.find_dictionaries(@permitted[:dictionaries])
     text = @permitted[:text]
 
-    @result = if text.present?
-      raise ArgumentError, "At least one dictionary has to be specified for annotation." unless @dictionaries_selected.present?
+    # Asking to annotate without choosing a dictionary is an ordinary mistake,
+    # not an exceptional condition, so it is no longer raised. As an
+    # ArgumentError it became a flash notice in production but was RE-RAISED in
+    # development, so the same submit answered 200 on pubdictionaries.org and
+    # 500 on the dev site. The 500 renders no page of ours, which matters now
+    # that the assistant can press Submit itself. JSON still answers 400.
+    missing_dictionary = text.present? && @dictionaries_selected.blank?
 
+    @result = if text.present? && !missing_dictionary
       options = @permitted.slice(
         :tokens_len_min,
         :tokens_len_max,
@@ -44,9 +52,11 @@ class AnnotationController < ApplicationController
     end
 
     respond_to do |format|
-      format.html
+      format.html { flash.now[:notice] = MISSING_DICTIONARY_MESSAGE if missing_dictionary }
       format.json do
         raise ArgumentError, "no text was supplied." unless text.present?
+        raise ArgumentError, MISSING_DICTIONARY_MESSAGE if missing_dictionary
+
         render json: @result
       end
     end

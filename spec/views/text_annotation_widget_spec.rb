@@ -71,24 +71,25 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
     expect(rounds.to_i).to be >= 5
   end
 
-  # Submitting navigates, which destroys the conversation, the record of what
-  # ran and the scroll position. Asking the assistant not to call it was not
-  # enough — the model did it anyway — so it is not declared at all. The
-  # implementation stays for the page's own use.
+  # submit_annotation was withheld because submitting navigates, which used to
+  # destroy the conversation. Two things had to be true before declaring it, and
+  # both were checked against the running sites on 2026-10-15:
   #
-  # The hazard it guarded against is gone: llm_meta_widget 0.6.0 persists the
-  # transcript across navigation. Re-declaring the action is therefore a live
-  # option, but it is a change of its own — it wants a test that submits for
-  # real and checks the conversation comes back, including when the submit
-  # lands on an error page, which renders no widget to restore into. Until
-  # then this spec keeps the current, deliberate state honest.
-  it 'does not offer the assistant an action that navigates away' do
+  #   1. the transcript survives. The widget keys it by PATH, and this form is a
+  #      GET to the same path, so it is restored.
+  #   2. a submit that cannot annotate does not land on a page without the
+  #      widget. Production already answered 200 with a notice; the dev site
+  #      answered 500 only because an ordinary user mistake was raised as an
+  #      ArgumentError, which AnnotationController no longer does.
+  #
+  # The handler also refuses rather than submitting a form that cannot annotate,
+  # so the model is told why instead of navigating for nothing.
+  it 'offers the assistant the action that fires the page own annotation' do
     source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
     declared = JSON.parse(source[PAGE_CARD_RE, 1])
                  .dig('_meta', 'io.modelcontextprotocol/static-primitives', 'tools')
 
-    expect(declared.map { _1['name'] }).not_to include('submit_annotation')
-    expect(declared.map { _1['name'] }).to include('set_text', 'set_dictionaries')
+    expect(declared.map { _1['name'] }).to include('submit_annotation', 'set_text', 'set_dictionaries')
   end
 
   # Setting LLM_HUB_URL empty switches the widget off without a code change.
@@ -116,6 +117,9 @@ RSpec.describe 'the page card and its handlers' do
   end
 
   # Keys of a handler map, read as source: `"page:x": fn` or `name: fn`.
+  # The page implements its primitives under the namespace its card declares, so
+  # these maps are `window.mcp.tools` and friends rather than three separate
+  # globals.
   def handler_keys(global)
     opening = source[/window\.#{global}\s*=\s*\{/]
     raise "no window.#{global} assignment in the view" if opening.nil?
@@ -162,12 +166,43 @@ RSpec.describe 'the page card and its handlers' do
     expect(source).to include('type="application/mcp-static-primitives+json" id="ai-page"')
   end
 
+  # The card declares where the handlers live, which is the only way a consumer
+  # other than llm_meta_widget can find them. Without it the page is only half
+  # discoverable: its primitives are declared, but nothing says what to call.
+  it 'declares the page-global transport its handlers use' do
+    remote = JSON.parse(source[PAGE_CARD_RE, 1]).fetch('remotes').first
+
+    expect(remote['type']).to eq('page-global')
+    expect(remote['global']).to eq('mcp')
+    expect(source).to include('window.mcp = {')
+  end
+
+  # No aliases for the legacy globals, deliberately — asserted so that nobody
+  # adds them back as a kindness.
+  #
+  # An alias would let a stale deployment keep working: a checkout that pulled
+  # this view without running `bundle install` serves an older widget, finds the
+  # legacy names, and behaves correctly, so nobody notices the deployment is
+  # stale. Both failures this page has had were that shape. This page is the
+  # reference implementation; it should fail loudly instead.
+  #
+  # The widget itself still reads the legacy names when a card declares no
+  # transport, so other adopters keep working.
+  it 'keeps no fallback to the legacy globals' do
+    # The ASSIGNMENT, not the mention: the comment above the namespace names
+    # these three on purpose, so that someone searching for them finds the
+    # reason they are absent.
+    expect(source).not_to match(/window\.aiActions\s*=/)
+    expect(source).not_to match(/window\.aiPrompts\s*=/)
+    expect(source).not_to match(/window\.aiResources\s*=/)
+  end
+
   it 'addresses page resources with the page scheme' do
     expect(card.fetch('resources').map { _1['uri'] }).to all(start_with('page:'))
   end
 
   it 'has a reader for every declared resource, and declares every reader' do
-    expect(handler_keys('aiResources').sort).to eq(card.fetch('resources').map { _1['uri'] }.sort)
+    expect(handler_keys('mcp.resources').sort).to eq(card.fetch('resources').map { _1['uri'] }.sort)
   end
 
   # Declared implies implemented, but NOT the reverse: submit_annotation is
@@ -175,12 +210,18 @@ RSpec.describe 'the page card and its handlers' do
   # assistant (see the spec above). Equality in both directions would read as
   # tidier and would quietly forbid that.
   it 'has an action for every declared tool' do
-    expect(handler_keys('aiActions')).to include(*card.fetch('tools').map { _1['name'] })
+    expect(handler_keys('mcp.tools')).to include(*card.fetch('tools').map { _1['name'] })
   end
 
-  it 'keeps submit_annotation implemented but undeclared' do
-    expect(handler_keys('aiActions')).to include('submit_annotation')
-    expect(card.fetch('tools').map { _1['name'] }).not_to include('submit_annotation')
+  # The guard is why declaring it is safe, so it is held in place here. Without
+  # it the model can submit a form that only comes back with a complaint,
+  # having navigated the visitor for nothing.
+  it 'refuses to submit a form that cannot annotate' do
+    body = source[/submit_annotation: function\(\) \{(.*?)\$\("#text_annotation"\)\.submit/m, 1]
+
+    expect(body).to include('set_text'), 'no guard naming the empty text field'
+    expect(body).to include('set_dictionaries'), 'no guard naming the empty selection'
+    expect(body.scan('throw new Error').size).to eq(2)
   end
 
   # The catalog is the one resource that does not change between turns; the rest
@@ -240,17 +281,17 @@ end
 RSpec.describe 'the page’s annotate prompt' do
   let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
 
-  # Everything from the first constant to the close of window.aiPrompts.
+  # Everything from the first constant to the close of window.mcp.prompts.
   def handler_js
     lines = source.lines
     first = lines.index { |l| l.include?('var SELECT_DICTIONARIES = [') }
     raise 'the page declares no SELECT_DICTIONARIES' if first.nil?
 
-    open_i = lines.index { |l| l.include?('window.aiPrompts = {') }
-    raise 'the page assigns no window.aiPrompts' if open_i.nil?
+    open_i = lines.index { |l| l.include?('window.mcp.prompts = {') }
+    raise 'the page assigns no window.mcp.prompts' if open_i.nil?
 
     close = (open_i...lines.length).find { |i| lines[i].strip == '};' }
-    raise 'window.aiPrompts is never closed' if close.nil?
+    raise 'window.mcp.prompts is never closed' if close.nil?
 
     lines[first..close].join
   end
@@ -262,7 +303,7 @@ RSpec.describe 'the page’s annotate prompt' do
       script = File.join(dir, 'run.js')
       File.write(script, "var window = {};\n#{handler_js}\n" \
                          "process.stdout.write(JSON.stringify(" \
-                         "window.aiPrompts.annotate(#{arguments.to_json})));")
+                         "window.mcp.prompts.annotate(#{arguments.to_json})));")
       out = `node #{script} 2>&1`
       raise "the page’s prompt handler failed: #{out}" unless $?.success?
 
@@ -295,23 +336,48 @@ RSpec.describe 'the page’s annotate prompt' do
   # Choosing dictionaries is not the job; annotating is. Left to "then annotate
   # it", the model announced its picks and stopped — and the page's text field
   # stayed empty, so the visitor could not even re-run it by hand.
-  it 'spells out filling the form and running the annotation' do
+  #
+  # Since 2026-10-15 the annotation is run by the page: fill the form, then
+  # submit, and PubDictionaries shows its own result view.
+  it 'spells out filling the form and then letting the page run it' do
     text = prompt_text('text' => 'I have a stomach ache.')
 
-    expect(text).to include('set_text')
-    expect(text).to include('text_annotation')
-    expect(text.index('set_text')).to be < text.index('text_annotation')
+    # Read the numbered steps, not the whole prompt: the word
+    # "submit_annotation" also appears in the line telling the model NOT to use
+    # text_annotation, so asserting on the whole text passes even when step 3
+    # has been changed back to answering in the chat.
+    steps = text.scan(/^(\d)\. (.*(?:\n   .*)*)/).to_h
+
+    expect(steps['1']).to include('set_dictionaries', 'set_text')
+    expect(steps['2']).to include('submit_annotation')
+    expect(steps['2']).not_to include('text_annotation')
   end
 
-  # The assistant runs the annotation itself in step 2, so submitting the form
-  # repeats work the visitor can trigger whenever they want the page's own view.
-  # Asserting the reason, not the old scare wording about losing the
-  # conversation, so a stale claim cannot be held in place by this spec.
-  it 'tells the assistant not to submit the form as well' do
+  # Two mechanical constraints, both of which produced a silently broken flow
+  # when the prompt ignored them:
+  #
+  #   * a round that returns text and no tool call ends the turn, so an
+  #     explanation sent on its own BEFORE the submit means the submit never
+  #     happens — which is exactly what the model did on 2026-10-15;
+  #   * submitting navigates, so nothing said after it arrives either.
+  #
+  # The only slot that works is the same message as the call, so the prompt must
+  # say so and must not instruct a step after the submit.
+  it 'asks for the explanation in the same message as the submit' do
+    text = prompt_text('text' => 'I have a stomach ache.')
+    steps = text.scan(/^(\d)\. (.*(?:\n   .*)*)/).to_h
+
+    expect(steps['2']).to match(/same message/i)
+    expect(steps['2']).to match(/ends your turn/i)
+    expect(steps.keys).to eq(%w[1 2]), 'no step may follow the submit'
+  end
+
+  # text_annotation answers in the chat; submitting shows the page's own view.
+  # Doing both annotates twice and the typed-out copy is the worse one.
+  it 'tells the assistant not to annotate in the chat as well' do
     text = prompt_text('text' => 'I have a stomach ache.')
 
-    expect(text).to match(/do not submit/i)
-    expect(text).to match(/already run the annotation/i)
+    expect(text).to match(/do not call text_annotation/i)
   end
 
   it 'no longer claims submitting would discard the conversation' do
@@ -391,5 +457,101 @@ RSpec.describe 'the page’s prompt arguments and its resources' do
                          "which this page does not declare — the widget would leave it empty"
       end
     end
+  end
+end
+
+# A syntax error anywhere in this page's inline JavaScript takes down every
+# handler on it at once: window.aiActions, aiPrompts and aiResources are all
+# assigned in the same blocks, so one stray brace leaves the card declaring
+# tools, prompts and resources that nothing implements. The visitor sees
+# "the page declares prompt ... but no handler answers to that name", and
+# nothing in Ruby notices, because ERB stays valid.
+#
+# That happened on 2026-10-15 while adding the submit_annotation guard.
+RSpec.describe 'the page’s inline JavaScript' do
+  let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
+
+  it 'parses, every block of it' do
+    skip 'node is not available' if `which node`.strip.empty?
+
+    blocks = source.scan(%r{<script type="text/javascript">\s*(.*?)\s*</script>}m).flatten
+    expect(blocks.size).to be >= 3, 'expected the page to still carry its inline scripts'
+
+    Dir.mktmpdir do |dir|
+      blocks.each_with_index do |block, i|
+        # ERB holes become a literal, so a template value cannot be mistaken
+        # for a syntax error.
+        file = File.join(dir, "block_#{i}.js")
+        File.write(file, block.gsub(/<%=?-?.*?-?%>/m, '0'))
+        out = `node --check #{file} 2>&1`
+        expect($?.success?).to be(true), "block #{i} does not parse:\n#{out}"
+      end
+    end
+  end
+end
+
+# Every other example here reads the view as text. That catches a renamed key or
+# a missing declaration, but it cannot see what the browser sees: whether the
+# script, once run, actually leaves the declared primitives on the declared
+# global. Two failures this page has had were of that kind — a stray brace, and
+# handlers assigned before their namespace existed — and both passed a text
+# reading of the file.
+#
+# So this one runs the page's own script under node, with the page's helpers
+# stubbed, and compares what exists with what the card promises.
+RSpec.describe 'the page’s primitives, once the script has run' do
+  let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
+
+  def card
+    JSON.parse(source[PAGE_CARD_RE, 1])
+        .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
+  end
+
+  # The namespace is built by the last inline script. ERB holes become a literal
+  # so a template value cannot look like a syntax error.
+  def run_namespace
+    skip 'node is not available' if `which node`.strip.empty?
+
+    block = source.scan(%r{<script type="text/javascript">\s*(.*?)\s*</script>}m).flatten.last
+                  .gsub(/<%=?-?.*?-?%>/m, '0')
+    Dir.mktmpdir do |dir|
+      file = File.join(dir, 'namespace.js')
+      File.write(file, <<~JS)
+        var window = {},
+            document = { getElementById: function () { return null },
+                         querySelectorAll: function () { return [] } };
+        function $() { return { val: function () { return "" }, length: 0,
+                                submit: function () {}, each: function () {} } }
+        $.each = function () {};
+        var OPTION_ID_BY_NAME = {};
+        function readSelectedDictionaries() { return [] }
+        function readAvailableDictionaries() { return [] }
+        function requireDictionaryExists() {}
+        #{block}
+        process.stdout.write(JSON.stringify({
+          tools:     Object.keys((window.mcp || {}).tools     || {}),
+          prompts:   Object.keys((window.mcp || {}).prompts   || {}),
+          resources: Object.keys((window.mcp || {}).resources || {}),
+          legacyDefined: [ window.aiActions, window.aiPrompts, window.aiResources ]
+                           .some(function (v) { return v !== undefined })
+        }));
+      JS
+      out = `node #{file} 2>&1`
+      raise "the page's script did not run: #{out[0, 400]}" unless $?.success?
+
+      JSON.parse(out)
+    end
+  end
+
+  it 'leaves a handler on the namespace for every declared primitive' do
+    got = run_namespace
+
+    expect(got['tools']).to include(*card.fetch('tools').map { _1['name'] })
+    expect(got['prompts']).to include(*card.fetch('prompts').map { _1['name'] })
+    expect(got['resources']).to include(*card.fetch('resources').map { _1['uri'] })
+  end
+
+  it 'defines no legacy global, so a stale deployment fails loudly' do
+    expect(run_namespace['legacyDefined']).to be(false)
   end
 end

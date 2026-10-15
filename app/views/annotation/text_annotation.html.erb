@@ -380,6 +380,13 @@
      block once, not twice. %>
 <script type="application/mcp-static-primitives+json" id="ai-page">
 {
+  "name": "org.pubdictionaries/text-annotation",
+  "remotes": [
+    {
+      "type": "page-global",
+      "global": "mcp"
+    }
+  ],
   "_meta": {
     "io.modelcontextprotocol/static-primitives": {
       "tools": [
@@ -505,6 +512,14 @@
               "text"
             ]
           }
+        },
+        {
+          "name": "submit_annotation",
+          "description": "Press the page's Submit button, so PubDictionaries runs the annotation itself and the page shows its own result view. Requires the text and at least one dictionary to be set first. This navigates the page, so say whatever you want the person to read in the same message as this call: anything after it will not reach them.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
         }
       ],
       "prompts": [
@@ -627,23 +642,44 @@
 			""
 		].join("\n");
 
+		// Drives the page's OWN result view: submit_annotation hands the work to
+		// PubDictionaries and the visitor gets the real view, which no amount of
+		// typed-out text matches.
+		//
+		// Two mechanical constraints shape the wording, and both were learned by
+		// getting them wrong:
+		//
+		//   * A round that returns text and no tool call ENDS THE TURN (see
+		//     runChatLoop). An earlier version said "explain, then submit", and the
+		//     model duly explained — which ended the turn, so the submit never
+		//     happened. The explanation has to travel in the same message as the
+		//     call.
+		//   * Submitting navigates, so nothing said after it can arrive.
 		var ANNOTATE_STEPS = [
 			"Then, using as few steps as you can:",
 			"1. Call set_dictionaries with the dictionaries you chose. When it comes",
 			"   back, call set_text with the text. These are two separate calls, so",
 			"   the form on the page ends up showing both.",
-			"2. Call text_annotation with that same text and those dictionaries.",
-			"3. Tell me what it found — the matched terms with their identifiers —",
-			"   or say plainly that nothing matched. Mention that the form is now",
-			"   filled in, so I can press Submit to see it on the page myself.",
-			"You have already run the annotation yourself in step 2, so do not submit",
-			"the form as well — it would only repeat what you have done. Pressing",
-			"Submit is mine to do when I want the page's own view.",
+			"2. Call submit_annotation, and put your one-line reason for choosing",
+			"   those dictionaries in the SAME message as that call. Do not send the",
+			"   reason as a message of its own first: a message with no tool call",
+			"   ends your turn, so the submit would never happen. Nothing you say",
+			"   after the submit reaches me either, because the page moves on.",
+			"The page then runs the annotation itself and shows its own result view,",
+			"which is richer than anything you could type out for me.",
+			"Do not call text_annotation for this: submit_annotation does the same",
+			"work and shows it properly. Use text_annotation only when I ask for the",
+			"matches in the chat instead of on the page.",
 			"Do not repeat a call you have already made.",
 			""
 		].join("\n");
 
-		window.aiPrompts = {
+		// One namespace for everything this page implements, named in the card above
+		// so a consumer that has never heard of this widget can still find it. The
+		// sub-keys are the protocol's, not ours: tools, prompts, resources.
+		window.mcp = { tools: {}, prompts: {}, resources: {} };
+
+		window.mcp.prompts = {
 			annotate: function(args) {
 				var text = (args && args.text ? String(args.text) : "").trim();
 				var dicts = (args && args.dictionaries ? String(args.dictionaries) : "").trim();
@@ -673,7 +709,7 @@
 		// URI because that is what resources/read takes. The descriptions live in
 		// the card now — they are read by the model every turn, so that is where
 		// what it must know about a value belongs.
-		window.aiResources = {
+		window.mcp.resources = {
 			"page:text": function() { return $("#text").val() || ""; },
 			"page:selected_dictionaries": readSelectedDictionaries,
 			"page:available_dictionaries": readAvailableDictionaries,
@@ -699,7 +735,7 @@
 			}
 		}
 
-		window.aiActions = {
+		window.mcp.tools = {
 			add_dictionaries: function(args) {
 				(args.names || []).forEach(function(n) {
 					requireDictionaryExists(n);
@@ -758,10 +794,36 @@
 			// Asking it not to submit was not enough: the model called this
 			// anyway. Pressing Submit stays the visitor's own action.
 			// Restore the declaration once the widget survives navigation.
+			// Declared to the assistant since 2026-10-15. Submitting navigates, which
+			// is safe now: the widget keys its transcript by PATH and this form is a
+			// GET to the same path, so the conversation comes back.
+			//
+			// It refuses rather than submitting a form that cannot annotate. The page
+			// would answer with "at least one dictionary has to be specified" and the
+			// visitor would have navigated for nothing; refusing hands the model the
+			// reason instead, and it can fill the form and try again.
 			submit_annotation: function() {
+				if (!$("#text").val()) {
+					throw new Error("the text field is empty — call set_text first");
+				}
+				if (readSelectedDictionaries().length === 0) {
+					throw new Error("no dictionaries are selected — call set_dictionaries first");
+				}
 				$("#text_annotation").submit();
 			}
 		};
+
+		// NO aliases for window.aiActions / aiPrompts / aiResources, deliberately.
+		// The widget still reads those names when a card declares no transport, so
+		// other adopters are unaffected — but this page is the reference
+		// implementation, and it runs the declared path only.
+		//
+		// The reason is that an alias here would let a stale deployment keep working:
+		// a checkout that pulled this view without running `bundle install` would
+		// serve an older widget, find the legacy names, and behave correctly, so
+		// nobody would notice the deployment was stale. Both failures this page has
+		// had were of exactly that shape, found by a person rather than by anything
+		// failing. Without the aliases an old widget finds no handlers and says so.
 	})();
 </script>
 
