@@ -7,7 +7,7 @@ require 'tmpdir'
 # SEP-0000 defines, because an id the page chooses cannot be found by a client
 # that was not told it. Defined once — five copies of this regex drifted apart
 # the moment the locator changed.
-PAGE_CARD_RE = %r{<script type="application/mcp-static-primitives\+json">(.*?)</script>}m
+PAGE_CARD_RE = %r{<script type="application/mcp-static-primitives\+json"[^>]*>(.*?)</script>}m
 
 # The chat widget runs in the visitor's browser and calls the llm_meta hub
 # directly, so its base URL has to differ per deployment: the dev site talks
@@ -153,6 +153,15 @@ RSpec.describe 'the page card and its handlers' do
 
   # `page:` is experimental and unregistered, and the README says so. An https:
   # uri here would claim to be fetchable, which it is not.
+  # Transitional, and load-bearing while it lasts. A widget older than 0.10.0
+  # finds the card by this id alone; dropping it made every tool, prompt and
+  # resource on this page invisible to a visitor whose deployment still served
+  # 0.9.x, with nothing failing anywhere. Delete this example, and the id, once
+  # no deployment serves a widget older than 0.10.0.
+  it 'keeps the legacy id on the card for older widgets' do
+    expect(source).to include('type="application/mcp-static-primitives+json" id="ai-page"')
+  end
+
   it 'addresses page resources with the page scheme' do
     expect(card.fetch('resources').map { _1['uri'] }).to all(start_with('page:'))
   end

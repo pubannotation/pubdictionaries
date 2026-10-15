@@ -371,7 +371,14 @@
      each keyed by the identifier its own protocol operation takes:
      tools by name (tools/call), resources by uri (resources/read).
      It replaces the older #ai-actions schema tag outright. %>
-<script type="application/mcp-static-primitives+json">
+<%# The id is redundant for a widget of 0.10.0 or newer, which finds this block
+     by its media type, and is kept because a visitor's browser may still be
+     served an older one: 0.9.x looks the card up by id alone, and dropping the
+     id made the card invisible to it — every tool, prompt and resource on this
+     page silently disappeared. Remove the id once no deployment serves a
+     widget older than 0.10.0. A widget that understands the type reads this
+     block once, not twice. %>
+<script type="application/mcp-static-primitives+json" id="ai-page">
 {
   "_meta": {
     "io.modelcontextprotocol/static-primitives": {
