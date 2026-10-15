@@ -3,6 +3,12 @@
 require 'rails_helper'
 require 'tmpdir'
 
+# The page card is located by its MEDIA TYPE, not by an id: that is the locator
+# SEP-0000 defines, because an id the page chooses cannot be found by a client
+# that was not told it. Defined once — five copies of this regex drifted apart
+# the moment the locator changed.
+PAGE_CARD_RE = %r{<script type="application/mcp-static-primitives\+json">(.*?)</script>}m
+
 # The chat widget runs in the visitor's browser and calls the llm_meta hub
 # directly, so its base URL has to differ per deployment: the dev site talks
 # to the dev hub, production to the production hub. It was hardcoded to the
@@ -78,7 +84,7 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
   # then this spec keeps the current, deliberate state honest.
   it 'does not offer the assistant an action that navigates away' do
     source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
-    declared = JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+    declared = JSON.parse(source[PAGE_CARD_RE, 1])
                  .dig('_meta', 'io.modelcontextprotocol/static-primitives', 'tools')
 
     expect(declared.map { _1['name'] }).not_to include('submit_annotation')
@@ -105,7 +111,7 @@ RSpec.describe 'the page card and its handlers' do
   let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
 
   def card
-    JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+    JSON.parse(source[PAGE_CARD_RE, 1])
         .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
   end
 
@@ -326,7 +332,7 @@ RSpec.describe 'the page’s annotate prompt' do
   end
 
   it 'declares the prompt it implements, with both arguments optional' do
-    card = JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+    card = JSON.parse(source[PAGE_CARD_RE, 1])
                .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
     prompt = card.fetch('prompts').first
 
@@ -338,7 +344,7 @@ RSpec.describe 'the page’s annotate prompt' do
   end
 
   it 'has a handler for every declared prompt' do
-    card = JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+    card = JSON.parse(source[PAGE_CARD_RE, 1])
                .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
 
     card.fetch('prompts').each do |p|
@@ -361,7 +367,7 @@ RSpec.describe 'the page’s prompt arguments and its resources' do
   let(:source) { Rails.root.join('app/views/annotation/text_annotation.html.erb').read }
 
   def card
-    JSON.parse(source[%r{<script type="application/json" id="ai-page">(.*?)</script>}m, 1])
+    JSON.parse(source[PAGE_CARD_RE, 1])
         .fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
   end
 
