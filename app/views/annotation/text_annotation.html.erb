@@ -512,14 +512,6 @@
               "text"
             ]
           }
-        },
-        {
-          "name": "submit_annotation",
-          "description": "Press the page's Submit button, so PubDictionaries runs the annotation itself and the page shows its own result view. Requires the text and at least one dictionary to be set first. This navigates the page, so say whatever you want the person to read in the same message as this call: anything after it will not reach them.",
-          "inputSchema": {
-            "type": "object",
-            "properties": {}
-          }
         }
       ],
       "prompts": [
@@ -642,34 +634,22 @@
 			""
 		].join("\n");
 
-		// Drives the page's OWN result view: submit_annotation hands the work to
-		// PubDictionaries and the visitor gets the real view, which no amount of
-		// typed-out text matches.
-		//
-		// Two mechanical constraints shape the wording, and both were learned by
-		// getting them wrong:
-		//
-		//   * A round that returns text and no tool call ENDS THE TURN (see
-		//     runChatLoop). An earlier version said "explain, then submit", and the
-		//     model duly explained — which ended the turn, so the submit never
-		//     happened. The explanation has to travel in the same message as the
-		//     call.
-		//   * Submitting navigates, so nothing said after it can arrive.
+		// Annotates through the text_annotation TOOL and reports the matches in the
+		// chat. Driving the page's own result view instead was tried on 2026-10-15
+		// and withdrawn: it needs a tool that navigates, and nothing the model can
+		// be told makes it answer before a navigation it performs itself.
 		var ANNOTATE_STEPS = [
 			"Then, using as few steps as you can:",
 			"1. Call set_dictionaries with the dictionaries you chose. When it comes",
 			"   back, call set_text with the text. These are two separate calls, so",
 			"   the form on the page ends up showing both.",
-			"2. Call submit_annotation, and put your one-line reason for choosing",
-			"   those dictionaries in the SAME message as that call. Do not send the",
-			"   reason as a message of its own first: a message with no tool call",
-			"   ends your turn, so the submit would never happen. Nothing you say",
-			"   after the submit reaches me either, because the page moves on.",
-			"The page then runs the annotation itself and shows its own result view,",
-			"which is richer than anything you could type out for me.",
-			"Do not call text_annotation for this: submit_annotation does the same",
-			"work and shows it properly. Use text_annotation only when I ask for the",
-			"matches in the chat instead of on the page.",
+			"2. Call text_annotation with that same text and those dictionaries.",
+			"3. Tell me what it found — the matched terms with their identifiers —",
+			"   or say plainly that nothing matched. Mention that the form is now",
+			"   filled in, so I can press Submit to see it on the page myself.",
+			"You have already run the annotation yourself in step 2, so do not submit",
+			"the form as well — it would only repeat what you have done. Pressing",
+			"Submit is mine to do when I want the page's own view.",
 			"Do not repeat a call you have already made.",
 			""
 		].join("\n");
@@ -786,29 +766,18 @@
 			set_text: function(args) {
 				$("#text").val(String(args.text || ""));
 			},
-			// Deliberately NOT declared in the ai-actions block above, so the
-			// assistant cannot call it. Submitting navigates, which destroys
-			// the conversation, the record of what ran and the scroll
-			// position — and the assistant already runs the annotation itself
-			// via the text_annotation tool and reports the result in chat.
-			// Asking it not to submit was not enough: the model called this
-			// anyway. Pressing Submit stays the visitor's own action.
-			// Restore the declaration once the widget survives navigation.
-			// Declared to the assistant since 2026-10-15. Submitting navigates, which
-			// is safe now: the widget keys its transcript by PATH and this form is a
-			// GET to the same path, so the conversation comes back.
+			// Implemented for the page's own use, and deliberately NOT declared to the
+			// assistant. Submitting navigates, which ends the document the widget lives
+			// in, and the model's answer is written AFTER a tool result — so a declared
+			// submit_annotation cut the turn off before the answer existed.
 			//
-			// It refuses rather than submitting a form that cannot annotate. The page
-			// would answer with "at least one dictionary has to be specified" and the
-			// visitor would have navigated for nothing; refusing hands the model the
-			// reason instead, and it can fill the form and try again.
+			// Tried on 2026-10-15 and withdrawn: asking for the answer before the call
+			// ended the turn early; asking for it in the same message produced one thin
+			// line, then nothing. Deferring the submit to a turn-end event did work,
+			// but it needs a widget feature and a page-side flag for something no card
+			// can declare, so it waits for a better answer. Pressing Submit stays the
+			// visitor's to do.
 			submit_annotation: function() {
-				if (!$("#text").val()) {
-					throw new Error("the text field is empty — call set_text first");
-				}
-				if (readSelectedDictionaries().length === 0) {
-					throw new Error("no dictionaries are selected — call set_dictionaries first");
-				}
 				$("#text_annotation").submit();
 			}
 		};

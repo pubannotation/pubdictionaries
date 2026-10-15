@@ -71,25 +71,24 @@ RSpec.describe 'the embedded chat widget’s hub URL' do
     expect(rounds.to_i).to be >= 5
   end
 
-  # submit_annotation was withheld because submitting navigates, which used to
-  # destroy the conversation. Two things had to be true before declaring it, and
-  # both were checked against the running sites on 2026-10-15:
+  # Submitting navigates, which destroys the conversation, the record of what
+  # ran and the scroll position. Asking the assistant not to call it was not
+  # enough — the model did it anyway — so it is not declared at all. The
+  # implementation stays for the page's own use.
   #
-  #   1. the transcript survives. The widget keys it by PATH, and this form is a
-  #      GET to the same path, so it is restored.
-  #   2. a submit that cannot annotate does not land on a page without the
-  #      widget. Production already answered 200 with a notice; the dev site
-  #      answered 500 only because an ordinary user mistake was raised as an
-  #      ArgumentError, which AnnotationController no longer does.
-  #
-  # The handler also refuses rather than submitting a form that cannot annotate,
-  # so the model is told why instead of navigating for nothing.
-  it 'offers the assistant the action that fires the page own annotation' do
+  # The hazard it guarded against is gone: llm_meta_widget 0.6.0 persists the
+  # transcript across navigation. Re-declaring the action is therefore a live
+  # option, but it is a change of its own — it wants a test that submits for
+  # real and checks the conversation comes back, including when the submit
+  # lands on an error page, which renders no widget to restore into. Until
+  # then this spec keeps the current, deliberate state honest.
+  it 'does not offer the assistant an action that navigates away' do
     source = Rails.root.join('app/views/annotation/text_annotation.html.erb').read
     declared = JSON.parse(source[PAGE_CARD_RE, 1])
                  .dig('_meta', 'io.modelcontextprotocol/static-primitives', 'tools')
 
-    expect(declared.map { _1['name'] }).to include('submit_annotation', 'set_text', 'set_dictionaries')
+    expect(declared.map { _1['name'] }).not_to include('submit_annotation')
+    expect(declared.map { _1['name'] }).to include('set_text', 'set_dictionaries')
   end
 
   # Setting LLM_HUB_URL empty switches the widget off without a code change.
@@ -213,15 +212,12 @@ RSpec.describe 'the page card and its handlers' do
     expect(handler_keys('mcp.tools')).to include(*card.fetch('tools').map { _1['name'] })
   end
 
-  # The guard is why declaring it is safe, so it is held in place here. Without
-  # it the model can submit a form that only comes back with a complaint,
-  # having navigated the visitor for nothing.
-  it 'refuses to submit a form that cannot annotate' do
-    body = source[/submit_annotation: function\(\) \{(.*?)\$\("#text_annotation"\)\.submit/m, 1]
-
-    expect(body).to include('set_text'), 'no guard naming the empty text field'
-    expect(body).to include('set_dictionaries'), 'no guard naming the empty selection'
-    expect(body.scan('throw new Error').size).to eq(2)
+  # submit_annotation is implemented but not declared, so the assistant cannot
+  # call it and it needs no guard. The guards that were added for the declared
+  # version went with it; see the comment on the handler for why.
+  it 'keeps submit_annotation implemented but undeclared' do
+    expect(handler_keys('mcp.tools')).to include('submit_annotation')
+    expect(card.fetch('tools').map { _1['name'] }).not_to include('submit_annotation')
   end
 
   # The catalog is the one resource that does not change between turns; the rest
@@ -336,48 +332,23 @@ RSpec.describe 'the page’s annotate prompt' do
   # Choosing dictionaries is not the job; annotating is. Left to "then annotate
   # it", the model announced its picks and stopped — and the page's text field
   # stayed empty, so the visitor could not even re-run it by hand.
-  #
-  # Since 2026-10-15 the annotation is run by the page: fill the form, then
-  # submit, and PubDictionaries shows its own result view.
-  it 'spells out filling the form and then letting the page run it' do
+  it 'spells out filling the form and running the annotation' do
     text = prompt_text('text' => 'I have a stomach ache.')
 
-    # Read the numbered steps, not the whole prompt: the word
-    # "submit_annotation" also appears in the line telling the model NOT to use
-    # text_annotation, so asserting on the whole text passes even when step 3
-    # has been changed back to answering in the chat.
-    steps = text.scan(/^(\d)\. (.*(?:\n   .*)*)/).to_h
-
-    expect(steps['1']).to include('set_dictionaries', 'set_text')
-    expect(steps['2']).to include('submit_annotation')
-    expect(steps['2']).not_to include('text_annotation')
+    expect(text).to include('set_text')
+    expect(text).to include('text_annotation')
+    expect(text.index('set_text')).to be < text.index('text_annotation')
   end
 
-  # Two mechanical constraints, both of which produced a silently broken flow
-  # when the prompt ignored them:
-  #
-  #   * a round that returns text and no tool call ends the turn, so an
-  #     explanation sent on its own BEFORE the submit means the submit never
-  #     happens — which is exactly what the model did on 2026-10-15;
-  #   * submitting navigates, so nothing said after it arrives either.
-  #
-  # The only slot that works is the same message as the call, so the prompt must
-  # say so and must not instruct a step after the submit.
-  it 'asks for the explanation in the same message as the submit' do
-    text = prompt_text('text' => 'I have a stomach ache.')
-    steps = text.scan(/^(\d)\. (.*(?:\n   .*)*)/).to_h
-
-    expect(steps['2']).to match(/same message/i)
-    expect(steps['2']).to match(/ends your turn/i)
-    expect(steps.keys).to eq(%w[1 2]), 'no step may follow the submit'
-  end
-
-  # text_annotation answers in the chat; submitting shows the page's own view.
-  # Doing both annotates twice and the typed-out copy is the worse one.
-  it 'tells the assistant not to annotate in the chat as well' do
+  # The assistant runs the annotation itself in step 2, so submitting the form
+  # repeats work the visitor can trigger whenever they want the page's own view.
+  # Asserting the reason, not the old scare wording about losing the
+  # conversation, so a stale claim cannot be held in place by this spec.
+  it 'tells the assistant not to submit the form as well' do
     text = prompt_text('text' => 'I have a stomach ache.')
 
-    expect(text).to match(/do not call text_annotation/i)
+    expect(text).to match(/do not submit/i)
+    expect(text).to match(/already run the annotation/i)
   end
 
   it 'no longer claims submitting would discard the conversation' do
