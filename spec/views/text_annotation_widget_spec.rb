@@ -169,11 +169,21 @@ RSpec.describe 'the page card and its handlers' do
   # other than llm_meta_widget can find them. Without it the page is only half
   # discoverable: its primitives are declared, but nothing says what to call.
   it 'declares the page-global transport its handlers use' do
-    remote = JSON.parse(source[PAGE_CARD_RE, 1]).fetch('remotes').first
+    card = JSON.parse(source[PAGE_CARD_RE, 1])
+    extension = card.fetch('_meta').fetch('io.modelcontextprotocol/static-primitives')
+    transport = extension.fetch('transports').first
 
-    expect(remote['type']).to eq('page-global')
-    expect(remote['global']).to eq('mcp')
+    expect(transport['type']).to eq('page-global')
+    expect(transport['global']).to eq('mcp')
     expect(source).to include('window.mcp = {')
+  end
+
+  # The pre-d44bd25a spelling. A widget from 0.14.0 onwards does not read it, so
+  # a card carrying it would be declaring a transport nothing consults.
+  it 'no longer declares the transport in a top-level remotes list' do
+    card = JSON.parse(source[PAGE_CARD_RE, 1])
+
+    expect(card).not_to have_key('remotes')
   end
 
   # No aliases for the legacy globals, deliberately — asserted so that nobody
